@@ -543,6 +543,9 @@ const J = {
     const storyId=new URL(story.url()).pathname.split('/').pop();
     const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type,panel:fs['sharedDocs/'+id+'/dpages/panel1']};},storyId);
     if(saved.kind!=='design'||saved.type!=='storyboard'||saved.panel?.w!==1280||saved.panel?.h!==720)throw Error('Storyboard did not save as a Designer file with a 16:9 first panel');
+    await story.getByRole('button',{name:'Backdrop',exact:true}).click();
+    await story.getByRole('option',{name:'Café',exact:true}).click();
+    await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);
     // A backdrop by click; a person by dragging onto the panel, standing where dropped.
     await story.getByRole('button',{name:'Backdrop: Café',exact:true}).click();
     await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);

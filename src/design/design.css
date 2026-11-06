@@ -177,6 +177,8 @@
 .dz-field { display: flex; flex-direction: column; gap: 4px; font: 600 12px var(--sans); color: var(--dz-muted); }
 .dz-field input, .dz-field select, .dz-field textarea, .dz-two select { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--dz-line); background: var(--dz-panel); color: var(--dz-ink); font: 14px var(--sans); }
 .dz-field input:focus, .dz-field select:focus, .dz-field textarea:focus { outline: 2px solid var(--dz); outline-offset: -1px; }
+.dz-field .nsel, .dz-field .nsel .sel { width: 100%; }
+.dz-field .nsel .sel { min-height: 34px; border: 1px solid var(--dz-line); border-radius: 8px; background: var(--dz-panel); color: var(--dz-ink); font: 14px var(--sans); }
 .dz-checkrow { display: flex; align-items: center; gap: 8px; font: 13px var(--sans); color: var(--dz-ink); cursor: pointer; }
 .dz-font { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--dz-line); background: var(--dz-panel); color: var(--dz-ink); font-size: 16px; cursor: pointer; }
 .dz-font:hover { border-color: var(--dz); }

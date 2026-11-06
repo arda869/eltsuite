@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openMenuAt } from '../components/ContextMenu';
+import { NSelect } from '../components/Select';
 import type { Ctx } from './Editor';
 import { FONTS, MM, SIZES, SWATCHES, VIEWS, ensureFont, type ArtView, type El, type Fx } from './model';
 import { SCENES } from '../storyboard/scenes';
@@ -400,24 +401,24 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
       <p className="hint">{e.ground ? 'Sized by how far away it stands: nearer the bottom of the page is nearer to you. It casts a small shadow. Size it by hand and it keeps that size.' : 'Sized and placed freely.'}</p>
       {e.art === 'person' && poses && faces && people && (
         <>
-          <label className="dz-field">
+          <div className="dz-field">
             <span>Who</span>
-            <select value={e.ref} onChange={(ev) => set({ ref: ev.target.value, name: people[ev.target.value]?.name })}>
+            <NSelect aria-label="Who" value={e.ref} onChange={(ev) => set({ ref: ev.target.value, name: people[ev.target.value]?.name })}>
               {Object.entries(people).map(([k, p]) => <option key={k} value={k}>{p.name}</option>)}
-            </select>
-          </label>
-          <label className="dz-field">
+            </NSelect>
+          </div>
+          <div className="dz-field">
             <span>Pose</span>
-            <select value={e.pose ?? 'stand'} onChange={(ev) => set({ pose: ev.target.value })}>
+            <NSelect aria-label="Pose" value={e.pose ?? 'stand'} onChange={(ev) => set({ pose: ev.target.value })}>
               {Object.entries(poses).map(([k, p]) => <option key={k} value={k}>{p.name}</option>)}
-            </select>
-          </label>
-          <label className="dz-field">
+            </NSelect>
+          </div>
+          <div className="dz-field">
             <span>Face</span>
-            <select value={e.face ?? 'happy'} onChange={(ev) => set({ face: ev.target.value })}>
+            <NSelect aria-label="Face" value={e.face ?? 'happy'} onChange={(ev) => set({ face: ev.target.value })}>
               {Object.entries(faces).map(([k, f]) => <option key={k} value={k}>{f.name}</option>)}
-            </select>
-          </label>
+            </NSelect>
+          </div>
         </>
       )}
       <Colour label="Colour" value={e.accent ?? cx.accent} onChange={(c) => set({ accent: c })} accent={cx.accent} />
@@ -439,12 +440,12 @@ function PageProps({ cx }: { cx: Ctx }) {
       </div>
       {(cx.mode === 'storyboard' || p.scene) && (
         <Sec title="Scene">
-          <label className="dz-field">
+          <div className="dz-field">
             <span>Backdrop</span>
-            <select value={p.scene ?? 'plain'} onChange={(e) => cx.setScene(e.target.value)} disabled={!cx.canEdit}>
+            <NSelect aria-label="Backdrop" value={p.scene ?? 'plain'} onChange={(e) => cx.setScene(e.target.value)} disabled={!cx.canEdit}>
               {Object.entries(SCENES).map(([k, sc]) => <option key={k} value={k}>{sc.name}</option>)}
-            </select>
-          </label>
+            </NSelect>
+          </div>
           {p.scene && p.scene !== 'plain' && (
             <>
               <Slider label="Floor line" value={Math.round((p.horizon ?? SCENES[p.scene]?.horizon ?? 0.74) * 100)} min={30} max={95} onChange={(v) => cx.setPage({ horizon: v / 100 })} fmt={(v) => `${v}%`} />
@@ -464,13 +465,13 @@ function PageProps({ cx }: { cx: Ctx }) {
           <span>Name</span>
           <input value={p.name ?? ''} placeholder={`${cx.mode === 'storyboard' ? 'Panel' : 'Page'} ${cx.pages.indexOf(p) + 1}`} onChange={(e) => cx.setPage({ name: e.target.value })} disabled={!cx.canEdit} />
         </label>
-        <label className="dz-field">
+        <div className="dz-field">
           <span>Size</span>
-          <select value={size?.k ?? ''} onChange={(e) => { const s = SIZES.find((x) => x.k === e.target.value); if (s) cx.setPage({ w: s.w, h: s.h }); }} disabled={!cx.canEdit}>
+          <NSelect aria-label="Page size" value={size?.k ?? ''} onChange={(e) => { const s = SIZES.find((x) => x.k === e.target.value); if (s) cx.setPage({ w: s.w, h: s.h }); }} disabled={!cx.canEdit}>
             {!size && <option value="">Your own size</option>}
             {imageSizes.map((s) => <option key={s.k} value={s.k}>{s.name} · {s.about}</option>)}
-          </select>
-        </label>
+          </NSelect>
+        </div>
         <div className="dz-nums">
           <Num label="W" value={p.w} unit="px" min={64} max={8192} onChange={(v) => cx.setPage({ w: Math.round(v) })} />
           <Num label="H" value={p.h} unit="px" min={64} max={8192} onChange={(v) => cx.setPage({ h: Math.round(v) })} />

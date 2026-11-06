@@ -45,7 +45,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 37 | Open | Authenticated homepage, invitation, learner login/logout/refresh and redirect checks. |
 | 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
 | 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
-| 40 | In progress | Spelling/style selects use NSelect and raw selects share visible skin; full select inventory pending. |
+| 40 | In progress | Spelling/style selects, Designer selected-element and page selectors, and the legacy storyboard toolbar use NSelect; Designer backdrop selection and saved page state pass a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
 | 41 | Open | Multiselect/autocomplete audit. |
 | 42 | Open | Checkbox/radio/switch visual and semantic audit. |
 | 43 | Open | Date/time picker and locale audit. |
@@ -68,6 +68,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - Focused unit tests: 22/22 passed (mock/unit).
 - Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
 - Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return to the originating document passed. Learner sign-in and signed-out homepage checks passed after cross-tab mock authentication was corrected. The 33 spelling and coach unit tests pass after bounded-query mock updates.
+- Mock browser: Designer backdrop selection through the shared dropdown saved to the storyboard page; the complete Designer journey with optional fields blank passed after the control change. TypeScript `--noEmit` passed.
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.

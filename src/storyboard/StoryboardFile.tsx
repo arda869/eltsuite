@@ -3,6 +3,7 @@ import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateD
 import { db } from '../lib/firebase';
 import { newId } from '../lib/tasks';
 import { ask } from '../lib/ask';
+import { NSelect } from '../components/Select';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { BUBBLES, FACES, PEOPLE, POSES, PersonArt, Sketch, THINGS, faceBox } from './art';
 import { ItemArt, SceneView, STAGE, heightOf, itemStyle, type SbItem, type SbKind, type SbScene } from './Stage';
@@ -174,37 +175,37 @@ export function StoryboardFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean 
               <>
                 {it.t === 'person' && (
                   <>
-                    <select value={it.ref} onChange={(e) => save(it.id, { ref: e.target.value })} aria-label="Who">
+                    <NSelect value={it.ref} onChange={(e) => save(it.id, { ref: e.target.value })} aria-label="Who">
                       {Object.entries(PEOPLE).map(([k2, p]) => (
                         <option key={k2} value={k2}>
                           {p.name}
                         </option>
                       ))}
-                    </select>
-                    <select value={it.pose ?? 'stand'} onChange={(e) => save(it.id, { pose: e.target.value })} aria-label="Pose">
+                    </NSelect>
+                    <NSelect value={it.pose ?? 'stand'} onChange={(e) => save(it.id, { pose: e.target.value })} aria-label="Pose">
                       {Object.entries(POSES).map(([k2, p]) => (
                         <option key={k2} value={k2}>
                           {p.name}
                         </option>
                       ))}
-                    </select>
-                    <select value={it.face ?? 'happy'} onChange={(e) => save(it.id, { face: e.target.value })} aria-label="Face">
+                    </NSelect>
+                    <NSelect value={it.face ?? 'happy'} onChange={(e) => save(it.id, { face: e.target.value })} aria-label="Face">
                       {Object.entries(FACES).map(([k2, f]) => (
                         <option key={k2} value={k2}>
                           {f.name}
                         </option>
                       ))}
-                    </select>
+                    </NSelect>
                   </>
                 )}
                 {it.t === 'bubble' && (
-                  <select value={it.ref} onChange={(e) => save(it.id, { ref: e.target.value })} aria-label="Kind of bubble">
+                  <NSelect value={it.ref} onChange={(e) => save(it.id, { ref: e.target.value })} aria-label="Kind of bubble">
                     {Object.entries(BUBBLES).map(([k2, b]) => (
                       <option key={k2} value={k2}>
                         {b.name}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 )}
                 <button type="button" className={'sbf-b' + (it.flip ? ' on' : '')} onClick={() => save(it.id, { flip: !it.flip })} data-tip="Face the other way">
                   Flip
