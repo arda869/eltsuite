@@ -8421,15 +8421,14 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .gl-story-strip{display:flex;gap:6px;width:100%;justify-content:center}.gl-story-strip>span{display:grid;gap:5px;justify-items:center}.gl-story-strip .gl-photo{width:58px;height:48px}.gl-story-strip small{font:9px var(--sans)}
 .gl-video-preview{width:180px;height:90px;border-radius:8px;background:#344c50;display:grid;place-items:center;color:#fff}.gl-video-preview>span{font-size:26px}.gl-video-preview small{font:10px var(--sans)}.gl-sample-heading{font-family:var(--serif);line-height:1.2;color:var(--ink)}
 .tbl-delete{border:1px solid var(--hair);background:var(--paper);color:var(--muted);padding:0}.tbl-delete:hover{color:#b33;background:var(--paper)}
-/* Hover controls occupy the same modest gaps as the teaching list. */
-.task-insert,.task-insert>summary{min-height:8px;height:8px}.task-insert>summary span{position:relative;z-index:2;width:20px;height:20px;line-height:17px}.task-insert[open]{height:auto}.task-insert-menu{position:relative;z-index:3;margin:8px 0}
-@media(hover:none){.task-insert,.task-insert>summary{min-height:24px;height:24px}}
-
-@media(hover:hover) and (min-width:761px){
- .task-insert{height:2px;min-height:2px;margin-top:-2px;margin-bottom:-2px}
- .task-insert>summary{position:absolute;inset:-5px 0 auto;height:12px;min-height:12px}
- .task-insert[open]{height:auto;margin:4px 0}.task-insert[open]>summary{position:relative;inset:auto}
-}
+/* Each task insertion guide owns its gap, so it never draws over a task row. */
+.task-insert{height:24px;min-height:24px;margin:0;z-index:1}
+.task-insert>summary{position:relative;inset:auto;height:24px;min-height:24px;border:0}
+.task-insert>summary::before{content:"";position:absolute;left:6px;right:6px;top:50%;height:2px;transform:translateY(-50%);border-radius:2px;background:var(--accent-text)}
+.task-insert>summary span{display:grid;place-items:center;position:relative;z-index:2;box-sizing:border-box;width:24px;height:24px;line-height:1;border:2px solid var(--accent-text);border-radius:50%;background:var(--paper);color:var(--accent-text);font:700 18px/1 var(--sans);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.task-insert:hover>summary,.task-insert:focus-within>summary,.task-insert[open]>summary{border:0}
+.task-insert[open]{height:auto}
+.task-insert-menu{position:relative;z-index:3;margin:8px 0}
 
 /* Classes uses more of the screen; other suite apps keep their own spacing. */
 .shell.classes-shell{padding-inline:12px}
