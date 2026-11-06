@@ -6650,8 +6650,9 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .sel-tick { flex: none; display: grid; place-items: center; width: 16px; height: 18px; color: var(--accent); }
 .sel-t { display: flex; flex-direction: column; gap: 1px; }
 .sel-t .hint { font-weight: 400; font-size: 12.5px; }
-@keyframes sel-in { from { opacity: 0; transform: translateY(-4px); } }
-@keyframes sel-up { from { opacity: 0; transform: translateY(4px); } }
+/* Opening menus keep their text contrast throughout the short movement. */
+@keyframes sel-in { from { transform: translateY(-4px); } }
+@keyframes sel-up { from { transform: translateY(4px); } }
 /* Number boxes without the browser's arrows */
 .adm input[type=number]::-webkit-inner-spin-button, .adm input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .adm input[type=number] { -moz-appearance: textfield; appearance: textfield; }
