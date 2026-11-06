@@ -39,7 +39,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="pub-home-link" aria-label="ELT Suite home"><Wordmark /></Link>
         <button ref={toggle} className="pub-menu" aria-expanded={menu} aria-controls="public-nav" onClick={() => setMenu(!menu)}>{menu ? 'Close menu −' : 'Menu +'}</button>
         <nav id="public-nav" className={menu ? 'is-open' : ''} aria-label="Main navigation">
-          <Link to="/#plan">What it does</Link><NavLink to="/pricing">Plans and pricing</NavLink>
+          <Link to="/#how">What it does</Link><NavLink to="/pricing">Plans and pricing</NavLink>
           <NavLink to="/about">About</NavLink>
           <Link className="pub-signin" to="/signin">Sign in</Link>
           <Link className="pub-ask" to="/#invite">Ask for an invitation</Link>
@@ -109,7 +109,7 @@ export function AboutPage() {
         <section className="pub-page-end">
           <h2>Take a closer look.</h2>
           <p>See what ELT Suite does, or ask for an invitation to try it with your classes.</p>
-          <div className="pub-actions"><Link className="pub-button" to="/#invite">Ask for an invitation</Link><Link className="pub-secondary" to="/#plan">See what it does</Link></div>
+          <div className="pub-actions"><Link className="pub-button" to="/#invite">Ask for an invitation</Link><Link className="pub-secondary" to="/#how">See what it does</Link></div>
         </section>
       </main>
     </PublicLayout>

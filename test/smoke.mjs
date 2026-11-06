@@ -967,7 +967,7 @@ const J = {
     return s;
   },
 
-  'Public homepage: showcases, live demonstration, invitation requests and pricing': async (b) => {
+  'Public homepage: full-screen hero, how it works, invitation requests and pricing': async (b) => {
     const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
     const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
@@ -977,30 +977,37 @@ const J = {
     if(await p.getByRole('link',{name:/Buy now|Subscribe|Start free trial/}).count())throw Error('Unapproved public purchase action');
     await p.getByText('ELT Suite is for ELT professionals',{exact:false}).first().waitFor();
     await p.getByRole('heading',{name:'Made with care, by teachers, for teachers.'}).waitFor();
-    await p.getByRole('heading',{name:'One place for everything you teach.'}).waitFor();
-    for(const way of ['Teach online','On the classroom screen','On paper','Answers checked online'])await p.locator('#your-way').getByRole('heading',{name:way,exact:true}).waitFor();
+    // The hero fills the first screen, and pointing at a screen says what it does.
+    if(await p.locator('.pub-hero').evaluate(el=>el.getBoundingClientRect().height<innerHeight*0.7))throw Error('The hero should fill the first screen');
+    await p.locator('.pub-pop-report').hover();await p.locator('.pub-hero-cap').getByText('Class report').waitFor();
     await axe(p,'Public homepage desktop',A11Y_FOUND);
     if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
     if(await p.locator('.pub-home a[href^="/explore"]').count())throw Error('The homepage links to the demo');
     for(const legacy of ['/explore?step=lesson','/tour']){
-      await p.goto(BASE+legacy);await p.waitForURL(BASE+'/#plan');
-      await p.locator('#plan').getByRole('heading',{name:'From first idea to finished lesson.'}).waitFor();
+      await p.goto(BASE+legacy);await p.waitForURL(BASE+'/#how');
+      await p.locator('#how').getByRole('heading',{name:'Plan your lesson.'}).waitFor();
     }
-    for(const section of ['plan','understand','audio','language']){
-      const shot=p.locator('#'+section+' .pub-frame').first();
-      await shot.click();const dialog=p.getByRole('dialog');await dialog.waitFor();
+    // How it works: a step in the hero opens its tab, and each tab has its own screens.
+    await p.goto(BASE+'/');await p.getByRole('heading',{name:HERO}).waitFor();
+    await p.locator('.pub-cycle').getByRole('link',{name:'Grow with your coach'}).click();
+    await p.getByRole('tab',{name:/Grow with your coach/,selected:true}).waitFor();
+    await p.getByRole('tabpanel').getByRole('heading',{name:'Talk it through with your coach.'}).waitFor();
+    for(const [tab,heading] of [['See results','See how it went.'],['Reflect','Look back on the lesson.'],['Connect with colleagues','Share ideas with colleagues.'],['Plan','Plan your lesson.']]){
+      await p.getByRole('tab',{name:new RegExp(tab)}).click();
+      const panel=p.getByRole('tabpanel');await panel.getByRole('heading',{name:heading}).waitFor();
+      await panel.locator('.pub-frame').first().click();const dialog=p.getByRole('dialog');await dialog.waitFor();
       await dialog.locator('img').evaluate(img=>img.decode());await dialog.getByRole('button',{name:'Close'}).click();
     }
-    await p.locator('.pub-lang-sentence').scrollIntoViewIfNeeded();
-    await p.getByText('/ɡʊd ˈtiːtʃɪŋ ɪz wɜːθ ˈʃeərɪŋ/',{exact:true}).waitFor();
-    // The live demonstration: answers arrive, and it can be paused.
-    const live=p.locator('#teach');await live.scrollIntoViewIfNeeded();
-    await live.locator('.pub-live-who li.right').first().waitFor({timeout:8000});
-    await live.getByRole('button',{name:'Pause',exact:true}).click();
-    await live.getByRole('button',{name:'Play',exact:true}).waitFor();
-    // One lesson to the next: the tabs.
-    await p.getByRole('tab',{name:/Reflect/}).click();
-    await p.getByRole('tabpanel').getByText('Think back on the lesson in Collab',{exact:false}).waitFor();
+    // Teach: the same lesson three ways, and the live example opens when asked.
+    await p.getByRole('tab',{name:/Teach/}).click();
+    const panel=p.getByRole('tabpanel');
+    for(const cap of ['As you edit it','On a learner’s phone','On paper'])await panel.getByText(cap,{exact:true}).waitFor();
+    if(await panel.locator('.pub-live').count())throw Error('The live example should stay closed until asked');
+    await panel.getByRole('button',{name:'See answers arrive live'}).click();
+    await panel.locator('.pub-live-who li.right').first().waitFor({timeout:8000});
+    await panel.getByRole('button',{name:'Pause',exact:true}).click();
+    await panel.getByRole('button',{name:'Play',exact:true}).waitFor();
+    await axe(p,'Public homepage how it works',A11Y_FOUND);
     // Asking for an invitation.
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Ask for an invitation',exact:true}).click();
     const form=p.locator('#invite form');await form.waitFor();
@@ -1028,7 +1035,7 @@ const J = {
     await nav.getByRole('link',{name:'Plans and pricing',exact:true}).waitFor();
     if(await nav.getByRole('link',{name:'Explore',exact:true}).count())throw Error('The menu still links to the demo');
     await nav.getByRole('link',{name:'What it does'}).click();
-    await p.waitForURL(BASE+'/#plan');
+    await p.waitForURL(BASE+'/#how');
     await axe(p,'Public homepage mobile',A11Y_FOUND);
     if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public homepage overflows on mobile');
     await p.getByRole('button',{name:'Menu +',exact:true}).click();
@@ -1045,7 +1052,8 @@ const J = {
     try{
       const phone=await mobile.newPage();await phone.goto(BASE+'/');
       await phone.getByRole('heading',{name:HERO}).waitFor();
-      if(await phone.locator('#teach .pub-live-who li.right').count()<1)throw Error('Reduced motion should show the finished demonstration');
+      await phone.getByRole('tab',{name:/Teach/}).click();await phone.getByRole('button',{name:'See answers arrive live'}).click();
+      if(await phone.locator('#pub-live .pub-live-who li.right').count()<1)throw Error('Reduced motion should show the finished example');
       if(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Small phone overflows');
       if(process.env.PUBLIC_MOBILE_SCREENSHOT)await phone.screenshot({path:process.env.PUBLIC_MOBILE_SCREENSHOT});
     }finally{await mobile.close();}

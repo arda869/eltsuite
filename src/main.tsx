@@ -226,8 +226,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<Navigate to="/#plan" replace />} />
-          <Route path="/explore" element={<Navigate to="/#plan" replace />} />
+          <Route path="/tour" element={<Navigate to="/#how" replace />} />
+          <Route path="/explore" element={<Navigate to="/#how" replace />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/signin" element={<PublicSignIn />} />

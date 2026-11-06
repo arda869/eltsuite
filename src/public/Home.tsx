@@ -1,9 +1,7 @@
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicLayout } from './PublicSite';
 import './home.css';
-
-const LanguageMoment = lazy(() => import('./LanguageMoment').then((m) => ({ default: m.LanguageMoment })));
 
 // Screens from ELT Suite with a fictional class (test/landing-seed.ts, test/landing-shots.mjs).
 // Each is in public/landing at 2400 × 1500, with a 1100 × 688 copy for small screens.
@@ -11,19 +9,6 @@ const W = 2400, H = 1500;
 const PAPER = { w: 1130, h: 1598 }; // public/landing/paper.webp, the printed page
 const src = (name: string) => `/landing/${name}.webp`;
 const srcSet = (name: string) => `/landing/${name}-sm.webp 1100w, /landing/${name}.webp 2400w`;
-
-function Mounted({ children, label }: { children: ReactNode; label: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !('IntersectionObserver' in window)) return setOn(true);
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setOn(true); io.disconnect(); } }, { rootMargin: '300px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return <div ref={ref} className="pub-mounted">{on ? <Suspense fallback={<p className="pub-note">One moment…</p>}>{children}</Suspense> : <p className="pub-note">{label}</p>}</div>;
-}
 
 // Part of a screen, cut to the region given as fractions of the whole picture.
 type Region = { x: number; y: number; w: number; h: number };
@@ -90,133 +75,69 @@ function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string
 
 // ------------------------------------------------------------------ hero
 
-const CYCLE = ['Plan', 'Teach', 'See results', 'Reflect', 'Grow with your coach', 'Connect with colleagues'];
+// ------------------------------------------------------------------ the teaching cycle
+// The hero's steps, the screens that show them and the tabs in “How it works” all follow this.
 
-function Hero() {
+type Step = { id: string; label: string; screen: 'editor' | 'phone' | 'report' | 'coach' | 'collab' };
+const CYCLE: Step[] = [
+  { id: 'plan', label: 'Plan', screen: 'editor' },
+  { id: 'teach', label: 'Teach', screen: 'phone' },
+  { id: 'results', label: 'See results', screen: 'report' },
+  { id: 'reflect', label: 'Reflect', screen: 'editor' },
+  { id: 'grow', label: 'Grow with your coach', screen: 'coach' },
+  { id: 'connect', label: 'Connect with colleagues', screen: 'editor' },
+];
+const SCREENS: Record<Step['screen'], [string, string]> = {
+  editor: ['Lesson editor', 'Plan each task, with your notes beside it.'],
+  phone: ['A learner’s phone', 'Learners answer, and their answers are checked.'],
+  report: ['Class report', 'Every learner’s results, lesson by lesson.'],
+  coach: ['Teacher’s Companion', 'Talk your teaching through, in private.'],
+  collab: ['Collab', 'Work on ideas with colleagues.'],
+};
+
+// ------------------------------------------------------------------ hero: fills the first screen
+
+function Hero({ onStep }: { onStep: (i: number) => void }) {
+  const [on, setOn] = useState<Step['screen'] | null>(null);
+  const hot = (k: Step['screen']) => ({ onMouseEnter: () => setOn(k), onMouseLeave: () => setOn(null), onClick: () => setOn(k), 'data-on': on === k || undefined });
+  const [title, line] = on ? SCREENS[on] : ['', ''];
   return (
     <section className="pub-hero" aria-labelledby="pub-hero-h">
       <div className="pub-hero-copy">
         <span className="pub-kicker">By teachers, for teachers</span>
         <h1 id="pub-hero-h">Plan it, teach it, see how it went. Then keep growing.</h1>
-        <ol className="pub-cycle" aria-label="Your teaching cycle in ELT Suite">
-          {CYCLE.map((c) => <li key={c}>{c}</li>)}
+        <ol className="pub-cycle" aria-label="Your teaching cycle">
+          {CYCLE.map((c, i) => (
+            <li key={c.id}>
+              <a href="#how" onMouseEnter={() => setOn(c.screen)} onMouseLeave={() => setOn(null)} onFocus={() => setOn(c.screen)} onBlur={() => setOn(null)} onClick={() => onStep(i)}>{c.label}</a>
+            </li>
+          ))}
         </ol>
-        <p>Your whole teaching cycle, in one place: plan the lesson, teach it, see your learners’ results, reflect on it, talk it through with your coach and share ideas with colleagues. And teach it your way: online, on the classroom screen or on paper.</p>
+        <p>Everything you do as a teacher, in one place. Teach online, on the classroom screen or on paper. You choose.</p>
         <div className="pub-actions">
           <a className="pub-button" href="#invite">Ask for an invitation</a>
           <Link className="pub-secondary" to="/signin">Sign in</Link>
         </div>
-        <span className="pub-note">We’re open by invitation for now. Ask, and we’ll email you when there’s a place.</span>
+        <span className="pub-note">We’re open by invitation for now.</span>
       </div>
-      <figure className="pub-hero-shot">
+      <figure className="pub-hero-shot" data-focus={on ?? undefined}>
         <div className="pub-hero-stage">
-          <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor with the B1 lesson “Expressing and Justifying Opinions”: lesson aims, a two-person recording with numbered lines, and the teacher’s notes." />
-          <div className="pub-hero-pops" aria-hidden="true">
-            <span className="pub-pop pub-pop-report"><Crop name="reports" at={{ x: 0.005, y: 0.5, w: 0.56, h: 0.37 }} alt="" width={320} eager /></span>
-            <span className="pub-pop pub-pop-coach"><Crop name="companion" at={{ x: 0.26, y: 0.46, w: 0.58, h: 0.4 }} alt="" width={340} eager /></span>
-            <span className="pub-pop pub-pop-phone"><Phone name="learner-phone" eager /></span>
+          <span className="pub-hot pub-hot-editor" {...hot('editor')}>
+            <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor: a lesson’s tasks on the left, the task being edited, and the teacher’s notes." />
+          </span>
+          <div className="pub-hero-pops">
+            <span className="pub-pop pub-pop-report pub-hot" {...hot('report')}><Crop name="reports" at={{ x: 0.005, y: 0.5, w: 0.56, h: 0.37 }} alt="" width={320} eager /></span>
+            <span className="pub-pop pub-pop-coach pub-hot" {...hot('coach')}><Crop name="companion" at={{ x: 0.26, y: 0.46, w: 0.58, h: 0.4 }} alt="" width={340} eager /></span>
+            <span className="pub-pop pub-pop-phone pub-hot" {...hot('phone')}><Phone name="learner-phone" eager /></span>
           </div>
         </div>
+        <figcaption className={'pub-hero-cap' + (on ? ' on' : '')} aria-live="polite">
+          {on ? <><strong>{title}</strong> {line}</> : 'Point at a screen to see what it does.'}
+        </figcaption>
       </figure>
     </section>
   );
 }
-
-// ------------------------------------------------------------------ teach your way
-
-const ic = (d: ReactNode) => <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
-const WAYS: { title: string; text: string; icon: ReactNode }[] = [
-  { title: 'Teach online', text: 'Meet your class in a video room and teach from your lesson. Learners follow and answer on their own screens.', icon: ic(<><rect x="3" y="5" width="13" height="12" rx="2" /><path d="M16 10l5-3v10l-5-3" /></>) },
-  { title: 'On the classroom screen', text: 'Put your lesson on the smart screen or projector and teach the room from it, with your notes beside you.', icon: ic(<><rect x="3" y="4" width="18" height="12" rx="1.5" /><path d="M12 16v4M8 20h8" /></>) },
-  { title: 'On paper', text: 'Print any lesson as a worksheet, with an answer key, and teach without screens or a connection.', icon: ic(<><path d="M7 8V3h10v5" /><rect x="3" y="8" width="18" height="9" rx="2" /><path d="M7 14h10v7H7z" /></>) },
-  { title: 'Answers checked online', text: 'Learners answer in class or at home on a phone or laptop. Their answers are checked, and you see the results.', icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 9.8" /></>) },
-];
-
-function Ways() {
-  return (
-    <section id="your-way" className="pub-ways" aria-labelledby="pub-ways-h">
-      <div className="pub-band-head">
-        <span className="pub-kicker">Teach your way</span>
-        <h2 id="pub-ways-h">You decide how you use it.</h2>
-        <p>Every class and every room is different. Use ELT Suite online, in the classroom or on paper, and mix them as you like: print the worksheet for the lesson, then set the practice online for homework.</p>
-      </div>
-      <figure className="pub-same" aria-labelledby="pub-same-cap">
-        <figcaption id="pub-same-cap"><strong>The same lesson, three ways.</strong> One lesson, “Expressing and justifying opinions”, as you edit it, as a learner sees it on their phone, and as it comes out of the printer.</figcaption>
-        <div className="pub-same-row">
-          <Shot name="editor" alt="The lesson in the editor: the task “Two neighbours decide” with its aims, the recording and the teacher’s notes." caption="In the editor" className="pub-same-edit" />
-          <PicShot kind="phone" name="learner-phone" w={780} h={1440} alt="The same task on a learner’s phone: the recording and a question, with the right answer checked." caption="On a learner’s phone" />
-          <PicShot kind="paper" name="paper" w={PAPER.w} h={PAPER.h} alt="The same lesson as a printed worksheet: the task with a QR code to play the recording, the useful language and gaps to complete." caption="On paper" />
-        </div>
-      </figure>
-      <ul className="pub-ways-list">
-        {WAYS.map((w) => (
-          <li key={w.title}>
-            <span className="pub-ways-icon">{w.icon}</span>
-            <h3>{w.title}</h3>
-            <p>{w.text}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------ everything in one place
-
-const ALL: { k: string; title: string; text: string; to: string; name: string; at: Region }[] = [
-  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan', name: 'editor-language', at: { x: 0.28, y: 0.1, w: 0.52, h: 0.42 } },
-  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way', name: 'teach', at: { x: 0.5, y: 0.08, w: 0.5, h: 0.42 } },
-  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand', name: 'reports', at: { x: 0.005, y: 0.5, w: 0.5, h: 0.36 } },
-  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio', name: 'speech', at: { x: 0.13, y: 0.5, w: 0.6, h: 0.42 } },
-  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.26, y: 0.46, w: 0.58, h: 0.4 } },
-  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language', name: 'concordance', at: { x: 0.12, y: 0.1, w: 0.6, h: 0.45 } },
-];
-
-function AllInOne() {
-  return (
-    <section className="pub-all" aria-labelledby="pub-all-h">
-      <div className="pub-band-head">
-        <span className="pub-kicker">All in one place</span>
-        <h2 id="pub-all-h">One place for everything you teach.</h2>
-        <p>No more jumping between apps, folders and spreadsheets. Your planning, your classes, your learners’ progress and your own growth as a teacher live together, and each part builds on the others.</p>
-      </div>
-      <ul className="pub-all-list">
-        {ALL.map((a) => (
-          <li key={a.k}>
-            <a href={a.to}>
-              <Crop name={a.name} at={a.at} alt="" width={360} />
-              <span className="pub-all-k">{a.k}</span>
-              <strong>{a.title}</strong>
-              <span className="pub-all-t">{a.text}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------ why we made it
-
-function Care() {
-  return (
-    <section className="pub-care" aria-labelledby="pub-care-h">
-      <div className="pub-care-copy">
-        <span className="pub-kicker">Why we made ELT Suite</span>
-        <h2 id="pub-care-h">Made with care, by teachers, for teachers.</h2>
-        <p>ELT Suite began with a love of English language teaching. We know the late nights planning, the queue at the photocopier and the moment a class finally gets it.</p>
-        <p>We built it to take some of the weight off you, so you have more time and energy for your learners. Every part of it is shaped by what teachers tell us they need.</p>
-        <p className="pub-care-ask">We’re listening. <Link to="/contact">Tell us what would help your teaching</Link>, and we’ll keep building.</p>
-      </div>
-      <aside className="pub-care-note" aria-label="A note from us">
-        <p>“Good teaching begins with teachers. Technology should support what you do, not get in the way of it.”</p>
-        <span>The ELT Suite team</span>
-      </aside>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------ teach live: a short demonstration
 
 // A fictional class answering one question. Each learner's answer arrives in turn, as it would in
 // Teach live, then the demonstration starts again.
@@ -258,12 +179,12 @@ function LiveDemo() {
   const miaSent = done > MIA;
   return (
     <div className="pub-live" ref={ref}>
-      <p className="sr-only">A short demonstration with a fictional class. Six learners answer the question “Which reply gives a reason?” on their own screens. As each answer arrives, the teacher’s panel shows who chose which reply and how many chose the right one.</p>
+      <p className="sr-only">An example with a made-up class. Six learners answer a question on their own screens. As each answer arrives, the teacher sees who chose what and how many got it right.</p>
       <div className="pub-live-stage" aria-hidden="true">
         <div className="pub-live-learner">
-          <div className="pub-live-bar"><span>Mia’s phone</span><span>B1 English for Communication</span></div>
+          <div className="pub-live-bar"><span>A learner’s phone</span><span>Task 3</span></div>
           <div className="pub-live-task">
-            <span className="pub-live-k">Task 3 · Choose a reply</span>
+            <span className="pub-live-k">Choose a reply</span>
             <p className="pub-live-q">“Shall we go by bus or by train?”</p>
             <p className="pub-live-i">Which reply gives a reason?</p>
             <ul>
@@ -303,7 +224,7 @@ function LiveDemo() {
         </div>
       </div>
       <div className="pub-live-foot">
-        <span className="pub-note">A short demonstration with a fictional class.</span>
+        <span className="pub-note">An example with a made-up class.</span>
         <button type="button" className="pub-secondary pub-small" aria-pressed={!playing} onClick={() => { if (!playing && step >= CLASS.length + HOLD) setStep(0); setPlaying(!playing); }}>
           {playing ? 'Pause' : 'Play'}
         </button>
@@ -312,115 +233,115 @@ function LiveDemo() {
   );
 }
 
-function Live() {
+// ------------------------------------------------------------------ how it works: one tab per step
+
+type Pane = { title: string; text: string; points?: string[]; main?: { name: string; alt: string }; detail?: { name: string; at: Region; alt: string; caption: string } };
+const PANES: Record<string, Pane> = {
+  plan: {
+    title: 'Plan your lesson.',
+    text: 'Build a lesson task by task and keep your notes beside each one. Get help with a first draft when you want it.',
+    points: ['Gap-fills, speaking cards, recordings and more', 'Dialogues and songs for your class', 'Pronunciation and grammar marks'],
+    main: { name: 'editor-language', alt: 'The lesson editor: a useful language box, sentences with gaps, and the teacher’s notes.' },
+    detail: { name: 'speech', at: { x: 0.13, y: 0.08, w: 0.74, h: 0.84 }, alt: 'Making a dialogue: two speakers and their lines.', caption: 'Make a dialogue with two voices' },
+  },
+  teach: {
+    title: 'Teach it your way.',
+    text: 'Teach the same lesson online, on the classroom screen or on paper. Learners answer on a phone or laptop, and you see each answer as it arrives.',
+  },
+  results: {
+    title: 'See how it went.',
+    text: 'See every learner’s results, lesson by lesson. Open a learner to see their work and your feedback.',
+    points: ['Results for the whole class', 'A portfolio for each learner', 'What to look at before the next lesson'],
+    main: { name: 'reports', alt: 'The class report: each learner’s score in each lesson.' },
+    detail: { name: 'portfolio', at: { x: 0.19, y: 0.55, w: 0.81, h: 0.25 }, alt: 'A learner’s portfolio: average, lessons done and work kept.', caption: 'One learner’s portfolio' },
+  },
+  reflect: {
+    title: 'Look back on the lesson.',
+    text: 'Write down what you noticed while it’s fresh. Come back to it when you plan the next lesson.',
+    points: ['Notes and reflections on your own lessons', 'On your own or with colleagues'],
+    main: { name: 'collab', alt: 'Collab: a page to reflect on a lesson or look into a question.' },
+  },
+  grow: {
+    title: 'Talk it through with your coach.',
+    text: 'Teacher’s Companion asks good questions and suggests one small change to try. It can draft a note for you to keep. It’s private to you.',
+    main: { name: 'companion', alt: 'Teacher’s Companion: a conversation about a quiet speaking activity, with a small change to try next time.' },
+  },
+  connect: {
+    title: 'Share ideas with colleagues.',
+    text: 'Call a colleague, work on materials together and swap ideas. Spaces for teachers who share an interest are coming later.',
+    main: { name: 'rooms', alt: 'Rooms: call a colleague or open a class’s video room.' },
+    detail: { name: 'collab-editor', at: { x: 0, y: 0, w: 1, h: 0.62 }, alt: 'A shared plan that colleagues edit together.', caption: 'A plan you write together' },
+  },
+};
+
+function TeachPane() {
+  const [live, setLive] = useState(false);
   return (
-    <section id="teach" className="pub-band pub-live-band" aria-labelledby="pub-teach-h">
-      <div className="pub-band-head">
-        <span className="pub-kicker">Teach live</span>
-        <h2 id="pub-teach-h">See every answer as it arrives.</h2>
-        <p>Learners answer on their own phone or laptop. You see each answer the moment they choose, so you know who needs help before you move on. It works in the classroom and online.</p>
+    <>
+      <div className="pub-same-row">
+        <Shot name="editor" alt="The lesson in the editor." caption="As you edit it" className="pub-same-edit" />
+        <PicShot kind="phone" name="learner-phone" w={780} h={1440} alt="The same task on a learner’s phone, with the right answer checked." caption="On a learner’s phone" />
+        <PicShot kind="paper" name="paper" w={PAPER.w} h={PAPER.h} alt="The same lesson as a printed worksheet, with a QR code to play the recording." caption="On paper" />
       </div>
-      <LiveDemo />
-    </section>
+      <div className="pub-more">
+        <button type="button" className="pub-secondary" aria-expanded={live} aria-controls="pub-live" onClick={() => setLive(!live)}>
+          {live ? 'Hide the example' : 'See answers arrive live'}
+        </button>
+      </div>
+      {live && <div id="pub-live"><LiveDemo /></div>}
+    </>
   );
 }
 
-// ------------------------------------------------------------------ showcases
-
-type Detail = { name: string; alt: string; at: Region; caption: string };
-type Showcase = { id: string; kicker: string; title: string; body: string[]; points: string[]; status?: string; main: { name: string; alt: string }; details?: Detail[]; extra?: ReactNode };
-const SHOWCASES: Showcase[] = [
-  {
-    id: 'plan', kicker: 'Plan', title: 'From first idea to finished lesson.',
-    body: ['Plan a lesson task by task, with its aims, activities and your notes together.', 'Make materials yourself, or ask for help with a first draft when you want it. The lesson stays yours.'],
-    points: ['Gaps, speaking cards, recordings and more in one lesson.', 'Units and lessons for each class.', 'Print any lesson as a worksheet.'],
-    main: { name: 'editor-language', alt: 'The lesson editor on the task “Notice the language”: a useful language box, sentences with gaps for point, about and because, and the teacher’s notes.' },
-    details: [{ name: 'class', alt: 'The class page: Unit 1 · Talking together and Unit 2 · Opinions and decisions, with their lessons.', at: { x: 0.01, y: 0.44, w: 0.6, h: 0.56 }, caption: 'Units and lessons in a class' }],
-  },
-  {
-    id: 'understand', kicker: 'Understand', title: 'See how each learner is doing.',
-    body: ['The class report shows every learner’s score in every lesson.', 'Open a learner to see their work, your feedback and what they’ve kept in their portfolio.'],
-    points: ['Results for the class, lesson by lesson.', 'A portfolio for each learner.', 'A clear picture before you plan the next lesson.'],
-    main: { name: 'reports', alt: 'The class report: eight learners and their scores in each of eight lessons.' },
-    details: [{ name: 'portfolio', alt: 'A learner’s portfolio: her average, lessons completed and pieces of work kept.', at: { x: 0.19, y: 0.55, w: 0.81, h: 0.25 }, caption: 'One learner’s portfolio' }],
-  },
-  {
-    id: 'audio', kicker: 'Recordings', title: 'Make recordings for your class.',
-    body: ['Record and edit audio, or make a dialogue with different voices from a script you write.', 'You can also make a short song for a lesson, at your learners’ level.'],
-    points: ['A recording editor with the script and timings.', 'Dialogues with two or more voices.', 'Classroom songs for young learners, teenagers and adults.'],
-    main: { name: 'sound', alt: 'The recording editor: a dialogue between Flo and Dan as a waveform, their lines on separate script tracks and the script with timings.' },
-    details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.15, y: 0.02, w: 0.7, h: 0.5 }, caption: 'Making a classroom song' }],
-  },
-  {
-    id: 'language', kicker: 'Language', title: 'Look closely at language.',
-    body: ['Mark pronunciation and grammar in your lessons: linking, sounds and grammar labels, as you’d draw them on the board.', 'Look up how a phrase is used in real example sentences, and bring good examples back into your teaching.'],
-    points: ['Pronunciation and grammar marks in your lessons.', 'Example sentences for any word or phrase.'],
-    status: 'Examples come from Tatoeba. They show how a phrase is used, not how common it is.',
-    main: { name: 'concordance', alt: 'A concordance for “your point”: example sentences lined up around the phrase, such as “I see your point.” and “What’s your point?”' },
-    extra: <Mounted label="Good teaching is worth sharing."><LanguageMoment /></Mounted>,
-  },
-];
-
-function ShowcaseSection({ s, i }: { s: Showcase; i: number }) {
+function How({ at, setAt }: { at: number; setAt: (i: number) => void }) {
+  const step = CYCLE[at];
+  const pane = PANES[step.id];
   return (
-    <section id={s.id} className={'pub-show' + (i % 2 ? ' pub-show-flip' : '')} aria-labelledby={`pub-${s.id}-h`}>
-      <div className="pub-show-copy">
-        <span className="pub-kicker">{s.kicker}</span>
-        <h2 id={`pub-${s.id}-h`}>{s.title}</h2>
-        {s.body.map((b) => <p key={b}>{b}</p>)}
-        <ul>{s.points.map((p) => <li key={p}>{p}</li>)}</ul>
-        {s.status && <p className="pub-status">{s.status}</p>}
-      </div>
-      <div className="pub-show-media">
-        {s.extra}
-        <Shot name={s.main.name} alt={s.main.alt} />
-        {s.details && (
-          <div className="pub-details">
-            {s.details.map((d) => <Shot key={d.name} name={d.name} at={d.at} alt={d.alt} caption={d.caption} className="pub-detail" />)}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------ one lesson to the next
-
-const STEPS = [
-  { k: 'Plan', line: 'Prepare the activities, language and notes you’ll need.', name: 'editor-speaking', alt: 'Planning a speaking task: a prompt, questions for the card and the teacher’s notes.' },
-  { k: 'Teach', line: 'Teach from your lesson and get every learner involved.', name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
-  { k: 'Understand', line: 'Look at your learners’ answers, results and feedback.', name: 'reports', alt: 'The class report, learner by lesson.' },
-  { k: 'Reflect', line: 'Think back on the lesson in Collab, on your own or with colleagues.', name: 'collab', alt: 'Collab: reflect on a lesson or investigate a question.' },
-  { k: 'Grow', line: 'Talk it through with Teacher’s Companion and take your ideas into the next lesson.', name: 'companion', alt: 'Teacher’s Companion: a conversation about a quiet B1 opinions discussion, with a small change to try next lesson.' },
-];
-
-function Steps() {
-  const [at, setAt] = useState(0);
-  const step = STEPS[at];
-  return (
-    <section id="reflect" className="pub-band pub-journey" aria-labelledby="pub-journey-h">
+    <section id="how" className="pub-how" aria-labelledby="pub-how-h">
       <div className="pub-band-head">
-        <span className="pub-kicker">Plan, teach, reflect</span>
-        <h2 id="pub-journey-h">One lesson leads to the next.</h2>
-        <p>Plan a lesson and teach it. See how your learners did. Think about what worked, then take it into the next lesson. ELT Suite keeps all of it together, so you build on what you’ve already done.</p>
+        <span className="pub-kicker">How it works</span>
+        <h2 id="pub-how-h">Your whole teaching cycle, in one place.</h2>
       </div>
-      <div className="pub-journey-steps" role="tablist" aria-label="From one lesson to the next">
-        {STEPS.map((j, i) => (
-          <button key={j.k} type="button" role="tab" id={`pub-j-${i}`} aria-selected={at === i} aria-controls="pub-j-panel" tabIndex={at === i ? 0 : -1} onClick={() => setAt(i)}
-            onKeyDown={(e) => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); const n = (at + d + STEPS.length) % STEPS.length; setAt(n); document.getElementById(`pub-j-${n}`)?.focus(); } }}>
-            <span>{i + 1}</span>{j.k}
+      <div className="pub-how-tabs" role="tablist" aria-label="Steps of your teaching cycle">
+        {CYCLE.map((c, i) => (
+          <button key={c.id} type="button" role="tab" id={`pub-t-${c.id}`} aria-selected={at === i} aria-controls="pub-how-panel" tabIndex={at === i ? 0 : -1} onClick={() => setAt(i)}
+            onKeyDown={(e) => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); const n = (at + d + CYCLE.length) % CYCLE.length; setAt(n); document.getElementById(`pub-t-${CYCLE[n].id}`)?.focus(); } }}>
+            <span>{i + 1}</span>{c.label}
           </button>
         ))}
       </div>
-      <div id="pub-j-panel" role="tabpanel" aria-labelledby={`pub-j-${at}`} className="pub-journey-panel">
-        <p>{step.line}</p>
-        <Shot key={step.name} name={step.name} alt={step.alt} />
+      <div id="pub-how-panel" role="tabpanel" aria-labelledby={`pub-t-${step.id}`} className={'pub-how-panel pub-how-' + step.id} key={step.id}>
+        <div className="pub-how-copy">
+          <h3>{pane.title}</h3>
+          <p>{pane.text}</p>
+          {pane.points && <ul>{pane.points.map((p) => <li key={p}>{p}</li>)}</ul>}
+        </div>
+        <div className="pub-how-media">
+          {step.id === 'teach' ? <TeachPane /> : (
+            <>
+              {pane.main && <Shot name={pane.main.name} alt={pane.main.alt} />}
+              {pane.detail && <Shot name={pane.detail.name} at={pane.detail.at} alt={pane.detail.alt} caption={pane.detail.caption} className="pub-detail" />}
+            </>
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-// ------------------------------------------------------------------ ask for an invitation
+// ------------------------------------------------------------------ why we made it
+
+function Care() {
+  return (
+    <section className="pub-care" aria-labelledby="pub-care-h">
+      <span className="pub-kicker">Why we made ELT Suite</span>
+      <h2 id="pub-care-h">Made with care, by teachers, for teachers.</h2>
+      <p>We know the late nights planning, the queue at the photocopier and the moment a class finally gets it.</p>
+      <p>We made ELT Suite to take some of the weight off, so you have more time for your learners.</p>
+      <p className="pub-care-ask"><Link to="/contact">Tell us what would help your teaching</Link>. We’re listening.</p>
+    </section>
+  );
+}
 
 const TEACHES = ['Adults', 'Teenagers', 'Young learners', 'Exam classes', 'Business English', 'A mix'];
 
@@ -502,23 +423,17 @@ function Invite() {
       <div className="pub-invite-copy">
         <span className="pub-kicker">Invitations</span>
         <h2 id="pub-invite-h">Ask for an invitation.</h2>
-        <p>We’re opening ELT Suite to teachers a few at a time, so we can listen and get things right.</p>
-        <p>Tell us a little about your teaching and we’ll email you when there’s a place.</p>
+        <p>We’re letting teachers in a few at a time. Tell us a little about your teaching and we’ll email you when there’s a place.</p>
         <p className="pub-audience">ELT Suite is for ELT professionals: English language teachers, teacher trainers and the schools they work in.</p>
-        <p className="pub-invite-have">Already have an invitation code? <Link to="/signin?invite">Sign in with your code</Link></p>
-        <div className="pub-future">
-          <strong>Coming later: communities for teachers</strong>
-          <p>Spaces where teachers with shared interests can swap ideas and learn from each other.</p>
-        </div>
+        <p className="pub-invite-have">Already have a code? <Link to="/signin?invite">Sign in with your code</Link></p>
       </div>
       <InviteForm />
     </section>
   );
 }
 
-// ------------------------------------------------------------------ page
-
-// Screens ease in as they come into view (only the pictures, never text, and not with reduced motion).
+// Screens on the page when it opens ease in as they come into view (only the pictures, never text,
+// and not with reduced motion). Screens in a tab opened later come in with the tab.
 function useReveal() {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -529,26 +444,21 @@ function useReveal() {
       for (const e of es) if (e.isIntersecting) { (e.target as HTMLElement).dataset.shown = ''; io.unobserve(e.target); }
     }, { rootMargin: '0px 0px -8% 0px' });
     root.classList.add('pub-reveal');
-    els.forEach((el) => io.observe(el));
-    return () => { io.disconnect(); root.classList.remove('pub-reveal'); els.forEach((el) => delete el.dataset.shown); };
+    els.forEach((el) => { el.dataset.reveal = ''; io.observe(el); });
+    return () => { io.disconnect(); root.classList.remove('pub-reveal'); els.forEach((el) => { delete el.dataset.shown; delete el.dataset.reveal; }); };
   }, []);
   return ref;
 }
 
 export function PublicHome() {
   const ref = useReveal();
+  const [at, setAt] = useState(0);
   return (
     <PublicLayout>
       <main id="public-main" className="pub-home" ref={ref}>
-        <Hero />
-        <AllInOne />
+        <Hero onStep={setAt} />
+        <How at={at} setAt={setAt} />
         <Care />
-        <Ways />
-        <Live />
-        <div className="pub-shows">
-          {SHOWCASES.map((s, i) => <ShowcaseSection key={s.id} s={s} i={i} />)}
-        </div>
-        <Steps />
         <Invite />
       </main>
     </PublicLayout>
