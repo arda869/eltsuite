@@ -444,6 +444,8 @@ const J = {
       if(width>700)await s.p.getByRole('textbox',{name:'Task title',exact:true}).click();
       if(await s.p.locator('.instr-bar').isVisible())throw Error('Instruction toolbar stayed visible after focus left');
       if(width<=1100&&width>700){
+        const clipped=await s.p.locator('.panel-toggle').evaluateAll(els=>els.some(el=>{const r=el.getBoundingClientRect();return r.left<0||r.right>innerWidth;}));
+        if(clipped)throw Error('Panel handles are clipped by compact gutters');
         await s.p.getByRole('button',{name:'Show the task settings',exact:true}).click();
         const panel=s.p.getByRole('complementary',{name:'Task settings',exact:true});await panel.waitFor({state:'visible'});
         const box=await panel.boundingBox();if(!box||box.y+box.height>870||box.x<0)throw Error('Settings drawer is clipped');

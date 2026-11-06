@@ -221,3 +221,9 @@ body:has(.dock-bar) .development-shell{height:calc(100dvh - var(--suite-dock-spa
   :root .classes-shell .suite-topbar .save-state { display:none; }
   :root .classes-shell .suite-topbar .save-state.error { display:block; }
 }
+/* Keep panel handles inside the viewport when the page uses compact gutters. */
+:root .classes-shell .no-left .panel-toggle.left { left:-12px; }
+:root .classes-shell .no-right .panel-toggle.right { right:-12px; }
+:root .classes-shell .compact-panels .panel-toggle { position:fixed; width:24px; background:var(--paper); }
+:root .classes-shell .compact-panels .panel-toggle.left { left:0; }
+:root .classes-shell .compact-panels .panel-toggle.right { right:0; }
