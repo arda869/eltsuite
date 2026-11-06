@@ -976,6 +976,9 @@ const J = {
     await p.getByRole('heading',{name:HERO}).waitFor();
     if(await p.getByRole('link',{name:/Buy now|Subscribe|Start free trial/}).count())throw Error('Unapproved public purchase action');
     await p.getByText('ELT Suite is for ELT professionals',{exact:false}).first().waitFor();
+    await p.getByRole('heading',{name:'Made with care, by teachers, for teachers.'}).waitFor();
+    await p.getByRole('heading',{name:'One place for everything you teach.'}).waitFor();
+    for(const way of ['Teach online','On the classroom screen','On paper','Answers checked online'])await p.locator('#your-way').getByRole('heading',{name:way,exact:true}).waitFor();
     await axe(p,'Public homepage desktop',A11Y_FOUND);
     if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
     if(await p.locator('.pub-home a[href^="/explore"]').count())throw Error('The homepage links to the demo');

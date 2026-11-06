@@ -63,9 +63,9 @@ function Hero() {
   return (
     <section className="pub-hero" aria-labelledby="pub-hero-h">
       <div className="pub-hero-copy">
-        <span className="pub-kicker">For English language teachers</span>
+        <span className="pub-kicker">By teachers, for teachers</span>
         <h1 id="pub-hero-h">Plan a lesson, teach it live and see every learner’s answer.</h1>
-        <p>ELT Suite keeps your lessons, your classes and your learners’ work in one place. Make your materials, teach from them in the room or online, and see how each learner is doing.</p>
+        <p>Everything you need to teach is in one place: your lesson planning, your teaching, your learners’ progress and your own development as a teacher. Teach it your way: online, on the classroom screen or on paper.</p>
         <div className="pub-actions">
           <a className="pub-button" href="#invite">Ask for an invitation</a>
           <Link className="pub-secondary" to="/signin">Sign in</Link>
@@ -75,6 +75,91 @@ function Hero() {
       <figure className="pub-hero-shot">
         <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor with the B1 lesson “Expressing and Justifying Opinions”: lesson aims, a two-person recording with numbered lines, and the teacher’s notes." />
       </figure>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ teach your way
+
+const ic = (d: ReactNode) => <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+const WAYS: { title: string; text: string; icon: ReactNode }[] = [
+  { title: 'Teach online', text: 'Meet your class in a video room and teach from your lesson. Learners follow and answer on their own screens.', icon: ic(<><rect x="3" y="5" width="13" height="12" rx="2" /><path d="M16 10l5-3v10l-5-3" /></>) },
+  { title: 'On the classroom screen', text: 'Put your lesson on the smart screen or projector and teach the room from it, with your notes beside you.', icon: ic(<><rect x="3" y="4" width="18" height="12" rx="1.5" /><path d="M12 16v4M8 20h8" /></>) },
+  { title: 'On paper', text: 'Print any lesson as a worksheet, with an answer key, and teach without screens or a connection.', icon: ic(<><path d="M7 8V3h10v5" /><rect x="3" y="8" width="18" height="9" rx="2" /><path d="M7 14h10v7H7z" /></>) },
+  { title: 'Answers checked online', text: 'Learners answer in class or at home on a phone or laptop. Their answers are checked, and you see the results.', icon: ic(<><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 9.8" /></>) },
+];
+
+function Ways() {
+  return (
+    <section id="your-way" className="pub-ways" aria-labelledby="pub-ways-h">
+      <div className="pub-band-head">
+        <span className="pub-kicker">Teach your way</span>
+        <h2 id="pub-ways-h">You decide how you use it.</h2>
+        <p>Every class and every room is different. Use ELT Suite online, in the classroom or on paper, and mix them as you like: print the worksheet for the lesson, then set the practice online for homework.</p>
+      </div>
+      <ul className="pub-ways-list">
+        {WAYS.map((w) => (
+          <li key={w.title}>
+            <span className="pub-ways-icon">{w.icon}</span>
+            <h3>{w.title}</h3>
+            <p>{w.text}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ everything in one place
+
+const ALL: { k: string; title: string; text: string; to: string }[] = [
+  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan' },
+  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way' },
+  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand' },
+  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio' },
+  { k: '05', title: 'Your development', text: 'Reflect on your lessons, work with colleagues and talk ideas through.', to: '#reflect' },
+  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language' },
+];
+
+function AllInOne() {
+  return (
+    <section className="pub-all" aria-labelledby="pub-all-h">
+      <div className="pub-band-head">
+        <span className="pub-kicker">All in one place</span>
+        <h2 id="pub-all-h">One place for everything you teach.</h2>
+        <p>No more jumping between apps, folders and spreadsheets. Your planning, your classes, your learners’ progress and your own growth as a teacher live together, and each part builds on the others.</p>
+      </div>
+      <ul className="pub-all-list">
+        {ALL.map((a) => (
+          <li key={a.k}>
+            <a href={a.to}>
+              <span className="pub-all-k">{a.k}</span>
+              <strong>{a.title}</strong>
+              <span className="pub-all-t">{a.text}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ why we made it
+
+function Care() {
+  return (
+    <section className="pub-care" aria-labelledby="pub-care-h">
+      <div className="pub-care-copy">
+        <span className="pub-kicker">Why we made ELT Suite</span>
+        <h2 id="pub-care-h">Made with care, by teachers, for teachers.</h2>
+        <p>ELT Suite began with a love of English language teaching. We know the late nights planning, the queue at the photocopier and the moment a class finally gets it.</p>
+        <p>We built it to take some of the weight off you, so you have more time and energy for your learners. Every part of it is shaped by what teachers tell us they need.</p>
+        <p className="pub-care-ask">We’re listening. <Link to="/contact">Tell us what would help your teaching</Link>, and we’ll keep building.</p>
+      </div>
+      <aside className="pub-care-note" aria-label="A note from us">
+        <p>“Good teaching begins with teachers. Technology should support what you do, not get in the way of it.”</p>
+        <span>The ELT Suite team</span>
+      </aside>
     </section>
   );
 }
@@ -261,7 +346,7 @@ function Steps() {
   const [at, setAt] = useState(0);
   const step = STEPS[at];
   return (
-    <section className="pub-band pub-journey" aria-labelledby="pub-journey-h">
+    <section id="reflect" className="pub-band pub-journey" aria-labelledby="pub-journey-h">
       <div className="pub-band-head">
         <span className="pub-kicker">Plan, teach, reflect</span>
         <h2 id="pub-journey-h">One lesson leads to the next.</h2>
@@ -381,11 +466,32 @@ function Invite() {
 
 // ------------------------------------------------------------------ page
 
+// Screens ease in as they come into view (only the pictures, never text, and not with reduced motion).
+function useReveal() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root || !('IntersectionObserver' in window) || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const els = [...root.querySelectorAll<HTMLElement>('.pub-frame, .pub-hero-shot .pub-screen')];
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting) { (e.target as HTMLElement).dataset.shown = ''; io.unobserve(e.target); }
+    }, { rootMargin: '0px 0px -8% 0px' });
+    root.classList.add('pub-reveal');
+    els.forEach((el) => io.observe(el));
+    return () => { io.disconnect(); root.classList.remove('pub-reveal'); els.forEach((el) => delete el.dataset.shown); };
+  }, []);
+  return ref;
+}
+
 export function PublicHome() {
+  const ref = useReveal();
   return (
     <PublicLayout>
-      <main id="public-main" className="pub-home">
+      <main id="public-main" className="pub-home" ref={ref}>
         <Hero />
+        <AllInOne />
+        <Care />
+        <Ways />
         <Live />
         <div className="pub-shows">
           {SHOWCASES.map((s, i) => <ShowcaseSection key={s.id} s={s} i={i} />)}
