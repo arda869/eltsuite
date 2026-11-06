@@ -58,13 +58,26 @@ function Shot({ name, alt, caption, eager, at, className = '' }: { name: string;
   );
 }
 
+// A phone around a screenshot: body, side buttons, the status bar with the island, and the home bar.
+function Phone({ name, alt = '', eager = false }: { name: string; alt?: string; eager?: boolean }) {
+  return (
+    <span className="pub-device">
+      <span className="pub-device-screen">
+        <span className="pub-device-bar" aria-hidden="true"><b>9:41</b><i /><span className="pub-device-icons"><u /><u /><u /></span></span>
+        <img src={src(name)} width={780} height={1440} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+        <span className="pub-device-home" aria-hidden="true" />
+      </span>
+    </span>
+  );
+}
+
 // A screenshot that isn't a full screen (a phone, a printed page), framed to suit, that opens full size.
 function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string; caption: string; w: number; h: number; kind: 'phone' | 'paper' }) {
   const dlg = useRef<HTMLDialogElement>(null);
   return (
     <figure className={'pub-figure pub-' + kind}>
       <button type="button" className={'pub-frame pub-' + kind + '-frame'} onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
-        <img src={src(name)} width={w} height={h} alt="" loading="lazy" decoding="async" />
+        {kind === 'phone' ? <Phone name={name} /> : <img src={src(name)} width={w} height={h} alt="" loading="lazy" decoding="async" />}
       </button>
       <figcaption>{caption}</figcaption>
       <dialog ref={dlg} className={'pub-lightbox pub-lightbox-' + kind} aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
@@ -101,7 +114,7 @@ function Hero() {
           <div className="pub-hero-pops" aria-hidden="true">
             <span className="pub-pop pub-pop-report"><Crop name="reports" at={{ x: 0.005, y: 0.5, w: 0.56, h: 0.37 }} alt="" width={320} eager /></span>
             <span className="pub-pop pub-pop-coach"><Crop name="companion" at={{ x: 0.26, y: 0.46, w: 0.58, h: 0.4 }} alt="" width={340} eager /></span>
-            <span className="pub-pop pub-pop-phone"><img src={src('learner-phone')} width={780} height={1440} alt="" decoding="async" /></span>
+            <span className="pub-pop pub-pop-phone"><Phone name="learner-phone" eager /></span>
           </div>
         </div>
       </figure>

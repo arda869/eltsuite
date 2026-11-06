@@ -29,8 +29,8 @@
 .pub-pop img { display: block; width: 100%; height: auto; }
 .pub-pop-report { right: -1%; top: -5%; width: 44%; --z: 70px; transform: translateZ(70px); animation-delay: 0.35s; }
 .pub-pop-coach { right: -3%; bottom: -12%; width: 48%; --z: 110px; transform: translateZ(110px); animation-delay: 0.55s; }
-.pub-pop-phone { left: 3%; bottom: -14%; width: 19%; padding: 4px; border-radius: 16px; background: #22211e; border-color: #22211e; --z: 140px; transform: translateZ(140px); animation-delay: 0.75s; }
-.pub-pop-phone img { border-radius: 12px; }
+.pub-pop-phone { left: 3%; bottom: -14%; width: 19%; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; --z: 140px; transform: translateZ(140px); animation-delay: 0.75s; }
+.pub-pop-phone .pub-device { filter: drop-shadow(0 22px 26px rgba(51, 48, 44, 0.35)); }
 .pub-hero-shot:hover .pub-pop { transform: translateZ(calc(var(--z) + 30px)); }
 @keyframes pub-pop { from { opacity: 0; transform: translateZ(0) translateY(16px) scale(0.96); } }
 
@@ -93,8 +93,8 @@
 .pub-same > figcaption strong { color: var(--ink); font: 600 17px/1.4 var(--serif); }
 .pub-same-row { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 2.1fr) minmax(0, 4fr); gap: 16px; align-items: end; }
 .pub-same-row .pub-figure figcaption { font: 700 13px/1.4 var(--sans); color: var(--ink); text-align: center; }
-.pub-phone-frame { padding: 6px; border-radius: 22px; background: #22211e; border-color: #22211e; }
-.pub-phone-frame img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.pub-frame.pub-phone-frame { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.pub-frame.pub-phone-frame:hover { box-shadow: none; }
 .pub-paper-frame { padding: 0; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(51, 48, 44, 0.08), 0 14px 28px -16px rgba(51, 48, 44, 0.35); }
 .pub-paper-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1130 / 1180; object-fit: cover; object-position: top; }
 .pub-lightbox-paper img { aspect-ratio: auto; }
@@ -260,3 +260,23 @@
   .pub-hero-stage, .pub-hero-shot:hover .pub-hero-stage { transition: none; transform: rotateX(9deg) rotateY(-17deg) rotateZ(2.5deg); }
   .pub-hero-shot:hover .pub-pop { transform: translateZ(var(--z)); }
 }
+
+/* ------------------------------------------------------------------ a phone around a screenshot
+   Sized in container units, so the same frame works small (in the hero) and larger. */
+
+.pub-phone-frame, .pub-pop-phone { container-type: inline-size; }
+.pub-device { position: relative; display: block; padding: 3.6cqw; border-radius: 15cqw; background: linear-gradient(145deg, #3a3835, #1b1a18 40%, #23221f); box-shadow: inset 0 0 0 0.6cqw #4a4844, inset 0 0 0 1.4cqw #141311, 0 18px 34px -18px rgba(51, 48, 44, 0.5); }
+.pub-device::before, .pub-device::after { content: ''; position: absolute; width: 1.1cqw; border-radius: 1cqw; background: #2c2b28; }
+.pub-device::before { right: -0.9cqw; top: 26%; height: 13%; }
+.pub-device::after { left: -0.9cqw; top: 20%; height: 8%; box-shadow: 0 14cqw 0 #2c2b28, 0 26cqw 0 #2c2b28; }
+.pub-device-screen { position: relative; display: block; overflow: hidden; border-radius: 11.5cqw; background: #fff; }
+.pub-device-bar { position: relative; display: flex; align-items: center; justify-content: space-between; height: 11cqw; padding: 0 7cqw 0 9cqw; background: #fff; color: #1b1a18; }
+.pub-device-bar b { font: 700 4.4cqw/1 -apple-system, 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.02em; }
+.pub-device-bar i { position: absolute; left: 50%; top: 2.6cqw; width: 29cqw; height: 7.6cqw; border-radius: 4cqw; background: #0f0f0e; transform: translateX(-50%); }
+.pub-device-icons { display: inline-flex; align-items: flex-end; gap: 0.9cqw; }
+.pub-device-icons u { display: block; width: 1.3cqw; border-radius: 0.4cqw; background: #1b1a18; text-decoration: none; }
+.pub-device-icons u:nth-child(1) { height: 1.8cqw; }
+.pub-device-icons u:nth-child(2) { height: 2.6cqw; }
+.pub-device-icons u:nth-child(3) { width: 6cqw; height: 3cqw; margin-left: 1.2cqw; border-radius: 0.9cqw; background: none; box-shadow: inset 0 0 0 0.5cqw #1b1a18, inset -2cqw 0 0 0.5cqw #1b1a18; }
+.pub-device-screen img { display: block; width: 100%; height: auto; }
+.pub-device-home { position: absolute; left: 50%; bottom: 2.2cqw; width: 34cqw; height: 1.3cqw; border-radius: 1cqw; background: #1b1a18; transform: translateX(-50%); opacity: 0.85; }
