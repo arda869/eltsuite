@@ -144,6 +144,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
 // onCreate: a box at the end of the list adds a new choice, ticked at once.
 export function MultiSelect<T extends string>({ value, options, onChange, label, all = 'Any', none, foot = 'Teachers choose from the ticked ones.', className = '', onCreate, createLabel = 'New…' }: { value: T[]; options: Option<T>[]; onChange: (v: T[]) => void; label: string; all?: string; none?: string; foot?: string; className?: string; onCreate?: (name: string) => Promise<T>; createLabel?: string }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [fresh, setFresh] = useState('');
   const make = async () => {
     const n = fresh.trim();
@@ -155,6 +156,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
   };
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const shownOptions = query.trim() ? options.filter(o => `${o.label} ${o.hint ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())) : options;
   const [at, setAt] = useState({ left: 0, top: 0, width: 0, up: false, bottom: 0 });
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -169,6 +171,10 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
   const openWith = (i: number) => (setOpen(true), window.setTimeout(() => opts().at(i)?.focus(), 0));
   const btnKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') (e.preventDefault(), openWith(e.key === 'ArrowDown' ? 0 : -1));
+    else if (!open && (e.key === 'Backspace' || e.key === 'Delete') && value.length > (none === undefined ? 1 : 0)) {
+      e.preventDefault();
+      onChange(value.slice(0, -1));
+    }
   };
   const listKey = (e: React.KeyboardEvent) => {
     const l = opts();
@@ -176,6 +182,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     const go = (j: number) => (e.preventDefault(), l[(j + l.length) % l.length]?.focus());
     if (e.target instanceof HTMLInputElement) {
       if (e.key === 'ArrowUp') go(-1);
+      else if (e.key === 'ArrowDown' && l.length) go(0);
       else if (e.key === 'Escape') (e.preventDefault(), e.stopPropagation(), setOpen(false), btn.current?.focus());
       return;
     }
@@ -188,6 +195,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
   };
   useEffect(() => {
     if (!open) return;
+    setQuery('');
     const down = (e: MouseEvent) => !list.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node) && setOpen(false);
     // Escape anywhere closes the list only, not the window it is in.
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), setOpen(false), btn.current?.focus());
@@ -205,7 +213,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
   return (
     <>
       <button ref={btn} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={(e) => (open ? setOpen(false) : e.detail === 0 ? openWith(0) : setOpen(true))} onKeyDown={btnKey}>
-        <span className="sel-v">{shown}</span>
+        <span className="sel-v">{value.length && !(none === undefined && value.length === options.length) ? <span className="sel-multi-values">{options.filter(o=>value.includes(o.v)).slice(0,2).map(o=><span className="sel-token" key={o.v}>{o.label}</span>)}{value.length>2&&<span className="sel-token">+{value.length-2}</span>}</span> : shown}</span>
         <svg className="sel-chev" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -213,7 +221,9 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
       {open &&
         createPortal(
           <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-multiselectable="true" aria-label={label} onKeyDown={listKey} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
-            {options.map((o) => {
+            {options.length > 7 && <input className="sel-q" type="search" role="searchbox" aria-label={`Find in ${label}`} autoComplete="off" value={query} placeholder="Type to find…" onChange={e=>setQuery(e.target.value)} />}
+            {shownOptions.length === 0 && <span className="sel-none">Nothing matches.</span>}
+            {shownOptions.map((o) => {
               const on = (none === undefined && value.length === 0) || value.includes(o.v);
               return (
                 <button key={o.v} type="button" role="option" aria-selected={on} className={'sel-o multi' + (on ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => flip(o.v)}>
@@ -231,6 +241,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
                 </button>
               );
             })}
+            {value.length > 0 && <button type="button" role="option" aria-selected="false" className="sel-o sel-clear" onMouseDown={e=>e.preventDefault()} onClick={()=>onChange([])}>{none === undefined ? 'Use any' : 'Clear selections'}</button>}
             {onCreate && (
               <input className="sel-q sel-new" value={fresh} placeholder={createLabel} aria-label={createLabel} maxLength={40} onChange={(e) => setFresh(e.target.value)} enterKeyHint="done" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.stopPropagation(), void make())} />
             )}

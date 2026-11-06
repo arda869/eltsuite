@@ -46,7 +46,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
 | 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
 | 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose and expression changes persist in a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
-| 41 | Open | Multiselect/autocomplete audit. |
+| 41 | In progress | Shared MultiSelect now shows selected chips, filters long lists, shows an empty result, clears choices and removes the last chip with Backspace/Delete where valid. Gallery, Timetable and organisation-admin mock browser journeys pass; autocomplete and every app-specific use remain to audit. |
 | 42 | Open | Checkbox/radio/switch visual and semantic audit. |
 | 43 | Open | Date/time picker and locale audit. |
 | 44 | Open | Number field behaviour audit. |
@@ -76,3 +76,4 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - No authenticated production write or published-build verification has been performed for this branch.
 - The public homepage journey passed against the currently published eltsuite.com build on 6 November 2026. It does not verify this draft branch.
 - Local control-gallery journey passed at five widths in light and dark themes, plus 200% CSS zoom; the 375px dark and 1440px light captures were visually reviewed. This gallery is a local test page, not a production route.
+- Local control-gallery journey also passed multiselect choice, chip removal, clearing, search and empty results; the open searchable menu passed a targeted accessibility scan. Timetable and organisation-admin journeys passed after the shared control change. TypeScript `--noEmit` passed.

@@ -8,6 +8,7 @@ import './control-gallery.css';
 function Gallery() {
   const [choice, setChoice] = useState('b');
   const [many, setMany] = useState<string[]>(['reading']);
+  const [large, setLarge] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [range, setRange] = useState(45);
   const [dialog, setDialog] = useState(false);
@@ -29,6 +30,7 @@ function Gallery() {
       <section className="cg-card"><h2>Choose</h2>
         <div className="field"><span>One option</span><NSelect aria-label="One option" value={choice} onChange={e=>setChoice(e.target.value)}><option value="a">Short option</option><option value="b">A longer selected option</option><option value="c">Third option</option></NSelect></div>
         <div className="field"><span>Several options</span><MultiSelect label="Several options" value={many} onChange={setMany} options={[{v:'reading',label:'Reading'},{v:'speaking',label:'Speaking'},{v:'writing',label:'Writing'}]} /></div>
+        <div className="field"><span>Large option list</span><MultiSelect label="Large option list" value={large} onChange={setLarge} none="Choose a skill" options={['Reading','Speaking','Writing','Listening','Vocabulary','Pronunciation','Grammar','Fluency'].map(x=>({v:x.toLowerCase(),label:x}))} /></div>
         <div className="field"><span>Unavailable option</span><NSelect aria-label="Unavailable option" disabled value="a"><option value="a">Disabled control</option></NSelect></div>
         <fieldset className="cg-choices"><legend>Checkboxes</legend><label><input type="checkbox" defaultChecked />Reading</label><label><input type="checkbox" />Speaking</label><label><input type="checkbox" disabled />Unavailable</label></fieldset>
         <fieldset className="cg-choices"><legend>Radio buttons</legend><label><input type="radio" name="cg-level" defaultChecked />Young learners</label><label><input type="radio" name="cg-level" />Adults</label></fieldset>
