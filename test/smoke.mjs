@@ -323,7 +323,7 @@ const J = {
     await s.p.evaluate(({classId,itemId})=>{
       const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';
       for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];
-      fs[root+'pictures']={kind:'task',title:'Aligned pictures',instructions:'Compare the pictures.',order:0,content:{type:'doc',content:[{type:'paragraph',content:['Camping holiday','Sea holiday','City break'].map((text,i)=>({type:'picture',attrs:{src:'/test/fixtures/import-shapes.jpg',size:'m',mark:'1',ar:i===1?1:1.5},content:[{type:'text',text}]}))}]}};
+      fs[root+'pictures']={kind:'task',title:'Aligned pictures',instructions:'Compare the pictures.',order:0,content:{type:'doc',content:[{type:'paragraph',content:['Camping holiday','Sea holiday','City break'].map((text,i)=>({type:'picture',attrs:{src:'/test/fixtures/import-shapes.jpg',size:'m',mark:'1',crop:i===1?'0 0 0.5 1':'',ar:i===1?1:1.5},content:[{type:'text',text}]}))}]}};
       localStorage.setItem('mockfs',JSON.stringify(fs));
     },s.demo);
     await s.p.reload();await s.p.locator('.task-editor .pic-label').nth(2).waitFor();

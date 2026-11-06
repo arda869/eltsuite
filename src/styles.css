@@ -8458,7 +8458,7 @@ body:has(.dock-bar) .dp{min-height:calc(100dvh - var(--suite-dock-space))}
 
 /* A row keeps captions together beneath pictures of different proportions. */
 p:has(> .node-picture ~ .node-picture),p:has(> .pic-rendered ~ .pic-rendered){display:flex;align-items:stretch;}
-p:has(> .node-picture ~ .node-picture) > .node-picture{display:flex;min-width:0;}
+p:has(> .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)){display:flex;min-width:0;}
 p:has(> .node-picture ~ .node-picture) .pic-node,p:has(> .pic-rendered ~ .pic-rendered) > .pic-rendered{display:flex;flex-direction:column;min-width:0;}
 p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic-rendered) .pic-caption{margin-top:auto;text-align:center;}
 
