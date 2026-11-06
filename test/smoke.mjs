@@ -301,6 +301,35 @@ const J = {
     return s;
   },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
+  'Shared control gallery: states, choices, narrow screens and 200% zoom': async b=>{
+    const s=await session(b,{owner:true});await s.p.goto(BASE+'/test/control-gallery.html');
+    await s.p.getByRole('heading',{name:'Controls and states'}).waitFor();
+    mkdirSync('outputs/ui-ux-brief/control-gallery',{recursive:true});
+    for(const width of [320,375,768,1024,1440])for(const theme of ['light','dark']){
+      await s.p.setViewportSize({width,height:900});
+      await s.p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      const overflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+      if(overflow>2)throw Error(`Control gallery overflows ${width}px ${theme} by ${overflow}px`);
+      await s.p.screenshot({path:`outputs/ui-ux-brief/control-gallery/${width}-${theme}.png`,fullPage:true});
+      if((width===375&&theme==='dark')||(width===1440&&theme==='light'))await axe(s.p,`Control gallery ${width}px ${theme}`,A11Y_FOUND);
+    }
+    await s.p.setViewportSize({width:768,height:900});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='200%');
+    const zoomOverflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    if(zoomOverflow>2)throw Error(`Control gallery overflows at 200% zoom by ${zoomOverflow}px`);
+    await s.p.screenshot({path:'outputs/ui-ux-brief/control-gallery/768-zoom-200.png',fullPage:true});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='');
+    await s.p.getByRole('button',{name:'One option'}).click();
+    await s.p.getByRole('option',{name:'Third option'}).click();
+    if(!(await s.p.getByRole('button',{name:'One option'}).innerText()).includes('Third option'))throw Error('Shared dropdown did not select an option');
+    await s.p.getByRole('button',{name:'Several options'}).click();
+    await s.p.getByRole('option',{name:'Speaking'}).click();
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Open dialog'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).getByRole('button',{name:'Done'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).waitFor({state:'detached'});
+    return s;
+  },
   'Quiz Show is the only new game and its editor opens': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(BASE+'/games');

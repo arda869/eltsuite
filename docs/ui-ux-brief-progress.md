@@ -42,7 +42,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 34 | In progress | Global pinch block removed; 200% browser zoom and canvas gesture checks pending. |
 | 35 | In progress | Expanded game focus handling improved; modal inventory/focus restoration pending. |
 | 36 | Open | Mobile targets, keyboard, overlay, contrast and screen reader sweep. |
-| 37 | Open | Authenticated homepage, invitation, learner login/logout/refresh and redirect checks. |
+| 37 | In progress | Public homepage navigation passed on the currently published eltsuite.com build on 6 November 2026. Invitation and signed-in teacher/learner login, logout, refresh and redirects remain unverified for this branch. |
 | 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
 | 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
 | 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose and expression changes persist in a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
@@ -51,7 +51,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 43 | Open | Date/time picker and locale audit. |
 | 44 | Open | Number field behaviour audit. |
 | 45 | Open | Color picker palette/hex audit. |
-| 46 | Open | Upload/dropzone states and progress audit. |
+| 46 | In progress | Native file chooser keeps keyboard access and now uses suite surface, spacing and focus styles. Upload/dropzone failure and progress states remain to audit. |
 | 47 | Open | Search field affordance audit. |
 | 48 | Open | Slider/range control audit. |
 | 49 | Open | Rich-text placeholder, selection and shortcut audit. |
@@ -59,7 +59,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 51 | Open | Dialog/popover/menu focus and stacking audit. |
 | 52 | Open | Inline validation and aria-describedby audit. |
 | 53 | Open | Dark, contrast, embedded, print and mobile Safari checks. |
-| 54 | Open | Control gallery, screenshot baselines at 320/375/768/1024/1440 and 200% zoom. |
+| 54 | In progress | Local control gallery covers common fields, choices, file input and actions. Mock browser screenshots at 320/375/768/1024/1440 in both themes plus 200% CSS zoom have no horizontal overflow; targeted accessibility checks pass. Baseline comparison and app-specific controls remain. |
 
 ## Verification to date
 
@@ -74,3 +74,5 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.
+- The public homepage journey passed against the currently published eltsuite.com build on 6 November 2026. It does not verify this draft branch.
+- Local control-gallery journey passed at five widths in light and dark themes, plus 200% CSS zoom; the 375px dark and 1440px light captures were visually reviewed. This gallery is a local test page, not a production route.
