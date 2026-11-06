@@ -1,0 +1,6 @@
+shot preview-out/01-hero.png
+shot preview-out/02-hero-hover.png
+shot preview-out/03-how-teach.png
+shot preview-out/04-how-results.png
+phone overflow -10
+shot preview-out/05-phone-hero.png
