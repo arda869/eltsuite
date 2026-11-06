@@ -6,6 +6,7 @@ import { tell } from '../lib/ask';
 import { assetBlob } from '../video/library';
 import type { VideoAsset } from '../video/model';
 import { AiButton } from '../components/AiMark';
+import { NSelect } from '../components/Select';
 import type { Ctx } from './Editor';
 import { metaRef, saveMeta, storePicture, VIEWS, type ArtView, type El } from './model';
 import { CHAR_FACES, CHAR_POSES, parseVariant, REF, variantKey } from './variants';
@@ -118,16 +119,16 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
           </button>
         ))}
       </span>
-      <select className="dz-float-sel" value={want.pose} aria-label="Pose" disabled={!canEdit} onChange={(ev) => setWant({ ...want, pose: ev.target.value })}>
+      <NSelect className="dz-float-sel" value={want.pose} aria-label="Pose" disabled={!canEdit} onChange={(ev) => setWant({ ...want, pose: ev.target.value })}>
         {CHAR_POSES.map((p) => (
           <option key={p.k} value={p.k}>{p.name}</option>
         ))}
-      </select>
-      <select className="dz-float-sel" value={want.face} aria-label="Expression" disabled={!canEdit} onChange={(ev) => setWant({ ...want, face: ev.target.value })}>
+      </NSelect>
+      <NSelect className="dz-float-sel" value={want.face} aria-label="Expression" disabled={!canEdit} onChange={(ev) => setWant({ ...want, face: ev.target.value })}>
         {CHAR_FACES.map((f) => (
           <option key={f.k} value={f.k}>{f.name}</option>
         ))}
-      </select>
+      </NSelect>
       {!same &&
         (have ? (
           <button type="button" className="primary" disabled={!canEdit} onClick={() => void apply()}>

@@ -8,6 +8,7 @@ import { ask, tell } from '../lib/ask';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
+import { NSelect } from '../components/Select';
 import { clean, elsCol, ensureFont, loadPicture, pagesCol, storePicture, useDesign, VIEWS, type ArtView, type DPage, type El } from './model';
 import { artKey, bounds, corners, drawPage, hit, isLine, labelEnd, sceneKey, textBox, textHeight, type View } from './render';
 import { artImage, qrImage, sceneImage } from './assets';
@@ -1278,16 +1279,16 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                       </button>
                     ))}
                   </span>
-                  <select className="dz-float-sel" value={one.pose ?? 'stand'} aria-label="Pose" onChange={(e) => patch({ [one.id]: { pose: e.target.value } })}>
+                  <NSelect className="dz-float-sel" value={one.pose ?? 'stand'} aria-label="Pose" onChange={(e) => patch({ [one.id]: { pose: e.target.value } })}>
                     {Object.entries(POSES).map(([k, p]) => (
                       <option key={k} value={k}>{p.name}</option>
                     ))}
-                  </select>
-                  <select className="dz-float-sel" value={one.face ?? 'happy'} aria-label="Expression" onChange={(e) => patch({ [one.id]: { face: e.target.value } })}>
+                  </NSelect>
+                  <NSelect className="dz-float-sel" value={one.face ?? 'happy'} aria-label="Expression" onChange={(e) => patch({ [one.id]: { face: e.target.value } })}>
                     {Object.entries(FACES).map(([k, f]) => (
                       <option key={k} value={k}>{f.name}</option>
                     ))}
-                  </select>
+                  </NSelect>
                 </>
               )}
               {one.t === 'art' && one.art === 'thing' && (THINGS[one.ref ?? '']?.views?.length ?? 0) > 1 && (

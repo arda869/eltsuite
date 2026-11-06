@@ -157,6 +157,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const current = (await import('firebase/auth')).getAuth().currentUser?.uid ?? 'teacher1';
     const p = (await getDoc(doc(db,'teachingCoach',current,'settings','profile'))).data();
     localStorage.setItem('mockCoachLastRequest',JSON.stringify(d));
+    if(localStorage.getItem('mockCoachFailureOnce')==='1'){
+      localStorage.removeItem('mockCoachFailureOnce');
+      throw Error('The Companion is temporarily unavailable. Try again.');
+    }
     const prefs = contextPermissions((await getDoc(doc(db,'teachingCoach',current,'settings','context'))).data());
     await new Promise(resolve=>setTimeout(resolve,350));
     const result={sources:d.lessonContext?[{title:'Selected activity',url:`/class/${d.lessonContext.classId}/lesson/${d.lessonContext.itemId}`}]:[],journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile&&profileComplete(p)?'Your professional profile':'',prefs.beliefs&&beliefsComplete(p)?'Your teaching beliefs':''].filter(Boolean)};

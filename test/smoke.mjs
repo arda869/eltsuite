@@ -361,7 +361,11 @@ const J = {
     if(await s.p.locator('.coach-floating').count())throw Error('Companion opened a separate floating panel');
     await coach.getByLabel('Selected teaching context').waitFor();
     await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What is your advice on this activity?');
+    await coach.evaluate(()=>localStorage.setItem('mockCoachFailureOnce','1'));
     await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await coach.getByRole('alert').getByText('The Companion is temporarily unavailable. Try again.').waitFor();
+    if(await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).inputValue()!=='What is your advice on this activity?')throw Error('Failed Companion request lost the draft message');
+    await coach.getByRole('button',{name:'Try again',exact:true}).click();
     await coach.getByRole('log').getByText('What is your advice on this activity?',{exact:true}).waitFor();
     await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='What is your advice on this activity?');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
@@ -553,6 +557,12 @@ const J = {
     await story.getByRole('button',{name:'Maya',exact:true}).dragTo(over,{targetPosition:{x:box.width*0.5,y:box.height*0.9}});
     const dropped=await story.waitForFunction(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.values(fs).find(v=>v&&v.page==='panel1'&&v.t==='art'&&v.ref==='maya')||null;},storyId).then(h=>h.jsonValue());
     if(!dropped.ground||Math.abs((dropped.y+dropped.h*286/300)-720*0.9)>12||Math.abs(dropped.x+dropped.w/2-640)>12)throw Error('Dropped person did not stand where dropped: '+JSON.stringify(dropped));
+    const quick=story.getByRole('toolbar',{name:'Quick changes'});
+    await quick.getByRole('button',{name:'Pose',exact:true}).click();
+    await story.getByRole('option',{name:'Waving',exact:true}).click();
+    await quick.getByRole('button',{name:'Expression',exact:true}).click();
+    await story.getByRole('option',{name:'Calm',exact:true}).click();
+    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.pose==='wave'&&v.face==='neutral'),storyId);
     // Selected on drop: a different side of the same person is a different drawing, and words go beside the head.
     await story.getByRole('button',{name:'Left profile',exact:true}).click();
     await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.view==='left'),storyId);

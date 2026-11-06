@@ -31,7 +31,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 23 | In progress | Broad page text scrape removed; browser test verifies detached lesson/history is not resent. Audit all exclusions. |
 | 24 | In progress | Class and learner queries bounded; test large-class pagination and evidence language. |
 | 25 | Implemented locally | Companion chat available with optional profile fields; browser test passed. |
-| 26 | In progress | Retry affordances added; test configuration/network failure with preserved draft. |
+| 26 | In progress | Mock browser network-failure journey confirms the message stays in the composer and Try again reaches a reply. Live configuration failure still needs verification. |
 | 27 | In progress | Pending image results retained; test Create/Edit/Restyle/Eraser rules in browser. |
 | 28 | In progress | Designer file/page thumbnails and insertion pass a mock browser journey; large-library performance remains open. |
 | 29 | In progress | Use in Classes saves the current page to Resources and returns to the originating lesson/document or Classes; inserted pictures retain an Edit source in Designer link. Mock browser journey passes; direct destination insertion and live Firebase check remain. |
@@ -45,7 +45,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 37 | Open | Authenticated homepage, invitation, learner login/logout/refresh and redirect checks. |
 | 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
 | 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
-| 40 | In progress | Spelling/style selects, Designer selected-element and page selectors, and the legacy storyboard toolbar use NSelect; Designer backdrop selection and saved page state pass a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
+| 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose and expression changes persist in a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
 | 41 | Open | Multiselect/autocomplete audit. |
 | 42 | Open | Checkbox/radio/switch visual and semantic audit. |
 | 43 | Open | Date/time picker and locale audit. |
@@ -69,6 +69,8 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
 - Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return to the originating document passed. Learner sign-in and signed-out homepage checks passed after cross-tab mock authentication was corrected. The 33 spelling and coach unit tests pass after bounded-query mock updates.
 - Mock browser: Designer backdrop selection through the shared dropdown saved to the storyboard page; the complete Designer journey with optional fields blank passed after the control change. TypeScript `--noEmit` passed.
+- Mock browser: Companion request failure retained the teacher’s message; Try again completed the reply in the same small Messages window.
+- Mock browser: Designer quick-change pose and expression selections persisted, and the full Designer journey passed after the control update. Production build and TypeScript `--noEmit` passed locally.
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.
