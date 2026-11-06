@@ -21,8 +21,13 @@ export function onAuthStateChanged(auth: ReturnType<typeof getAuth>, cb: (u: Use
 function setCur(auth: ReturnType<typeof getAuth>, u: User | null) {
   auth.currentUser = u;
   if (auth.app.name === '[DEFAULT]') {
-    if (u) sessionStorage.setItem('mockuid', u.uid);
-    else sessionStorage.removeItem('mockuid');
+    if (u) {
+      sessionStorage.setItem('mockuid', u.uid);
+      localStorage.setItem('mockuid', u.uid);
+    } else {
+      sessionStorage.removeItem('mockuid');
+      localStorage.removeItem('mockuid');
+    }
     cbs.forEach((c) => c(u));
   }
 }
@@ -67,6 +72,7 @@ export function mockSignInTeacher(name = 'Arda') {
     persist('mockauth', all);
   }
   sessionStorage.setItem('mockuid', t.uid);
+  localStorage.setItem('mockuid', t.uid);
 }
 export async function sendPasswordResetEmail() {}
 export async function updateProfile(u: User, p: { displayName?: string }) {

@@ -407,9 +407,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const setScene = useCallback(
     (key: string) => {
       if (!page) return;
-      void updateDoc(doc(pagesCol(d.id), page.id), clean({ scene: key === 'plain' ? null : key, horizon: null })).catch(() => void tell('We couldn’t change the backdrop just now. Check your connection and try again.'));
+      setPageP({ scene: key, horizon: null });
     },
-    [page, d.id],
+    [page, setPageP],
   );
 
   // Things grouped together are picked, moved, sized and turned as one.

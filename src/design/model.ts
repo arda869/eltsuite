@@ -101,7 +101,7 @@ export type El = {
 
 // A scene's backdrop (`scene`, drawn in the house style behind everything), where its floor meets the
 // wall (`horizon`, as a part of the page's height) and a caption for the panel in a story.
-export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string; scene?: string; horizon?: number; caption?: string };
+export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string; scene?: string; horizon?: number | null; caption?: string };
 export type DMeta = { accent?: string; aiStyle?: string; aiReference?: string; type?: 'image' | 'storyboard'; charMedia?: Record<string, string> };
 export type ArtView = 'front' | 'tql' | 'left' | 'tqr' | 'right' | 'back';
 export const VIEWS: { k: ArtView; name: string; short: string }[] = [

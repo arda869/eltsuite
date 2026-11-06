@@ -25,6 +25,7 @@ export function initials(name: string) {
 
 export function TopBar({ children }: { children?: ReactNode }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -98,16 +99,20 @@ export function TopBar({ children }: { children?: ReactNode }) {
               </div>
             )}
             <span className="menu-apps show-phone">
-              <Link role="menuitem" className="menu-link" to="/" onClick={() => setOpen(false)}>
+              <Link role="menuitem" className="menu-link" to="/" aria-current={pathname === '/' ? 'page' : undefined} onClick={() => setOpen(false)}>
+                <UiIcon name="home" size={15} />
+                Home
+              </Link>
+              {isTeacher && <Link role="menuitem" className="menu-link" to="/classes" aria-current={pathname.startsWith('/class') ? 'page' : undefined} onClick={() => setOpen(false)}>
                 <UiIcon name="classes" size={15} />
                 Classes
-              </Link>
+              </Link>}
               <Link role="menuitem" className="menu-link" to="/messages" onClick={() => setOpen(false)}>
                 <UiIcon name="message" size={15} />
                 Messages
               </Link>
               {profile?.role === 'teacher' && (
-                <Link role="menuitem" className="menu-link" to="/archive" onClick={() => setOpen(false)}>
+                <Link role="menuitem" className="menu-link" to="/archive" aria-current={pathname.startsWith('/archive') || pathname.startsWith('/doc') ? 'page' : undefined} onClick={() => setOpen(false)}>
                   <UiIcon name="archive" size={15} />
                   Resources
                 </Link>

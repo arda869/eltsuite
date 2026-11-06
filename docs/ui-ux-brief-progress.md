@@ -37,7 +37,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 29 | In progress | Use in Classes saves the current page to Resources and returns to the originating lesson/document or Classes; inserted pictures retain an Edit source in Designer link. Mock browser journey passes; direct destination insertion and live Firebase check remain. |
 | 30 | Open | Full canvas manipulation and final composition inspection. |
 | 31 | Open | Generated element language and classroom display legibility audit. |
-| 32 | Open | Desktop/mobile navigation depth and active location audit. |
+| 32 | In progress | Mobile account menu now links Home, Classes and Resources to their actual destinations and marks the active place. Desktop/mobile navigation depth audit remains. |
 | 33 | Open | State and recovery audit across every page. |
 | 34 | In progress | Global pinch block removed; 200% browser zoom and canvas gesture checks pending. |
 | 35 | In progress | Expanded game focus handling improved; modal inventory/focus restoration pending. |
@@ -63,11 +63,11 @@ Legend: **Implemented locally** means code exists but the required full journey 
 
 ## Verification to date
 
-- TypeScript `--noEmit` passed after Designer recovery and source-link changes.
-- Production build passed after Designer recovery, preview and source-link changes.
+- TypeScript `--noEmit` passed after rebasing onto the newer Designer storyboard work.
+- Production build passed after rebasing onto the newer Designer storyboard work.
 - Focused unit tests: 22/22 passed (mock/unit).
 - Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
-- Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return passed. The 33 spelling and coach unit tests pass after bounded-query mock updates.
+- Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return to the originating document passed. Learner sign-in and signed-out homepage checks passed after cross-tab mock authentication was corrected. The 33 spelling and coach unit tests pass after bounded-query mock updates.
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.

@@ -1,5 +1,5 @@
 import './InlineImages.css';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { newSharedDoc, useMyDocs, type SharedDoc } from '../lib/sharedDocs';
 import { isImageFile } from './files';
@@ -138,18 +138,62 @@ export function DesignerImages({ uid, onPick, onBoard }: { uid?: string; onPick:
           {mine === null || withMe === null ? (
             <p role="status">Loading designs…</p>
           ) : (
-            shown.map((d) => (
-              <button type="button" className="btn" key={d.id} onClick={() => setSelected(d)}>
-                {d.title || 'Untitled design'}
-                <small>{d.kind === 'storyboard' || d.designType === 'storyboard' ? 'Storyboard' : 'Image design'}</small>
-              </button>
-            ))
+            shown.map((d) => <DesignCard key={d.id} d={d} onSelect={() => setSelected(d)} />)
           )}
           {mine !== null && withMe !== null && !shown.length && <p>No matching designs. Saved Designer files appear here automatically.</p>}
         </div>
       )}
     </section>
   );
+}
+
+function DesignCard({ d, onSelect }: { d: SharedDoc; onSelect: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '180px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return <button ref={ref} type="button" className="btn design-pick-card" onClick={onSelect}>
+    <span className="design-pick-thumb" aria-hidden="true">{visible && (isImageFile(d) ? <FilePreview d={d} /> : <DesignPreview id={d.id} />)}</span>
+    <strong>{d.title || 'Untitled design'}</strong>
+    <small>{d.kind === 'storyboard' || d.designType === 'storyboard' ? 'Storyboard' : 'Image design'}</small>
+  </button>;
+}
+
+function PreviewImage({ load }: { load: () => Promise<Blob> }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    let active = true;
+    let url = '';
+    void load().then((blob) => {
+      url = URL.createObjectURL(blob);
+      if (active) setSrc(url);
+      else URL.revokeObjectURL(url);
+    }).catch(() => {});
+    return () => { active = false; if (url) URL.revokeObjectURL(url); };
+  }, [load]);
+  return src ? <img src={src} alt="" /> : <span className="design-pick-placeholder" />;
+}
+
+function FilePreview({ d }: { d: SharedDoc }) {
+  const load = useRef(() => loadAnyFile(d.id, d.file));
+  return <PreviewImage load={load.current} />;
+}
+
+function DesignPreview({ id }: { id: string }) {
+  const { pages, els, meta } = useDesign(id);
+  const first = pages?.[0];
+  const load = useCallback(() => designPageImage(id, first!, els, meta.accent ?? '#c8764a', 0.25), [id, first, els, meta.accent]);
+  return first ? <PreviewImage key={first.id} load={load} /> : <span className="design-pick-placeholder" />;
 }
 
 function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoard: (d: SharedDoc) => Promise<void> }) {
