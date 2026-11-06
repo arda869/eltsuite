@@ -302,6 +302,51 @@ const J = {
     return s;
   },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
+  'Shared control gallery: states, choices, narrow screens and 200% zoom': async b=>{
+    const s=await session(b,{owner:true});await s.p.goto(BASE+'/test/control-gallery.html');
+    await s.p.getByRole('heading',{name:'Controls and states'}).waitFor();
+    mkdirSync('outputs/ui-ux-brief/control-gallery',{recursive:true});
+    for(const width of [320,375,768,1024,1440])for(const theme of ['light','dark']){
+      await s.p.setViewportSize({width,height:900});
+      await s.p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      const overflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+      if(overflow>2)throw Error(`Control gallery overflows ${width}px ${theme} by ${overflow}px`);
+      await s.p.screenshot({path:`outputs/ui-ux-brief/control-gallery/${width}-${theme}.png`,fullPage:true});
+      if((width===375&&theme==='dark')||(width===1440&&theme==='light'))await axe(s.p,`Control gallery ${width}px ${theme}`,A11Y_FOUND);
+    }
+    await s.p.setViewportSize({width:768,height:900});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='200%');
+    const zoomOverflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    if(zoomOverflow>2)throw Error(`Control gallery overflows at 200% zoom by ${zoomOverflow}px`);
+    await s.p.screenshot({path:'outputs/ui-ux-brief/control-gallery/768-zoom-200.png',fullPage:true});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='');
+    await s.p.getByRole('button',{name:'One option'}).click();
+    await s.p.getByRole('option',{name:'Third option'}).click();
+    if(!(await s.p.getByRole('button',{name:'One option'}).innerText()).includes('Third option'))throw Error('Shared dropdown did not select an option');
+    await s.p.getByRole('button',{name:'Several options'}).click();
+    await s.p.getByRole('option',{name:'Speaking'}).click();
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Several options'}).press('Backspace');
+    if((await s.p.getByRole('button',{name:'Several options'}).innerText()).includes('Speaking'))throw Error('Backspace did not remove the last multiselect chip');
+    await s.p.getByRole('button',{name:'Several options'}).click();
+    await s.p.getByRole('option',{name:'Use any'}).click();
+    if(!(await s.p.getByRole('button',{name:'Several options'}).innerText()).includes('Any'))throw Error('Multiselect did not clear its selected values');
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Large option list'}).click();
+    const find=s.p.getByRole('searchbox',{name:'Find in Large option list'});
+    await find.fill('Writing');
+    await s.p.getByRole('option',{name:'Writing'}).waitFor();
+    if(await s.p.getByRole('option',{name:'Reading'}).count())throw Error('Multiselect search did not filter options');
+    await axe(s.p,'Searchable multiselect open',A11Y_FOUND);
+    await find.fill('unmatched skill');
+    await s.p.getByText('Nothing matches.',{exact:true}).waitFor();
+    await axe(s.p,'Searchable multiselect no results',A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Open dialog'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).getByRole('button',{name:'Done'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).waitFor({state:'detached'});
+    return s;
+  },
   'Discuss with Teacher’s Companion carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -534,6 +579,13 @@ const J = {
     const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create image'}).click()]);
     await image.getByRole('button',{name:'AI images',exact:true}).click();
     await image.getByRole('button',{name:'Generate preview'}).waitFor();
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Change an image'}).click();
+    await image.getByText('Select one image on the canvas.',{exact:true}).waitFor();
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    if(await image.evaluate(()=>localStorage.getItem('lastDesignerRequest')))throw Error('Image change started without a selected source');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Create an image'}).click();
     await image.getByLabel('Describe your image').fill('Pip running in an original blue classroom scene');
     await image.getByText('Using references: Pip',{exact:true}).waitFor();
     await image.evaluate(()=>localStorage.setItem('mockDesignerDelayMs','2000'));
@@ -559,16 +611,29 @@ const J = {
     await s.p.getByRole('button',{name:'Close character library'}).click();
     const fileId=new URL(image.url()).pathname.split('/').pop();
     await image.waitForFunction(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('sharedDocs/'+id+'/dels/')&&v.t==='image'&&v.img),fileId);
-    await image.getByLabel('What would you like to do?').selectOption('erase');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Magic eraser · remove an object'}).click();
     await image.getByLabel('What should be removed?').fill('Remove the bag');
     await image.getByRole('button',{name:'Generate preview'}).click();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
-    await image.getByLabel('What would you like to do?').selectOption('restyle');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Change an image'}).click();
+    await image.getByLabel('What should change?').fill('Change the sky to orange');
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByAltText('Generated preview').waitFor();
+    const changeRequest=await image.evaluate(()=>JSON.parse(localStorage.getItem('lastDesignerRequest')));
+    if(changeRequest.action!=='edit'||!changeRequest.imageId||changeRequest.prompt!=='Change the sky to orange')throw Error('Image change did not use the selected source');
+    await image.getByRole('button',{name:'Apply to canvas'}).click();
+    await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Restyle an image'}).click();
     await image.getByRole('button',{name:/Black & white/}).click();
     await image.getByLabel('Extra changes (optional)').fill('');
-    const ref=await image.getByLabel('Match an existing illustration').locator('option').nth(1).getAttribute('value');
-    await image.getByLabel('Match an existing illustration').selectOption(ref);
+    const ref=await image.evaluate(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).find(([k,v])=>k.startsWith('sharedDocs/'+id+'/dels/')&&v.t==='image'&&v.img)?.[1].img,fileId);
+    if(!ref)throw Error('Designer image reference was not saved');
+    await image.getByRole('button',{name:'Match an existing illustration'}).click();
+    await image.getByRole('listbox',{name:'Match an existing illustration'}).getByRole('option').nth(1).click();
     await image.getByRole('button',{name:'Generate preview'}).click();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
