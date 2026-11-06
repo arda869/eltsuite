@@ -73,10 +73,22 @@ try{
   const task={title:'Around town',content:doc,instructions:'Work with a partner.',variant:'Standard'};
   const opts={header:true,key:false,notes:false,paper:'A4',columns:1};
   const items=flattenWithSections([task]);
-  const {sheetPictures}=await import('/src/lib/sheetMedia.ts');
+  const {sheetPictures,sheetSounds}=await import('/src/lib/sheetMedia.ts');
+  const {doc:setDocRef,setDoc}=await import('/test/mock/firestore.ts');
+  const {db}=await import('/src/lib/firebase.ts');
+  await setDoc(setDocRef(db,'classes','audit','media','dialogue'),{title:'Holiday plans',script:[{t:0,who:'Alex',text:'Where shall we go?'},{t:2,who:'Sam',text:'Let us go camping.'},{t:4,text:'The train leaves.'},{t:5,who:'Alex',text:'   '}]});
+  const qrItems=flattenWithSections([{title:'Play and listen',content:{type:'doc',content:[{type:'classroomGame',attrs:{sessionId:'saved-game'}},{type:'media',attrs:{media:'dialogue'}}]}}]);
+  const qrSounds=await sheetSounds('audit',qrItems,'#975f40');
+  if(qrSounds['game:saved-game'].url!==location.origin+'/game/saved-game')throw Error('Wrong game destination');
+  if(JSON.stringify(qrSounds.dialogue.script)!==JSON.stringify(['Alex: Where shall we go?','Sam: Let us go camping.','The train leaves.']))throw Error('Speaker labels missing or invented');
+  const qrHtml=worksheetHtml('Games and named speakers',qrItems,{...opts,key:true,qr:false,sounds:qrSounds});
+  if(!qrHtml.includes('Scan to play')||!qrHtml.includes(qrSounds['game:saved-game'].svg)||!qrHtml.includes('Alex: Where shall we go?')||!qrHtml.includes('Sam: Let us go camping.'))throw Error('QR or speakers omitted');
+  const unconfigured=worksheetHtml('Unconfigured',flattenWithSections([{title:'Game',content:{type:'doc',content:[{type:'classroomGame',attrs:{}}]}}]),opts);
+  if(!unconfigured.includes('Choose a saved game')||unconfigured.includes('Scan to play'))throw Error('Unconfigured game has a misleading QR');
+
   const media=await sheetPictures('audit',items);
   if(!media['pdf-page:1:file:audit-source']?.data.startsWith('data:image/jpeg')) throw Error('Lost the original attachment page.');
-  const html=worksheetHtml('Town lesson',items,{...opts,media});
+  const html=worksheetHtml('Town lesson',items,{...opts,media,sounds:await sheetSounds('audit',items,'#975f40')});
   await prepareDocumentPrint(doc,'audit');const collab=docBodyHtml(doc,'Town document',EXPORT_DEFAULT);
   for(const output of [html,collab]){
    for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions','Classroom game'])if(!output.includes(expected))throw Error('Missing '+expected);
@@ -108,7 +120,7 @@ try{
     if((printed.match(/Travel to the library/g)||[]).length<1190)throw Error('Lost passage text.');
   } finally {frame.remove();}
   function base64(bytes){let str='';for(let i=0;i<bytes.length;i+=8192)str+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(str);}
-  return {lesson:base64(await worksheetPdf(html)),collab:base64(await htmlToPdf(collab,null))};
+  return {games:base64(await worksheetPdf(qrHtml)),lesson:base64(await worksheetPdf(html)),collab:base64(await htmlToPdf(collab,null))};
    });
    break;
   }catch(error){

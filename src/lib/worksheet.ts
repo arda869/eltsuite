@@ -60,7 +60,7 @@ export type Block =
   | { kind: 'timeline'; a: TlAttrs }
   | { kind: 'storyboard'; a: SbAttrs }
   | { kind: 'diagram'; dkind: string; title: string; labels: string[]; cells: { label: string; blocks: Block[] }[] }
-  | { kind: 'media'; id: string; title: string; video: boolean; mode: string }
+  | { kind: 'media'; id: string; title: string; video: boolean; mode: string; game?: boolean }
   | { kind: 'subtask'; letter: string; text: string; blocks: Block[] };
 
 // Self-reflection, peer feedback and surveys on paper.
@@ -364,9 +364,14 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         }
         return;
       }
-      case 'classroomGame':
+      case 'classroomGame': {
+        const session = String(a.sessionId || '').trim();
+        if (session) cur.push({kind:'media', id:'game:'+session, title:String(a.title || 'Classroom game'), video:false, mode:'game', game:true});
+        else cur.push({kind:'note',text:'Classroom game · Choose a saved game in the lesson before exporting its QR code.'});
+        return;
+      }
       case 'investigation': {
-        const label = node.type === 'classroomGame' ? 'Classroom game' : 'Language investigation';
+        const label = 'Language investigation';
         cur.push({kind:'note',text:[label,a.title || a.prompt,'Open the original activity in ELT Suite.'].filter(Boolean).join(' · ')});
         return;
       }
@@ -749,8 +754,8 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         });
       } else if (b.kind === 'media') {
         const info = opts.sounds?.[b.id];
-        const kind = b.video ? 'Scan to watch' : 'Scan to listen';
-        if (opts.qr !== false && info?.png) {
+        const kind = b.game ? 'Scan to play · Sign in with your class account' : b.video ? 'Scan to watch' : 'Scan to listen';
+        if ((b.game || opts.qr !== false) && info?.png) {
           const bytes = Uint8Array.from(atob(info.png.split(',')[1] ?? ''), (c) => c.charCodeAt(0));
           const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
           out.push(
