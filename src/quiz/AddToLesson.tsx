@@ -169,7 +169,7 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
       setBusy('');
     }
   };
-  const bring = async (id: string, title: string) => {
+  const bring = async (id: string, title: string, start: boolean) => {
     setBusy(id);
     setError('');
     try {
@@ -178,7 +178,8 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
       if (!snap.exists() || quizProblems(quiz).length) throw Error('Open this quiz and finish its questions first.');
       const taskId = await quizIntoLesson(classId, itemId, quiz, title, id);
       setPickSaved(false);
-      await hostClassTask(classId, itemId, taskId, guests);
+      if (start) await hostClassTask(classId, itemId, taskId, guests);
+      else onClose();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -238,9 +239,9 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
               </button>
             ))}
             {playable.length === 0 && <p className="qe-hint">No task in this lesson has questions that can be marked yet. Bring in a saved quiz, or make a new one.</p>}
-            <button type="button" className="lq-option" disabled={!!busy || !!running || !quizzes.length} onClick={() => setPickSaved(true)}>
+            <button type="button" className="lq-option" disabled={!!busy || !quizzes.length} onClick={() => setPickSaved(true)}>
               <strong>Bring in one of your quizzes</strong>
-              <span>{quizzes.length ? 'It goes into this lesson as a task, then starts.' : 'You don’t have any saved quizzes yet.'}</span>
+              <span>{quizzes.length ? 'It goes into this lesson as a task. Play it now or later.' : 'You don’t have any saved quizzes yet.'}</span>
             </button>
             <button type="button" className="lq-option" disabled={!!busy} onClick={() => void make()}>
               <strong>Make a new quiz</strong>
@@ -250,10 +251,18 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
         ) : (
           <div className="lq-options">
             {quizzes.map((q) => (
-              <button key={q.id} type="button" className="lq-option" disabled={!!busy} onClick={() => void bring(q.id, q.title)}>
+              <div key={q.id} className="lq-option lq-option-row">
                 <strong>{q.title}</strong>
-                <span>{busy === q.id ? 'Adding and starting…' : 'Add to this lesson and play'}</span>
-              </button>
+                <span className="qe-row">
+                  <button type="button" className="btn small-btn" disabled={!!busy} onClick={() => void bring(q.id, q.title, false)}>
+                    Add to this lesson
+                  </button>
+                  <button type="button" className="btn small-btn primary" disabled={!!busy || !!running} onClick={() => void bring(q.id, q.title, true)}>
+                    Add and play now
+                  </button>
+                  {busy === q.id && <span>One moment…</span>}
+                </span>
+              </div>
             ))}
             <button type="button" className="btn" onClick={() => setPickSaved(false)}>
               Back

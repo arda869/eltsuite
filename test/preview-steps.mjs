@@ -159,8 +159,22 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
   await shot('results');
   for (const ph of phones) await ph.close();
 
-  // In a class lesson: Activities → Live quiz.
+  // Planning a lesson: + menu → Live quiz.
   await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
+  await wait(3000);
+  const plus = p.locator('.task-insert summary');
+  if (await plus.count()) {
+    await plus.last().click();
+    await wait(500);
+    await shot('lesson-insert-menu');
+    await p.locator('.task-insert-menu button[aria-label="Live quiz"]').last().click();
+    await p.locator('.lq-dialog').waitFor({ timeout: 10000 });
+    await wait(600);
+    await shot('lesson-live-quiz-planning');
+    await p.keyboard.press('Escape');
+  }
+  // In a class lesson: Activities → Live quiz.
+  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?teach=1`);
   await wait(3000);
   const act = p.getByRole('button', { name: /Activities/ });
   if (await act.count()) {

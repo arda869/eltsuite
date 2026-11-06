@@ -64,7 +64,7 @@ async function loadSource(db, who, source) {
       content,
       key,
       sizes: quiz.slides.map((s) => (s.content?.content || []).length).filter((n) => n > 0),
-      settings: quiz.slides.filter((s) => (s.content?.content || []).length).map((s) => ({ seconds: s.seconds, points: s.points, poll: s.poll })),
+      settings: quiz.slides.filter((s) => (s.content?.content || []).length).map((s) => ({ seconds: s.seconds, points: s.points, poll: s.kind === 'poll' })),
       music: quiz.music || '',
       source: { kind: 'doc', id },
     };

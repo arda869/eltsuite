@@ -213,9 +213,11 @@ test('a saved quiz is hosted for anyone with the code, slides as the teacher mad
       { type: 'paragraph', content: [{ type: 'gap', attrs: { id: 'b', answers: ['eat'] } }] },
       { type: 'paragraph', content: [{ type: 'gap', attrs: { id: 'c', answers: ['drink'] } }] },
     ] } },
+    { id: 's3', kind: 'poll', seconds: 20, points: 0, content: { type: 'doc', content: [{ type: 'mcq', attrs: { id: 'p', prompt: 'Favourite?', options: ['Tea', 'Coffee'], correct: -1 } }] } },
   ] });
   const { runId, code } = await quizService(w.db, w.rtdb, auth('teacher'), { action: 'host', source: { kind: 'doc', id: 'quiz1' } }, 1000);
-  assert.equal(w.read(`quizLive/${runId}/total`), 2, 'two gaps on one slide stay one slide');
+  assert.equal(w.read(`quizLive/${runId}/total`), 3, 'two gaps on one slide stay one slide');
+  assert.deepEqual(w.data.get(`quizRuns/${runId}`).kinds.at(-1), 'poll', 'a poll is known as a poll');
   await assert.rejects(quizService(w.db, w.rtdb, auth('learner'), { action: 'host', source: { kind: 'doc', id: 'quiz1' } }), /teacher|shared/);
   const g = await quizService(w.db, w.rtdb, null, { action: 'join', code, name: 'Kim' });
   await quizService(w.db, w.rtdb, auth('teacher'), { action: 'next', runId }, 2000);

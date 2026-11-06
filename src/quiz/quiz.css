@@ -101,6 +101,8 @@
 .qz-prompt.sm { font-size: clamp(18px, 2vw, 28px); }
 .qz-sub { margin: 0; text-align: center; font-weight: 800; color: #6b5f8c; }
 .qz-task { font-size: clamp(18px, 1.9vw, 28px); line-height: 1.5; }
+@media (min-width: 1100px) { .qz-host .qz-main .qz-task, .qz-host .qz-main .qz-lead { zoom: 1.5; } }
+@media (min-width: 1700px) { .qz-host .qz-main .qz-task, .qz-host .qz-main .qz-lead { zoom: 1.9; } }
 .qz-lead { font-size: 20px; }
 .qz-note { margin: 4px 0 0; padding: 10px 14px; border-left: 4px solid var(--qz-glow); background: #fff6ef; color: #3a2a1d; font-size: 18px; border-radius: 0 10px 10px 0; }
 .qz-mid { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; min-height: 0; }
@@ -327,6 +329,8 @@
 .lq-option strong { font-size: 15px; }
 .lq-option span { color: var(--muted); font-size: 13px; }
 .lq-option:disabled { opacity: 0.55; cursor: default; }
+.lq-option-row { cursor: default; }
+.lq-option-row:hover { border-color: var(--hair-strong); }
 .lq-banner { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, #2b1466, #2d6be0); box-shadow: 0 10px 30px rgba(43, 20, 102, 0.3); margin: 0 0 14px; }
 .lq-banner strong { font-size: 16px; }
 .lq-banner span { opacity: 0.85; font-size: 13.5px; }

@@ -1014,7 +1014,7 @@ export function LessonEditor() {
               onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.replace(/\s+/g, ' ').trim() })}
             />
             {tasks.map((t, i) => (<Fragment key={t.id}>
-              {!viewer&&!teachingHere&&!preview&&!isVariant(t)&&<TaskInsert label={'Insert before '+t.title} ai={aiPilot} open={openTaskInsert===t.id} onOpenChange={open=>setOpenTaskInsert(open?t.id:null)} onChoose={kind=>void insertAt(t.id,kind)}/>}
+              {!viewer&&!teachingHere&&!preview&&!isVariant(t)&&<TaskInsert label={'Insert before '+t.title} ai={aiPilot} open={openTaskInsert===t.id} onOpenChange={open=>setOpenTaskInsert(open?t.id:null)} onChoose={kind=>kind==='quiz'?setQuizOpen(true):void insertAt(t.id,kind)}/>}
               <div
                 className={'task-row' + (isVariant(t) ? ' variant-row' : '') + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
                 draggable={!isVariant(t)}
@@ -1106,7 +1106,7 @@ export function LessonEditor() {
                 )}
               </div>
             </Fragment>))}
-            {!viewer&&!teachingHere&&!preview&&<TaskInsert label="Add at the end" ai={aiPilot} open={openTaskInsert==='end'} onOpenChange={open=>setOpenTaskInsert(open?'end':null)} onChoose={kind=>void insertAt(null,kind)}/>}
+            {!viewer&&!teachingHere&&!preview&&<TaskInsert label="Add at the end" ai={aiPilot} open={openTaskInsert==='end'} onOpenChange={open=>setOpenTaskInsert(open?'end':null)} onChoose={kind=>kind==='quiz'?setQuizOpen(true):void insertAt(null,kind)}/>}
           </nav>
           {panels.left && !present && <PaneResizer side="left" width={panes.widths.left} onWidth={(px) => panes.set('left', px)} onReset={() => panes.reset('left')} />}
 
