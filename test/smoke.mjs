@@ -113,6 +113,7 @@ const J = {
     const row=s.p.locator('.task-row').filter({has:s.p.locator('.row-actions')}).first();await row.waitFor();
     for(const width of [1300,900]){
       await s.p.setViewportSize({width,height:900});await s.p.mouse.move(0,0);
+      if(width<=1100)await s.p.getByRole('button',{name:'Show the task list',exact:true}).click();
       const before=await row.boundingBox(),titleBefore=await row.locator('.task-pick').boundingBox();
       await row.hover();const after=await row.boundingBox(),titleAfter=await row.locator('.task-pick').boundingBox();
       if(Math.abs(before.height-after.height)>0.5||Math.abs(titleBefore.width-titleAfter.width)>0.5)throw Error('Hover changed the row or title dimensions');
