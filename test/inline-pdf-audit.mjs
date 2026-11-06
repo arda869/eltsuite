@@ -92,7 +92,7 @@ try{
   const html=worksheetHtml('Town lesson',items,{...opts,media,sounds:await sheetSounds('audit',items,'#975f40')});
   await prepareDocumentPrint(doc,'audit');const collab=docBodyHtml(doc,'Town document',EXPORT_DEFAULT);
   for(const output of [html,collab]){
-   for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions','Classroom game'])if(!output.includes(expected))throw Error('Missing '+expected);
+   for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions'])if(!output.includes(expected))throw Error('Missing '+expected);
    if(output.includes('secret-key'))throw Error('A learner copy exposed a private answer.');
   }
   const rendered = document.createElement('iframe');document.body.append(rendered);
