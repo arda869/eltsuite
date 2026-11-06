@@ -7,7 +7,7 @@ import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { NSelect } from './Select';
 import { emailChoicesOf, nameChoicesOf, useMyOrg } from '../lib/admin';
 import { tr } from '../lib/terms';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
 import { DEFAULT_CODES } from '../lib/annotations';
 import { updateClass, type ClassDoc, type Meeting, type MessagingMode, type NameShow } from '../lib/classes';
@@ -75,42 +75,55 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [leaving, setLeaving] = useState(false);
+
+  const link = url.trim();
+  const changes = () => ({
+    name: name.trim() || c.name,
+    level,
+    learningProfile,
+    spelling,
+    trainingProfile,
+    dates: { start: start || null, end: end || null },
+    themeColor,
+    lessonStyle,
+    cover,
+    teaching: { showMarker, seeLearners },
+    messaging: { learnerElements, mode: msgMode },
+    profile: { photos, names },
+    nicknames: Object.fromEntries(Object.entries(nicks).map(([k, v]) => [k, v.trim().slice(0, 30)]).filter(([, v]) => v)),
+    accounts: { email: emailLink },
+    learnerTools: tools,
+    liveAudio,
+    kind,
+    terms,
+    meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
+    codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
+  });
+  // Unsaved changes: what would be saved now, against what was there when the window opened.
+  const now = JSON.stringify(changes());
+  const opened = useRef(now);
+  const dirty = now !== opened.current;
+  // Closing with unsaved changes asks first, so a stray Escape or click outside doesn't lose them.
+  const tryClose = () => {
+    if (busy) return;
+    if (dirty) setLeaving(true);
+    else onClose();
+  };
 
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !busy && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && (leaving ? setLeaving(false) : tryClose());
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
-  }, [busy, onClose]);
+  });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const link = url.trim();
     if (link && !/^https:\/\/[^\s]+\.[^\s]+/i.test(link)) return setError('The meeting link should start with https://');
     setBusy(true);
     setError('');
     try {
-      await updateClass(c, {
-        name: name.trim() || c.name,
-        level,
-        learningProfile,
-        spelling,
-        trainingProfile,
-        dates: { start: start || null, end: end || null },
-        themeColor,
-        lessonStyle,
-        cover,
-        teaching: { showMarker, seeLearners },
-        messaging: { learnerElements, mode: msgMode },
-        profile: { photos, names },
-        nicknames: Object.fromEntries(Object.entries(nicks).map(([k, v]) => [k, v.trim().slice(0, 30)]).filter(([, v]) => v)),
-        accounts: { email: emailLink },
-        learnerTools: tools,
-        liveAudio,
-        kind,
-        terms,
-        meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
-        codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
-      });
+      await updateClass(c, changes());
       onClose();
     } catch (err) {
       console.error(err);
@@ -120,15 +133,17 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   }
 
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <form className="dialog wide" role="dialog" aria-modal="true" aria-labelledby="cs-title" onSubmit={submit}>
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && tryClose()}>
+      <form className="dialog wide cs-dialog" role="dialog" aria-modal="true" aria-labelledby="cs-title" onSubmit={submit}>
         <h2 id="cs-title">Class settings</h2>
+
+        <h3 className="cs-sec">About the class</h3>
 
         <label className="field">
           Class name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </label>
-        <ClassKindPicker kind={kind} onChange={setKind} uid={auth.currentUser?.uid} />
+        <ClassKindPicker kind={kind} onChange={setKind} uid={auth.currentUser?.uid} inSettings />
         <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
         {c.kind === 'training' && kind === 'language' && (
           <span className="error" role="alert">
@@ -146,6 +161,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
 
         {kind === 'language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}
         {kind === 'training' && <TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setLevel(v.programme);}}/>}
+
+        <h3 className="cs-sec">How it looks</h3>
         <LessonStylePicker value={lessonStyle} onChange={setLessonStyle} />
         <div className="field">
           Theme colour
@@ -163,8 +180,9 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <CoverPicker classId={c.id} value={cover} onChange={setCover} />
         </div>
 
+        <h3 className="cs-sec">Online meeting</h3>
         <div className="field">
-          <span>Online meeting</span>
+          <span className="sr-only">Meeting link</span>
           <span className="hint">{tr('Zoom, Google Meet, Microsoft Teams or any other link. Learners get a Join call button.')}</span>
           <span style={{ position: 'relative', display: 'block' }}>
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" style={{ width: '100%', paddingRight: 70 }} aria-label="Meeting link" />
@@ -198,6 +216,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </>
         )}
 
+        <h3 className="cs-sec">Live lessons</h3>
         <div className="field">
           <span>While teaching</span>
           <label className="switch-row">
@@ -223,12 +242,6 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </label>
         </div>
         <div className="field">
-          <span>What to call people in this class</span>
-          <span className="hint">The app uses these words in this class, for you and for them.</span>
-          <TermRow label="The people who learn" words={LEARNER_WORDS} one={terms.learner} many={terms.learners} onChange={(a, b) => setTerms({ ...terms, learner: a, learners: b })} />
-          <TermRow label="The people who teach" words={TEACHER_WORDS} one={terms.teacher} many={terms.teachers} onChange={(a, b) => setTerms({ ...terms, teacher: a, teachers: b })} />
-        </div>
-        <div className="field">
           <span>Sounds and videos in live lessons</span>
           <div className="cs-audio" role="radiogroup" aria-label="Sounds and videos in live lessons">
             {LIVE_AUDIO.map((o) => (
@@ -239,6 +252,13 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
             ))}
           </div>
           <span className="hint">{tr('Outside live lessons, learners always play sounds themselves.')}</span>
+        </div>
+        <h3 className="cs-sec">People</h3>
+        <div className="field">
+          <span>What to call people in this class</span>
+          <span className="hint">The app uses these words in this class, for you and for them.</span>
+          <TermRow label="The people who learn" words={LEARNER_WORDS} one={terms.learner} many={terms.learners} onChange={(a, b) => setTerms({ ...terms, learner: a, learners: b })} />
+          <TermRow label="The people who teach" words={TEACHER_WORDS} one={terms.teacher} many={terms.teachers} onChange={(a, b) => setTerms({ ...terms, teacher: a, teachers: b })} />
         </div>
         <div className="field cs-learners">
           <span>{tr('Learners')}</span>
@@ -327,7 +347,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           )}
         </div>
         <TeachersPanel c={c} />
-        {error && <span className="error" role="alert">{error}</span>}
+
+        <h3 className="cs-sec">Writing</h3>
         <div className="field">
           <span className="row-between">
             Correction codes for writing
@@ -360,13 +381,28 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           )}
         </div>
         <SpellingFields label="Class spelling" value={spelling} onChange={setSpelling} inherit/>
-        <div className="row-between" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <button type="submit" className="btn primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save changes'}
-          </button>
+        <div className="cs-foot">
+          {leaving ? (
+            <>
+              <span className="cs-foot-msg" role="alert">Close without saving? Your changes to this class will be lost.</span>
+              <button type="button" className="btn" onClick={() => setLeaving(false)} autoFocus>
+                Keep editing
+              </button>
+              <button type="button" className="btn set-danger" onClick={onClose}>
+                Close without saving
+              </button>
+            </>
+          ) : (
+            <>
+              {error ? <span className="error cs-foot-msg" role="alert">{error}</span> : <span className="hint cs-foot-msg">{dirty ? 'You have unsaved changes.' : ''}</span>}
+              <button type="button" className="btn" onClick={tryClose} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" className="btn primary" disabled={busy}>
+                {busy ? 'Saving…' : 'Save changes'}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>

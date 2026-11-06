@@ -27,3 +27,17 @@
 .speak-focus-options>div{display:flex;align-items:end;gap:10px;margin:10px 0}.speak-focus-options label{flex:1}.speak-choices{border:0;padding:0;margin:20px 0}.speak-choices legend{font-weight:650;color:#214736}.speak-choices>p{color:#51675b;font-size:13px}.speak-choices label{display:flex;gap:12px;align-items:center;border:1px solid #d5e2d9;background:white;padding:14px;border-radius:12px;margin:8px 0;cursor:pointer}.speak-choices label.selected{border-color:#30684c;background:#ecf5ef}.speak-choices input{accent-color:#30684c;width:18px;height:18px;flex:0 0 18px}.speak-choices label:focus-within{outline:2px solid #30684c;outline-offset:2px}
 
 .speak-preview-reply{display:flex;align-items:end;gap:10px;margin:16px 0}.speak-preview-reply label{flex:1;font-size:12px}.speak-preview-reply input{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #b6cfc0;border-radius:8px;background:white;color:#173e36;font:inherit}
+/* Dark theme: the speaking card keeps its green accent but sits on the app's dark surfaces. */
+:root[data-theme='dark'] :is(.speak-card,.speak-setup){--speaking-ink:var(--ink);--speaking-green:#5aa585;background:var(--surface);border-color:var(--hair-strong);}
+:root[data-theme='dark'] :is(.speak-kicker,.speak-scenario,.speak-setup>p,.speak-focus span,.speak-live p,.speak-feedback small,.speak-turns span,.speak-learner small,.speak-choices>p,.speak-setup label){color:var(--muted);}
+:root[data-theme='dark'] .speak-note{color:var(--muted)!important;}
+:root[data-theme='dark'] :is(.speak-duration,.speak-orb,.speak-avatar,.speak-next){background:color-mix(in srgb,#5aa585 16%,var(--paper));}
+:root[data-theme='dark'] .speak-focus{background:var(--paper);border-left-color:#5aa585;}
+:root[data-theme='dark'] .speak-start{background:#2f7a60;}
+:root[data-theme='dark'] :is(.speak-card,.speak-setup) .btn,:root[data-theme='dark'] :is(.speak-live,.speak-feedback,.speak-turns li,.speak-learner,.speak-choices label,.speak-setup input,.speak-setup textarea,.speak-setup select,.speak-preview-reply input){background:var(--paper);color:var(--ink);border-color:var(--hair-strong);}
+:root[data-theme='dark'] .speak-turns li.learner,:root[data-theme='dark'] .speak-choices label.selected{background:color-mix(in srgb,#5aa585 14%,var(--paper));}
+:root[data-theme='dark'] .speak-live.wrapping,:root[data-theme='dark'] .speak-learner.help{background:color-mix(in srgb,#d9a54f 14%,var(--paper));border-color:#bd8c43;}
+:root[data-theme='dark'] .speak-error{background:color-mix(in srgb,var(--wrong) 14%,var(--paper));color:var(--ink);border-color:var(--wrong);}
+:root[data-theme='dark'] .speak-orb span{background:#5aa585;}
+:root[data-theme='dark'] .speak-review{border-color:var(--hair);}
+:root[data-theme='dark'] .speak-choices legend{color:var(--ink);}

@@ -58,3 +58,16 @@
 :root[data-theme='dark'] .speech-dialog :is(fieldset, .speech-paste, .speech-foot, .speech-footer, .speech-script-line) { color: var(--ink); background: var(--surface); border-color: var(--hair); }
 :root[data-theme='dark'] .speech-dialog :is(input, textarea, select) { color: var(--ink); background: var(--paper); border-color: var(--hair-strong); }
 :root[data-theme='dark'] .speech-dialog :is(label, legend, .speech-head p, .speech-eyebrow, .speech-note, .hint) { color: var(--muted); }
+/* The header, script and buttons follow the dark theme too, so the title and actions stay readable. */
+:root[data-theme='dark'] .speech-head { background: var(--surface); border-color: var(--hair); }
+:root[data-theme='dark'] .speech-head h2 { color: var(--ink); }
+:root[data-theme='dark'] .speech-dialog .btn:not(.primary) { background: var(--paper); color: var(--ink); border-color: var(--hair-strong); }
+:root[data-theme='dark'] .speech-dialog .btn:disabled { opacity: .55; }
+:root[data-theme='dark'] .speech-dialog :is(.speech-script, .speech-script-row) { background: var(--paper); border-color: var(--hair); color: var(--ink); }
+:root[data-theme='dark'] .speech-dialog .speech-table-head { background: var(--surface); border-color: var(--hair); color: var(--muted); }
+:root[data-theme='dark'] .speech-dialog .speech-avatar { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hair-strong); }
+:root[data-theme='dark'] .speech-audience-switch { background: var(--surface); }
+:root[data-theme='dark'] .speech-audience-switch button { color: var(--muted); }
+:root[data-theme='dark'] .speech-audience-switch button[aria-checked='true'] { background: var(--paper); color: var(--ink); }
+:root[data-theme='dark'] .speech-dialog :is(.speech-preview-note, .speech-transcript, .speech-hint, .speech-feedback) { color: var(--muted); }
+:root[data-theme='dark'] .recording-transcript { background: var(--bg); color: var(--ink); border-color: var(--hair); }

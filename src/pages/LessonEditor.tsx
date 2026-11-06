@@ -445,6 +445,15 @@ export function LessonEditor() {
   const [bankSave, setBankSave] = useState<{ kind: 'question' | 'task'; content: JSONContent[]; title?: string; instructions?: string } | null>(null);
   const [bankPick, setBankPick] = useState<((nodes: JSONContent[]) => void) | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
+  // The AI tools menu closes when a tool is picked, on a click elsewhere and on Escape.
+  const aiMenuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const away = (e: Event) => { const d = aiMenuRef.current; if (d?.open && !(e.target instanceof Node && d.contains(e.target))) d.open = false; };
+    const esc = (e: KeyboardEvent) => { const d = aiMenuRef.current; if (e.key === 'Escape' && d?.open) { d.open = false; d.querySelector('summary')?.focus(); } };
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('pointerdown', away), document.removeEventListener('keydown', esc));
+  }, []);
   useEffect(() => {
     if (!exportOpen) return;
     const close = (e: MouseEvent) => exportRef.current && !exportRef.current.contains(e.target as Node) && setExportOpen(false);
@@ -894,7 +903,7 @@ export function LessonEditor() {
         </nav>
         <span className="icon-row tb-icons">
         {c && !viewer && <TeacherLiveVideo c={c} live={live} teachingHere={teachingHere} groupSets={groupSets} itemId={itemId} />}
-        {!preview && <details className="lesson-support-tools"><summary><AiMark /> AI Actions</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
+        {!preview && <details className="lesson-support-tools" ref={aiMenuRef}><summary><AiMark /> AI tools</summary><div className="lesson-support-actions" onClick={(e) => { if ((e.target as Element).closest('button') && aiMenuRef.current) aiMenuRef.current.open = false; }}>{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
           <AiButton className="btn small-btn" data-tip="Talk through this lesson with your teaching companion in a small chat window." onClick={()=>dockOpen('teaching-coach',false,{lessonContext:{classId,itemId,taskId:task?.id||''}})}>Discuss with Teacher’s Companion</AiButton></div></details>}
         {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>

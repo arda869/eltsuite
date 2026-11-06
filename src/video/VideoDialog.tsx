@@ -66,7 +66,7 @@ export function VideoDialog({
           }
         }}
       >
-        {onMinimise&&<button type="button" className="btn ai-minimise" onClick={onMinimise}>Continue working</button>}
+        {onMinimise&&<button type="button" className="btn ai-minimise" onClick={onMinimise} aria-label="Minimise" title="Minimise: keep it running in the corner while you work"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>}
         {children}
       </div>
     </div>

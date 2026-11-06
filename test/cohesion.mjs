@@ -5,11 +5,14 @@ import {mkdir,writeFile} from 'node:fs/promises';
 export async function reviewAi(p,title) {
   await p.waitForTimeout(60);
   const row=p.getByRole('region',{name:'AI activity',exact:true}).locator('section').filter({has:p.locator('strong',{hasText:title})});
+  if(await p.locator('dialog[open]').count())return;
   if(await row.isVisible()){const review=row.getByRole('button',{name:/Review result/});await Promise.race([review.waitFor({state:'visible',timeout:60000}),row.waitFor({state:'hidden',timeout:60000})]);if(await row.isVisible()&&await review.isVisible())await review.click();}
 }
 export async function returnDuringAi(p,title) {
   await p.waitForTimeout(60);
   const row=p.getByRole('region',{name:'AI activity',exact:true}).locator('section').filter({has:p.locator('strong',{hasText:title})});
+  // Windows no longer minimise themselves: when the modal window is still open there's nothing to return to.
+  if(await p.locator('dialog[open]').count())return;
   if(await row.isVisible())await row.getByRole('button',{name:/Return to task|Review result/}).click();
 }
 export async function backgroundSongAudit(s,base,out,axe) {
@@ -18,13 +21,13 @@ export async function backgroundSongAudit(s,base,out,axe) {
   await d.getByRole('radio',{name:'Young learners',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
   await d.getByText('Help me write the lyrics',{exact:true}).click();assert.equal(await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled(),false);
   await d.getByLabel('Lyric ideas').fill('Parts of the body song');assert.equal(await d.getByLabel('Song title',{exact:true}).inputValue(),'');
-  await p.evaluate(()=>sessionStorage.setItem('mockSongDelayMs','3000'));await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();await d.waitFor({state:'hidden'});
+  await p.evaluate(()=>sessionStorage.setItem('mockSongDelayMs','3000'));await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();await d.getByRole('button',{name:'Minimise',exact:true}).click();await d.waitFor({state:'hidden'});
   const dock=p.getByRole('region',{name:'AI activity',exact:true});await dock.getByRole('button',{name:/Return to task/}).waitFor();
   assert.equal(await dock.evaluate(el=>getComputedStyle(el).colorScheme),'dark','AI activity must match the dark recording workspace');
   assert.equal(await p.locator('dialog[open]').count(),0,'Generation must release the modal');
   await dock.getByRole('button',{name:/Return to task/}).click();
   await d.getByRole('heading',{name:'Writing your lyrics…',exact:true}).waitFor();
-  await d.getByRole('button',{name:'Continue working',exact:true}).click();
+  await d.getByRole('button',{name:'Minimise',exact:true}).click();
   await d.waitFor({state:'hidden'});
   await p.getByRole('link',{name:'ELT Suite',exact:true}).click();
   assert.equal(await dock.getByRole('link',{name:'Open in a new tab',exact:true}).getAttribute('target'),'_blank');
@@ -35,10 +38,10 @@ export async function backgroundSongAudit(s,base,out,axe) {
   await axe(p,'Non-blocking lyric progress',out);await mkdir('outputs/cohesion',{recursive:true});await p.screenshot({path:'outputs/cohesion/ai-working-corner.jpg'});
   await reviewAi(p,'Classroom song');await d.getByRole('button',{name:'Use these lyrics'}).click();assert.equal(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled(),false,'Teacher review is still required');
   await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await p.setViewportSize({width:390,height:844});await p.evaluate(()=>document.documentElement.dataset.theme='dark');
-  await d.getByRole('button',{name:'Create song',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByRole('button',{name:/Return to task/}).waitFor();
+  await d.getByRole('button',{name:'Create song',exact:true}).click();await d.getByRole('button',{name:'Minimise',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByRole('button',{name:/Return to task/}).waitFor();
   assert.equal(await dock.evaluate(el=>el.getBoundingClientRect().right<=innerWidth),true);await axe(p,'Non-blocking music progress on phone',out);
   await reviewAi(p,'Classroom song');await d.locator('audio').waitFor();await d.locator('audio').evaluate(el=>el.play());await p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await d.locator('audio').evaluate(el=>el.pause());
-  await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).waitFor();await d.getByRole('button',{name:'Continue working',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByText('Ready to review.',{exact:true}).waitFor();await reviewAi(p,'Classroom song');
+  await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).waitFor();await d.getByRole('button',{name:'Minimise',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByText('Ready to review.',{exact:true}).waitFor();await reviewAi(p,'Classroom song');
   await d.getByRole('button',{name:'Add song to timeline'}).click();await p.getByRole('button',{name:/Mute .* · Vocals/}).waitFor();assert.equal(await p.getByLabel('Name',{exact:true}).inputValue(),'My ongoing edit','Reviewing an AI result must preserve edits made during generation');
   await p.setViewportSize({width:1300,height:900});await axe(p,'Background song returned to timeline',out);
 }

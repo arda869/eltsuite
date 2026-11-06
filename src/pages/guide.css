@@ -442,3 +442,8 @@
 .gu-liquid-callout text{font:14px var(--sans);fill:var(--ink)}
 .gu-err{position:relative;display:inline-block;margin-top:12px;padding-right:8px}
 .gu-err .ann-code-tag{top:-11px;right:0;line-height:1.3}
+/* Right and wrong answers in dark mode: a tint of the colour on the dark card, with readable text. */
+:root[data-theme='dark'] :is(.gu-opt, .gu-syl).ok, :root[data-theme='dark'] .gu-ffw.ok { background: color-mix(in srgb, var(--right) 18%, var(--paper)); color: var(--ink); border-color: var(--right); }
+:root[data-theme='dark'] :is(.gu-opt, .gu-syl).no { background: color-mix(in srgb, var(--wrong) 18%, var(--paper)); color: var(--ink); border-color: var(--wrong); }
+:root[data-theme='dark'] .gu-why.ok { color: var(--right); }
+:root[data-theme='dark'] .gu-why.no { color: var(--wrong); }
