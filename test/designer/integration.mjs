@@ -48,7 +48,25 @@ try {
  await db.doc('sharedDocs/second-design').set({owner:'designer-owner',kind:'design'});
  await run('designer-owner',{fileId:'second-design',action:'create',requestId:'character-second-design',prompt:'Pip reads',characters:['pip']});
  assert.equal(generations,5);assert.match(lastBody.prompt,/Image 1 depicts "Pip"/);
+
+ const quote=await run('designer-owner',{action:'quote'});
+ assert.equal(generations,5);
+ assert.ok(quote.limit===null||quote.left>=0);
+ const variant={action:'variant',requestId:'pip-left',characterId:'pip',variant:'left.stand.happy'};
+ await assert.rejects(run('designer-editor',variant));
+ const beforeVariant=generations;
+ const variants=await Promise.all([
+  run('designer-owner',variant),
+  run('designer-owner',{...variant,requestId:'pip-left-other'}),
+ ]);
+ assert.equal(generations,beforeVariant+1,'Concurrent views should make one provider request');
+ assert.ok(variants.some(v=>v.status==='completed'));
+ const cached=await run('designer-owner',{...variant,requestId:'pip-cached'});
+ assert.equal(cached.status,'completed');
+ assert.equal(generations,beforeVariant+1,'Cached views should not regenerate');
+ assert.equal((await db.doc('videoAssets/pip').get()).data().variants['left.stand.happy'],cached.variantId);
+ const countAfterVariant=generations;
  await db.doc('aiAllowances/designer-owner').set({limits:{designerImage:0}});
- await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,5);
+ await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,countAfterVariant);
  console.log('Designer: access isolation, non-billable connection probe, empty prompt, idempotency, recovery, source preservation and allowance checks passed (mock provider).');
 } finally {globalThis.fetch=fetchOriginal;}

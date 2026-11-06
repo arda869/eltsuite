@@ -41,6 +41,10 @@ async function variant(db,uid,auth,d) {
     throw new HttpsError('invalid-argument','Start a new image request.');
    return request.data();
   }
+  if(shared.get('status')==='completed'&&validId(shared.get('variantId'))){
+   const saved=await tx.get(db.doc('videoAssets/'+shared.get('variantId')));
+   if(saved.get('ready')&&saved.get('parent')===d.characterId)return shared.data();
+  }
   if(shared.get('status')==='running'&&Date.now()-shared.get('createdAt')<360000)
    return {status:'running'};
   await chargeFeature(tx,db,context,'designerImage');
