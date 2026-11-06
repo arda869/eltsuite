@@ -183,7 +183,7 @@ export function MediaArchive() {
       const pics = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
       if (!pics.length) return;
       e.preventDefault();
-      void addRef.current(pics.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `Pasted picture ${new Date().toLocaleDateString()}${pics.length > 1 ? ' ' + (i + 1) : ''}.png`, { type: f.type }))));
+      void addRef.current(pics.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `Pasted picture ${new Date().toLocaleDateString('en-GB')}${pics.length > 1 ? ' ' + (i + 1) : ''}.png`, { type: f.type }))));
     };
     document.addEventListener('paste', paste);
     return () => document.removeEventListener('paste', paste);
@@ -1594,7 +1594,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           </>
         )}
         <dt>Added</dt>
-        <dd>{new Date(item.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
+        <dd>{new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
         {item.link && (
           <>
             <dt>Address</dt>

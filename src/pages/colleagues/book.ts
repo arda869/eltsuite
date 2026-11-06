@@ -114,9 +114,9 @@ export function when(t?: number) {
   if (d === 1) return 'Yesterday';
   if (d < 7) return `${d} days ago`;
   const date = new Date(t);
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
 }
-export const since = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '');
+export const since = (t?: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : '');
 
 // What passes between me and one colleague: things shared each way, and classes taught together.
 export type Thing = {

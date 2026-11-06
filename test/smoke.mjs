@@ -1435,7 +1435,7 @@ const J = {
         await see(s.p, '.ttb-grid[data-cols="3"]', 'three calendar columns');
         if (await s.p.locator('.ttb-head-day').count() !== 3) throw new Error('Wrong number of days');
         await s.p.getByRole('button', { name: 'The 3 days after', exact: true }).click();
-        await s.p.getByRole('button', { name: /January 3, open the day/ }).waitFor();
+        await s.p.getByRole('button', { name: /3 January, open the day/ }).waitFor();
         const overflow = await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
         if (overflow) throw new Error('Calendar overflows at ' + width + ' in ' + theme);
         await s.p.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));

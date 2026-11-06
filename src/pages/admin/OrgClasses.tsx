@@ -14,7 +14,7 @@ import { classEnded } from './attention';
 import { saveOrgWorkbook } from './sheets';
 import type { Go, OrgData } from './types';
 
-const fmtDay = (s?: string | null) => (s ? new Date(s + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const fmtDay = (s?: string | null) => (s ? new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
 export function OrgClasses({ d, params, go }: { d: OrgData; params: URLSearchParams; go: Go }) {
   const { org, classes, pics } = d;

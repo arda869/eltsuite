@@ -90,11 +90,11 @@ export const zoneLabel = (tz: string, at = Date.now()) => `${cityOf(tz)} (${offs
 export const sameClock = (a: string, b: string, at = Date.now()) => a === b || offsetAt(at, a) === offsetAt(at, b);
 // A time on another zone's clock: "12:00 PM", with the day when it is not the same as here.
 export function clockIn(t: number, tz: string) {
-  const time = new Date(t).toLocaleTimeString(undefined, { timeZone: tz, hour: 'numeric', minute: '2-digit' });
+  const time = new Date(t).toLocaleTimeString('en-GB', { timeZone: tz, hour: 'numeric', minute: '2-digit' });
   const there = new Date(t).toLocaleDateString('en-CA', { timeZone: tz });
   const here = new Date(t).toLocaleDateString('en-CA');
   if (there === here) return time;
-  return `${new Date(t).toLocaleDateString(undefined, { timeZone: tz, weekday: 'short' })} ${time}`;
+  return `${new Date(t).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short' })} ${time}`;
 }
 
 // Every time zone, by offset, for a drop-down.

@@ -28,7 +28,7 @@ const dayOf = (ms: number) => {
   const y = new Date(Date.now() - 864e5);
   if (d.toDateString() === t.toDateString()) return 'Today';
   if (d.toDateString() === y.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() === t.getFullYear() ? undefined : 'numeric' });
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() === t.getFullYear() ? undefined : 'numeric' });
 };
 const ICON: Record<Ev['kind'], string> = { change: 'settings', people: 'person', classes: 'classes' };
 
@@ -57,7 +57,7 @@ export function EventList({ list }: { list: Ev[] }) {
                   </span>
                   {e.detail && <span className="hq-ev-d">{e.detail}</span>}
                 </span>
-                <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</time>
+                <time dateTime={new Date(e.at).toISOString()}>{new Date(e.at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}</time>
               </li>
             ))}
           </ol>

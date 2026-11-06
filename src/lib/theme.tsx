@@ -15,6 +15,13 @@ export function themePref(): ThemePref {
 export function applyTheme(p = themePref()) {
   const dark = p === 'dark' || (p === 'auto' && mq().matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  // The browser's bar (and a phone's status bar) takes the page's own colour, in the theme chosen here.
+  requestAnimationFrame(() => {
+    const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+    const colour = getComputedStyle(document.body).backgroundColor;
+    if (!colour || colour === 'rgba(0, 0, 0, 0)') return;
+    metas.forEach((m, i) => (i === 0 ? (m.removeAttribute('media'), (m.content = colour)) : m.remove()));
+  });
 }
 export function startTheme() {
   applyTheme();

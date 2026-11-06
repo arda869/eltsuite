@@ -132,5 +132,5 @@ export function ago(at: number) {
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   const d = Math.floor(s / 86400);
-  return d === 1 ? 'yesterday' : d < 7 ? `${d} days ago` : new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return d === 1 ? 'yesterday' : d < 7 ? `${d} days ago` : new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }

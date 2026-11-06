@@ -198,7 +198,7 @@ function WhenChip({ item, open, onToggle }: { item: Item; open: boolean; onToggl
     <button type="button" className={'when-chip' + (open ? ' on' : '') + (late ? ' past' : '')} onClick={onToggle} data-tip="Change the date">
       {CAL}
       <span>
-        {label} {d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+        {label} {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
       </span>
     </button>
   );

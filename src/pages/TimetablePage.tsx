@@ -368,7 +368,7 @@ export function TimetablePage() {
         <section className="ttb-main" aria-label="Timetable">
           <header className="ttb-bar">
             <IconBtn icon="calendar" label={narrow ? 'Days and calendars' : side ? 'Hide the side panel' : 'Show the side panel'} onClick={toggleSide} className="ttb-sidebtn" aria-expanded={narrow ? drawer : side} />
-            <button type="button" className={'btn small-btn ttb-today' + (anchor === today && view !== 'month' ? ' on' : '')} onClick={() => jump(today)} data-tip={`${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} (t)`}>
+            <button type="button" className={'btn small-btn ttb-today' + (anchor === today && view !== 'month' ? ' on' : '')} onClick={() => jump(today)} data-tip={`${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} (t)`}>
               Today
             </button>
             <span className="ttb-arrows">

@@ -36,17 +36,6 @@
           document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
         }
       } catch (e) {}
-      /* No zooming the page, on any screen, like an app (text size is in the Aa menu): no pinch on
-         phones, tablets and trackpads, no Ctrl/Cmd with the wheel or + and -. Drawing boards and
-         other parts that zoom themselves still get these events; only the browser's zoom stops. */
-      try {
-        var stop = function (e) { if (!document.querySelector('.pub')) e.preventDefault(); };
-        document.addEventListener('gesturestart', stop, { passive: false });
-        document.addEventListener('gesturechange', stop, { passive: false });
-        document.addEventListener('touchmove', function (e) { if (document.querySelector('.pub')) return; if ((e.scale !== undefined && e.scale !== 1) || e.touches.length > 1) e.preventDefault(); }, { passive: false });
-        document.addEventListener('wheel', function (e) { if (document.querySelector('.pub')) return; if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
-        document.addEventListener('keydown', function (e) { if (document.querySelector('.pub')) return; if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].indexOf(e.key) >= 0) e.preventDefault(); });
-      } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

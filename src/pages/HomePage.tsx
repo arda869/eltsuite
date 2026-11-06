@@ -29,8 +29,8 @@ const when = (ms: number) => {
   const today = new Date();
   const tomorrow = new Date(Date.now() + 864e5);
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  return same(d, today) ? `Today, ${t}` : same(d, tomorrow) ? `Tomorrow, ${t}` : `${d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, ${t}`;
+  const t = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
+  return same(d, today) ? `Today, ${t}` : same(d, tomorrow) ? `Tomorrow, ${t}` : `${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${t}`;
 };
 const ago = (ms: number) => {
   const m = Math.round((Date.now() - ms) / 60000);
@@ -93,7 +93,7 @@ export function HomePage() {
   const liveNow = active.filter((c) => isLive(live[c.id] ?? null));
   const used = acc?.usedBytes ?? 0;
   const pct = space.bytes ? Math.min(100, used > 0 ? Math.max(1, Math.round((used / space.bytes) * 100)) : 0) : 0;
-  const date = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const make = async (k: DocKind) => {
     if (!user) return;

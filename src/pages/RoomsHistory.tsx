@@ -23,7 +23,7 @@ const KIND: Record<LogDoc['kind'], { label: string; icon: string }> = {
 };
 const learnersIn = (l: LogDoc) => Object.values(l.people ?? {}).filter((p) => p.role === 'learner').length;
 const peopleIn = (l: LogDoc) => Object.keys(l.people ?? {}).length;
-const dayLabel = (t: number, now: number) => (dayKey(t) === dayKey(now) ? 'Today' : dayKey(t) === dayKey(now - 864e5) ? 'Yesterday' : new Date(t).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }));
+const dayLabel = (t: number, now: number) => (dayKey(t) === dayKey(now) ? 'Today' : dayKey(t) === dayKey(now - 864e5) ? 'Yesterday' : new Date(t).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }));
 
 // One line: what the call was, when, how long, who came.
 function lineOf(l: LogDoc, cls: ClassDoc | undefined, now: number) {

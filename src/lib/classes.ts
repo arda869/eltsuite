@@ -178,7 +178,7 @@ export const TRAINING_ADDS = [
 
 // A class's dates, for showing: "1 Sep – 20 Dec 2026", or what there is.
 export function classDates(c: Pick<ClassDoc, 'dates'>): string {
-  const f = (s?: string | null, year = true) => (s ? new Date(s + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) }) : '');
+  const f = (s?: string | null, year = true) => (s ? new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) }) : '');
   const a = c.dates?.start, b = c.dates?.end;
   if (a && b) return `${f(a, a.slice(0, 4) !== b.slice(0, 4))} – ${f(b)}`;
   return a ? `From ${f(a)}` : b ? `Until ${f(b)}` : '';

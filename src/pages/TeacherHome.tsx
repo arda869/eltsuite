@@ -380,10 +380,10 @@ export function TeacherHome() {
 // "Today, 14:30", "Tomorrow, 09:00" or "Thu 30 Oct, 18:00".
 function whenLabel(at: number) {
   const d = new Date(at);
-  const t = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const t = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((day(d) - day(new Date())) / 86400000);
   if (diff === 0) return 'Today, ' + t;
   if (diff === 1) return 'Tomorrow, ' + t;
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t;
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t;
 }

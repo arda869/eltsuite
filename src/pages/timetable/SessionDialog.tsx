@@ -17,7 +17,7 @@ import { useMove } from './Pop';
 
 const wallText = (hm: string) => {
   const [h, m] = hm.split(':').map(Number);
-  return new Date(Date.UTC(2020, 0, 1, h || 0, m || 0)).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+  return new Date(Date.UTC(2020, 0, 1, h || 0, m || 0)).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
 };
 const MINS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
 

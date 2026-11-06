@@ -4401,8 +4401,7 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 
 /* DARK-AUTO START */
 /* Dark versions of the light tints and dark inks above, made from the same hues. */
-:root[data-theme='dark'] /* Dark mode: warm charcoal, :root[data-theme='dark'] the class colour stays; right and wrong stay green and red. */
-:root[data-theme='dark'] { --on-ink: #c0beb9; }
+/* Dark mode: warm charcoal, the class colour stays; right and wrong stay green and red. */
 :root[data-theme='dark'] .signin .intro p { color: #bdbdbd; }
 :root[data-theme='dark'] .doc .ProseMirror blockquote, :root[data-theme='dark'] .task-body blockquote { color: #bdbdbd; }
 :root[data-theme='dark'] .letter { color: #bdbdbd; }
@@ -4422,13 +4421,13 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 :root[data-theme='dark'] .tbox-chrome .dots i { background: #2c2c2b; }
 :root[data-theme='dark'] .tbox.s-notebook { border: 1px solid #4e4e4b; }
 :root[data-theme='dark'] .tbox.s-sticky.t-grey { --tone: #433c14; --tone-ink: #d7cca3; }
-:root[data-theme='dark'] /* Revealed answers */
-.reveal-ans { background: #253227; }
+/* Revealed answers */
+:root[data-theme='dark'] .reveal-ans { background: #253227; }
 :root[data-theme='dark'] .lg-dot { background: #2b2b2b; }
 :root[data-theme='dark'] .doc .ProseMirror table.lines-none th, :root[data-theme='dark'] .doc .ProseMirror table.lines-none td { border: 1px dashed #4c4c4c; }
 :root[data-theme='dark'] .drag-handle:hover, :root[data-theme='dark'] .grip:hover { color: #bdbdbd; }
-:root[data-theme='dark'] /* Random pick looks */
-.pk { --pk-f1: #2b2b2b; --pk-f2: #2c2c2a; --pk-f3: #2d2d2a; --pk-line: #4e4e4b; }
+/* Random pick looks */
+:root[data-theme='dark'] .pk { --pk-f1: #2b2b2b; --pk-f2: #2c2c2a; --pk-f3: #2d2d2a; --pk-line: #4e4e4b; }
 :root[data-theme='dark'] .pk.look-ivory { --pk-d1: #352f22; --pk-d2: #322e25; --pk-edge: #312e25; --pk-f1: #353021; --pk-f2: #332f23; --pk-f3: #322e25; --pk-line: #565043; }
 :root[data-theme='dark'] .pk.look-theme { --pk-trim: #2b2b2b; --pk-f1: #2b2b2b; --pk-peg: #2b2b2b; }
 :root[data-theme='dark'] .pk.look-midnight { --pk-f1: #2b2b2b; --pk-f2: #222935; --pk-f3: #212835; --pk-line: #3f495a; }
@@ -4438,8 +4437,8 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 :root[data-theme='dark'] .rf-face:not(:disabled):hover { color: #bdbdbc; }
 :root[data-theme='dark'] .rec-on { color: #d6a9a4; }
 :root[data-theme='dark'] .doc .ProseMirror th, :root[data-theme='dark'] .doc .ProseMirror td, :root[data-theme='dark'] .task-table th, :root[data-theme='dark'] .task-table td { border-bottom: 1px solid #505049; }
-:root[data-theme='dark'] /* "All lines": a soft grid */
-.task-table.lines-all td + td, :root[data-theme='dark'] .task-table.lines-all th + th, :root[data-theme='dark'] .task-table.lines-all td + th, :root[data-theme='dark'] .task-table.lines-all th + td, :root[data-theme='dark'] .doc .ProseMirror table.lines-all td + td, :root[data-theme='dark'] .doc .ProseMirror table.lines-all th + th { border-left: 1px solid #505049; }
+/* "All lines": a soft grid */
+:root[data-theme='dark'] .task-table.lines-all td + td, :root[data-theme='dark'] .task-table.lines-all th + th, :root[data-theme='dark'] .task-table.lines-all td + th, :root[data-theme='dark'] .task-table.lines-all th + td, :root[data-theme='dark'] .doc .ProseMirror table.lines-all td + td, :root[data-theme='dark'] .doc .ProseMirror table.lines-all th + th { border-left: 1px solid #505049; }
 :root[data-theme='dark'] .doc .ProseMirror table.lines-none th, :root[data-theme='dark'] .doc .ProseMirror table.lines-none td { border-bottom: 1px dashed #4c4c4c; }
 :root[data-theme='dark'] .task-table.striped tr:nth-child(even) td:not([style*="background"]), :root[data-theme='dark'] .doc .ProseMirror table[data-striped] tr:nth-child(even) td:not([data-bg]) { background: #2d2d29; }
 :root[data-theme='dark'] .tbox.s-info.t-grey { --tone: #2e2e28; --tone-line: #505049; --tone-ink: #bebebb; }
@@ -4491,13 +4490,9 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 :root[data-theme='dark'] .gl-bank { border: 1px dashed #524d47; }
 :root[data-theme='dark'] .gl-board { border: 1px solid #564e43; }
 :root[data-theme='dark'] .icon-tool:hover { background: #302d27; }
-:root[data-theme='dark'] /* ---- + Add lesson, :root[data-theme='dark'] homework, :root[data-theme='dark'] exam or practice ---- */
-.add-item { background: #332b24; }
+/* ---- + Add lesson, homework, exam or practice ---- */
+:root[data-theme='dark'] .add-item { background: #332b24; }
 :root[data-theme='dark'] .type-pick:hover { background: #312c26; }
-:root[data-theme='dark'] /* ======================================================================
-   Softer look: light grey page, :root[data-theme='dark'] white cards, :root[data-theme='dark'] class colour accents
-   ====================================================================== */
-:root { --page: #302e26; --card: #2b2b2b; }
 :root[data-theme='dark'] .task-side .seg, :root[data-theme='dark'] .seg { background: #2f2d27; }
 :root[data-theme='dark'] .lh-bar { background: #2f2d27; }
 :root[data-theme='dark'] .example-q .ex-answer { color: #9fb7db; }

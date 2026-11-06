@@ -88,7 +88,7 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
         )}
         {err && <span className="error">{err}</span>}
         <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={onClose}>
-          Done
+          {mine ? 'Done' : 'Later'}
         </button>
       </div>
     </div>

@@ -28,19 +28,22 @@ export function startViewport() {
   });
 }
 
-// No pinch-to-zoom anywhere in the suite (the viewport tag is left zoomable for accessibility checks;
-// touch-action in cohesion.css and these handlers stop it): the page is laid out for the screen, and a
-// half-zoomed page hides the controls. Places with their own zoom (Collab's pages, Design and the
-// whiteboard) listen on their own element, so they still get two-finger gestures; this only stops
-// the browser zooming the whole page. Ctrl/Cmd and + or − (the browser's own zoom) still works,
-// for anyone who needs everything bigger.
+// Browser zoom works everywhere (pinch, Ctrl/Cmd and the wheel, Ctrl/Cmd and + or −): people with low
+// vision rely on it. The exception is a surface that zooms itself (Collab's pages, Design, the
+// whiteboard, anything with touch-action: none): there a pinch or Ctrl+wheel zooms that surface, not
+// the whole page. Double-tap zoom is off through touch-action in cohesion.css, so fast taps still work.
+const zoomsItself = (t: EventTarget | null) => {
+  for (let el = t instanceof Element ? t : null; el && el !== document.documentElement; el = el.parentElement) {
+    if (getComputedStyle(el).touchAction === 'none') return true;
+  }
+  return false;
+};
 export function stopPinchZoom() {
-  const stop = (e: Event) => { if (e.cancelable) e.preventDefault(); };
-  // iPhone and iPad Safari ignore the viewport tag's limits, so stop its gesture events too.
+  const stop = (e: Event) => { if (e.cancelable && zoomsItself(e.target)) e.preventDefault(); };
+  // iPhone and iPad Safari send their own gesture events for a pinch.
   document.addEventListener('gesturestart', stop, { passive: false });
   document.addEventListener('gesturechange', stop, { passive: false });
   document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) stop(e); }, { passive: false });
   // A trackpad pinch on a computer arrives as a wheel event with Ctrl held.
   window.addEventListener('wheel', (e) => { if (e.ctrlKey) stop(e); }, { passive: false });
-  // Double-tap zoom is off through touch-action in cohesion.css, which leaves fast taps working.
 }

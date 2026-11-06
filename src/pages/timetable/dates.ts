@@ -88,7 +88,7 @@ export function step(view: View, anchor: number, dir: number) {
   if (view === 'month') return addMonths(anchor, dir);
   return addDays(anchor, SCHEDULE_DAYS * dir);
 }
-const f = (t: number, o: Intl.DateTimeFormatOptions) => new Date(t).toLocaleDateString(undefined, o);
+const f = (t: number, o: Intl.DateTimeFormatOptions) => new Date(t).toLocaleDateString('en-GB', o);
 // The heading for what is on screen.
 export function spanTitle(view: View, anchor: number, short = false) {
   const { from, to } = span(view, anchor);
@@ -103,7 +103,7 @@ export const shortDay = (t: number) => f(t, { weekday: 'short', day: 'numeric', 
 const tf = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 export const clock = (t: number) => tf.format(new Date(t));
 export const clockRange = (a: number, b: number) => tf.formatRange(new Date(a), new Date(b));
-export const hourLabel = (h: number) => new Date(2020, 0, 1, h).toLocaleTimeString(undefined, { hour: 'numeric' });
+export const hourLabel = (h: number) => new Date(2020, 0, 1, h).toLocaleTimeString('en-GB', { hour: 'numeric' });
 export function lengthText(mins: number) {
   if (mins < 60) return `${mins} min`;
   return mins % 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins / 60} h`;

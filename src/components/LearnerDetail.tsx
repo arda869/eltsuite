@@ -34,9 +34,9 @@ const dayOf = (at: number) => {
   const y = new Date(Date.now() - 86400000);
   if (d.toDateString() === t.toDateString()) return 'Today';
   if (d.toDateString() === y.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 };
-const clock = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const clock = (at: number) => new Date(at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
 
 export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc; learner: Learner; items: Item[]; pin?: string; onBack: () => void }) {
   const uid = learner.authUid;
@@ -85,7 +85,7 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
         title: 'Activity',
         context: `${c.name} · ${learner.displayName}`,
         columns: ['Date', 'Time', 'What', 'Where', 'Score'],
-        rows: (timeline ?? []).map((a) => [new Date(a.at).toLocaleDateString(), clock(a.at), a.title, a.where ?? '', a.pct == null ? '' : `${a.pct}%`]),
+        rows: (timeline ?? []).map((a) => [new Date(a.at).toLocaleDateString('en-GB'), clock(a.at), a.title, a.where ?? '', a.pct == null ? '' : `${a.pct}%`]),
       },
     ],
   });

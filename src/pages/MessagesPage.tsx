@@ -48,14 +48,14 @@ import type { ClassDoc } from '../lib/classes';
 // with @tags, replies and quick reactions.
 
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
-const clock = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const clock = (at: number) => new Date(at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
 const dayOf = (at: number) => {
   const d = new Date(at);
   if (d.toDateString() === new Date().toDateString()) return 'Today';
   if (d.toDateString() === new Date(Date.now() - 86400000).toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 };
-const short = (at: number) => (new Date(at).toDateString() === new Date().toDateString() ? clock(at) : new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
+const short = (at: number) => (new Date(at).toDateString() === new Date().toDateString() ? clock(at) : new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
 const initial = (n: string) => n.trim().slice(0, 1).toUpperCase() || '?';
 
 export function MessagesPage() {
@@ -1159,7 +1159,7 @@ const dayText = (t: number) => {
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return 'today';
   if (d.toDateString() === new Date(Date.now() - 864e5).toDateString()) return 'yesterday';
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
 // Sent (one grey tick), delivered (two grey), read (two in colour).
