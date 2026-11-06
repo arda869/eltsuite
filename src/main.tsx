@@ -39,7 +39,9 @@ const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.Pr
 const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
 
 // Pages load when they are first opened, so the first screen comes up quickly.
-const GameSessionPage = lazy(() => import('./games/GameSession').then(m=>({default:m.GameSessionPage})));
+const QuizPlayPage = lazy(() => import('./quiz/PlayPage').then((m) => ({ default: m.QuizPlayPage })));
+const QuizHostPage = lazy(() => import('./quiz/HostPage').then((m) => ({ default: m.HostPage })));
+const QuizResultsPage = lazy(() => import('./quiz/ResultsPage').then((m) => ({ default: m.ResultsPage })));
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
 const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
@@ -177,13 +179,6 @@ function SignedIn({ children }: { children: JSX.Element }) {
   return user ? children : <PublicError restricted />;
 }
 
-// Keep a scanned game's address in place while the learner or teacher signs in.
-function GameEntry() {
-  const { user, ready } = useAuth();
-  if (!ready) return <Boot />;
-  if (!user) return onLearnSite() ? <LearnerJoin /> : <SignIn />;
-  return <GameSessionPage />;
-}
 
 function LearnerOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
@@ -255,7 +250,11 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
-          <Route path="/game/:id" element={<GameEntry/>} />
+          <Route path="/game/:id" element={<Navigate to="/quiz" replace />} />
+          <Route path="/quiz" element={<QuizPlayPage />} />
+          <Route path="/quiz/:code" element={<QuizPlayPage />} />
+          <Route path="/quiz-host/:runId" element={<TeacherOnly><QuizHostPage /></TeacherOnly>} />
+          <Route path="/quiz-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
           <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/storyboard" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />

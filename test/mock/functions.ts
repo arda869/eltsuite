@@ -5,6 +5,16 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'quizShow') {
+    // The real quiz service, against the mock databases. The signed-in user (if any) is the caller.
+    const [{ quizService }, { adminDb, adminRtdb }, { getAuth }] = await Promise.all([import('../../functions/quiz/service.js'), import('./quiz-admin'), import('./auth')]);
+    const u = getAuth().currentUser;
+    try {
+      return { data: await quizService(adminDb, adminRtdb, u ? { uid: u.uid, token: { email: u.email } } : null, d) };
+    } catch (e) {
+      throw Error((e as Error).message);
+    }
+  }
   if (name === 'checkSubTask') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;

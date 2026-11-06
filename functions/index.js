@@ -1,5 +1,6 @@
 export { deleteAccount, finishAccountDeletion, retryAccountDeletions } from './accounts/index.js';
-export {classroomGames,classroomGameDraft} from './games/index.js';
+export { classroomGameDraft } from './games/index.js';
+export { quizShow } from './quiz/index.js';
 export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
 export { checkSubTask } from './learning/check-subtask.js';

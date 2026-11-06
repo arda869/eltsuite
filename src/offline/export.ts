@@ -8,8 +8,6 @@ import type {SharedDoc} from '../lib/sharedDocs';
 import type {ClassLesson} from '../lib/classFiles';
 import type {JSONContent} from '@tiptap/react';
 import type {ExportTask} from '../lib/textformat';
-import type {GameConfig} from '../games/model';
-import {gameProblems} from '../games/model';
 import {offlineHtml} from './html';
 import {lessonStyleOf,lessonFonts} from '../lib/lessonStyle';
 
@@ -27,7 +25,7 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
  async function node(n:JSONContent,space:string):Promise<JSONContent>{
   if(online.has(n.type||'')){const warning=`${n.type}: open the original lesson online to use this activity.`;warnings.add(warning);return {type:'paragraph',content:[{type:'text',text:warning}]};}
   const out={...n,attrs:n.attrs?{...n.attrs}:undefined};const a=out.attrs;
-  if(n.type==='classroomGame'&&a?.sessionId){const snap=await getDoc(doc(db,'gameSessions',String(a.sessionId)));if(!snap.exists())throw Error('An inline game could not be loaded.');return {type:'offlineGame',attrs:{game:await game(snap.data().game,space)}};}
+  if(n.type==='classroomGame'){warnings.add('Live quizzes are played in class, online.');return {type:'paragraph',content:[{type:'text',text:'A live quiz: open the lesson online to play it.'}]};}
   if(['media','inlineMedia'].includes(n.type||'')&&a?.media){const mediaSpace=String(a.space||space);const m=await loadManifest(mediaSpace,String(a.media));if(!m)throw Error('A recording could not be loaded.');if(m.kind==='link'&&/youtu(?:be|\.be)|vimeo/i.test(m.url||'')){const warning=`${m.title||'Video'} requires internet (${m.url}).`;warnings.add(warning);return {type:'paragraph',content:[{type:'text',text:warning}]};}return {type:'offlineMedia',attrs:{src:await embed(m.kind==='link'?m.url||'':await soundUrl(mediaSpace,String(a.media),m),mediaSpace),video:!!m.video,title:m.title||a.title||'Recording',script:m.script||[],scriptMode:a.scriptMode||'karaoke',inline:n.type==='inlineMedia',mute:a.mute||[]}};}
   // Also resolve image URLs nested inside question packs, diagrams and storyboards.
   async function assets(value:any,key=''):Promise<any>{if(typeof value==='string'&&['src','image','url'].includes(key)&&/^(https?:|blob:|media:)/.test(value))return embed(value,space);if(Array.isArray(value))return Promise.all(value.map(v=>assets(v,key)));if(value&&typeof value==='object'){const entries=await Promise.all(Object.entries(value).map(async([k,v])=>[k,await assets(v,k)]));return Object.fromEntries(entries);}return value;}
@@ -35,15 +33,13 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
   if(n.content)out.content=await Promise.all(n.content.map(c=>node(c,space)));
   return out;
  }
- async function game(value:GameConfig,space:string):Promise<GameConfig>{const errors=gameProblems(value);if(errors.length)throw Error(errors.join(' '));return {...value,rounds:await Promise.all(value.rounds.map(async r=>({...r,...(r.content?{content:await node(r.content,space)}:{})})))};}
  let title='',payload:any,appearance:Record<string,unknown>={};
- if(source.doc?.kind==='game'){
-  title=source.doc.title;const snap=await getDoc(doc(db,'sharedDocs',source.doc.id,'game','main'));if(!snap.exists())throw Error('Save the game before downloading it.');payload={game:await game(snap.data() as GameConfig,'doc:'+source.doc.id)};
- }else{
+ if(source.doc?.kind==='game')throw Error('Live quizzes are played online, so they can’t be downloaded.');
+ {
   let tasks:ExportTask[],space:string;
   if(source.lesson){const result=await gatherLesson(source.lesson.classId,source.lesson.itemId);title=result.title;tasks=result.tasks;space=source.lesson.classId;const cls=(await getDoc(doc(db,'classes',space))).data();appearance={lessonStyle:lessonStyleOf(cls),themeColor:cls?.themeColor};}
   else if(source.doc?.kind==='lesson'){title=source.doc.title;space='doc:'+source.doc.id;tasks=(await getDocs(query(collection(db,'sharedDocs',source.doc.id,'tasks'),orderBy('order')))).docs.map(d=>d.data() as ExportTask);}
-  else throw Error('Choose one game or lesson.');
+  else throw Error('Choose one lesson.');
   payload={tasks:await Promise.all(tasks.filter(t=>!t.hidden).map(async t=>({title:t.title,kind:t.kind,instructions:t.instructions||'',layout:t.layout,content:await node(t.content||{type:'doc'},space),...(t.instrDoc?{instrDoc:await node(t.instrDoc,space)}:{})})))};
  }
  if(auth.currentUser){const profile=(await getDoc(doc(db,'users',auth.currentUser.uid))).data();appearance={...appearance,textScale:TEXT_SCALE[(profile?.textSize||'M') as TextSize]||1,reading:profile?.reading||{}};}

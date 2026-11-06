@@ -1749,13 +1749,13 @@ export function Live() {
 function Games() {
   return (
     <>
-      <p>Turn any task with marked questions into a <b>team quiz</b>: a timer for each question, points for speed and accuracy, a leaderboard after each one and a podium at the end. Or add a card pile, a spinning wheel or boxes to open for speaking practice.</p>
+      <p>Play any task with marked questions as a <b>live quiz</b>: the question goes on the big screen, learners answer on their phones against the clock, and they score more for being quick. A leaderboard follows each question and a podium ends the game. In a lesson, choose Activities, then Live quiz. Every answer is kept with the class. To play with people outside a class, make a quiz in Live quiz and share its code: they join with a nickname, no account needed. Or add a card pile, a spinning wheel or boxes to open for speaking practice.</p>
       <div className="gu-grid2">
         <Try title="Spin the wheel for a speaking topic">
           <Wheel />
         </Try>
         <figure className="gu-fig">
-          <svg viewBox="0 0 320 220" role="img" aria-label="A team quiz podium: Team Blue first with 1250 points, Team Orange second, Team Green third">
+          <svg viewBox="0 0 320 220" role="img" aria-label="A quiz podium: Blue first with 1250 points, Orange second, Green third">
             {[
               { x: 120, h: 120, n: 'Blue', p: 1250, c: '#3667a6', r: '1' },
               { x: 30, h: 90, n: 'Orange', p: 980, c: '#c8764a', r: '2' },

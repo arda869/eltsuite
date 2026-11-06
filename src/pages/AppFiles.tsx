@@ -26,7 +26,7 @@ type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
-  games: { name: 'Games', kinds: ['game'], color: '#996525', empty: 'Your saved games, ready to edit and play in class.' },
+  games: { name: 'Live quizzes', kinds: ['game'], color: '#5b3cc4', empty: 'No quizzes yet. Make a live quiz, then host it for anyone with a code or add it to a class.' },
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
@@ -120,7 +120,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     }
   };
   const news: { label: string; run: () => void }[] =
-    app === 'games' ? [{ label: 'New game show', run: () => void make('game') }] : app === 'collab'
+    app === 'games' ? [{ label: 'New live quiz', run: () => void make('game') }] : app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
           { label: 'New slides', run: () => void make('slides') },
