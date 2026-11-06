@@ -146,12 +146,12 @@ function block(b: Block): string {
       return `${b.prompt ? `<p>${esc(b.prompt)}</p>` : ''}<div class="draw-box"></div>`;
     case 'media': {
       // A recording used again: its number at the start of the exercise is enough.
-      if (MEDIA_SEEN.has(b.id)) return '';
+      if (!b.game && MEDIA_SEEN.has(b.id)) return '';
       MEDIA_SEEN.add(b.id);
       const info = SOUNDS[b.id];
       const no = MEDIA_NO[b.id] ? `${b.video ? 'Video' : 'Recording'} ${MEDIA_NO[b.id]} · ` : '';
-      const kind = no + (b.video ? 'Scan to watch' : 'Scan to listen');
-      if (QR_ON && info?.svg) return `<div class="qr-block"><span class="qr-code">${info.svg}</span><span class="qr-text"><span class="qr-kind">${kind}</span><strong>${esc(b.title)}</strong><span class="qr-url">${esc(info.url.replace(/^https?:\/\//, '').split('/')[0])}</span></span></div>`;
+      const kind = b.game ? 'Scan to play' : no + (b.video ? 'Scan to watch' : 'Scan to listen');
+      if ((b.game || QR_ON) && info?.svg) return `<div class="qr-block"><span class="qr-code">${info.svg}</span><span class="qr-text"><span class="qr-kind">${kind}</span><strong>${esc(b.title)}</strong>${b.game ? '<span>Sign in with your class account.</span>' : ''}<span class="qr-url">${esc(info.url.replace(/^https?:\/\//, '').split('/')[0])}</span></span></div>`;
       return `<p class="qr-plain"><span class="qr-kind">${no || (b.video ? 'Video' : 'Listening')}</span> <strong>${esc(b.title)}</strong></p>`;
     }
     case 'dict':

@@ -84,12 +84,19 @@ export async function sheetSounds(classId: string, items: WsItem[], accentHex: s
   const out: Record<string, MediaInfo> = {};
   await Promise.all(
     list.map(async ({ id, mode }) => {
+      if (mode === 'game' && id.startsWith('game:')) {
+        const url = `${learnOrigin()}/game/${encodeURIComponent(id.slice(5))}`;
+        const look = { margin: 4, errorCorrectionLevel: 'M' as const, color: { dark: '#000000', light: '#ffffff' } };
+        const [svg,png] = await Promise.all([QR.toString(url,{...look,type:'svg'}),QR.toDataURL(url,{...look,width:400})]);
+        out[id] = {url,svg,png,title:'Classroom game',video:false,script:[]};
+        return;
+      }
       const m = await loadManifest(classId, id).catch(() => null);
       if (!m) return;
       const url = `${learnOrigin()}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
       const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };
       const [svg, png] = await Promise.all([QR.toString(url, { ...look, type: 'svg' }), QR.toDataURL(url, { ...look, margin: 1, width: 320 })]);
-      out[id] = { url, svg, png, title: m.title || 'Listening', video: !!m.video, script: (m.script ?? []).map((l) => l.text.trim()).filter(Boolean) };
+      out[id] = { url, svg, png, title: m.title || 'Listening', video: !!m.video, script: (m.script ?? []).filter(l => l.text.trim()).map(l => l.who?.trim() ? `${l.who.trim()}: ${l.text.trim()}` : l.text.trim()) };
     }),
   );
   return out;
