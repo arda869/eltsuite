@@ -8461,3 +8461,13 @@ p:has(> .node-picture ~ .node-picture),p:has(> .pic-rendered ~ .pic-rendered){di
 p:has(> .node-picture ~ .node-picture) > .node-picture{display:flex;min-width:0;}
 p:has(> .node-picture ~ .node-picture) .pic-node,p:has(> .pic-rendered ~ .pic-rendered) > .pic-rendered{display:flex;flex-direction:column;min-width:0;}
 p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic-rendered) .pic-caption{margin-top:auto;text-align:center;}
+
+/* Keep the optional library action from reserving an empty row above the title. */
+.frame-head > .lib-save { position:absolute; top:10px; right:16px; }
+.frame-head:has(> .lib-save) > .task-title { padding-right:170px; }
+.frame-head:has(> .lib-save):has(> .done-edit) > .task-title { padding-right:280px; }
+.frame-head:has(> .done-edit) > .lib-save { right:130px; }
+@media(max-width:640px){
+  .frame-head > .lib-save { top:8px; right:12px; }
+  .frame-head:has(> .lib-save) > .task-title { padding-right:155px; }
+}
