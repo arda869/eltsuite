@@ -34,7 +34,7 @@ const TITLES: Record<Mode, string> = {
   create: 'Make your teacher account',
   reset: 'Reset your password',
   link: 'Sign in with an email link',
-  code: 'I Have an Invitation',
+  code: 'I have an invitation',
 };
 
 // The link in an invitation email: /?code=<the code> opens the form with the code filled in.
@@ -45,12 +45,20 @@ function codeInLink() {
     return '';
   }
 }
+// /signin?invite opens the form for typing in a code (from the public homepage).
+function codeWanted() {
+  try {
+    return new URLSearchParams(window.location.search).has('invite');
+  } catch {
+    return false;
+  }
+}
 
 // intro: what shows beside the form, for example an organisation's invitation; start: the form filled in.
 export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mode?: Mode; name?: string; email?: string } } = {}) {
   const { notInvited } = useAuth();
   const linked = start ? '' : codeInLink();
-  const [mode, setMode] = useState<Mode>(start?.mode ?? (linked ? 'code' : 'signin'));
+  const [mode, setMode] = useState<Mode>(start?.mode ?? (linked || (!start && codeWanted()) ? 'code' : 'signin'));
   const [name, setName] = useState(start?.name ?? '');
   const [email, setEmail] = useState(start?.email ?? '');
   const [typed, setTyped] = useState(linked);
@@ -158,7 +166,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
         {notInvited && !error && (
           <span className="error" role="alert">
-            {notInvited} couldn’t finish account setup without a valid invitation. ELT Suite is invitation-only for now. If you have a code, choose “I Have an Invitation”.
+            {notInvited} couldn’t finish account setup without a valid invitation. ELT Suite is invitation-only for now. If you have a code, choose “I have an invitation”.
           </span>
         )}
         {mode === 'create' && code && (
@@ -232,7 +240,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {notice && <span className="notice" role="status">{notice}</span>}
 
         <button type="submit" className="btn primary tall block" disabled={busy}>
-          {busy ? 'One moment…' : mode === 'signin' ? 'Sign In' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
+          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
         {mode === 'signin' && (
@@ -245,7 +253,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <div className="invite-cta">
             <span>New to ELT Suite?</span>
             <button type="button" className="btn block tall invite-btn" onClick={() => go('code')}>
-              I Have an Invitation
+              I have an invitation
             </button>
           </div>
         )}
@@ -273,6 +281,6 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </span>
       </form>
   );
-  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Return to homepage</Link></div>{form}</main></PublicLayout>;
+  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is open to invited teachers for now. No invitation yet? <Link to="/#invite">Ask for one</Link>.</p><Link className="pub-text-link" to="/">Back to the homepage</Link></div>{form}</main></PublicLayout>;
   return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }

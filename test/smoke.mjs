@@ -967,13 +967,15 @@ const J = {
     return s;
   },
 
-  'Public homepage: showcase navigation, screenshot previews and pricing': async (b) => {
+  'Public homepage: showcases, live demonstration, invitation requests and pricing': async (b) => {
     const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
     const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
+    const HERO='Plan a lesson, teach it live and see every learner’s answer.';
     await p.goto(BASE+'/');
-    await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
-    if(await p.getByRole('link',{name:/Ask for an invitation|Request an invitation|Join ELT Suite|Buy now/}).count())throw Error('Unapproved public acquisition action');
+    await p.getByRole('heading',{name:HERO}).waitFor();
+    if(await p.getByRole('link',{name:/Buy now|Subscribe|Start free trial/}).count())throw Error('Unapproved public purchase action');
+    await p.getByText('ELT Suite is for ELT professionals',{exact:false}).first().waitFor();
     await axe(p,'Public homepage desktop',A11Y_FOUND);
     if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
     if(await p.locator('.pub-home a[href^="/explore"]').count())throw Error('The homepage links to the demo');
@@ -981,19 +983,37 @@ const J = {
       await p.goto(BASE+legacy);await p.waitForURL(BASE+'/#plan');
       await p.locator('#plan').getByRole('heading',{name:'From first idea to finished lesson.'}).waitFor();
     }
-    for(const section of ['plan','teach','understand','audio','language','collaborate']){
+    for(const section of ['plan','understand','audio','language']){
       const shot=p.locator('#'+section+' .pub-frame').first();
       await shot.click();const dialog=p.getByRole('dialog');await dialog.waitFor();
       await dialog.locator('img').evaluate(img=>img.decode());await dialog.getByRole('button',{name:'Close'}).click();
     }
     await p.locator('.pub-lang-sentence').scrollIntoViewIfNeeded();
     await p.getByText('/ɡʊd ˈtiːtʃɪŋ ɪz wɜːθ ˈʃeərɪŋ/',{exact:true}).waitFor();
-    for(const preview of await p.locator('.pub-float').all()){
-      await preview.getByRole('button').focus();
-      await preview.getByRole('link').click();
-      if(!['#audio','#understand','#teach'].includes(new URL(p.url()).hash))throw Error('Preview did not reach its showcase');
-    }
-    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Plans & Pricing',exact:true}).click();
+    // The live demonstration: answers arrive, and it can be paused.
+    const live=p.locator('#teach');await live.scrollIntoViewIfNeeded();
+    await live.locator('.pub-live-who li.right').first().waitFor({timeout:8000});
+    await live.getByRole('button',{name:'Pause',exact:true}).click();
+    await live.getByRole('button',{name:'Play',exact:true}).waitFor();
+    // One lesson to the next: the tabs.
+    await p.getByRole('tab',{name:/Reflect/}).click();
+    await p.getByRole('tabpanel').getByText('Think back on the lesson in Collab',{exact:false}).waitFor();
+    // Asking for an invitation.
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Ask for an invitation',exact:true}).click();
+    const form=p.locator('#invite form');await form.waitFor();
+    await form.getByRole('button',{name:'Ask for an invitation'}).click();
+    await form.getByText('Add your name.').waitFor();
+    await form.getByLabel('Your name').fill('Sam Reed');await form.getByLabel('Email').fill('sam@');
+    await form.getByRole('button',{name:'Ask for an invitation'}).click();
+    await form.getByText('Check your email address.').waitFor();
+    await form.getByLabel('Email').fill('sam@example.com');
+    await form.getByLabel(/Who you teach/).selectOption('Adults');
+    await form.getByLabel(/Where you teach/).fill('A school in Porto');
+    await form.getByRole('button',{name:'Ask for an invitation'}).click();
+    await p.getByRole('status').getByText('Thanks, Sam.').waitFor();
+    await p.getByText('We’ll email sam@example.com when there’s a place for you.').waitFor();
+    await axe(p,'Public homepage invitation sent',A11Y_FOUND);
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Plans and pricing',exact:true}).click();
     await p.getByRole('heading',{name:'Find the right space for your teaching.'}).waitFor();
     await axe(p,'Proposed pricing',A11Y_FOUND);
     for(const [path,heading] of [['/about','Created out of a love for English language teaching.'],['/contact','We’d like to hear from you.'],['/privacy','Privacy policy'],['/terms','Terms of use'],['/unknown-page','We couldn’t find that page.'],['/classes','This area is for ELT Suite members.']]){
@@ -1002,30 +1022,27 @@ const J = {
     await p.setViewportSize({width:390,height:844});
     await p.getByRole('button',{name:'Menu +',exact:true}).click();
     const nav=p.getByRole('navigation',{name:'Main navigation'});
-    await nav.getByRole('link',{name:'Plans & Pricing',exact:true}).waitFor();
+    await nav.getByRole('link',{name:'Plans and pricing',exact:true}).waitFor();
     if(await nav.getByRole('link',{name:'Explore',exact:true}).count())throw Error('The menu still links to the demo');
-    await nav.getByRole('link',{name:'The Platform'}).click();
+    await nav.getByRole('link',{name:'What it does'}).click();
     await p.waitForURL(BASE+'/#plan');
     await axe(p,'Public homepage mobile',A11Y_FOUND);
     if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public homepage overflows on mobile');
     await p.getByRole('button',{name:'Menu +',exact:true}).click();
-    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign In'}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in',exact:true}).click();
     await p.getByLabel('Email',{exact:true}).waitFor();
     await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
     await p.reload();
     await p.getByLabel('Email',{exact:true}).waitFor();
     await axe(p,'Public sign-in dark',A11Y_FOUND);
-    await p.goto(BASE+'/');await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
+    await p.goto(BASE+'/signin?invite');await p.getByRole('heading',{name:'I have an invitation'}).waitFor();
+    await p.goto(BASE+'/');await p.getByRole('heading',{name:HERO}).waitFor();
     await axe(p,'Public homepage dark',A11Y_FOUND);
     const mobile=await b.newContext({viewport:{width:320,height:740},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
     try{
       const phone=await mobile.newPage();await phone.goto(BASE+'/');
-      await phone.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
-      for(const card of await phone.locator('.pub-float-card').all()){
-        await card.tap();if(await card.getAttribute('aria-expanded')!=='true')throw Error('Touch preview failed to expand');
-        await card.tap();if(await card.getAttribute('aria-expanded')!=='false')throw Error('Touch preview failed to collapse');
-      }
-      if(await phone.locator('.pub-float-card').count()!==4)throw Error('Missing hero preview');
+      await phone.getByRole('heading',{name:HERO}).waitFor();
+      if(await phone.locator('#teach .pub-live-who li.right').count()<1)throw Error('Reduced motion should show the finished demonstration');
       if(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Small phone overflows');
       if(process.env.PUBLIC_MOBILE_SCREENSHOT)await phone.screenshot({path:process.env.PUBLIC_MOBILE_SCREENSHOT});
     }finally{await mobile.close();}
@@ -1058,7 +1075,7 @@ const J = {
     await see(p, '.pub-hero .pub-stage-main img', 'lesson editor screenshot');
     await p.reload();
     await see(p, '.pub-hero', 'public homepage after reload');
-    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign In'}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in',exact:true}).click();
     await see(p, '#teacher-sign-in', 'separate sign-in page');
     if (new URL(p.url()).pathname !== '/signin') throw Error('Sign-in route incorrect');
     if (await count(p, '.app-err')) throw Error('Sign-in rendered an error');
@@ -1073,7 +1090,7 @@ const J = {
       await p.getByRole('status').filter({hasText:flow[2]}).waitFor();
       await p.getByRole('button',{name:'Back to sign-in',exact:true}).click();
     }
-    await p.getByRole('button',{name:'I Have an Invitation',exact:true}).click();
+    await p.getByRole('button',{name:'I have an invitation',exact:true}).click();
     await p.getByPlaceholder('ABCD-EF23').fill('BAD');
     await p.getByRole('button',{name:'Continue',exact:true}).click();
     await p.getByRole('alert').filter({hasText:'eight-character code'}).waitFor();

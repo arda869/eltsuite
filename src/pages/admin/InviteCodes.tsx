@@ -6,6 +6,7 @@ import { Select } from '../../components/Select';
 import { limitMessage, orgHasRoom, type Org } from '../../lib/admin';
 import { codeLink, codeState, deleteCode, makeCode, resendCode, setCodeOff, useCodes, type InviteCode } from '../../lib/codes';
 import { Empty, PageHead, Panel, ago, dateStr, useNote } from './ui';
+import { deleteInvitationRequest, inviteFromRequest, useInvitationRequests, type InvitationRequest } from '../../lib/invitationRequests';
 
 // Invitation codes: ELT Suite is open by invitation for now. A new teacher types a code in on the
 // sign-in page ("I have an invitation") to make their account. Super admins make codes for anyone
@@ -64,6 +65,48 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
     await deleteCode(c.code).then(() => say(`${c.code} is deleted.`), () => say('That didn’t work. Try again.'));
   };
   const toggle = (c: InviteCode) => void setCodeOff(c.code, !c.off).then(() => say(c.off ? `${c.code} is on again.` : `${c.code} is turned off.`), () => say('That didn’t work. Try again.'));
+  // Teachers who asked for an invitation on the public homepage (super admins only).
+  const requests = useInvitationRequests(superView);
+  const [sending, setSending] = useState('');
+  const waiting = requests?.filter((r) => !r.invited) ?? [];
+  const invited = requests?.filter((r) => r.invited) ?? [];
+  const invite = async (r: InvitationRequest) => {
+    setSending(r.id);
+    try {
+      const code = await inviteFromRequest(r, me);
+      say(`Code ${code} made for ${r.name}. We’ll email it to ${r.email} within 15 minutes.`);
+    } catch {
+      say('That didn’t work. Try again.');
+    }
+    setSending('');
+  };
+  const dismiss = async (r: InvitationRequest) => {
+    if (!(await ask(`Delete the request from ${r.name}? They won’t hear from us about it.`, { ok: 'Delete', danger: true }))) return;
+    await deleteInvitationRequest(r.id).then(() => say('Request deleted.'), () => say('That didn’t work. Try again.'));
+  };
+  const requestRow = (r: InvitationRequest) => (
+    <li key={r.id} className={'ic-row' + (r.invited ? ' closed' : '')}>
+      <span className="ic-main">
+        <b>{r.name}</b>
+        <span className={'hq-tag' + (r.invited ? ' quiet' : '')}>{r.invited ? 'Invited' : 'Waiting'}</span>
+      </span>
+      <span className="ic-about">
+        <span>{[r.email, r.place, r.teaches].filter(Boolean).join(' · ')}</span>
+        {r.note && <span className="ic-used">“{r.note}”</span>}
+        <span>{`asked ${ago(r.at)}`}{r.invited ? ` · code ${r.invited} sent${r.invitedBy ? ` by ${r.invitedBy}` : ''}${r.invitedAt ? `, ${ago(r.invitedAt)}` : ''}` : ''}</span>
+      </span>
+      <span className="hq-reg-acts">
+        {!r.invited && (
+          <button type="button" className="btn primary small" disabled={!!sending} onClick={() => void invite(r)}>
+            {sending === r.id ? 'Sending…' : 'Send invitation'}
+          </button>
+        )}
+        <button type="button" className="btn small" onClick={() => void dismiss(r)}>
+          Delete
+        </button>
+      </span>
+    </li>
+  );
   const open = list?.filter((c) => codeState(c) === 'open') ?? [];
   const closed = list?.filter((c) => codeState(c) !== 'open') ?? [];
   const row = (c: InviteCode) => {
@@ -125,6 +168,21 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
             : `New teachers type one of these codes in on the sign-in page (“I have an invitation”) to make their account and join ${org!.name}.`
         }
       />
+      {superView && (
+        <Panel title={`Invitation requests${waiting.length ? ` (${waiting.length})` : ''}`}>
+          {requests === null ? null : !waiting.length ? (
+            <Empty title="No requests waiting" text="When a teacher asks for an invitation on the homepage, they appear here. Send an invitation and we email them a code for their address." />
+          ) : (
+            <ul className="hq-supers ic-list">{waiting.map(requestRow)}</ul>
+          )}
+          {invited.length > 0 && (
+            <details className="ic-done">
+              <summary>Already invited ({invited.length})</summary>
+              <ul className="hq-supers ic-list">{invited.map(requestRow)}</ul>
+            </details>
+          )}
+        </Panel>
+      )}
       <Panel title="Make a code">
         <div className="ic-form">
           {superView && (

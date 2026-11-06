@@ -94,7 +94,7 @@ export function PricingPage() {
           </div>
           <div className="pub-faq">{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
           <div className="pub-actions">
-            <Link className="pub-button" to="/#plan">See the Platform</Link>
+            <Link className="pub-button" to="/#invite">Ask for an invitation</Link>
             <Link className="pub-secondary" to="/contact">Ask us a question</Link>
           </div>
         </section>

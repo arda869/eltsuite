@@ -8484,3 +8484,7 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
   .frame-head > .lib-save { top:8px; right:12px; }
   .frame-head:has(> .lib-save) > .task-title { padding-right:155px; }
 }
+
+/* Super Admin → Invitation codes: teachers already invited from a request */
+.ic-done { margin-top: 10px; }
+.ic-done summary { padding: 6px 0; color: var(--muted); font-weight: 600; cursor: pointer; }

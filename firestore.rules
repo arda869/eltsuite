@@ -899,6 +899,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.email == request.auth.token.get('email', '').lower()
         && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.status == 'pending';
     }
+    // Invitation requests (invitationRequests/{id}): a teacher asks for an invitation on the public
+    // homepage, before they have an account, so anyone can add one, but only in this shape. Only a
+    // super admin reads them, marks one as invited (with the code made for it) or deletes it.
+    function shortText(d, k, n) { return d.get(k, '') is string && d.get(k, '').size() <= n; }
+    match /invitationRequests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'place', 'teaches', 'note', 'at'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+        && request.resource.data.email is string && request.resource.data.email.size() <= 120
+        && request.resource.data.email.matches('^[^ @/]+@[^ @/]+[.][^ @/]+$')
+        && shortText(request.resource.data, 'place', 120) && shortText(request.resource.data, 'teaches', 60)
+        && shortText(request.resource.data, 'note', 600)
+        && request.resource.data.at == request.time;
+      allow read, delete: if isOwner();
+      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invited', 'invitedAt', 'invitedBy']);
+    }
     // Invitation codes (inviteCodes/{code}): made by a super admin, or by an organisation's admins for
     // their organisation. A new teacher types one in to make their account. A code can be used a set
     // number of times, until a date, and only by one email if it names one.
