@@ -103,7 +103,8 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
     if (s <= 5 && s >= 1) playSfx('tick');
   }, [left, open]);
 
-  // Close the question when time is up or everyone has answered.
+  // Close the question when time is up or everyone has answered. The timer isn't cleared when the
+  // clock ticks on, or the question would never close; the ref makes sure it closes once.
   const closing = useRef(-1);
   useEffect(() => {
     if (phase !== 'question' || counting || closing.current === live.slide) return;
@@ -111,8 +112,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
     if (left > 0 && !everyone) return;
     closing.current = live.slide;
     if (left <= 0) playSfx('timeup');
-    const t = setTimeout(() => void act('close'), everyone ? 700 : 300);
-    return () => clearTimeout(t);
+    setTimeout(() => void act('close'), everyone ? 700 : 300);
   }, [phase, counting, left, answered, count, live.slide, act]);
 
   // Joins pop in the lobby.

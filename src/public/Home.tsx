@@ -27,18 +27,8 @@ function Mounted({ children, label }: { children: ReactNode; label: string }) {
 
 // Part of a screen, cut to the region given as fractions of the whole picture.
 type Region = { x: number; y: number; w: number; h: number };
-// A close-up of part of a screenshot. Where the close-up cuts into the screen, that side fades out, so
-// it reads as a deliberate detail rather than a picture cropped by mistake. Real screen edges stay sharp.
-function cropFade(at: Region): CSSProperties {
-  const sides: [string, boolean][] = [['to right', at.x > 0.01], ['to left', at.x + at.w < 0.99], ['to bottom', at.y > 0.01], ['to top', at.y + at.h < 0.99]];
-  const masks = sides.filter(([, cut]) => cut).map(([dir]) => `linear-gradient(${dir}, transparent 0, #000 9%)`);
-  if (!masks.length) return {};
-  const image = masks.join(', ');
-  return { WebkitMaskImage: image, maskImage: image, WebkitMaskComposite: masks.map(() => 'source-in').join(', '), maskComposite: 'intersect' } as CSSProperties;
-}
-
 function Crop({ name, at, alt, width = 300, eager = false }: { name: string; at: Region; alt: string; width?: number; eager?: boolean }) {
-  const style = { aspectRatio: `${at.w * W} / ${at.h * H}`, '--cx': at.x, '--cy': at.y, '--cw': at.w, '--ch': at.h, ...cropFade(at) } as CSSProperties;
+  const style = { aspectRatio: `${at.w * W} / ${at.h * H}`, '--cx': at.x, '--cy': at.y, '--cw': at.w, '--ch': at.h } as CSSProperties;
   return (
     <span className="pub-crop" style={style}>
       <img src={src(name)} srcSet={srcSet(name)} sizes={`${Math.round(width / at.w)}px`} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
@@ -62,7 +52,7 @@ function Shot({ name, alt, caption, eager, at, className = '' }: { name: string;
       {caption && <figcaption>{caption}</figcaption>}
       <dialog ref={dlg} className="pub-lightbox" aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
         <img src={src(name)} width={W} height={H} alt={alt} loading="lazy" />
-        <form method="dialog"><button className="pub-lightbox-close" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button></form>
+        <form method="dialog"><button className="pub-secondary">Close</button></form>
       </dialog>
     </figure>
   );
@@ -92,7 +82,7 @@ function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string
       <figcaption>{caption}</figcaption>
       <dialog ref={dlg} className={'pub-lightbox pub-lightbox-' + kind} aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
         <img src={src(name)} width={w} height={h} alt={alt} loading="lazy" />
-        <form method="dialog"><button className="pub-lightbox-close" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button></form>
+        <form method="dialog"><button className="pub-secondary">Close</button></form>
       </dialog>
     </figure>
   );
@@ -218,6 +208,10 @@ function Care() {
         <p>We built it to take some of the weight off you, so you have more time and energy for your learners. Every part of it is shaped by what teachers tell us they need.</p>
         <p className="pub-care-ask">We’re listening. <Link to="/contact">Tell us what would help your teaching</Link>, and we’ll keep building.</p>
       </div>
+      <aside className="pub-care-note" aria-label="A note from us">
+        <p>“Good teaching begins with teachers. Technology should support what you do, not get in the way of it.”</p>
+        <span>The ELT Suite team</span>
+      </aside>
     </section>
   );
 }
@@ -333,7 +327,7 @@ function Live() {
 
 // ------------------------------------------------------------------ showcases
 
-type Detail = { name: string; alt: string; at: Region; caption?: string };
+type Detail = { name: string; alt: string; at: Region; caption: string };
 type Showcase = { id: string; kicker: string; title: string; body: string[]; points: string[]; status?: string; main: { name: string; alt: string }; details?: Detail[]; extra?: ReactNode };
 const SHOWCASES: Showcase[] = [
   {
@@ -355,7 +349,7 @@ const SHOWCASES: Showcase[] = [
     body: ['Record and edit audio, or make a dialogue with different voices from a script you write.', 'You can also make a short song for a lesson, at your learners’ level.'],
     points: ['A recording editor with the script and timings.', 'Dialogues with two or more voices.', 'Classroom songs for young learners, teenagers and adults.'],
     main: { name: 'sound', alt: 'The recording editor: a dialogue between Flo and Dan as a waveform, their lines on separate script tracks and the script with timings.' },
-    details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.15, y: 0.02, w: 0.7, h: 0.5 } }],
+    details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.15, y: 0.02, w: 0.7, h: 0.5 }, caption: 'Making a classroom song' }],
   },
   {
     id: 'language', kicker: 'Language', title: 'Look closely at language.',
