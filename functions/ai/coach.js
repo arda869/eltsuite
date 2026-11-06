@@ -1,7 +1,7 @@
 import {findTeacherLessons} from './coach-lessons.js';
 import {coachHistoryKey} from './coach-history.js';
 import {loadStudioForms} from './coach-forms.js';
-import { loadLessonSource } from './coach-lesson-context.js';
+import { loadLessonSource, lessonSourceForPrompt } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { dailyGlobalUsage } from './allowance.js';
@@ -42,8 +42,9 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   if(input.formContext&&!permissions.forms)throw new HttpsError('failed-precondition','Collab form context is switched off. Enable it in Coach settings or remove the selected form.');
   if(permissions.forms){const {forms,skipped}=await loadStudioForms(db,uid,input.prompt,input.formContext);if(skipped){context.formScope=skipped+' Collab documents could not be opened. Their forms have not been read.';basis.push('Some Collab documents were unavailable; their forms were not read.');}if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}}
   if(input.lessonContext&&!permissions.lessons)throw new HttpsError('failed-precondition','Lesson context is switched off. Enable it in Coach settings or remove the selected lesson.');
-  if(input.lessonContext){const selected=await loadLessonSource(db,uid,input.lessonContext,{games:permissions.games});context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
-  if(permissions.lessons){const found=await findTeacherLessons(db,uid,input.prompt,input.lessonContext,{games:permissions.games});context.lessonSearchScope=found.scope;if(found.lessons.length){context.relatedLessons=found.lessons.map(l=>({className:l.className,...l.context}));sources.push(...found.lessons.flatMap(l=>l.sources));basis.push(...found.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(found.scope);}
+  const lessonForQuestion=lessonSourceForPrompt(input.lessonContext,input.prompt);
+  if(lessonForQuestion){const selected=await loadLessonSource(db,uid,lessonForQuestion,{games:permissions.games});context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
+  if(permissions.lessons){const found=await findTeacherLessons(db,uid,input.prompt,lessonForQuestion,{games:permissions.games});context.lessonSearchScope=found.scope;if(found.lessons.length){context.relatedLessons=found.lessons.map(l=>({className:l.className,...l.context}));sources.push(...found.lessons.flatMap(l=>l.sources));basis.push(...found.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(found.scope);}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
     basis.push('Your professional profile');
@@ -106,7 +107,7 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   });
   if (existing) return existing;
   try {
-    const generated = await generateReply({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied activity, not to generate a lesson plan or assess the teacher. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
+    const generated = await generateReply({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied lesson or activity, without generating a lesson plan or assessing the teacher. For questions about the lesson overall, consider the sequence of supplied activities rather than only the visible page snapshot, and say when excerpts limit what you can assess. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
     const result = { reply: generated.value.reply, journalDraft: generated.value.journalDraft ?? null, basis, sources };
     await db.runTransaction(async tx => {
       const [b,j] = await Promise.all([tx.get(budget),tx.get(job)]);

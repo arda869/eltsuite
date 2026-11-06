@@ -6,6 +6,16 @@ export function lessonSource(value) {
  const out={};for(const key of ['classId','itemId','taskId','reportId']){const v=value[key]??'';if(typeof v!=='string'||!(/^[a-zA-Z0-9_-]{0,100}$/).test(v))throw Error('Open a valid lesson or report.');out[key]=v;}
  if(!out.classId||!out.itemId)throw Error('Choose a class and lesson.');return out;
 }
+// A teacher viewing one activity can still ask about the lesson it belongs to.
+// Keep activity-specific questions focused, but read the lesson sequence when they ask about the lesson.
+export function lessonSourceForPrompt(source,prompt){
+ if(!source?.taskId)return source;
+ const question=String(prompt||'');
+ const whole=/\b(?:whole|entire|full|overall)\s+(?:\w+\s+){0,2}lessons?\b|\blessons?\s+(?:as\s+a\s+whole|overall|in\s+general)\b|\b(?:rest|flow|sequence|structure)\s+of\s+(?:the\s+|this\s+|my\s+)?lesson\b/i.test(question);
+ const lesson=/\b(?:this|the|my|our|that)\s+(?:\w+\s+){0,2}lessons?\b|\blesson\s+(?:plan|sequence|flow|structure)\b/i.test(question);
+ const activity=/\b(?:this|the|current|selected)\s+(?:activity|task|exercise|question|stage)\b/i.test(question);
+ return whole||(lesson&&!activity)?{...source,taskId:''}:source;
+}
 export function teachingExcerpt(node,limit=7000) {
  const parts=[];let remaining=limit;
  const add=v=>{if(typeof v==='string'&&remaining>0){const s=v.slice(0,remaining);parts.push(s);remaining-=s.length;}};

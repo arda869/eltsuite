@@ -177,7 +177,7 @@ const J = {
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
   'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
-  'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: text-only Teacher’s Companion':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday latest: highlight dialogue authoring, save and learner feedback':async b=>{const s=await session(b);await highlightJourney(s,BASE,axe,A11Y_FOUND);return s;},
   'New task: empty lesson opens a blank editor even with AI enabled':async b=>{
@@ -370,13 +370,15 @@ const J = {
     await discuss.waitFor({timeout:12000}).catch(async()=>{throw Error('Saved report discussion missing: '+(await dialog.innerText()).slice(0,1000));});
     await discuss.click();
     await dialog.waitFor({state:'hidden'});
-    await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
+    await s.p.getByRole('link',{name:'Open selected lesson'}).waitFor();
+    if(await s.p.getByText('This activity is attached.').count())throw Error('The intrusive lesson-context notice is visible');
     if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
     await s.p.getByLabel('Message Teacher’s Companion').fill('How could I support learners with this activity?');
     await s.p.getByRole('button',{name:'Send',exact:true}).click();
     await see(s.p,'.coach-message:has-text("What did you notice")','contextual coaching reply');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
     if(request.lessonContext.classId!==s.demo.classId||request.lessonContext.itemId!==s.demo.itemId||!request.lessonContext.reportId||!request.lessonContext.taskId)throw Error('Selected report and activity were not passed');
+    await s.p.getByText('Sources used (1)',{exact:true}).click();
     await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
     await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
@@ -398,7 +400,8 @@ const J = {
     const coachWidth=await coach.evaluate(el=>parseFloat(getComputedStyle(el).width));
     if(Math.abs(coachWidth-width)>1)throw Error(`Companion opened at a different width from person messages: ${width}px → ${coachWidth}px`);
     if(await s.p.locator('.coach-floating').count())throw Error('Companion opened a separate floating panel');
-    await coach.getByLabel('Selected teaching context').waitFor();
+    await coach.getByRole('link',{name:'Open selected lesson'}).waitFor();
+    if(await coach.getByText('This activity is attached.').count())throw Error('The intrusive lesson-context notice is visible');
     await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What is your advice on this activity?');
     await coach.getByRole('button',{name:'Send',exact:true}).click();
     await coach.getByRole('log').getByText('What is your advice on this activity?',{exact:true}).waitFor();
@@ -2108,7 +2111,8 @@ const J = {
     await see(s.p, 'main, .msg, [class*=msg]', 'Messages');
     await s.p.getByRole('option', { name: /Teacher’s Companion/ }).click();
     await see(s.p, '.coach-chat-tools', 'Companion actions in the message view');
-    for(const name of ['History','New chat','Voice conversation'])if(!(await s.p.getByRole('button',{name,exact:true}).count()))throw Error('Missing Companion action: '+name);
+    for(const name of ['History','New chat'])if(!(await s.p.getByRole('button',{name,exact:true}).count()))throw Error('Missing Companion action: '+name);
+    if(await s.p.getByRole('button',{name:'Voice conversation',exact:true}).count())throw Error('Removed Companion voice action is still visible.');
     if(!(await s.p.getByRole('link',{name:'Settings',exact:true}).count()))throw Error('Missing Companion settings action.');
     if(await s.p.getByText('The page name is available; its content is not automatically shared.').count())throw Error('The old page-context warning is still visible.');
     await axe(s.p, 'Messages', A11Y_FOUND);

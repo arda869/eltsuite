@@ -3,7 +3,6 @@ import {coachContextOnPage,coachPageSnapshot} from './pageContext';
 import {coachHistoryKey} from '../../functions/ai/coach-history.js';
 import {lastConversation,rememberConversation,readDraft,saveDraft,useConversations,type CoachContext} from './conversations';
 import {setCoachPanel} from './panelState';
-import {CoachVoice} from './CoachVoice';
 import { AiButton, AiMark } from '../components/AiMark';
 import { UiIcon } from '../components/UiIcon';
 import {CoachEvidenceReview} from '../linguistics/CoachEvidenceReview';
@@ -28,8 +27,8 @@ export type LessonCoachContext={classId:string;itemId:string;taskId?:string;repo
 type Source={title:string;url:string};
 const call = httpsCallable<Record<string, unknown>, { reply: string; basis: string[]; journalDraft?: string | null; sources?:Source[] }>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 240000 });
 
-function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingReflection, formContext:incomingForm, onClearForm, evidencePacketId:incomingEvidence = '', lessonContext:incomingLesson, pageContext:incomingPage, onClearLesson, initialConversationId, compact=false }: {
-  initialConversationId?:string;compact?:boolean;formContext?:{docId:string;formId:string};onClearForm?:()=>void;
+function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingReflection, formContext:incomingForm, onClearForm, evidencePacketId:incomingEvidence = '', lessonContext:incomingLesson, pageContext:incomingPage, onClearLesson, initialConversationId, compact=false, onConversationChange }: {
+  initialConversationId?:string;compact?:boolean;formContext?:{docId:string;formId:string};onClearForm?:()=>void;onConversationChange?:(id:string,context:CoachContext)=>void;
   uid: string; profile: CoachProfile; initialPrompt: string; reflectionId: string; evidencePacketId?:string; lessonContext?:LessonCoachContext; pageContext?:CoachContext['pageContext']; onClearLesson?:()=>void;
 }) {
   const [approvedPacket,setApprovedPacket]=useState('');
@@ -43,20 +42,20 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const messages=saved.messages;
   useEffect(()=>{const entry=saved.conversations.find(c=>c.id===conversationId);if(entry)setContext(entry.context);},[conversationId,saved.conversations]);
   const [showHistory,setShowHistory]=useState(false);
-  const [chatId,setChatId]=useState(0);
   const [draft, setDraft] = useState(()=>readDraft(uid,conversationId)||initialPrompt);
 
   const mode = preferences.mode;
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState('');
   const [error, setError] = useState('');
-  const [voiceSlot, setVoiceSlot] = useState<HTMLDivElement | null>(null);
   const [journal,setJournal] = useState<{id:string;title:string;text:string}|null>(null);
   const [journalSaving,setJournalSaving] = useState(false);
   const [journalSaved,setJournalSaved] = useState('');
   const review = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
   const thread = useRef<HTMLDivElement>(null);
+  const followThread = useRef(true);
+  const threadConversation = useRef(conversationId);
   const composer = useRef<HTMLTextAreaElement>(null);
   const lock = useRef(false);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
@@ -67,10 +66,14 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   useEffect(()=>{saveDraft(uid,conversationId,draft);},[draft]);
   useEffect(()=>{const change=(e:Event)=>{const d=(e as CustomEvent).detail;if(d.uid===uid&&d.id===conversationId)setDraft(d.text);};window.addEventListener('elt-coach-draft',change);return()=>window.removeEventListener('elt-coach-draft',change);},[uid,conversationId]);
   useEffect(()=>{if(initialPrompt)setDraft(old=>old||initialPrompt);},[initialPrompt]);
-  function chooseConversation(id:string,nextContext:CoachContext=context){saveDraft(uid,conversationId,draft);setConversationId(id);rememberConversation(uid,scope,id);setContext(nextContext);setDraft(readDraft(uid,id));setApprovedPacket('');setShowHistory(false);setError('');if(compact)setCoachPanel({uid,conversationId:id,context:nextContext});}
+  function chooseConversation(id:string,nextContext:CoachContext=context){saveDraft(uid,conversationId,draft);setConversationId(id);rememberConversation(uid,scope,id);setContext(nextContext);setDraft(readDraft(uid,id));setApprovedPacket('');setShowHistory(false);setError('');onConversationChange?.(id,nextContext);}
 
   useEffect(()=>{if(journal && review.current && !review.current.open) review.current.showModal();},[journal]);
-  useEffect(() => { if (thread.current) thread.current.scrollTop = thread.current.scrollHeight; }, [messages, busy, complete]);
+  useEffect(() => {
+    const el=thread.current;if(!el)return;
+    if(threadConversation.current!==conversationId){threadConversation.current=conversationId;followThread.current=true;}
+    if(followThread.current)el.scrollTop=el.scrollHeight;
+  }, [conversationId,messages,busy,complete]);
   useEffect(() => { const input = composer.current; if (!busy && complete && input && input.offsetParent !== null) input.focus(); }, [busy, complete]);
   useEffect(() => {
     if (!composer.current) return;
@@ -80,7 +83,7 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
 
   async function send() {
     if (!draft.trim() || lock.current || !complete || !preferencesReady || !saved.ready || saved.pending || (evidencePacketId&&approvedPacket!==evidencePacketId)) return;
-    lock.current = true; setBusy(true); setError('');
+    lock.current = true; followThread.current=true; setBusy(true); setError('');
     const turnGeneration = generation.current;
     const text = draft.trim(); setPendingText(text);
     const history = saved.history.slice(-16).map(m => ({ role: m.role, text: (m.text+(m.journalDraft?'\nJournal draft:\n'+m.journalDraft:'')).slice(0,6000) }));
@@ -109,25 +112,23 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
     catch {setError('We couldn’t save your reflection. Your edits are still here.');}
     finally {setJournalSaving(false);}
   }
-  function newChat() { setChatId(n=>n+1);setJournal(null);setJournalSaved('');chooseConversation(crypto.randomUUID());request.current=null; }
+  function newChat() { setJournal(null);setJournalSaved('');chooseConversation(crypto.randomUUID());request.current=null; }
   const evidenceReady=!evidencePacketId||approvedPacket===evidencePacketId;
   const journalError=error==='We couldn’t save your reflection. Your edits are still here.';
   const canSend = complete && preferencesReady && saved.ready && !saved.pending && !busy && !!draft.trim() && evidenceReady;
   return <section className="coach-chat" aria-label="Teacher’s Companion chat">
     {evidencePacketId&&<CoachEvidenceReview id={evidencePacketId} onConfirm={()=>setApprovedPacket(evidencePacketId)}/>}
-    <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teacher’s Companion</h2></div><div className="coach-chat-tools" aria-label="Conversation actions"><button type="button" className="coach-tool-icon" aria-label="History" title="History" aria-expanded={showHistory} onClick={()=>setShowHistory(!showHistory)}><UiIcon name="history" size={18}/></button><button type="button" className="coach-tool-icon" aria-label="New chat" title="New chat" disabled={busy || saved.pending || !messages.length} onClick={newChat}><UiIcon name="plus" size={18}/></button>{!compact&&<button type="button" className="coach-tool-icon" aria-label="Pin chat" title="Keep this conversation open at the top right" onClick={()=>setCoachPanel({uid,conversationId,context})}><UiIcon name="pin" size={18}/></button>}<div className="coach-voice-slot" ref={setVoiceSlot}/><Link className="coach-tool-icon" aria-label="Settings" title="Settings" to="/settings#set-teaching-coach"><UiIcon name="settings" size={18}/></Link></div></header>
+    <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teacher’s Companion</h2></div><div className="coach-chat-tools" aria-label="Conversation actions"><button type="button" className="coach-tool-icon" aria-label="History" title="History" aria-expanded={showHistory} onClick={()=>setShowHistory(!showHistory)}><UiIcon name="history" size={18}/></button><button type="button" className="coach-tool-icon" aria-label="New chat" title="New chat" disabled={busy || saved.pending || !messages.length} onClick={newChat}><UiIcon name="plus" size={18}/></button>{lessonContext&&<><Link className="coach-tool-icon" aria-label="Open selected lesson" title="Open selected lesson" to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}><UiIcon name="classes" size={18}/></Link><button type="button" className="coach-tool-icon" aria-label="Remove lesson context" title="Stop using this lesson" disabled={busy} onClick={()=>{setContext(c=>({...c,lessonContext:null}));onClearLesson?.();}}><UiIcon name="videoClose" size={18}/></button></>}{!compact&&<button type="button" className="coach-tool-icon" aria-label="Pin chat" title="Keep this conversation open at the top right" onClick={()=>setCoachPanel({uid,conversationId,context})}><UiIcon name="pin" size={18}/></button>}<Link className="coach-tool-icon" aria-label="Settings" title="Settings" to="/settings#set-teaching-coach"><UiIcon name="settings" size={18}/></Link></div></header>
     {showHistory&&<nav className="coach-history" aria-label="Saved coaching conversations"><p>Private to you. Starting a new chat keeps previous conversations here.</p>{saved.conversations.length?saved.conversations.map(c=><button className="btn" key={c.id} aria-current={c.id===conversationId?'true':undefined} disabled={busy} onClick={()=>chooseConversation(c.id,c.context)}>{c.title}<small>{new Date(c.updatedAt).toLocaleDateString()}</small></button>):<p>No saved conversations yet.</p>}</nav>}
     {saved.error&&<p className="coach-notice coach-error" role="alert">{saved.error}</p>}
     {!saved.ready&&!saved.error&&<p role="status" className="coach-notice">Opening your saved conversation…</p>}
     {saved.interrupted&&<p className="coach-notice">An earlier reply did not finish. Your messages are saved; you can send a follow-up below.</p>}
-    <CoachVoice toolbarTarget={voiceSlot} turn={messages.length} reason={!complete?'Complete your teaching profile and beliefs below to start a voice conversation.':!preferencesReady?'Opening your coach settings…':busy?'Wait for your coach’s reply before recording another message.':''} disabled={!complete||!preferencesReady||busy} resetKey={JSON.stringify([preferences.version,profile.version,lessonContext,formContext,approvedPacket,chatId])} onTranscript={text=>setDraft(old=>[old,text].filter(Boolean).join(' '))} reply={[...messages].reverse().find(m=>m.role==='coach')?.text||''}/>
     {formContext&&<aside className="coach-notice" aria-label="Selected studio form"><p>Your coach will read this form from its current Collab document when you send. The document’s sharing settings still apply.</p><Link to={'/doc/'+formContext.docId+'#studio-form-'+formContext.formId}>Open selected form</Link> <button type="button" className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,formContext:null}));onClearForm?.();}}>Remove form context</button></aside>}
-    {lessonContext&&<aside className="coach-notice" aria-label="Selected teaching context"><p>{lessonContext.taskId?'This activity':'This lesson'} is attached. Teacher’s Companion will read its current content when you send, subject to your access and context settings.</p><Link to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}>Open selected lesson</Link> <button className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,lessonContext:null}));onClearLesson?.();}}>Remove lesson context</button></aside>}
     {error && <AiNotice kind="error" action={journalError?()=>void saveJournal():draft.trim()?()=>void send():undefined} actionDisabled={journalError?journalSaving:!canSend} onDismiss={()=>setError('')}>{error}</AiNotice>}
     {!formContext && !lessonContext && !evidencePacketId && !profileComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>Let’s start with your teaching</h3><p>Before we chat, add a few details so I can understand your work. Your qualifications aren’t a measure of your expertise.</p></div></div><ProfileSetup uid={uid} profile={profile} /></div> : !formContext && !lessonContext && !evidencePacketId && !beliefsComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>What guides your teaching?</h3><p>Add your teaching beliefs before we begin. A few honest sentences are enough, and it’s fine to be uncertain.</p></div></div><BeliefsSetup uid={uid} profile={profile} /></div> : <>
-      <div className="coach-chat-thread" ref={thread} tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Home'||e.key==='End')){e.preventDefault();e.currentTarget.scrollTop=e.key==='Home'?0:e.currentTarget.scrollHeight;}}} role="log" aria-label="Conversation with your Teacher’s Companion" aria-live="polite" aria-relevant="additions">
+      <div className="coach-chat-thread" ref={thread} tabIndex={0} onScroll={e=>{const el=e.currentTarget;followThread.current=el.scrollHeight-el.scrollTop-el.clientHeight<48;}} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Home'||e.key==='End')){e.preventDefault();e.currentTarget.scrollTop=e.key==='Home'?0:e.currentTarget.scrollHeight;followThread.current=e.key==='End';}}} role="log" aria-label="Conversation with your Teacher’s Companion" aria-live="polite" aria-relevant="additions">
         <article className="coach-chat-message coach-chat-message-coach"><strong>Teacher’s Companion</strong><p>{lessonContext?'Your selected teaching context is ready. Tell me what you would like to explore or improve.':'What would you like to think through today? We can reflect on a lesson, explore a teaching belief, or plan a classroom inquiry.'}</p></article>
-        {messages.map((m,i) => <article key={i} className={`coach-message coach-chat-message coach-chat-message-${m.role}`}><strong>{m.role === 'teacher' ? 'You' : 'Teacher’s Companion'}</strong>{m.role==='teacher'?<div>{m.text}</div>:<AiText text={m.text}/>}{m.journalDraft && <button className="btn" onClick={()=>{setJournal({id:crypto.randomUUID(),title:'A reflection from my coaching conversation',text:m.journalDraft!});setJournalSaved('');}}>Review journal draft</button>}{!!m.sources?.length&&<ul aria-label="Teaching sources">{m.sources.map((source,j)=><li key={j}><Link to={source.url}>{source.title}</Link></li>)}</ul>}{!!m.basis?.length && <details className="coach-chat-basis"><summary>Context used</summary><ul>{m.basis.map((basis,j) => <li key={j}>{basis}</li>)}</ul></details>}</article>)}
+        {messages.map((m,i) => <article key={i} className={`coach-message coach-chat-message coach-chat-message-${m.role}`}><strong>{m.role === 'teacher' ? 'You' : 'Teacher’s Companion'}</strong>{m.role==='teacher'?<div>{m.text}</div>:<AiText text={m.text}/>}{m.journalDraft && <button className="btn" onClick={()=>{setJournal({id:crypto.randomUUID(),title:'A reflection from my coaching conversation',text:m.journalDraft!});setJournalSaved('');}}>Review journal draft</button>}{!!m.sources?.length&&<details className="coach-chat-sources"><summary>Sources used ({m.sources.length})</summary><div className="coach-chat-source-links">{m.sources.map((source,j)=><Link key={j} to={source.url}>{source.title}</Link>)}</div></details>}{!!m.basis?.length && <details className="coach-chat-basis"><summary>Context used</summary><div className="coach-chat-basis-items">{m.basis.map((basis,j) => <p key={j}>{basis}</p>)}</div></details>}</article>)}
         {messages.length===0&&!busy&&!saved.pending&&!lessonContext&&!formContext&&!evidencePacketId&&<AiExamples label="Ways to begin" examples={STARTERS} disabled={!complete||!preferencesReady} onPick={text=>{setDraft(text);composer.current?.focus();}}/>}
         {busy && !saved.turns.some(t=>t.id===request.current?.id) && <><article className="coach-chat-message coach-chat-message-teacher"><strong>You</strong><div>{pendingText}</div></article><div className="coach-chat-typing" role="status"><AiMark active/><span>Teacher’s Companion is thinking</span></div></>}
         {saved.pending&&<div className="coach-chat-typing" role="status"><AiMark active/><span>Teacher’s Companion is thinking. You can leave and return to this conversation.</span></div>}
