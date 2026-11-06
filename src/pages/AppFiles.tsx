@@ -16,6 +16,7 @@ import { MediaDialog } from '../media/MediaDialog';
 import { MAX_PDF, openPdf, pageSizes, saveFilePdf } from '../pdf/pdfData';
 import { useLibrary, type LibDoc } from './ArchiveLibrary';
 import { AppLogo } from '../components/AppGrid';
+import { useDismiss } from '../lib/useDismiss';
 
 // Collab, Reading Journal, PDF and Recordings as apps of their own, the way Docs and Slides are
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
@@ -56,6 +57,8 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
   const [recording, setRecording] = useState(false);
   const [characters, setCharacters] = useState(false);
   const [busy, setBusy] = useState('');
+  const [gameMenu, setGameMenu] = useState(false);
+  const gameMenuRef = useDismiss<HTMLDivElement>(gameMenu, () => setGameMenu(false));
   const pdfIn = useRef<HTMLInputElement>(null);
   const inLib = useMemo(() => new Set((drives ?? []).map((f) => f.id)), [drives]);
 
@@ -96,7 +99,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
     try {
-      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k, designerType ? 'Untitled '+designerType : '');
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k, designerType ? 'Untitled '+designerType : k === 'game' ? 'Untitled Quiz Show' : '');
       if(designerType) await startDesigner(id,designerType);
       if (w) w.location.href = `/doc/${id}`;
     }catch{w?.close();void tell('Could not create the file. Please check your connection and try again.');}
@@ -120,7 +123,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     }
   };
   const news: { label: string; run: () => void }[] =
-    app === 'games' ? [{ label: 'New game show', run: () => void make('game') }] : app === 'collab'
+    app === 'games' ? [] : app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
           { label: 'New slides', run: () => void make('slides') },
@@ -169,6 +172,12 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />
+          {app === 'games' && <div className="af-create" ref={gameMenuRef}>
+            <button type="button" className="btn primary" aria-haspopup="menu" aria-expanded={gameMenu} onClick={() => setGameMenu(v => !v)}>+ New game <span aria-hidden="true">⌄</span></button>
+            {gameMenu && <div className="af-create-menu" role="menu" aria-label="New game">
+              <button type="button" role="menuitem" onClick={() => { setGameMenu(false); void make('game'); }}>Quiz Show</button>
+            </div>}
+          </div>}
           {news.map((n, i) => (
             <button key={n.label} type="button" className={'btn ' + (i ? 'ghost' : 'primary')} onClick={n.run}>
               + {n.label}
@@ -215,6 +224,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
                   </span>
                   <span className="af-when">{when(e.at)}</span>
                 </button>
+                {app === 'games' && <><button type="button" className="af-game-action" onClick={e.open}>Edit</button><button type="button" className="af-game-action" onClick={() => window.open(`/doc/${e.doc?.id ?? e.id}?play=1`, '_blank')}>Play</button></>}
                 <button type="button" className={'af-star' + (stars[e.star] ? ' on' : '')} aria-pressed={!!stars[e.star]} aria-label={stars[e.star] ? `Remove the star from ${e.title}` : `Star ${e.title}`} data-tip={stars[e.star] ? 'Starred' : 'Star'} onClick={() => void setStar(uid, e.star, !stars[e.star])}>
                   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z" fill={stars[e.star] ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />

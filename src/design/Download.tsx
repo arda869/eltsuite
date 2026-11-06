@@ -7,7 +7,7 @@ import { downloadImage, downloadPdf, pageBlob } from './tools';
 import type { Env } from './render';
 
 // Export image artwork or save a reusable picture in Resources.
-export function DownloadMenu({ cx }: { cx: Ctx }) {
+export function DownloadMenu({ cx, beforeUse }: { cx: Ctx; beforeUse?: () => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState('');
   const env: Env = { imgs: cx.imgs, view: cx.view, accent: cx.accent };
@@ -18,22 +18,24 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
     try {
       await f();
     } catch {
-      void tell('We couldn’t make the download just now. Try again.');
+      void tell(what === 'Saving for Classes…' || what === 'Saving to Resources…' ? 'We couldn’t save this design for Classes. Check your connection and try again.' : 'We couldn’t make the download just now. Try again.');
     } finally {
       setBusy('');
     }
   };
-  const toFiles = async () => {
+  const toFiles = async (showMessage = true) => {
     const u = auth.currentUser;
-    if (!u) return;
+    if (!u) throw new Error('Sign in to save this design.');
+    if (beforeUse && !(await beforeUse())) throw new Error('Save the design before using it in a class.');
     const blob = await pageBlob(cx.page, cx.els, env, 1.6);
-    await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`);
-    void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
+    await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`, '', { designerId: cx.d.id, requireArchive: true });
+    if (showMessage) void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
   };
   return (
     <>
       {busy && <span className="dz-busy" role="status">{busy}</span>}
-      <button type="button" className="btn primary dz-dl" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+      {!cx.learnerUser && <button type="button" className="btn primary dz-use" disabled={!!busy} onClick={() => void run('Saving for Classes…', async () => { await toFiles(false); const back = new URLSearchParams(window.location.search).get('returnTo'); window.location.assign(back && (/^\/(?:class|doc)\/[^/]/.test(back)) ? back : '/classes'); })}>Use in Classes</button>}
+      <button type="button" className="btn dz-dl" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
         Download
       </button>

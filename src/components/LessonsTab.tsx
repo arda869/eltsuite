@@ -370,6 +370,8 @@ const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezone
 export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
   const aiPilot = useAiPilot();
   const [materialImport,setMaterialImport]=useState(false);
+  const [creatingLesson, setCreatingLesson] = useState(false);
+  const [createError, setCreateError] = useState('');
   const navigate=useNavigate();
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
@@ -400,16 +402,34 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
   const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId)).sort((a, b) => a.order - b.order);
   const nextOrder = (list: { order: number }[]) => (list.length ? Math.max(...list.map((x) => x.order)) + 1 : 0);
+  const createBlankLesson = async () => {
+    if (creatingLesson) return;
+    setCreatingLesson(true);
+    setCreateError('');
+    try {
+      const id = await addItem(c.id, null, 'Untitled lesson', nextOrder(items), 'lesson');
+      navigate(`/class/${c.id}/lesson/${id}`);
+    } catch {
+      setCreateError('We couldn’t create the lesson. Check your connection and try again.');
+    } finally { setCreatingLesson(false); }
+  };
 
   return (
-    <div className="lessons">
+    <div className="lessons" id="class-work">
+      <div className="class-work-actions" aria-label="Class work actions">
+        <button type="button" className="btn primary" disabled={creatingLesson} onClick={() => void createBlankLesson()}>{creatingLesson ? 'Creating lesson…' : '+ New blank lesson'}</button>
+        <a className="btn" href="#class-work">Activities</a>
+        <Link className="btn" to="/archive">Resources</Link>
+        <Link className="btn" to={`/class/${c.id}?tab=reports`}>Learner results</Link>
+      </div>
+      {createError && <p className="error" role="alert">{createError}</p>}
       {aiPilot && <section style={{padding:'24px',marginBottom:'24px',border:'1px solid var(--accent)',borderRadius:'18px',background:'color-mix(in srgb, var(--accent) 8%, transparent)'}} aria-label="AI creation studio"><h2 style={{marginTop:0}}>Create activities for your class</h2><p>Make editable practice, homework or exams with AI. You can also create individual tasks inside an existing lesson.</p><Link className="btn primary" to={`/class/${c.id}/assistant`}>Create activities with AI →</Link> <ImportMaterialsButton onClick={()=>setMaterialImport(true)}/></section>}
       {materialImport&&<MaterialImport classId={c.id} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);navigate(`/class/${c.id}/lesson/${id}`);}}/>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">
-          <h2>Start with a topic</h2>
-          <p>Topics group your lessons, for example “Unit 4 · Present perfect”. Add a topic, then add lessons inside it.</p>
+          <h2>Start with a lesson</h2>
+          <p>Create a blank lesson now. You can group lessons into topics later.</p>
         </div>
       )}
 

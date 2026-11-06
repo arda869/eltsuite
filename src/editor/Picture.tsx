@@ -146,7 +146,7 @@ function EditTag({ t, edit }: { t: PicTag; edit: TagEdit }) {
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
+  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; designerId?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -347,6 +347,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
             <span className="hint">Screen reader description</span>
             <input aria-label="Screen reader description" value={a.alt ?? ''} placeholder="Describe the picture for screen readers" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
+          {a.designerId && <a className="btn small-btn" href={`/doc/${encodeURIComponent(a.designerId)}?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`} target="_blank" rel="noopener noreferrer">Edit source in Designer</a>}
           <span className="pic-row pic-actions">
             <button type="button" className="btn small-btn" onClick={() => setEditing(true)}>
               Crop and colour
@@ -371,6 +372,7 @@ export const Picture = Node.create({
   draggable: true,
   addAttributes: () => ({
     src: { default: '' },
+    designerId: { default: '' },
     alt: { default: '' },
     credit: { default: '' },
     size: { default: 'm' },
@@ -392,7 +394,7 @@ export const Picture = Node.create({
 });
 
 // Insert pictures at the cursor. Labels follow the picture before it in the task, if it has one.
-export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; caption?: string; credit?: string } = {}) {
+export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; caption?: string; credit?: string; designerIds?: string[] } = {}) {
   let mark: PicMark = opts.mark ?? '';
   if (opts.mark === undefined)
     editor.state.doc.descendants((n) => {
@@ -401,7 +403,7 @@ export function insertPictures(editor: Editor, srcs: string[], opts: { size?: Pi
   editor
     .chain()
     .focus()
-    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark }, ...(opts.caption?.trim() ? { content: [{ type: 'text', text: opts.caption.trim() }] } : {}) })))
+    .insertContent(srcs.map((src, i) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', designerId: opts.designerIds?.[i] ?? '', size: opts.size ?? 'm', mark }, ...(opts.caption?.trim() ? { content: [{ type: 'text', text: opts.caption.trim() }] } : {}) })))
     .run();
 }
 
@@ -475,20 +477,23 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
     setBusy(items.length > 1 ? `Adding ${items.length} pictures…` : 'Adding…');
     try {
       const srcs: string[] = [];
+      const designerIds: string[] = [];
       for (const it of items) {
         if (it.link) srcs.push(it.link);
         else if (classId) srcs.push('media:' + (await mediaIn(user.uid, it, classId)));
         else if (it.home) srcs.push(await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100));
+        else continue;
+        designerIds.push(it.designerId ?? '');
       }
-      insertPictures(editor, srcs, { size, mark, alt, caption: alt });
+      insertPictures(editor, srcs, { size, mark, alt, caption: alt, designerIds });
       onClose();
     } catch {
       setBusy('We couldn’t add that picture.');
     }
   };
-  const fromDesign = async (blob:Blob,title:string,credit='') => {
-    const src=classId?await uploadPicture(classId,blob,quality,title):await imageToData(blob,1100);
-    insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit});onClose();
+  const fromDesign = async (blob:Blob,title:string,credit='',designerId='') => {
+    const src=classId?await uploadPicture(classId,blob,quality,title,'',designerId?{designerId}:undefined):await imageToData(blob,1100);
+    insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit,designerIds:[designerId]});onClose();
   };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.
   const uploadRef = useRef(upload);

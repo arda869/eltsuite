@@ -1,0 +1,83 @@
+# UI/UX implementation brief: release register
+
+Source: `ELT_Suite_Codex_UI_UX_Implementation_Brief.docx` (5 November 2026). The user's correction supersedes its game wording: the only new game option is **Quiz Show**. This branch is not approved for production while any row below remains in progress or unverified.
+
+Legend: **Implemented locally** means code exists but the required full journey and live storage verification have not passed. **In progress** means only part of the requirement is addressed. **Open** means the requirement has not been completed.
+
+| # | Status | Evidence / remaining work |
+|---|---|---|
+| 01 | Implemented locally | Per-task queue and reload drafts in `responseSaveQueue.ts`; focused unit tests pass. Verify stored answers in Firebase. |
+| 02 | In progress | Lesson editor draft recovery and navigation flush; test interrupted saves and modal navigation. |
+| 03 | In progress | Learner, lesson and Designer indicators updated; audit all save paths and online/offline truthfulness. |
+| 04 | In progress | Designer page/meta queue and element recovery; verify concurrent edits, reload and server state. |
+| 05 | Implemented locally | Manual failed-save, reload, recovery and hand-in journey passes in a mock browser; verify timed hand-in and final Firebase state. |
+| 06 | In progress | Rapid switching and offline/reload unit cases pass; multi-tab and final Firestore comparison need end-to-end coverage. |
+| 07 | Implemented locally | H maps to Hide answers through shared command copy; browser shortcut check needed. |
+| 08 | Implemented locally | Teaching view persists across task navigation; browser check needed. |
+| 09 | Implemented locally | Separate answer controls and status text; screen reader check needed. |
+| 10 | Implemented locally | Carry on picks unfinished task and Review labels finished work; browser check needed. |
+| 11 | Implemented locally | Locked activity text changed; verify teacher controls. |
+| 12 | Implemented locally | Class-level blank lesson action and contextual links added; browser check needed. |
+| 13 | In progress | Teaching tools grouped; inspect real sessions at desktop/tablet/mobile. |
+| 14 | Implemented locally | New game menu exposes only Quiz Show; browser and accessibility check passed. |
+| 15 | In progress | Hidden game gallery remains unlinked; audit all discovery/marketing surfaces. |
+| 16 | Implemented locally | My games actions and empty state updated; test existing legacy games. |
+| 17 | In progress | Inline Quiz Show editor and save-before-insert action added; full publish/play path not verified. |
+| 18 | In progress | Game loading Retry/Back and expanded focus handling added; keyboard journey check needed. |
+| 19 | In progress | Page title/context handling updated; verify answers about visible activity. |
+| 20 | In progress | Bounded learner work source added; test authorised reading and class records in Firebase. |
+| 21 | In progress | Source labels adjusted; audit exact model payload versus displayed list. |
+| 22 | In progress | Pinned attachment mismatch is shown explicitly; test navigation across pages. |
+| 23 | In progress | Broad page text scrape removed; browser test verifies detached lesson/history is not resent. Audit all exclusions. |
+| 24 | In progress | Class and learner queries bounded; test large-class pagination and evidence language. |
+| 25 | Implemented locally | Companion chat available with optional profile fields; browser test passed. |
+| 26 | In progress | Mock browser network-failure journey confirms the message stays in the composer and Try again reaches a reply. Live configuration failure still needs verification. |
+| 27 | In progress | The mock Designer browser journey covers Create without a selected image; prevents Change without a source; uses the selected source for Change and Magic eraser; Restyle accepts a blank optional description; and previews apply and reopen. Pending-result recovery after a closed tab remains to test. |
+| 28 | In progress | Designer file/page thumbnails and insertion pass a mock browser journey; large-library performance remains open. |
+| 29 | In progress | Use in Classes saves the current page to Resources and returns to the originating lesson/document or Classes; inserted pictures retain an Edit source in Designer link. Mock browser journey passes; direct destination insertion and live Firebase check remain. |
+| 30 | Open | Full canvas manipulation and final composition inspection. |
+| 31 | Open | Generated element language and classroom display legibility audit. |
+| 32 | In progress | Mobile account menu now links Home, Classes and Resources to their actual destinations and marks the active place. Desktop/mobile navigation depth audit remains. |
+| 33 | Open | State and recovery audit across every page. |
+| 34 | In progress | Global pinch block removed; 200% browser zoom and canvas gesture checks pending. |
+| 35 | In progress | Expanded game focus handling improved; modal inventory/focus restoration pending. |
+| 36 | Open | Mobile targets, keyboard, overlay, contrast and screen reader sweep. |
+| 37 | In progress | Public homepage navigation passed on the currently published eltsuite.com build on 6 November 2026. Invitation and signed-in teacher/learner login, logout, refresh and redirects remain unverified for this branch. |
+| 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
+| 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
+| 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change and AI-image selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose, expression and AI-image reference changes persist in mock browser journeys. Remaining raw-select inventory and overlay/keyboard checks pending. |
+| 41 | In progress | Shared MultiSelect now shows selected chips, filters long lists, shows an empty result, clears choices and removes the last chip with Backspace/Delete where valid. Gallery, Timetable and organisation-admin mock browser journeys pass; autocomplete and every app-specific use remain to audit. |
+| 42 | Open | Checkbox/radio/switch visual and semantic audit. |
+| 43 | Open | Date/time picker and locale audit. |
+| 44 | Open | Number field behaviour audit. |
+| 45 | Open | Color picker palette/hex audit. |
+| 46 | In progress | Native file chooser keeps keyboard access and now uses suite surface, spacing and focus styles. Upload/dropzone failure and progress states remain to audit. |
+| 47 | Open | Search field affordance audit. |
+| 48 | Open | Slider/range control audit. |
+| 49 | Open | Rich-text placeholder, selection and shortcut audit. |
+| 50 | Open | Button/split button state audit. |
+| 51 | Open | Dialog/popover/menu focus and stacking audit. |
+| 52 | Open | Inline validation and aria-describedby audit. |
+| 53 | Open | Dark, contrast, embedded, print and mobile Safari checks. |
+| 54 | In progress | Local control gallery covers common fields, choices, file input and actions. Mock browser screenshots at 320/375/768/1024/1440 in both themes plus 200% CSS zoom have no horizontal overflow; targeted accessibility checks pass. Baseline comparison and app-specific controls remain. |
+
+## Verification to date
+
+- TypeScript `--noEmit` passed after rebasing onto the newer Designer storyboard work.
+- Production build passed after rebasing onto the newer Designer storyboard work.
+- Focused unit tests: 22/22 passed (mock/unit).
+- Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
+- Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return to the originating document passed. Learner sign-in and signed-out homepage checks passed after cross-tab mock authentication was corrected. The 33 spelling and coach unit tests pass after bounded-query mock updates.
+- Mock browser: Designer backdrop selection through the shared dropdown saved to the storyboard page; the complete Designer journey with optional fields blank passed after the control change. TypeScript `--noEmit` passed.
+- Mock browser: Companion request failure retained the teacher’s message; Try again completed the reply in the same small Messages window.
+- Mock browser: Designer quick-change pose and expression selections persisted, and the full Designer journey passed after the control update. Production build and TypeScript `--noEmit` passed locally.
+- Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
+- `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
+- No authenticated production write or published-build verification has been performed for this branch.
+- The public homepage journey passed against the currently published eltsuite.com build on 6 November 2026. It does not verify this draft branch.
+- Local control-gallery journey passed at five widths in light and dark themes, plus 200% CSS zoom; the 375px dark and 1440px light captures were visually reviewed. This gallery is a local test page, not a production route.
+- Local control-gallery journey also passed multiselect choice, chip removal, clearing, search and empty results; the open searchable menu passed a targeted accessibility scan. Timetable and organisation-admin journeys passed after the shared control change. TypeScript `--noEmit` passed.
+- The latest PR games job passed. The previous main job failed during the simulated Lesson/Collab PDF export audit when Vite reloaded the fixture while it was evaluating. A retry for that test setup race passed locally and in the next PR run.
+- Targeted mock browser checks for class spelling, Development Studio reading/inquiry, and the Companion profile/chat journey passed after updating outdated control selectors. This is not yet a complete suite pass.
+- The complete mock Designer create/edit/reopen journey, including an AI image with optional fields blank and the shared image dropdowns, passed after the control change. This is not a live image-provider test.
+- In the next PR run, all 80 browser journeys passed, but the accessibility gate found two issues in the open searchable multiselect. Search and help text were moved outside its listbox, and help text contrast was increased. The targeted control-gallery accessibility scan now reports zero issues; a new full PR run is pending.

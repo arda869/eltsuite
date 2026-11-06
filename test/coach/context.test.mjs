@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { contextPermissions, beliefsComplete, profileComplete, relevantWriting, writingExcerpt } from '../../functions/ai/coach-context.js';
 const complete = () => ({ qualifications: 'None', experience: '10+', roles: ['Teacher'], context: 'Adults at B1' });
 test('all context sources start enabled and saved opt-outs take precedence', () => {
-  assert.deepEqual(contextPermissions(), { profile:true, beliefs:true, reflections:true, inquiries:true, forms:true, games:true, lessons:true });
-  assert.deepEqual(contextPermissions({ profile:false, reflections:false }), { profile:false, beliefs:true, reflections:false, inquiries:true, forms:true, games:true, lessons:true });
+  assert.deepEqual(contextPermissions(), { profile:true, beliefs:true, reflections:true, inquiries:true, forms:true, games:true, lessons:true, learnerWork:true });
+  assert.deepEqual(contextPermissions({ profile:false, reflections:false, learnerWork:false }), { profile:false, beliefs:true, reflections:false, inquiries:true, forms:true, games:true, lessons:true, learnerWork:false });
   assert.equal(contextPermissions({ inquiries:false }).inquiries, false);
 });
 test('profile setup accepts expertise without formal training and requires actual context', () => {
@@ -28,7 +28,7 @@ test('excerpts exclude unrelated fields, links and uncontrolled nested payloads'
   assert.ok(!('injected' in value)); assert.ok(!('lesson' in value));
 });
 
-test('beliefs and an explicit Other qualification are required before coaching',()=>{
+test('optional profile wizard requires complete beliefs and an explicit Other qualification',()=>{
  assert.equal(beliefsComplete({beliefs:''}),false);
  assert.equal(beliefsComplete({beliefs:'   '}),false);
  assert.equal(beliefsComplete({beliefs:'I believe learning needs meaningful use.'}),true);

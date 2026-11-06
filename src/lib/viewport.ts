@@ -27,20 +27,3 @@ export function startViewport() {
     window.setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 280);
   });
 }
-
-// No pinch-to-zoom anywhere in the suite (the viewport tag is left zoomable for accessibility checks;
-// touch-action in cohesion.css and these handlers stop it): the page is laid out for the screen, and a
-// half-zoomed page hides the controls. Places with their own zoom (Collab's pages, Design and the
-// whiteboard) listen on their own element, so they still get two-finger gestures; this only stops
-// the browser zooming the whole page. Ctrl/Cmd and + or − (the browser's own zoom) still works,
-// for anyone who needs everything bigger.
-export function stopPinchZoom() {
-  const stop = (e: Event) => { if (e.cancelable) e.preventDefault(); };
-  // iPhone and iPad Safari ignore the viewport tag's limits, so stop its gesture events too.
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) stop(e); }, { passive: false });
-  // A trackpad pinch on a computer arrives as a wheel event with Ctrl held.
-  window.addEventListener('wheel', (e) => { if (e.ctrlKey) stop(e); }, { passive: false });
-  // Double-tap zoom is off through touch-action in cohesion.css, which leaves fast taps working.
-}

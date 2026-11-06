@@ -70,7 +70,7 @@ export async function uploadPictureFull(classId: string, file: Blob, quality: Pi
 }
 // Every picture a teacher uploads also goes into their resources library, to use again anywhere.
 // Sizes in the archive are the space the picture takes as stored (a third more than the file).
-export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string, folder = '') {
+export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string, folder = '', source?: { designerId?: string; requireArchive?: boolean }) {
   const r = await uploadPictureFull(classId, file, quality);
   const u = auth.currentUser;
   if (u && !isLearnerEmail(u.email)) {
@@ -83,7 +83,8 @@ export async function uploadPicture(classId: string, file: File | Blob, quality:
       size: Math.round((r.size * 4) / 3),
       home: { classId, mediaId: r.src.slice(6) },
       thumb: r.thumb,
-    }).catch(() => {});
+      ...(source?.designerId ? { designerId: source.designerId } : {}),
+    }).catch(error => { if (source?.requireArchive) throw error; });
   }
   return r.src;
 }

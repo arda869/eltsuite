@@ -239,8 +239,8 @@ export function ShowPlayer({ game, title, onFinish, remote, onState, readOnly = 
   } else if (phase === 'welcome') {
     screen = <div className="show-welcome">
       <Emblem />
-      <p className="show-kicker">Game show</p>
-      <h2 className="show-title">{title || 'Game show'}</h2>
+      <p className="show-kicker">Quiz Show</p>
+      <h2 className="show-title">{title || 'Quiz Show'}</h2>
       <ul className="show-facts">{facts.map(f => <li key={f}>{f}</li>)}</ul>
       <p className="show-how">{isChoice || !r?.content ? 'Choose an answer and lock it in. Then see if you were right.' : 'Complete each task and lock it in. Then see how you did.'}</p>
       <div className="show-welcome-actions">
@@ -309,12 +309,12 @@ export function ShowPlayer({ game, title, onFinish, remote, onState, readOnly = 
     </>;
   }
 
-  const body = <section className={`show-stage game-show show-theme-${theme}`} data-phase={state.finished ? 'finished' : phase} data-result={result || undefined} aria-label="Game show" onKeyDown={keys}>
+  const body = <section className={`show-stage game-show show-theme-${theme}`} data-phase={state.finished ? 'finished' : phase} data-result={result || undefined} aria-label="Quiz Show" onKeyDown={keys}>
     <Spotlights />
     <Marquee count={13} lit={phase !== 'welcome' || state.finished} />
     {screen}
   </section>;
-  return expandable ? <GameFrame title={title || 'Game show'}>{body}</GameFrame> : body;
+  return expandable ? <GameFrame title={title || 'Quiz Show'}>{body}</GameFrame> : body;
 }
 
 /** One mark per question: done right, done wrong, not scored, the one in play, still to come. */

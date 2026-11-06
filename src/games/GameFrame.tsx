@@ -9,5 +9,15 @@ export function GameFrame({title,children}:{title:string;children:ReactNode}){
  const anchor=useRef<HTMLDivElement>(null),toggle=useRef<HTMLButtonElement>(null),mounted=useRef(false);
  useLayoutEffect(()=>{const parent=expanded?document.body:anchor.current;if(!parent)return;parent.appendChild(host);host.className=expanded?'game-frame game-expanded':'game-frame';announce();if(expanded){const old=document.body.style.overflow;document.body.style.overflow='hidden';toggle.current?.focus({preventScroll:true});return()=>{document.body.style.overflow=old;};}if(mounted.current)toggle.current?.focus({preventScroll:true});mounted.current=true;},[expanded,host]);
  useLayoutEffect(()=>()=>{host.remove();announce();},[host]);
- return <><div ref={anchor} className="game-frame-anchor"/>{createPortal(<div className={"game-frame-content game-layout-"+layout} role="region" aria-label={title+' player'} onKeyDown={e=>{if(expanded&&e.key==='Escape'){e.stopPropagation();setExpanded(false);}}}><div className="game-frame-bar"><label className="game-layout-control">Layout<select aria-label="Game layout" value={layout} onChange={e=>setLayout(e.target.value)}><option value="auto">Auto · fit screen</option><option value="portrait">Portrait · phone</option><option value="landscape">Landscape · wide</option></select></label><button ref={toggle} type="button" className="btn" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Return to inline game':'Expand game'}</button></div>{children}</div>,host)}</>;
+ return <><div ref={anchor} className="game-frame-anchor"/>{createPortal(<div className={"game-frame-content game-layout-"+layout} role={expanded?'dialog':'region'} aria-modal={expanded||undefined} aria-label={title+' player'} onKeyDown={e=>{
+   if(!expanded)return;
+   if(e.key==='Escape'){e.stopPropagation();setExpanded(false);return;}
+   if(e.key==='Tab'){
+     const focusable=[...e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])')].filter(el=>el.getClientRects().length>0);
+     if(!focusable.length){e.preventDefault();return;}
+     const first=focusable[0],last=focusable[focusable.length-1];
+     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+   }
+ }}><div className="game-frame-bar"><label className="game-layout-control">Layout<select aria-label="Game layout" value={layout} onChange={e=>setLayout(e.target.value)}><option value="auto">Auto · fit screen</option><option value="portrait">Portrait · phone</option><option value="landscape">Landscape · wide</option></select></label><button ref={toggle} type="button" className="btn" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Return to inline game':'Expand game'}</button></div>{children}</div>,host)}</>;
 }

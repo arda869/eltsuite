@@ -27,17 +27,18 @@ const p = new URLSearchParams(location.search);
     localStorage.setItem('mockdemo', JSON.stringify({ ...r, packId }));
     // back to the teacher (adding learners signs in a second app only)
     sessionStorage.setItem('mockuid', 'teacher1');
+    localStorage.setItem('mockuid', 'teacher1');
   }
   // ?colleagues : an organisation, colleagues with profiles, who is around, things shared (test/mock/colleagues.ts)
   if (p.has('colleagues')) await (await import('./colleagues')).seedColleagues();
   if (p.has('friday')) await (await import('./friday')).seedFriday();
   if (p.has('friday-brand')) await (await import('./friday')).seedFridayBrand();
   const as = p.get('as');
-  if (as === 'teacher') sessionStorage.setItem('mockuid', 'teacher1');
+  if (as === 'teacher') { sessionStorage.setItem('mockuid', 'teacher1'); localStorage.setItem('mockuid', 'teacher1'); }
   else if (as) {
     const fs = JSON.parse(localStorage.getItem('mockfs') || '{}');
     const hit = Object.entries(fs).find(([k, v]: [string, any]) => k.startsWith('users/') && v.role === 'learner' && String(v.displayName).startsWith(as));
-    if (hit) sessionStorage.setItem('mockuid', hit[0].split('/')[1]);
+    if (hit) { sessionStorage.setItem('mockuid', hit[0].split('/')[1]); localStorage.setItem('mockuid', hit[0].split('/')[1]); }
   }
  } catch (e) { console.error('SEED FAILED', e); }
  console.log('seed done', sessionStorage.getItem('mockuid'));

@@ -12,11 +12,12 @@ import { GamePlayer } from './GamePlayer';
 import { blankGame, GAME_TYPES, SHOW_TIMERS, THEMES, gameProblems, type GameConfig, type GameRound } from './model';
 import './games.css';
 
-export function GameFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
+export function GameFile({ d, canEdit, onSaved, onChanged }: { d: SharedDoc; canEdit: boolean; onSaved?: () => void; onChanged?: () => void }) {
     const { user } = useAuth();
     const { mine } = useMyDocs(user?.uid);
     const [game, setGame] = useState<GameConfig | null>(null);
-    const [play, setPlay] = useState(false), [error, setError] = useState(''), [status, setStatus] = useState('Saved');
+    const [play, setPlay] = useState(() => new URLSearchParams(window.location.search).get('play') === '1'), [error, setError] = useState(''), [status, setStatus] = useState('Saved');
+    const [loadTry, setLoadTry] = useState(0), [slowLoad, setSlowLoad] = useState(false);
     const [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [source, setSource] = useState('');
     const [selected, setSelected] = useState(''), [native, setNative] = useState(false);
     const [undo, setUndo] = useState<GameConfig | null>(null);
@@ -24,12 +25,19 @@ export function GameFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     const dirtyRef = useRef(false), revision = useRef(0);
     const latestSave = useRef<() => void>(() => {});
     useEffect(() => {
-        dirtyRef.current = false; setDirty(false); setGame(null); setSelected(''); setUndo(null); setStatus('Saved');
-        return onSnapshot(doc(db, 'sharedDocs', d.id, 'game', 'main'), s => {
+        dirtyRef.current = false; setDirty(false); setGame(null); setSelected(''); setUndo(null); setStatus('Saved'); setError(''); setSlowLoad(false);
+        const timeout = window.setTimeout(() => setSlowLoad(true), 12000);
+        const unsubscribe = onSnapshot(doc(db, 'sharedDocs', d.id, 'game', 'main'), s => {
+            window.clearTimeout(timeout);
             // A remote snapshot must never replace edits made while a save is in flight.
-            if (!dirtyRef.current) setGame(s.exists() ? s.data() as GameConfig : blankGame());
-        }, e => setError(e.message));
-    }, [d.id]);
+            if (!dirtyRef.current) {
+                const loaded = s.exists() ? s.data() as GameConfig : blankGame();
+                setGame(loaded);
+                if (play && gameProblems(loaded).length) { setPlay(false); setError('Finish the game questions before playing. Your draft is ready to edit below.'); }
+            }
+        }, e => { window.clearTimeout(timeout); setError(e.message || 'Could not load this game.'); });
+        return () => { window.clearTimeout(timeout); unsubscribe(); };
+    }, [d.id, loadTry]); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!dirty) return;
         const leave = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -44,9 +52,10 @@ export function GameFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         window.addEventListener('keydown', key);
         return () => window.removeEventListener('keydown', key);
     }, [canEdit]);
-    if (!game) return <p role="status">Opening game…</p>;
+    if (!game) return <div className="game-workspace game-load-state" role={error ? 'alert' : 'status'}><h2>{error ? 'Could not open this game' : slowLoad ? 'Still opening your game' : 'Opening game…'}</h2><p>{error || (slowLoad ? 'Check your connection, then try again.' : 'Loading your questions and settings.')}</p>{(error || slowLoad) && <button type="button" className="btn primary" onClick={() => setLoadTry(n => n + 1)}>Retry</button>}<a className="btn" href="/games">Back to Games</a></div>;
     const change = (p: Partial<GameConfig>, checkpoint = false) => {
         if (checkpoint) setUndo(game);
+        onChanged?.();
         revision.current++; dirtyRef.current = true;
         setGame({ ...game, ...p }); setDirty(true); setStatus('Unsaved changes');
     };
@@ -66,7 +75,7 @@ export function GameFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         try {
             await setDoc(doc(db, 'sharedDocs', d.id, 'game', 'main'), game);
             await updateDoc(doc(db, 'sharedDocs', d.id), { updatedAt: serverTimestamp() });
-            if (revision.current === savedRevision) { dirtyRef.current = false; setDirty(false); setStatus('Saved'); }
+            if (revision.current === savedRevision) { dirtyRef.current = false; setDirty(false); setStatus('Saved'); onSaved?.(); }
             else setStatus('Unsaved changes');
         } catch (e) { setError((e as Error).message); setStatus('Not saved — try again'); }
         finally { setBusy(false); }
@@ -101,7 +110,7 @@ export function GameFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     return <div className="game-workspace game-builder">
         <header className="game-editbar"><div><h2>Build your game</h2><p>Shape the questions. Try it as a learner. Bring it to class.</p></div><div className="game-editor-actions"><span role="status">{status}</span><button className="btn" type="button" title="Save game (Ctrl/⌘ S)" disabled={busy} onClick={() => void save()}><UiIcon name="videoSave"/>{busy ? 'Saving…' : 'Save game'}</button><button className="btn primary" type="button" disabled={!!problems.length} aria-describedby={problems.length ? 'game-readiness' : undefined} onClick={() => setPlay(true)}><UiIcon name="videoPlay"/>Play preview</button></div></header>
         {error && <p role="alert" className="game-error">{error}</p>}
-        <div className="game-settings"><div><strong>{GAME_TYPES.find(t => t.id === game.type)?.name || 'Game show'}</strong><p className="hint">{GAME_TYPES.find(t => t.id === game.type)?.about}</p></div><details className="game-appearance"><summary>Appearance and timing</summary><label>Look and feel<select value={game.theme} onChange={e => change({ theme: e.target.value as GameConfig['theme'] })}>{THEMES.map(t => <option value={t.id} key={t.id}>{t.name}</option>)}</select></label><label className="game-check"><input type="checkbox" checked={game.sound} onChange={e => change({ sound: e.target.checked })}/> Start with sound on</label>{ADVENTURES.includes(game.type) && <label>Seconds per question<select value={game.roundSeconds || 30} onChange={e => change({ roundSeconds: Number(e.target.value) })}>{[20, 30, 60, 120].map(n => <option key={n} value={n}>{n} seconds</option>)}</select></label>}
+        <div className="game-settings"><div><strong>{GAME_TYPES.find(t => t.id === game.type)?.name || 'Quiz Show'}</strong><p className="hint">{GAME_TYPES.find(t => t.id === game.type)?.about}</p></div><details className="game-appearance"><summary>Appearance and timing</summary><label>Look and feel<select value={game.theme} onChange={e => change({ theme: e.target.value as GameConfig['theme'] })}>{THEMES.map(t => <option value={t.id} key={t.id}>{t.name}</option>)}</select></label><label className="game-check"><input type="checkbox" checked={game.sound} onChange={e => change({ sound: e.target.checked })}/> Start with sound on</label>{ADVENTURES.includes(game.type) && <label>Seconds per question<select value={game.roundSeconds || 30} onChange={e => change({ roundSeconds: Number(e.target.value) })}>{[20, 30, 60, 120].map(n => <option key={n} value={n}>{n} seconds</option>)}</select></label>}
         {game.type === 'show' && <div className="game-show-settings"><label>Time to answer<select value={game.showTimer || 0} onChange={e => change({ showTimer: Number(e.target.value) })}>{SHOW_TIMERS.map(n => <option key={n} value={n}>{n ? `${n} seconds a question` : 'No timer'}</option>)}</select></label><p className="hint">{game.showTimer ? 'When time runs out the question scores nothing and the answer is shown. Give more time if your learners need it.' : 'Without a timer, learners take as long as they need.'}</p><label className="game-check"><input type="checkbox" checked={game.showLock !== false} onChange={e => change({ showLock: e.target.checked })}/> Ask players to lock in their answer</label><p className="hint">A second tap confirms the answer, with a moment of suspense before the result.</p><label className="game-check"><input type="checkbox" checked={game.showLifelines !== false} onChange={e => change({ showLifelines: e.target.checked })}/> Offer lifelines</label><p className="hint">Once a game: Take two away removes two wrong options{game.showTimer ? '; Extra time adds 20 seconds' : ''}.</p></div>}</details></div>
         <div className="game-sources"><GameDraft gameId={d.id} type={game.type} existingCount={game.rounds.length} onApply={useRounds}/><details><summary>Use an existing flashcard set</summary><p>Copy text from your cards, then review it here. Your original set stays unchanged.</p><label>Flashcards<select value={source} onChange={e => { setSource(e.target.value); setPendingCards(null); }}><option value="">Choose a set</option>{mine?.filter(d => d.kind === 'flash').map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select></label>{!source && <p className="hint">Choose a flashcard set to review its questions.</p>}<button type="button" className="btn" disabled={!source || busy} onClick={() => void fromCards()}><UiIcon name="import"/>Review card questions</button>{pendingCards && <section><h3>{pendingCards.length} questions ready to use</h3><ol>{pendingCards.map(r => <li key={r.id}>{r.prompt} — <strong>{r.answer}</strong></li>)}</ol><div className="game-editor-actions"><button className="btn" onClick={() => { useRounds(pendingCards); setPendingCards(null); }}>Replace questions</button><button className="btn" onClick={() => { useRounds(pendingCards, true); setPendingCards(null); }}>Add to questions</button></div><p className="hint">Review the answer format for your chosen game before saving.</p></section>}</details></div>
         <div className="game-readiness" id="game-readiness">{problems.length ? <details><summary>{problems.length} {problems.length === 1 ? 'thing' : 'things'} to finish before playing · drafts can still be saved</summary><ul>{problems.map(p => <li key={p}>{p}</li>)}</ul></details> : <span><UiIcon name="check"/> Ready to play · {game.rounds.length} {game.rounds.length === 1 ? kind.toLowerCase() : kind.toLowerCase() + 's'}</span>}{undo && <button className="btn" onClick={() => { change(undo); setUndo(null); }}>Undo last change</button>}</div>

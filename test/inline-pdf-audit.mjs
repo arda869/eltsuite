@@ -13,7 +13,13 @@ try{
  const page=await browser.newPage();
  await page.goto(base+'/test/inline-pdf-audit.html',{waitUntil:'domcontentloaded',timeout:180000});
  await page.locator('main[data-ready=true]').waitFor({timeout:180000});
- const results=await page.evaluate(async()=>{
+ // Vite can finish optimising a dependency immediately after the fixture becomes
+ // ready. That reload invalidates a page.evaluate context; retry on the new page.
+ let results;
+ for(let attempt=0;attempt<3;attempt++){
+  await page.locator('main[data-ready=true]').waitFor({timeout:180000});
+  try{
+   results=await page.evaluate(async()=>{
   const {flattenWithSections}=await import('/src/lib/worksheet.ts');
   const {worksheetHtml}=await import('/src/lib/worksheetHtml.ts');
   const {worksheetPdf}=await import('/src/lib/pdfMake.ts');
@@ -80,7 +86,12 @@ try{
   } finally {frame.remove();}
   function base64(bytes){let str='';for(let i=0;i<bytes.length;i+=8192)str+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(str);}
   return {lesson:base64(await worksheetPdf(html)),collab:base64(await htmlToPdf(collab,null))};
- });
+   });
+   break;
+  }catch(error){
+   if(attempt===2||!String(error).includes('Execution context was destroyed'))throw error;
+  }
+ }
  for(const [name,data] of Object.entries(results)){const bytes=Buffer.from(data,'base64');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');await writeFile(out+'/'+name+'.pdf',bytes);}
  console.log('Lesson and Collab PDF files written to '+out);
 }finally{await browser?.close();server.kill();}

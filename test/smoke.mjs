@@ -57,7 +57,6 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
   await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
-  await p.waitForLoadState('networkidle');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
@@ -301,6 +300,69 @@ const J = {
     return s;
   },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
+  'Shared control gallery: states, choices, narrow screens and 200% zoom': async b=>{
+    const s=await session(b,{owner:true});await s.p.goto(BASE+'/test/control-gallery.html');
+    await s.p.getByRole('heading',{name:'Controls and states'}).waitFor();
+    mkdirSync('outputs/ui-ux-brief/control-gallery',{recursive:true});
+    for(const width of [320,375,768,1024,1440])for(const theme of ['light','dark']){
+      await s.p.setViewportSize({width,height:900});
+      await s.p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      const overflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+      if(overflow>2)throw Error(`Control gallery overflows ${width}px ${theme} by ${overflow}px`);
+      await s.p.screenshot({path:`outputs/ui-ux-brief/control-gallery/${width}-${theme}.png`,fullPage:true});
+      if((width===375&&theme==='dark')||(width===1440&&theme==='light'))await axe(s.p,`Control gallery ${width}px ${theme}`,A11Y_FOUND);
+    }
+    await s.p.setViewportSize({width:768,height:900});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='200%');
+    const zoomOverflow=await s.p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+    if(zoomOverflow>2)throw Error(`Control gallery overflows at 200% zoom by ${zoomOverflow}px`);
+    await s.p.screenshot({path:'outputs/ui-ux-brief/control-gallery/768-zoom-200.png',fullPage:true});
+    await s.p.evaluate(()=>document.documentElement.style.zoom='');
+    await s.p.getByRole('button',{name:'One option'}).click();
+    await s.p.getByRole('option',{name:'Third option'}).click();
+    if(!(await s.p.getByRole('button',{name:'One option'}).innerText()).includes('Third option'))throw Error('Shared dropdown did not select an option');
+    await s.p.getByRole('button',{name:'Several options'}).click();
+    await s.p.getByRole('option',{name:'Speaking'}).click();
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Several options'}).press('Backspace');
+    if((await s.p.getByRole('button',{name:'Several options'}).innerText()).includes('Speaking'))throw Error('Backspace did not remove the last multiselect chip');
+    await s.p.getByRole('button',{name:'Several options'}).click();
+    await s.p.getByRole('option',{name:'Use any'}).click();
+    if(!(await s.p.getByRole('button',{name:'Several options'}).innerText()).includes('Any'))throw Error('Multiselect did not clear its selected values');
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Large option list'}).click();
+    const find=s.p.getByRole('searchbox',{name:'Find in Large option list'});
+    await find.fill('Writing');
+    await s.p.getByRole('option',{name:'Writing'}).waitFor();
+    if(await s.p.getByRole('option',{name:'Reading'}).count())throw Error('Multiselect search did not filter options');
+    await axe(s.p,'Searchable multiselect open',A11Y_FOUND);
+    await find.fill('unmatched skill');
+    await s.p.getByText('Nothing matches.',{exact:true}).waitFor();
+    await axe(s.p,'Searchable multiselect no results',A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    await s.p.getByRole('button',{name:'Open dialog'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).getByRole('button',{name:'Done'}).click();
+    await s.p.getByRole('dialog',{name:'Control example'}).waitFor({state:'detached'});
+    return s;
+  },
+  'Quiz Show is the only new game and its editor opens': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(BASE+'/games');
+    await s.p.getByRole('button',{name:/New game/}).click();
+    const menu=s.p.getByRole('menu',{name:'New game'});
+    const names=await menu.getByRole('menuitem').allTextContents();
+    if(names.length!==1 || names[0].trim()!=='Quiz Show')throw Error('New game menu exposed unexpected choices: '+names.join(', '));
+    const [tab]=await Promise.all([s.ctx.waitForEvent('page'),menu.getByRole('menuitem',{name:'Quiz Show'}).click()]);
+    await tab.getByRole('heading',{name:'Build your game'}).waitFor();
+    if(!await tab.getByText('Quiz Show',{exact:true}).count())throw Error('New game did not open as Quiz Show');
+    await tab.getByRole('button',{name:'Add question'}).click();
+    await tab.getByRole('button',{name:'Save game'}).click();
+    await tab.getByText('Saved',{exact:true}).last().waitFor();
+    mkdirSync('outputs/ui-ux-brief',{recursive:true});
+    await tab.screenshot({path:'outputs/ui-ux-brief/quiz-show.png'});
+    await axe(tab,'Quiz Show editor',A11Y_FOUND);
+    return s;
+  },
   'Discuss with Teacher’s Companion carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -319,8 +381,11 @@ const J = {
     if(request.lessonContext.classId!==s.demo.classId||request.lessonContext.itemId!==s.demo.itemId||!request.lessonContext.reportId||!request.lessonContext.taskId)throw Error('Selected report and activity were not passed');
     await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
-    await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
-    if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('What can I try without the attached lesson?');
+    await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'{}').prompt==='What can I try without the attached lesson?');
+    const detached=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(detached.lessonContext || detached.history?.length)throw Error('Removed lesson content was still sent to the model');
     return s;
   },
   'Teacher’s Companion opens as a small message with the current activity': async b => {
@@ -340,7 +405,11 @@ const J = {
     if(await s.p.locator('.coach-floating').count())throw Error('Companion opened a separate floating panel');
     await coach.getByLabel('Selected teaching context').waitFor();
     await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What is your advice on this activity?');
+    await coach.evaluate(()=>localStorage.setItem('mockCoachFailureOnce','1'));
     await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await coach.getByRole('alert').getByText('The Companion is temporarily unavailable. Try again.').waitFor();
+    if(await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).inputValue()!=='What is your advice on this activity?')throw Error('Failed Companion request lost the draft message');
+    await coach.getByRole('button',{name:'Try again',exact:true}).click();
     await coach.getByRole('log').getByText('What is your advice on this activity?',{exact:true}).waitFor();
     await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='What is your advice on this activity?');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
@@ -357,7 +426,8 @@ const J = {
     await s.p.getByRole('button',{name:'Class actions'}).click();
     await s.p.getByRole('menuitem',{name:'Class settings'}).click();
     const settings=s.p.getByRole('dialog',{name:'Class settings'});
-    await settings.getByLabel('Class spelling spell check').selectOption('off');
+    await settings.getByRole('button',{name:'Class spelling spell check'}).click();
+    await s.p.getByRole('option',{name:'Off',exact:true}).click();
     await settings.getByRole('button',{name:'Save changes'}).click();
     await s.p.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+id]?.spelling?.enabled===false,s.demo.classId);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -455,6 +525,13 @@ const J = {
     const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create image'}).click()]);
     await image.getByRole('button',{name:'AI images',exact:true}).click();
     await image.getByRole('button',{name:'Generate preview'}).waitFor();
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Change an image'}).click();
+    await image.getByText('Select one image on the canvas.',{exact:true}).waitFor();
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    if(await image.evaluate(()=>localStorage.getItem('lastDesignerRequest')))throw Error('Image change started without a selected source');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Create an image'}).click();
     await image.getByLabel('Describe your image').fill('Pip running in an original blue classroom scene');
     await image.getByText('Using references: Pip',{exact:true}).waitFor();
     await image.evaluate(()=>localStorage.setItem('mockDesignerDelayMs','2000'));
@@ -480,16 +557,29 @@ const J = {
     await s.p.getByRole('button',{name:'Close character library'}).click();
     const fileId=new URL(image.url()).pathname.split('/').pop();
     await image.waitForFunction(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('sharedDocs/'+id+'/dels/')&&v.t==='image'&&v.img),fileId);
-    await image.getByLabel('What would you like to do?').selectOption('erase');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Magic eraser · remove an object'}).click();
     await image.getByLabel('What should be removed?').fill('Remove the bag');
     await image.getByRole('button',{name:'Generate preview'}).click();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
-    await image.getByLabel('What would you like to do?').selectOption('restyle');
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Change an image'}).click();
+    await image.getByLabel('What should change?').fill('Change the sky to orange');
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByAltText('Generated preview').waitFor();
+    const changeRequest=await image.evaluate(()=>JSON.parse(localStorage.getItem('lastDesignerRequest')));
+    if(changeRequest.action!=='edit'||!changeRequest.imageId||changeRequest.prompt!=='Change the sky to orange')throw Error('Image change did not use the selected source');
+    await image.getByRole('button',{name:'Apply to canvas'}).click();
+    await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    await image.getByRole('button',{name:'What would you like to do?'}).click();
+    await image.getByRole('option',{name:'Restyle an image'}).click();
     await image.getByRole('button',{name:/Black & white/}).click();
     await image.getByLabel('Extra changes (optional)').fill('');
-    const ref=await image.getByLabel('Match an existing illustration').locator('option').nth(1).getAttribute('value');
-    await image.getByLabel('Match an existing illustration').selectOption(ref);
+    const ref=await image.evaluate(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).find(([k,v])=>k.startsWith('sharedDocs/'+id+'/dels/')&&v.t==='image'&&v.img)?.[1].img,fileId);
+    if(!ref)throw Error('Designer image reference was not saved');
+    await image.getByRole('button',{name:'Match an existing illustration'}).click();
+    await image.getByRole('listbox',{name:'Match an existing illustration'}).getByRole('option').nth(1).click();
     await image.getByRole('button',{name:'Generate preview'}).click();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
@@ -522,6 +612,9 @@ const J = {
     const storyId=new URL(story.url()).pathname.split('/').pop();
     const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type,panel:fs['sharedDocs/'+id+'/dpages/panel1']};},storyId);
     if(saved.kind!=='design'||saved.type!=='storyboard'||saved.panel?.w!==1280||saved.panel?.h!==720)throw Error('Storyboard did not save as a Designer file with a 16:9 first panel');
+    await story.getByRole('button',{name:'Backdrop',exact:true}).click();
+    await story.getByRole('option',{name:'Café',exact:true}).click();
+    await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);
     // A backdrop by click; a person by dragging onto the panel, standing where dropped.
     await story.getByRole('button',{name:'Backdrop: Café',exact:true}).click();
     await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);
@@ -529,6 +622,12 @@ const J = {
     await story.getByRole('button',{name:'Maya',exact:true}).dragTo(over,{targetPosition:{x:box.width*0.5,y:box.height*0.9}});
     const dropped=await story.waitForFunction(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.values(fs).find(v=>v&&v.page==='panel1'&&v.t==='art'&&v.ref==='maya')||null;},storyId).then(h=>h.jsonValue());
     if(!dropped.ground||Math.abs((dropped.y+dropped.h*286/300)-720*0.9)>12||Math.abs(dropped.x+dropped.w/2-640)>12)throw Error('Dropped person did not stand where dropped: '+JSON.stringify(dropped));
+    const quick=story.getByRole('toolbar',{name:'Quick changes'});
+    await quick.getByRole('button',{name:'Pose',exact:true}).click();
+    await story.getByRole('option',{name:'Waving',exact:true}).click();
+    await quick.getByRole('button',{name:'Expression',exact:true}).click();
+    await story.getByRole('option',{name:'Calm',exact:true}).click();
+    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.pose==='wave'&&v.face==='neutral'),storyId);
     // Selected on drop: a different side of the same person is a different drawing, and words go beside the head.
     await story.getByRole('button',{name:'Left profile',exact:true}).click();
     await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.view==='left'),storyId);
@@ -560,11 +659,23 @@ const J = {
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Designer',exact:true}).click();
     await d.getByLabel('Search Designer').waitFor();
-    await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
-    const pageButton=d.getByRole('button',{name:/Insert page|Insert the image|Insert the storyboard|Insert Panel/}).first();
+    await d.locator('.design-pick-card img').first().waitFor({timeout:20000});
+    if((await d.locator('.design-pick-card').first().boundingBox())?.height<160)throw Error('Designer preview was clipped to a text-button height');
+    mkdirSync('outputs/ui-ux-brief',{recursive:true});
+    await d.screenshot({path:'outputs/ui-ux-brief/designer-picker.png'});
+    const sourceTitle=await d.evaluate(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id].title,fileId);
+    await d.locator('.inline-image-list button').filter({hasText:sourceTitle}).first().click();
+    const pageButton=d.getByRole('button',{name:/Insert (?:page|panel)|Insert the image|Insert the storyboard/i}).first();
     await pageButton.click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
     if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
+    const insertedPicture=d.locator('.pic-node').first();
+    await insertedPicture.click();
+    const sourceLink=d.getByRole('link',{name:'Edit source in Designer'});
+    await sourceLink.waitFor();
+    if(!new URL(await sourceLink.getAttribute('href'),BASE).pathname.endsWith('/'+fileId))throw Error('Inserted picture lost its Designer source');
+    const [sourcePage]=await Promise.all([s.ctx.waitForEvent('page'),sourceLink.click()]);
+    await sourcePage.getByRole('button',{name:'Use in Classes'}).waitFor();
     await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test/500px-test-market.png',thumburl:'https://upload.wikimedia.org/test/500px-test-market.png',width:4000,height:3000,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
     await d.route('https://upload.wikimedia.org/test/500px-test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
@@ -575,7 +686,10 @@ const J = {
     await d.locator('.inline-image-list button').filter({hasText:'Market'}).click();
     await d.locator('.pic-credit').filter({hasText:'Test artist'}).waitFor();
     await d.reload();await d.locator('.pic-credit').filter({hasText:'CC BY 4.0'}).waitFor();
-    await image.close();await story.close();return s;
+    await sourcePage.getByRole('button',{name:'Use in Classes'}).click();
+    await sourcePage.waitForURL(d.url().split('?')[0]);
+    if(!await sourcePage.evaluate(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([key,value])=>key.startsWith('users/teacher1/archive/')&&value.designerId===id),fileId))throw Error('Use in Classes did not preserve the Designer source in Resources');
+    await sourcePage.close();await image.close();await story.close();return s;
   },
 
 
@@ -2268,6 +2382,37 @@ const J = {
     await see(s.p,'text=1 of 1 correct','saved second attempt score');
     return s;
   },
+  'Exam hand-in waits for final saved answer and recovers a failed write': async b => {
+    const s=await session(b,{as:'Mia'});
+    await s.p.evaluate(({classId,itemId})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const itemPath=`classes/${classId}/items/${itemId}`;
+      fs[itemPath]={...fs[itemPath],type:'exam',exam:{minutes:null},examReleased:false};
+      const root=itemPath+'/tasks/';
+      for(const path of Object.keys(fs))if(path.startsWith(root))delete fs[path];
+      fs[root+'exam-save']={kind:'task',title:'Final answer',instructions:'Complete the sentence.',order:0,hidden:false,locked:false,content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'exam-gap',answers:[]}},{type:'text',text:' home.'}]}]}};
+      fs[root+'exam-save/private/key']={'exam-gap':{kind:'gap',answers:['went']}};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([{op:'set',path:`classes/${classId}/answers/exam-save_`,count:3,code:'unavailable'}]));
+    },s.demo);
+    await s.p.goto(BASE+'/learn/'+s.demo.itemId);
+    await s.p.getByRole('button',{name:'Start the exam'}).click();
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('went');
+    await s.p.getByText('Could not save',{exact:false}).first().waitFor();
+    await s.p.getByRole('button',{name:'Hand in the exam'}).click();
+    await s.p.getByRole('button',{name:'Hand in',exact:true}).last().click();
+    await s.p.getByText('Your exam has not been handed in',{exact:false}).waitFor();
+    const before=await s.p.evaluate(({classId})=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).filter(d=>d?.scope===`i_${JSON.parse(localStorage.getItem('mockdemo')).itemId}`&&d?.uid).map(d=>d.submittedMs),s.demo);
+    if(before.some(Boolean))throw Error('Exam was submitted despite an unsaved final answer');
+    await s.p.evaluate(()=>sessionStorage.removeItem('mockfs-faults'));
+    await s.p.reload();
+    if(await s.p.getByRole('textbox',{name:'Question 1',exact:true}).inputValue()!=='went')throw Error('Failed exam answer disappeared on reload');
+    await s.p.locator('.frame-foot .save-dot').filter({hasText:'Saved'}).waitFor();
+    await s.p.getByRole('button',{name:'Hand in the exam'}).click();
+    await s.p.getByRole('button',{name:'Hand in',exact:true}).last().click();
+    await s.p.waitForFunction(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.entries(fs).some(([path,d])=>path.startsWith(`classes/${classId}/examRuns/i_${itemId}_`)&&d.submittedMs)&&Object.entries(fs).some(([path,d])=>path.startsWith(`classes/${classId}/answers/exam-save_`)&&d.responses?.['exam-gap']==='went');},s.demo);
+    return s;
+  },
   'Learner signs in and opens the lesson': async (b) => {
     const s = await session(b, { as: 'Mia' });
     await s.p.goto(BASE + '/');
@@ -2365,23 +2510,23 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development?section=coach');
-    await see(s.p, 'text=Let’s start with your teaching', 'first-chat profile setup');
-    if (await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Coach allowed chat before profile completion');
-    await s.p.locator('.qualifications-picker > summary:visible').click();
-    await s.p.getByRole('checkbox',{name:'CELTA',exact:true}).check();
-    await s.p.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
-    await s.p.getByRole('checkbox',{name:'Other',exact:true}).check();
-    await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
-    await s.p.getByLabel('Specify your other course or qualification').fill('Local mentoring course');
-    await s.p.getByRole('button',{name:'Teaching experience',exact:true}).click();
-    await s.p.getByRole('option',{name:'10+ years',exact:true}).click();
-    await s.p.getByRole('checkbox', {name:'Teacher',exact:true}).check();
-    await s.p.getByLabel('Who do you teach?', {exact:true}).fill('Adult learners at B1');
-    await s.p.getByRole('button', {name:'Continue to teaching beliefs',exact:true}).click();
-    await see(s.p,'text=What guides your teaching?','beliefs required before chat');
-    if(await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Chat allowed without beliefs');
-    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
-    await s.p.getByRole('button',{name:'Save beliefs and start chatting',exact:true}).click();
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat before optional profile setup');
+    await s.p.getByRole('button',{name:'Profile and beliefs',exact:true}).click();
+    const profilePanel=s.p.locator('.studio-section-scroll:not([hidden])');
+    await profilePanel.locator('.qualifications-picker > summary:visible').click();
+    await profilePanel.getByRole('checkbox',{name:'CELTA',exact:true}).check();
+    await profilePanel.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
+    await profilePanel.getByRole('checkbox',{name:'Other',exact:true}).check();
+    await profilePanel.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
+    await profilePanel.getByLabel('Specify your other course or qualification').fill('Local mentoring course');
+    await profilePanel.getByRole('button',{name:'Years of teaching experience',exact:true}).click();
+    await s.p.getByRole('option',{name:'10+',exact:true}).click();
+    await profilePanel.getByRole('checkbox',{name:'Teacher',exact:true}).check();
+    await profilePanel.getByLabel('Your learners and teaching context').fill('Adult learners at B1');
+    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await profilePanel.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
+    await profilePanel.getByRole('button',{name:'Save profile and beliefs',exact:true}).click();
+    await see(s.p,'text=Saved privately.','optional profile saved');
+    await s.p.getByRole('button',{name:'Teacher’s Companion',exact:true}).click();
     await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer after setup');
     await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
     await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
@@ -2436,6 +2581,7 @@ const J = {
     await s.p.waitForFunction(()=>{const input=document.querySelector('.coach-preference-options input');return input && !input.disabled;});
     if (await s.p.getByRole('checkbox', {name:/^Professional profile/}).isChecked()) throw Error('Saved context opt-out was not retained');
     await s.p.goto(BASE+'/development?section=coach');
+    await s.p.locator('.coach-chat').waitFor({timeout:180000});
     for (const width of [320,390,1280]) {
       await s.p.setViewportSize({width,height:900});
       await axe(s.p,'Development Studio chat '+width,A11Y_FOUND);
@@ -2481,7 +2627,7 @@ const J = {
     await s.p.locator('.qualifications-picker > summary:visible').click();
     await s.p.getByRole('checkbox',{name:'No formal qualification',exact:true}).check();
     await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
-    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
+    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.locator('.studio-section-scroll:not([hidden])').getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
     await s.p.getByRole('button',{name:'Years of teaching experience',exact:true}).click();
     await s.p.getByRole('option',{name:'3–5',exact:true}).click();
     await s.p.getByLabel('Your learners and teaching context').fill('Adults learning English at B1');
@@ -2580,7 +2726,7 @@ if(!LIVE_PUBLIC && ONLY !== 'Public homepage') {
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 180000 });
-  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await p.waitForLoadState('networkidle');
+  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 });
   for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
   await p.waitForTimeout(1500);
