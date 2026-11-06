@@ -298,6 +298,26 @@ const J = {
     await learnerCaption.waitFor();
     await learnerCaption.locator('strong').filter({hasText:'a blue square'}).waitFor();
     await learnerCaption.locator('.gap-wrap').waitFor();
+    const printed=await s.p.evaluate(async()=>{
+      const {flattenTask}=await import('/src/lib/worksheet.ts');
+      const {inlineWorksheetHtml}=await import('/src/lib/worksheetHtml.ts');
+      const content={type:'doc',content:[{type:'paragraph',content:['Camping holiday','Sea holiday','City break'].map(text=>({type:'picture',attrs:{src:'/test/fixtures/import-shapes.jpg',size:'m',mark:'1'},content:[{type:'text',text,marks:[{type:'bold'}]}]}))}]};
+      const html=inlineWorksheetHtml(flattenTask({title:'Pictures',instruction:'Compare.',content}));
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      return {captions:[...doc.querySelectorAll('.ws-picture-caption')].map(x=>x.textContent),labels:[...doc.querySelectorAll('.pic-label')].map(x=>x.textContent),bold:doc.querySelectorAll('.ws-picture-caption strong,.ws-picture-caption b').length};
+    });
+    if(printed.captions.join('|')!=='Camping holiday|Sea holiday|City break'||printed.labels.join(',')!=='1,2,3'||printed.bold!==3)throw Error('Printed picture descriptions or numbering lost: '+JSON.stringify(printed));
+    await s.p.evaluate(({classId,itemId})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';
+      for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];
+      fs[root+'pictures']={kind:'task',title:'Aligned pictures',instructions:'Compare the pictures.',order:0,content:{type:'doc',content:[{type:'paragraph',content:['Camping holiday','Sea holiday','City break'].map((text,i)=>({type:'picture',attrs:{src:'/test/fixtures/import-shapes.jpg',size:'m',mark:'1',ar:i===1?1:1.5},content:[{type:'text',text}]}))}]}};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },s.demo);
+    await s.p.reload();await s.p.locator('.task-editor .pic-label').nth(2).waitFor();
+    const labels=await s.p.locator('.task-editor .pic-label').allTextContents();
+    if(labels.join(',')!=='1,2,3')throw Error('Editor picture numbers are not sequential: '+labels);
+    const tops=await s.p.locator('.task-editor .pic-caption').evaluateAll(xs=>xs.map(x=>x.getBoundingClientRect().top));
+    if(Math.max(...tops)-Math.min(...tops)>2)throw Error('Picture descriptions are not aligned: '+tops);
     await axe(s.p,'Visual question and picture editing',A11Y_FOUND);
     return s;
   },

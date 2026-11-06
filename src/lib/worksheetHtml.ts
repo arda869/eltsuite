@@ -40,7 +40,7 @@ const hexMix = (hex: string, t: number) => {
 const plainColours = (svg: string, accent: string) =>
   svg.replace(/color-mix\(in srgb,\s*var\(--accent\)\s*(\d+)%,\s*(?:white|#fff(?:fff)?)\)/g, (_m, p) => hexMix(accent, Number(p) / 100)).replace(/var\(--accent\)/g, accent);
 
-function runs(rs: Run[]) {
+function runs(rs: Run[]): string {
   let stack = '';
   const inline = rs
     .map((r) => {
@@ -60,7 +60,7 @@ function runs(rs: Run[]) {
         const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
         const dots = (r.pic.pts ?? []).map((p, i) => `<span class="pic-pt" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join('');
         const tags = (r.pic.tags ?? []).map((t) => `<span class="pic-tag" style="left:${t.x}%;top:${t.y}%">${esc(t.text)}</span>`).join('');
-        return `<span class="pic pic-${esc(r.pic.size)}${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>`;
+        return `<span class="ws-picture pic-${esc(r.pic.size)}"><span class="pic${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>${r.pic.caption?.length ? `<span class="ws-picture-caption">${runs(r.pic.caption)}</span>` : ''}</span>`;
       }
       if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
       if (r.phon) return renderToStaticMarkup(createElement(PhonView, { type: r.phon.type, a: r.phon.a }));
@@ -420,6 +420,11 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .fi-opts i.fi-choice { border-radius: 50%; } .fi-opts i.fi-checklist { border-radius: .6mm; } .fi-opts i.fi-rank { width: 6mm; border-width: 0 0 .8pt; border-radius: 0; }
 .draw-box { height: 46mm; border: .8pt dashed #b8b2aa; border-radius: 2mm; margin: 1.4mm 0 2mm; }
 
+.ws-picture { display:inline-flex; flex-direction:column; vertical-align:top; margin:.6mm 2.4mm 1.6mm 0; }
+.ws-picture > .pic { width:100%; margin:0; }
+.ws-picture-caption { display:block; margin-top:auto; padding-top:1.2mm; text-align:center; font:9pt/1.4 Karla,sans-serif; color:#66615b; }
+p:has(> .ws-picture ~ .ws-picture) { display:flex; align-items:stretch; }
+p:has(> .ws-picture ~ .ws-picture) > .ws-picture { min-width:0; flex-shrink:1; }
 /* Pictures, with their label in the top-right corner */
 .pic { position: relative; display: inline-block; vertical-align: top; margin: .6mm 2.4mm 1.6mm 0; border-radius: 1.6mm; overflow: hidden; line-height: 0; background: #f1efeb; }
 .pic img { display: block; width: 100%; height: auto; max-height: calc(var(--ph, 297mm) - 80mm); object-fit: contain; }

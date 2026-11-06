@@ -8456,3 +8456,9 @@ body:has(.dock-bar) .shell:not(.wide){min-height:calc(100dvh - var(--suite-dock-
 body:has(.dock-bar) .dp{min-height:calc(100dvh - var(--suite-dock-space))}
 .dock-bar{right:12px}
 @media(max-width:760px){.shell{padding-inline:8px;gap:10px}.coach:not(.dock-coach){padding:18px 12px}.set-page{width:calc(100% - 20px)}}
+
+/* A row keeps captions together beneath pictures of different proportions. */
+p:has(> .node-picture ~ .node-picture),p:has(> .pic-rendered ~ .pic-rendered){display:flex;align-items:stretch;}
+p:has(> .node-picture ~ .node-picture) > .node-picture{display:flex;min-width:0;}
+p:has(> .node-picture ~ .node-picture) .pic-node,p:has(> .pic-rendered ~ .pic-rendered) > .pic-rendered{display:flex;flex-direction:column;min-width:0;}
+p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic-rendered) .pic-caption{margin-top:auto;text-align:center;}
