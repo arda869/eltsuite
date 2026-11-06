@@ -116,6 +116,31 @@ const shots = {
   async observation() { await go('/observations', 2500); await click('New observation'); await p.waitForTimeout(1500); },
   async games() { await go('/games', 2500); },
   async video() { await go('/studio/video/new', 4000); },
+  // The same lesson three ways, for the homepage: the worksheet view in the editor, the print preview
+  // (what comes out of the printer) and the learner's phone.
+  async worksheet() {
+    await p.setViewportSize({ width: 1440, height: 900 });
+    await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000);
+    await p.getByRole('radio', { name: /Worksheet: the lesson as printed pages/ }).click();
+    await p.waitForTimeout(3000);
+    await quiet();
+  },
+  async print() {
+    await p.setViewportSize({ width: 1440, height: 900 });
+    await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000);
+    await p.getByRole('radio', { name: /Worksheet: the lesson as printed pages/ }).click();
+    await p.waitForTimeout(1500);
+    await click('Print or PDF');
+    await p.waitForTimeout(5000);
+    await quiet();
+  },
+  async 'learner-phone'() {
+    const l = demo.learners[0];
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.evaluate((uid) => sessionStorage.setItem('mockuid', uid), l.uid);
+    await go(`/learn/${demo.itemId}`, 5000);
+    await p.evaluate(() => sessionStorage.setItem('mockuid', 'teacher1'));
+  },
   async learner() {
     const l = demo.learners[0];
     await p.evaluate((uid) => sessionStorage.setItem('mockuid', uid), l.uid);
@@ -142,6 +167,7 @@ for (const [name, run] of Object.entries(shots)) {
     await Promise.race([run(), new Promise((_, no) => setTimeout(() => no(Error('timed out')), 60000))]);
     const png = await p.screenshot({ timeout: 20000, animations: 'disabled' });
     writeFileSync(raw + name + '.png', png);
+    await p.setViewportSize({ width: 1440, height: 900 });
     if (webp) {
       writeFileSync(root + `public/landing/${name}.webp`, await toWebp(png, 2400));
       writeFileSync(root + `public/landing/${name}-sm.webp`, await toWebp(png, 1100, 0.8));
