@@ -111,3 +111,8 @@
   .aik-header .aik-close { grid-column: 3; grid-row: 1 / 3; }
   .aik-header :is(.aik-lede, .aik-uses) { grid-column: 1 / -1; }
 }
+
+.aik-header:has(.aik-window-actions){position:relative;padding-top:44px;}
+.aik-window-actions{position:absolute;top:0;right:0;display:flex;align-items:center;gap:8px;}
+.aik-window-actions .btn{display:inline-flex;align-items:center;gap:6px;}
+.aik-window-actions .aik-close{padding:7px;min-width:32px;}

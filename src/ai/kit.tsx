@@ -11,9 +11,10 @@ export const AI_ALLOWANCE = 'Uses your AI allowance. Opening saved results doesn
 export const AI_DRAFT_NOTE = 'An AI draft. Check it before you use it with learners.';
 
 /** Title block for an AI panel or dialog: a quiet kicker, the title, one line on what it does. */
-export function AiHeader({ kicker = 'With AI', title, lede, children, onClose, closeDisabled, level = 2 }: { kicker?: string; title: ReactNode; lede?: ReactNode; children?: ReactNode; onClose?: () => void; closeDisabled?: boolean; level?: 2 | 3 }) {
+export function AiHeader({ kicker = 'With AI', title, lede, children, onClose, onMinimise, closeDisabled, level = 2 }: { kicker?: string; title: ReactNode; lede?: ReactNode; children?: ReactNode; onClose?: () => void; onMinimise?: () => void; closeDisabled?: boolean; level?: 2 | 3 }) {
   const H = level === 2 ? 'h2' : 'h3';
   return <header className="aik-header">
+    {onClose && <div className="aik-window-actions"><button type="button" className="btn aik-close" aria-label="Close" title="Close" disabled={closeDisabled} onClick={onClose}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>{onMinimise && <button type="button" className="btn" onClick={onMinimise}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Continue working</button>}</div>}
     <AiMark size={22} />
     <div className="aik-header-text">
       <span className="aik-kicker">{kicker}</span>
@@ -21,7 +22,6 @@ export function AiHeader({ kicker = 'With AI', title, lede, children, onClose, c
       {lede && <p className="aik-lede">{lede}</p>}
       {children}
     </div>
-    {onClose && <button type="button" className="btn aik-close" disabled={closeDisabled} onClick={onClose}>Close</button>}
   </header>;
 }
 

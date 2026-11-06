@@ -236,8 +236,14 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
     window.addEventListener('pointerup', up);
   };
   const popStyle = usePopPos(ref, open, 320);
-  const pos = typeof getPos === 'function' ? getPos() : undefined;
-  const label = typeof pos === 'number' ? pictureLabel(editor.state.doc as never, pos, a.mark) : '';
+  const readLabel = () => { const at = getPos(); return typeof at === 'number' ? pictureLabel(editor.state.doc as never, at, a.mark) : ''; };
+  const [label, setLabel] = useState(readLabel);
+  useEffect(() => {
+    const refresh = () => setLabel(readLabel());
+    refresh();
+    editor.on('transaction', refresh);
+    return () => { editor.off('transaction', refresh); };
+  }, [editor, getPos, a.mark]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => !editing && ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);

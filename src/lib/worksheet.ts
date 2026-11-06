@@ -35,7 +35,7 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
+  pic?: { caption?: Run[]; src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
   kw?: boolean; // a key word in a frame, as on screen
   stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
@@ -193,8 +193,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         case 'picture': {
           const mk = String(a.mark ?? '');
           if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-          if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
-          if (node.content?.length) out.push({ t: '\n' }, ...runsOf(node.content));
+          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
           if (a.credit) out.push({ t: ' ' + String(a.credit) + ' ' });
           break;
         }
@@ -653,7 +652,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     () => [],
   );
   const label = (t: string) => new TextRun({ text: t.toUpperCase(), bold: true, font: SANS, size: S(15), color: '8A847D', characterSpacing: 30 });
-  const runsToDocx = (runs: Run[]) =>
+  const runsToDocx = (runs: Run[]): (TextRun | ImageRun)[] =>
     runs.flatMap((r) => {
       if (r.letters) return [new TextRun({ text: ' ' + Array.from(r.letters).map((c) => (c === '_' ? '_' : c === ' ' ? '  ' : c)).join(' ') + ' ', font: SANS })];
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
@@ -679,6 +678,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         return [
           ...(r.pic.label ? [new TextRun({ text: ` ${r.pic.label} `, bold: true, font: SANS, size: S(16), color: 'FFFFFF', shading: { type: 'clear' as never, color: 'auto', fill: ACC } }), new TextRun({ text: ' ' })] : []),
           new ImageRun({ type, data: bytes, transformation: { width: w, height: h }, altText: { name: r.pic.label || 'Picture', description: r.pic.alt || '', title: r.pic.label || '' } }),
+          ...(r.pic.caption?.length ? [new TextRun({break: 1}), ...runsToDocx(r.pic.caption)] : []),
           new TextRun({ text: '  ' }),
         ];
       }
