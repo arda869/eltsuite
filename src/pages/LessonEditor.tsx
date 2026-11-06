@@ -1362,6 +1362,9 @@ export function LessonEditor() {
                   role="separator"
                   aria-orientation="vertical"
                   aria-label="Drag to change the size of the worksheet"
+                  aria-valuemin={25}
+                  aria-valuemax={70}
+                  aria-valuenow={sheetW}
                   tabIndex={0}
                   onPointerDown={(e) => {
                     const split = e.currentTarget.parentElement as HTMLElement;

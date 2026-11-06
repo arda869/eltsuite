@@ -311,6 +311,8 @@ const J = {
     await learnerCaption.waitFor();
     await learnerCaption.locator('strong').filter({hasText:'a blue square'}).waitFor();
     await learnerCaption.locator('.gap-wrap').waitFor();
+    const digitalCaption=await learnerCaption.evaluate(el=>({height:el.getBoundingClientRect().height,font:parseFloat(getComputedStyle(el).fontSize)}));
+    if(digitalCaption.height<18||digitalCaption.font<14)throw Error('Picture description is too small in learner view: '+JSON.stringify(digitalCaption));
     const printed=await s.p.evaluate(async()=>{
       const {flattenTask}=await import('/src/lib/worksheet.ts');
       const {inlineWorksheetHtml}=await import('/src/lib/worksheetHtml.ts');
@@ -331,6 +333,16 @@ const J = {
     if(labels.join(',')!=='1,2,3')throw Error('Editor picture numbers are not sequential: '+labels);
     const tops=await s.p.locator('.task-editor .pic-caption').evaluateAll(xs=>xs.map(x=>x.getBoundingClientRect().top));
     if(Math.max(...tops)-Math.min(...tops)>2)throw Error('Picture descriptions are not aligned: '+tops);
+    await s.p.getByRole('radio',{name:'Worksheet: the lesson as printed pages'}).click();
+    await s.p.locator('.sh-left .sh-hit').first().waitFor();
+    const sheetCaptions=await s.p.evaluate(()=>{
+      const root=document.querySelector('.sh-left .sh-hit > div')?.shadowRoot;
+      return [...(root?.querySelectorAll('.ws-picture-caption')??[])].map(el=>({text:el.textContent,box:el.getBoundingClientRect().toJSON(),style:{color:getComputedStyle(el).color,font:getComputedStyle(el).fontSize}}));
+    });
+    if(sheetCaptions.map(c=>c.text).join('|')!=='Camping holiday|Sea holiday|City break')throw Error('Picture descriptions are missing from the worksheet: '+JSON.stringify(sheetCaptions));
+    if(Math.max(...sheetCaptions.map(c=>c.box.top))-Math.min(...sheetCaptions.map(c=>c.box.top))>2)throw Error('Worksheet picture descriptions are not aligned: '+JSON.stringify(sheetCaptions));
+    if(sheetCaptions.some(c=>parseFloat(c.style.font)<16||c.style.color!=='rgb(57, 53, 47)'))throw Error('Worksheet picture descriptions are too faint: '+JSON.stringify(sheetCaptions));
+    await s.p.locator('.sh-left').screenshot({path:'outputs/picture-worksheet-preview.png'});
     await axe(s.p,'Visual question and picture editing',A11Y_FOUND);
     return s;
   },
