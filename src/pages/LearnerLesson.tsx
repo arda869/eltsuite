@@ -11,6 +11,7 @@ import { UiIcon } from '../components/UiIcon';
 import { LiveWho } from '../components/LiveWho';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
+import { LearnerQuizBanner } from '../quiz/AddToLesson';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
 // The class notebook is switched off for now; its parts stay for later.
 const NOTEBOOK = false as boolean;
@@ -437,6 +438,7 @@ export function LearnerLesson() {
       </header>
 
       <AnnouncementCards classId={classId} learnerId={learnerId} />
+      {live?.liveQuiz && Date.now() - (live.liveQuiz.at || 0) < 4 * 3600 * 1000 && <LearnerQuizBanner quiz={live.liveQuiz} />}
       <LearnerLiveVideo c={c} live={live} myRoomId={myRoom?.id} itemId={itemId} />
       {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
       {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}

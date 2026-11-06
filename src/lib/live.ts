@@ -21,6 +21,7 @@ export type LiveState = {
   roomTask?: Record<string, string> | null; // room -> task the room is synced to
   poll?: { id: string; q: import('./survey').SurveyQ; anonymous: boolean; open: boolean; at: number } | null; // a quick live poll
   quiz?: boolean | null; // a team quiz is running (details in the Realtime Database)
+  liveQuiz?: { runId: string; code: string; title: string; itemId: string; taskId: string; at: number } | null; // a live quiz show is running (set by the quiz service)
   board?: { open: boolean; page: string } | null; // the lesson board, and the page the teacher is on
   video?: boolean | null; // the teacher is in the class video room: learners are asked to join
   videoRooms?: Record<string, { url: string; name: string }> | null; // breakout video rooms, by group of the group set in use

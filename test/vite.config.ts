@@ -43,7 +43,7 @@ export default defineConfig({
   root,
   plugins: [react(), harness()],
   define: { __BUILD__: '"dev"', 'import.meta.env.VITE_ELT_AI_PILOT': '"true"' },
-  resolve: { alias: { 'firebase/functions': m('functions.ts'), 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
+  resolve: { alias: { 'firebase-functions/v2/https': m('server-shims.ts'), 'firebase-admin/firestore': m('server-shims.ts'), 'firebase-admin/database': m('server-shims.ts'), 'firebase/functions': m('functions.ts'), 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
   // Freeze dependency optimisation before browser navigation. Late discoveries otherwise reload
   // lazy routes during the suite-wide audit, aborting their module requests.
   optimizeDeps: { noDiscovery: true, include: ['@tiptap/core','@tiptap/extension-document','@tiptap/extension-list-item','@tiptap/extension-ordered-list','@tiptap/pm/model','@tiptap/pm/state','@tiptap/pm/view','y-protocols/awareness','react-dom/client','react-dom/server','react/jsx-runtime','react/jsx-dev-runtime',...Object.keys(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).dependencies).filter(name=>!['firebase','@tiptap/pm','y-protocols'].includes(name)&&!name.startsWith('dictionary-'))] },

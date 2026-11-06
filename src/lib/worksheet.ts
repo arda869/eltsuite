@@ -364,9 +364,6 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       }
       case 'classroomGame': {
-        const session = String(a.sessionId || '').trim();
-        if (session) cur.push({kind:'media', id:'game:'+session, title:String(a.title || 'Classroom game'), video:false, mode:'game', game:true});
-        else cur.push({kind:'note',text:'Classroom game · Choose a saved game in the lesson before exporting its QR code.'});
         return;
       }
       case 'investigation': {

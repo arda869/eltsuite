@@ -1,14 +1,12 @@
 import {useEffect,useState,type CSSProperties} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
-import {GamePlayer} from '../games/GamePlayer';
 import {TaskRenderer} from '../components/TaskRenderer';
 import {InstrView} from '../editor/InstrEditor';
 import {YoungInstr} from '../lessons/young';
 import {splitKey,type Responses} from '../lib/questions';
 import {theme} from '../lib/themes';
 import {OfflineTaskActive} from './OfflineMedia';
-import type {GameConfig} from '../games/model';
 import type {ExportTask} from '../lib/textformat';
 import type {LessonStyle} from '../lib/lessonStyle';
 import '../styles.css';
@@ -16,7 +14,7 @@ import '../friday-ui.css';
 import '../cohesion.css';
 import '../lessons/youngLesson.css';
 import './player.css';
-export type OfflinePackage={title:string;game?:GameConfig;tasks?:ExportTask[];warnings?:string[];lessonStyle?:LessonStyle;themeColor?:string;textScale?:number;reading?:{font?:string;contrast?:boolean;focus?:boolean;letter?:number;line?:number}};
+export type OfflinePackage={title:string;tasks?:ExportTask[];warnings?:string[];lessonStyle?:LessonStyle;themeColor?:string;textScale?:number;reading?:{font?:string;contrast?:boolean;focus?:boolean;letter?:number;line?:number}};
 function Task({task,young,index}:{task:ExportTask;young:boolean;index:number}){
  const [responses,setResponses]=useState<Responses>({}),[checked,setChecked]=useState(false);
  const {content,key}=splitKey(task.content);
@@ -31,7 +29,7 @@ function Player({data}:{data:OfflinePackage}){
  },[]);
  const [restart,setRestart]=useState(0),[selected,setSelected]=useState(0),[info,setInfo]=useState(false);
  const tasks=(data.tasks||[]).filter(t=>t.kind!=='section'),colours=theme(data.themeColor);
- return <MemoryRouter><div className="shell wide classes-shell offline-shell" style={{'--accent':colours.accent,'--accent-text':colours.text,'--ts':data.textScale||1} as CSSProperties}><header className="offline-toolbar"><strong><span className="offline-suite-name">ELT Suite</span> {data.title}</strong>{tasks.length>0&&<nav aria-label="Lesson tasks"><button className="btn" disabled={selected===0} onClick={()=>setSelected(n=>n-1)}>Previous</button><label><select aria-label="Task" value={selected} onChange={e=>setSelected(Number(e.target.value))}>{tasks.map((t,i)=><option key={i} value={i}>{i+1}. {t.title||'Task'}</option>)}</select></label><button className="btn" disabled={selected>=tasks.length-1} onClick={()=>setSelected(n=>n+1)}>Next</button></nav>}<button className="btn" aria-expanded={info} onClick={()=>setInfo(!info)}>About this download{data.warnings?.length?' · online content':''}</button></header>{info&&<aside className="offline-note"><p>Teach on this device without internet. Responses stay in this open file. Live calls, messages and shared leaderboards require the original lesson online. This teacher copy may include answer keys.</p>{!!data.warnings?.length&&<ul>{data.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul>}<button className="btn" onClick={()=>{if(window.confirm('Clear answers and restart this offline file?'))setRestart(v=>v+1);}}>Restart</button></aside>}<main className="lesson-layout present" key={restart}><div className="center-col">{data.game?<GamePlayer game={data.game} title={data.title}/>:tasks.length?tasks.map((task,i)=><div className="offline-slide" hidden={selected!==i} key={i}><OfflineTaskActive.Provider value={selected===i}><Task task={task} young={data.lessonStyle==='young'} index={i}/></OfflineTaskActive.Provider></div>):<p>This lesson has no visible tasks.</p>}</div></main></div></MemoryRouter>;
+ return <MemoryRouter><div className="shell wide classes-shell offline-shell" style={{'--accent':colours.accent,'--accent-text':colours.text,'--ts':data.textScale||1} as CSSProperties}><header className="offline-toolbar"><strong><span className="offline-suite-name">ELT Suite</span> {data.title}</strong>{tasks.length>0&&<nav aria-label="Lesson tasks"><button className="btn" disabled={selected===0} onClick={()=>setSelected(n=>n-1)}>Previous</button><label><select aria-label="Task" value={selected} onChange={e=>setSelected(Number(e.target.value))}>{tasks.map((t,i)=><option key={i} value={i}>{i+1}. {t.title||'Task'}</option>)}</select></label><button className="btn" disabled={selected>=tasks.length-1} onClick={()=>setSelected(n=>n+1)}>Next</button></nav>}<button className="btn" aria-expanded={info} onClick={()=>setInfo(!info)}>About this download{data.warnings?.length?' · online content':''}</button></header>{info&&<aside className="offline-note"><p>Teach on this device without internet. Responses stay in this open file. Live calls, messages and shared leaderboards require the original lesson online. This teacher copy may include answer keys.</p>{!!data.warnings?.length&&<ul>{data.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul>}<button className="btn" onClick={()=>{if(window.confirm('Clear answers and restart this offline file?'))setRestart(v=>v+1);}}>Restart</button></aside>}<main className="lesson-layout present" key={restart}><div className="center-col">{tasks.length?tasks.map((task,i)=><div className="offline-slide" hidden={selected!==i} key={i}><OfflineTaskActive.Provider value={selected===i}><Task task={task} young={data.lessonStyle==='young'} index={i}/></OfflineTaskActive.Provider></div>):<p>This lesson has no visible tasks.</p>}</div></main></div></MemoryRouter>;
 }
 const data=JSON.parse(document.getElementById('offline-data')!.textContent!) as OfflinePackage;
 createRoot(document.getElementById('root')!).render(<Player data={data}/>);

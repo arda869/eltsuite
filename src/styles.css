@@ -8469,11 +8469,11 @@ body:has(.dock-bar) .dp{min-height:calc(100dvh - var(--suite-dock-space))}
 .dock-bar{right:12px}
 @media(max-width:760px){.shell{padding-inline:8px;gap:10px}.coach:not(.dock-coach){padding:18px 12px}.set-page{width:calc(100% - 20px)}}
 
-/* A row keeps captions together beneath pictures of different proportions. */
-p:has(> .node-picture ~ .node-picture),p:has(> .pic-rendered ~ .pic-rendered){display:flex;align-items:stretch;}
-p:has(> .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)){display:flex;min-width:0;}
-p:has(> .node-picture ~ .node-picture) .pic-node,p:has(> .pic-rendered ~ .pic-rendered) > .pic-rendered{display:flex;flex-direction:column;min-width:0;}
-p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic-rendered) .pic-caption{margin-top:auto;text-align:center;}
+/* Share an image row and caption row, including captions that wrap. */
+p:has(> .node-picture ~ .node-picture),p:has(> .pic-rendered ~ .pic-rendered){display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,max-content);grid-template-rows:auto auto;align-items:stretch;}
+p:has(> .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)),p:has(> .pic-rendered ~ .pic-rendered) > .pic-rendered{display:grid;grid-template-rows:subgrid;grid-row:span 2;min-width:0;max-width:100%;}
+p:has(> .node-picture ~ .node-picture) .pic-node{display:grid;grid-template-rows:subgrid;grid-row:span 2;min-width:0;}
+p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic-rendered) .pic-caption{margin-top:0;text-align:center;}
 
 /* Keep the optional library action from reserving an empty row above the title. */
 .frame-head > .lib-save { position:absolute; top:10px; right:16px; }

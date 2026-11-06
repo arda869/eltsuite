@@ -92,7 +92,7 @@ import { GroupsDialog } from '../components/GroupsDialog';
 import { TaskAudience } from '../components/TaskAudience';
 import { ExamSettings } from '../components/ExamSettings';
 import { PollDialog } from '../components/Poll';
-import { TeacherQuiz } from '../components/TeamQuiz';
+import { LiveQuizDialog } from '../quiz/AddToLesson';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
 // The class notebook is switched off for now; its parts stay for later.
 const NOTEBOOK = false as boolean;
@@ -977,7 +977,7 @@ export function LessonEditor() {
         </span>
       </TopBar>
 
-      {quizOpen && <TeacherQuiz classId={classId} itemId={itemId} tasks={tasks} taskId={selected} roster={classmates} online={inLesson.map((p) => p.learnerId)} activeSet={activeSet} onClose={() => setQuizOpen(false)} />}
+      {quizOpen && <LiveQuizDialog classId={classId} itemId={itemId} tasks={tasks} currentTaskId={selected ?? undefined} onClose={() => setQuizOpen(false)} />}
       {NOTEBOOK && user && (
         <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={nbItems} topics={nbTopics} roster={classmates} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: selected }} />
       )}
@@ -1014,7 +1014,7 @@ export function LessonEditor() {
               onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.replace(/\s+/g, ' ').trim() })}
             />
             {tasks.map((t, i) => (<Fragment key={t.id}>
-              {!viewer&&!teachingHere&&!preview&&!isVariant(t)&&<TaskInsert label={'Insert before '+t.title} ai={aiPilot} open={openTaskInsert===t.id} onOpenChange={open=>setOpenTaskInsert(open?t.id:null)} onChoose={kind=>void insertAt(t.id,kind)}/>}
+              {!viewer&&!teachingHere&&!preview&&!isVariant(t)&&<TaskInsert label={'Insert before '+t.title} ai={aiPilot} open={openTaskInsert===t.id} onOpenChange={open=>setOpenTaskInsert(open?t.id:null)} onChoose={kind=>kind==='quiz'?setQuizOpen(true):void insertAt(t.id,kind)}/>}
               <div
                 className={'task-row' + (isVariant(t) ? ' variant-row' : '') + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
                 draggable={!isVariant(t)}
@@ -1106,7 +1106,7 @@ export function LessonEditor() {
                 )}
               </div>
             </Fragment>))}
-            {!viewer&&!teachingHere&&!preview&&<TaskInsert label="Add at the end" ai={aiPilot} open={openTaskInsert==='end'} onOpenChange={open=>setOpenTaskInsert(open?'end':null)} onChoose={kind=>void insertAt(null,kind)}/>}
+            {!viewer&&!teachingHere&&!preview&&<TaskInsert label="Add at the end" ai={aiPilot} open={openTaskInsert==='end'} onOpenChange={open=>setOpenTaskInsert(open?'end':null)} onChoose={kind=>kind==='quiz'?setQuizOpen(true):void insertAt(null,kind)}/>}
           </nav>
           {panels.left && !present && <PaneResizer side="left" width={panes.widths.left} onWidth={(px) => panes.set('left', px)} onReset={() => panes.reset('left')} />}
 
@@ -1144,7 +1144,7 @@ export function LessonEditor() {
                 {picking ? (
                   <span className="picking-name">{picking}</span>
                 ) : (
-                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip={tr('Pick a learner, poll, team quiz, announcement')}>
+                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz || live?.liveQuiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip={tr('Pick a learner, poll, live quiz, announcement')}>
                     Activities
                     <span aria-hidden="true">▾</span>
                   </button>
@@ -1158,7 +1158,7 @@ export function LessonEditor() {
                       <UiIcon name="poll" /> Quick poll{live?.poll?.open ? ' · open' : ''}
                     </button>
                     <button role="menuitem" onClick={() => (setActivityOpen(false), setQuizOpen(true))}>
-                      <UiIcon name="quiz" /> Team quiz{live?.quiz ? ' · running' : ''}
+                      <UiIcon name="quiz" /> Live quiz{live?.liveQuiz ? ' · running' : ''}
                     </button>
                     <button role="menuitem" onClick={() => (setActivityOpen(false), setAnnouncing(true))}>
                       <UiIcon name="announce" /> Announcement
