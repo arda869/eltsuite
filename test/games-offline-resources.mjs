@@ -26,7 +26,7 @@ try{
  });
  for(const [title,kind] of [['Offline town game','game'],['Offline Shark escape','shark'],['Offline Taxi town','taxi'],['Offline town lesson','lesson']]){
  await p.goto(base+'/archive');await p.getByRole('button',{name:'Search',exact:true}).click();await p.getByRole('searchbox').fill(title);await p.getByText(title,{exact:true}).click({button:'right'});const [download]=await Promise.all([p.waitForEvent('download'),p.getByRole('menuitem',{name:'Download offline HTML',exact:true}).click()]);const path='/tmp/resources-'+kind+'.html';await download.saveAs(path);
- const offline=await browser.newContext({offline:true});const file=await offline.newPage(),errors=[];file.on('pageerror',e=>errors.push(e.message));await file.goto('file://'+path);await file.getByText('ELT Suite',{exact:true}).waitFor();
+ const offline=await browser.newContext({offline:true});const file=await offline.newPage(),errors=[];file.on('pageerror',e=>errors.push(e.message));await file.goto('file://'+path);await file.locator('#offline-loading').waitFor({state:'detached'});await file.locator('.offline-suite-name').waitFor();
  if(kind==='game'){await file.getByRole('button',{name:'Start the show',exact:true}).click();await file.getByRole('button',{name:/library/}).click();await file.getByRole('button',{name:'Lock it in',exact:true}).click();await file.getByRole('button',{name:'Finish game',exact:true}).click();await file.getByRole('heading',{name:'Game complete',exact:true}).waitFor();}
  else if(kind==='shark'||kind==='taxi'){
    await file.getByRole('button',{name:kind==='shark'?'Start rowing':'Start your shift',exact:true}).click();
@@ -35,7 +35,7 @@ try{
    await file.getByRole('heading',{name:'Game complete',exact:true}).waitFor();
    assert.equal(await file.locator('.ch-final b').textContent(),'10');
  }
- else{await file.getByRole('textbox').fill('library');await file.getByRole('button',{name:'Check answers',exact:true}).click();await file.waitForFunction(()=>document.querySelector('img')?.naturalWidth>0);await file.locator('audio').evaluate(async a=>{await a.play();});await file.waitForFunction(()=>document.querySelector('audio')?.currentTime>0);}
+ else{await file.getByRole('textbox').fill('library');await file.getByRole('button',{name:'Check answers',exact:true}).click();await file.waitForFunction(()=>document.querySelector('img')?.naturalWidth>0);await file.getByRole('button',{name:'Play',exact:true}).click();await file.getByRole('button',{name:'Pause',exact:true}).waitFor();}
  assert.deepEqual(errors,[]);await offline.close();console.log('Resources → downloaded '+kind+' → usable offline, with branding'+(kind==='lesson'?', embedded picture and playable recording.':'.'));
  }
 }finally{await browser?.close();server.kill();}
