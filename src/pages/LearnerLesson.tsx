@@ -262,7 +262,7 @@ export function LearnerLesson() {
 
   const examLockedRef = useRef(false);
   function change(id: string, v: Responses[string]) {
-    if (!base || task?.locked || examLockedRef.current || (checkedQuestionIds?.includes(id) && corrections[id]?.status !== 'open') || (checked && corrections[id]?.status !== 'open')) return;
+    if (!base || task?.locked || checkingPart || examLockedRef.current || (checkedQuestionIds?.includes(id) && corrections[id]?.status !== 'open') || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
     dirty.current = true;
@@ -346,8 +346,10 @@ export function LearnerLesson() {
     setCheckError('');
     dirty.current = true;
     window.clearTimeout(timer.current);
+    let saved = false;
     try {
       await saveResponses(classId, base, responses, false);
+      saved = true;
       const result = await checkSubTask(classId, itemId, base.taskId, partId);
       setCheckedParts(result.checkedParts);
       setKey(result.key);
@@ -355,7 +357,7 @@ export function LearnerLesson() {
       if (result.complete && (item?.type === 'practice' || item?.type === 'homework'))
         recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, result.key, responses).catch(() => {});
     } catch {
-      setCheckError('Could not check this part. Your answers are saved; please try again.');
+      setCheckError(saved ? 'Could not check this part. Your answers are saved; please try again.' : 'Could not save your answers. Check your connection and try again.');
     } finally {
       dirty.current = false;
       setCheckingPart('');
@@ -608,7 +610,7 @@ export function LearnerLesson() {
                   checkedSubTasks={!scope && groupedChecking ? checkedParts : undefined}
                   checkingSubTask={checkingPart}
                   onCheckSubTask={!scope && groupedChecking ? checkPart : undefined}
-                  disabled={task.locked || examLocked}
+                  disabled={task.locked || examLocked || !!checkingPart}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
