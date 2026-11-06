@@ -12,6 +12,7 @@ function remove(id: string) { if (!snapshot.some(a => a.id === id)) return; snap
 // The owning editor remains mounted when its panel is minimised. No second paid
 // request is made when returning to it. Work is deliberately scoped to this page.
 // A panel never hides itself: it stays open with its progress until the teacher presses Minimise.
+// Active work is still listed in the corner, which also keeps a link click from leaving the page.
 export function useAiActivity({ active, title, detail = '', error = '', progress, enabled = true, retainResult = false, onOpen }: {
   active: boolean; title: string; detail?: string; error?: string; progress?: number; enabled?: boolean; retainResult?: boolean; onOpen?: () => void;
 }) {
@@ -23,7 +24,7 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
   useEffect(() => {
     if (!enabled) { remove(id); wasActive.current=false; hiddenPanel.current=false; setMinimised(false); return; }
     if (active) {
-      if (hiddenPanel.current) put({id,title,detail,active:true,progress,open:restore});
+      put({id,title,detail,active:true,progress,open:restore});
     } else if (wasActive.current) {
       if(hiddenPanel.current||retainResult)put({id,title,detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active:false,error,open:restore});
       else remove(id);
