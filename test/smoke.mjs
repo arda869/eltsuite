@@ -347,6 +347,13 @@ const J = {
     await s.p.locator('.task-editor .pic-caption').first().fill('A longer picture description that wraps onto several lines');
     const wrappedTops=await s.p.locator('.task-editor .pic-caption').evaluateAll(xs=>xs.map(x=>x.getBoundingClientRect().top));
     if(Math.max(...wrappedTops)-Math.min(...wrappedTops)>2)throw Error('Wrapped descriptions start at different heights: '+wrappedTops);
+    await s.p.getByRole('radio',{name:'Worksheet: the lesson as printed pages'}).click();
+    const boxes=await s.p.locator('.task-editor .pic-caption').evaluateAll(xs=>xs.map(x=>({caption:x.getBoundingClientRect().toJSON(),wrapper:x.closest('.node-picture').getBoundingClientRect().toJSON()})));
+    for(let i=0;i<boxes.length;i++){
+      const {caption,wrapper}=boxes[i];
+      if(caption.right>wrapper.right+2||caption.left<wrapper.left-2)throw Error('Caption overflows its picture column: '+JSON.stringify(boxes));
+      if(i&&caption.left<boxes[i-1].caption.right-2)throw Error('Adjacent captions overlap: '+JSON.stringify(boxes));
+    }
     await axe(s.p,'Visual question and picture editing',A11Y_FOUND);
     return s;
   },
