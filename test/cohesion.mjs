@@ -55,6 +55,10 @@ export async function suiteCohesionAudit(s,base,out,axe) {
     assert.equal(measurement.height,width<700?60:64,'Shared header on '+route);assert.ok(measurement.overflow<=2,'Horizontal overflow on '+route+' '+width+' '+theme+': '+measurement.overflow);
     const gutter=width<700?8:12;assert.equal(measurement.headerPaddingLeft,gutter,'Header left spacing on '+route);assert.equal(measurement.headerPaddingRight,gutter,'Header right spacing on '+route);
     if(measurement.shellPaddingLeft!==null){assert.equal(measurement.shellPaddingLeft,gutter,'Page left spacing on '+route);assert.equal(measurement.shellPaddingRight,gutter,'Page right spacing on '+route);}
+    if(width===1440 && await p.locator('.dock-launch').isVisible()) {
+      const canvas=p.locator('.shell.wide,.lib-shell,.development-shell').first();
+      if(await canvas.count()){const panel=await canvas.boundingBox(),dock=await p.locator('.dock-launch').boundingBox();assert.ok(panel.y+panel.height<=dock.y+1,'Messages covers the workspace on '+route);}
+    }
     const menus=[];const controls=p.locator('.suite-topbar button[aria-expanded],.suite-topbar button[aria-haspopup]');
     for(let i=0;i<await controls.count();i++){const button=controls.nth(i);if(!await button.isVisible()||!await button.isEnabled())continue;const label=await button.getAttribute('aria-label')||await button.innerText();await button.click();await p.waitForTimeout(50);menus.push(label);await p.keyboard.press('Escape');}
     // Main-page dropdowns are exercised too; values are kept unchanged.

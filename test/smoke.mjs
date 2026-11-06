@@ -446,6 +446,10 @@ const J = {
     await s.p.reload();await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
     if(await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue()!=='A memorable day')throw Error('AI edit did not persist');
     if(await s.p.locator('.task-row').count()!==1)throw Error('AI edit appended a task');
+    await s.p.getByRole('button',{name:'More: groups, export, shortcuts',exact:true}).click();
+    if(await s.p.getByRole('menuitem',{name:/Lesson text|Full copy/}).count())throw Error('Legacy exports still in Classes menu');
+    const [download]=await Promise.all([s.p.waitForEvent('download'),s.p.getByRole('menuitem',{name:/^Offline lesson/}).click()]);
+    if(!download.suggestedFilename().endsWith('.html')||await download.failure())throw Error('Offline lesson download failed');
     await axe(s.p,'Edited lesson',A11Y_FOUND);return s;
   },
 
