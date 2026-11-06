@@ -272,6 +272,32 @@ for (const r of codes.docs) {
   }
 }
 
+// ------------------------------------------------------------------ invitation requests
+// A teacher asked for an invitation on the public homepage (invitationRequests/{id}). The ELT Suite
+// team hears about new ones in one email; they answer them in Super Admin → Invitation codes.
+const REQUESTS_TO = process.env.REQUESTS_TO || 'arda@eltsuite.com';
+const asked = (await db.collection('invitationRequests').get()).docs.filter((r) => !r.data().told && !r.data().invited);
+if (asked.length) {
+  try {
+    const rows = asked
+      .map((r) => r.data())
+      .map((d) => `<p style="margin:0 0 12px"><b>${esc(d.name)}</b> · ${esc(d.email)}${d.place ? ` · ${esc(d.place)}` : ''}${d.teaches ? ` · ${esc(d.teaches)}` : ''}${d.note ? `<br>“${esc(d.note)}”` : ''}</p>`)
+      .join('');
+    const title = asked.length === 1 ? 'A teacher asked for an invitation' : `${asked.length} teachers asked for an invitation`;
+    await mail.sendMail({
+      from: FROM,
+      to: REQUESTS_TO,
+      subject: title,
+      text: asked.map((r) => `${r.data().name} <${r.data().email}>`).join('\n') + `\n\nAnswer them in Super Admin → Invitation codes: ${SITE}/admin?tab=codes`,
+      html: frame(title, rows + `<p style="margin:16px 0 0">Answer them in <a href="${SITE}/admin?tab=codes">Super Admin → Invitation codes</a>.</p>`, 'You get this because you look after ELT Suite invitations.'),
+    });
+    for (const r of asked) await r.ref.update({ told: Date.now() });
+    console.log('Invitation requests emailed', asked.length);
+  } catch (e) {
+    console.error('Invitation request email failed', e?.message);
+  }
+}
+
 // ------------------------------------------------------------------ meeting invitations for guests
 // A meeting's guests from outside get an email with the link and a calendar invitation, and again
 // (as an update, or a cancellation) when it changes. guests[].h is what the last one said.

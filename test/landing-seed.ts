@@ -205,3 +205,20 @@ export async function seedLanding(teacherId = 'teacher1') {
   localStorage.setItem('landingdemo', JSON.stringify(out));
   return out;
 }
+
+// A saved Teacher's Companion conversation about the same lesson, for the homepage's “your development”.
+export async function seedCompanion(uid = 'teacher1') {
+  const base = 'teachingCoach/' + uid;
+  await setDoc(doc(db, base + '/settings/profile'), { qualifications: 'CELTA, DELTA Module 1', experience: '6–10', roles: ['Teacher'], context: 'Adult general English, B1 and B2 groups in a language school.', beliefs: 'Learners speak more when they feel safe and have time to prepare.', version: 1 });
+  const basis = ['Your professional profile', 'Your teaching beliefs'];
+  const turns = [
+    ['My B1 group went quiet in today’s opinion discussion. Only two or three people really spoke.', 'That’s worth looking at. When did it go quiet: at the start, or after the first few opinions? And what were the quieter learners doing while the others talked?', ''],
+    ['From the start, I think. They listened, but they didn’t want to give a reason in front of the whole class.', 'That fits with what you believe about learners needing to feel safe before they speak. One small change to try: give two minutes to plan a reason with a partner first, using the phrases from “Notice the language”. Then ask pairs, not individuals, to share. Would you like to plan that for Thursday?', ''],
+    ['Yes, let’s try it. I’d also like to remember what happens.', 'Good idea. After the lesson, note who spoke and how long their answers were, so you can compare. I’ve drafted a short journal entry you can keep or change.', 'The B1 group was quiet in the opinions discussion. On Thursday I’ll give two minutes of partner planning with the useful language before pairs share, and note who speaks and for how long.'],
+  ];
+  const now = Date.now() - 60 * 60000;
+  await setDoc(doc(db, base + '/conversations/landing-companion'), { title: 'A quiet opinions discussion', updatedAt: now + 5 * 60000, turnCount: turns.length, context: { lessonContext: null, formContext: null, evidencePacketId: '', reflectionId: '' } });
+  for (const [i, [prompt, reply, journalDraft]] of turns.entries()) {
+    await setDoc(doc(db, base + `/conversations/landing-companion/turns/t${i + 1}`), { prompt, status: 'completed', at: now + i * 120000, sequence: i + 1, contextKey: '', result: { reply, basis, sources: [], journalDraft } });
+  }
+}
