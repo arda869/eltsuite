@@ -776,25 +776,6 @@ service cloud.firestore {
       allow update: if permitted(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['version'])
         && request.resource.data.version == resource.data.version + 1;
     }
-    // Live games: clients observe; all controller moves and scores go through the callable.
-    function canReadGameTarget(t) {
-      return active() && (t.type == 'class' && (viewsClass(t.id) || memberOf(t.id))
-        || t.type == 'doc' && (get(/databases/$(database)/documents/sharedDocs/$(t.id)).data.owner == request.auth.uid
-          || request.auth.uid in get(/databases/$(database)/documents/sharedDocs/$(t.id)).data.memberIds));
-    }
-    match /gameSessions/{id} {
-      allow read: if canReadGameTarget(resource.data.target);
-      allow write: if false;
-      match /scores/{uid} {
-        allow read: if canReadGameTarget(get(/databases/$(database)/documents/gameSessions/$(id)).data.target);
-        allow write: if false;
-      }
-      match /players/{uid} {
-        allow read: if isSelf(uid) && canReadGameTarget(get(/databases/$(database)/documents/gameSessions/$(id)).data.target);
-        allow write: if false;
-      }
-    }
-
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       // In a shared folder, files belong to the folder's owner, whoever makes them.
@@ -836,6 +817,39 @@ service cloud.firestore {
     }
     // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
     // owner; each teacher can add their own, which learners hear in that teacher's tasks.
+    // Live quiz show runs. Only the quiz service (functions/quiz) writes them; the host and the class's
+    // teachers read the run, its players and answers for the results page. The answer key and the
+    // join codes are never readable.
+    match /quizRuns/{runId} {
+      function hostsRun(r) { return active() && (r.owner == request.auth.uid || (r.get('classId', null) is string && viewsClass(r.classId))); }
+      allow read: if hostsRun(resource.data);
+      allow write: if false;
+      match /players/{pid} {
+        allow read: if hostsRun(get(/databases/$(database)/documents/quizRuns/$(runId)).data);
+        allow write: if false;
+      }
+      match /answers/{aid} {
+        allow read: if hostsRun(get(/databases/$(database)/documents/quizRuns/$(runId)).data);
+        allow write: if false;
+      }
+      match /private/{d} {
+        allow read, write: if false;
+      }
+    }
+    match /quizCodes/{code} {
+      allow read, write: if false;
+    }
+    // Quiz show music a super admin uploaded for everyone: one document per moment (lobby, question,
+    // hurry, leaderboard, podium), the MP3 split into chunks of under a megabyte.
+    match /quizMusic/{slot} {
+      allow read: if signedIn();
+      allow write: if isOwner() && slot in ['lobby', 'question', 'hurry', 'leaderboard', 'podium'];
+      match /chunks/{n} {
+        allow read: if signedIn();
+        allow write: if isOwner() && slot in ['lobby', 'question', 'hurry', 'leaderboard', 'podium'];
+      }
+    }
+
     match /voicePreviews/{voice} {
       allow read: if signedIn();
       allow create, update: if isOwner()

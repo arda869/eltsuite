@@ -51,7 +51,7 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'game' | 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'game', label: 'Games' }, { k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'game', label: 'Quizzes' }, { k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file', 'design'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -397,7 +397,7 @@ export function MediaArchive() {
   const download = async (list: Entry[], folders: string[] = []) => {
     const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
     if (!every.length) return;
-    if(every.length===1&&!folders.length&&(every[0].cls||['game','lesson'].includes(every[0].doc?.kind||'')))return downloadOffline(every[0]);
+    if(every.length===1&&!folders.length&&(every[0].cls||every[0].doc?.kind==='lesson'))return downloadOffline(every[0]);
     if (every.length === 1 && !folders.length && every[0].doc?.kind === 'file') return void downloadAnyFile(every[0].doc.id, every[0].doc.file ? { ...every[0].doc.file, name: dlName(every[0].doc) } : undefined).catch(() => {});
     if (every.length === 1 && !folders.length && (every[0].item || every[0].task)) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
@@ -519,7 +519,7 @@ export function MediaArchive() {
       ];
     if (en.doc)
       return [
-        ...(['game','lesson'].includes(en.doc.kind)?[{label:'Download offline HTML',icon:'import',onClick:()=>void downloadOffline(en)} as MenuItem]:[]),
+        ...(en.doc.kind==='lesson'?[{label:'Download offline HTML',icon:'import',onClick:()=>void downloadOffline(en)} as MenuItem]:[]),
         ...(en.doc.kind === 'file'
           ? ([
               { label: 'Download', icon: 'import', onClick: () => openE(en) },
@@ -648,7 +648,7 @@ export function MediaArchive() {
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
-    ...(appOn('games') ? [{ label: 'Game show', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
+    ...(appOn('games') ? [{ label: 'Live quiz', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
     ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'images and storyboards', onClick: () => void makeDoc('design') } as MenuItem] : []),
@@ -1233,7 +1233,7 @@ export function MediaArchive() {
               <button type="button" className="btn small-btn primary" onClick={() => openE(oneEntry)}>
                 <UiIcon name="fullscreen" size={14} /> Open
               </button>
-              {['game','lesson'].includes(oneEntry.doc.kind) && <button className="btn small-btn" onClick={()=>void downloadOffline(oneEntry)}>Download offline HTML</button>}
+              {oneEntry.doc.kind === 'lesson' && <button className="btn small-btn" onClick={()=>void downloadOffline(oneEntry)}>Download offline HTML</button>}
               <button type="button" className="btn small-btn" onClick={() => setSharing(oneEntry.doc!)}>
                 <UiIcon name="person" size={14} /> Share
               </button>

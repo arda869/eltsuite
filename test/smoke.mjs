@@ -1052,19 +1052,18 @@ const J = {
     if(requests.length)throw Error('Public pages called a production data or AI endpoint: '+requests.join(', '));
     if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
   },
-  'Authentication: scanned game sign-in': async (b) => {
+  'Live quiz: anyone can join with a code, no account': async (b) => {
     const ctx=await b.newContext(),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
-    await p.goto(BASE+'/game/qr-game?site=learn');
-    await see(p,'input[placeholder]','learner class sign-in');
-    await p.getByText('Join your class',{exact:true}).waitFor();
-    await p.getByLabel('Class code',{exact:true}).waitFor();
-    if(await p.getByText('research evidence',{exact:false}).count())throw Error('Scanned game exposed an unrelated API error');
-    if(new URL(p.url()).pathname!=='/game/qr-game')throw Error('Lost scanned game destination');
-    await p.goto(BASE+'/game/qr-game?site=main');
-    await see(p,'#teacher-sign-in','teacher game sign-in');
-    await p.getByLabel('Email',{exact:true}).waitFor();
-    if(new URL(p.url()).pathname!=='/game/qr-game')throw Error('Lost teacher game destination');
+    await p.goto(BASE+'/game/old-game?site=learn');
+    await see(p,'#qz-code','quiz code entry from an old game link');
+    if(new URL(p.url()).pathname!=='/quiz')throw Error('Old game links should open the quiz join page');
+    await p.fill('#qz-code','12a3456');
+    if(await p.inputValue('#qz-code')!=='123456')throw Error('The code box should keep digits only');
+    await p.getByRole('button',{name:'Next'}).click();
+    await see(p,'#qz-name','nickname entry');
+    await p.goto(BASE+'/quiz/654321?site=main');
+    await see(p,'#qz-name','nickname entry from a shared link');
     if(errors.length)throw Error(errors.join('; '));
     return {ctx,errors};
   },

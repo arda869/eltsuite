@@ -119,6 +119,12 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+    "quizLive": {
+      "$runId": {
+        ".read": true,
+        ".write": false
+      }
     }
   }
 }
