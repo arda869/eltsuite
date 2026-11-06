@@ -175,6 +175,7 @@ export function TableHandles({ editor, host }: { editor: Editor; host: HTMLEleme
           <span className="tbl-handle row" style={{ top: spot.rowTop + spot.rowH / 2, left: spot.left - 26 }} onPointerDown={(e) => start(e, 'row')} role="button" aria-label="Row: drag to move, click for options" data-tip="Drag to move the row · click for options">
             {DOTS_V}
           </span>
+          <button type="button" className="tbl-handle tbl-delete" style={{top:spot.top-13,left:spot.left+2}} aria-label="Delete table" data-tip="Delete the whole table (Undo restores it)" onMouseDown={e=>e.preventDefault()} onClick={()=>{at(spot).deleteTable().run();setSpot(null);}}><UiIcon name="trash" size={13}/></button>
           <span className="tbl-handle col" style={{ top: spot.top - 13, left: spot.colLeft + spot.colW / 2 }} onPointerDown={(e) => start(e, 'col')} role="button" aria-label="Column: drag to move, click for options" data-tip="Drag to move the column · click for options">
             {DOTS_H}
           </span>
@@ -211,7 +212,7 @@ function TableMenu({ kind, anchor, s, count, ops, onClose }: { kind: 'row' | 'co
   const go = (f: () => void) => () => (f(), onClose());
   const B = (label: string, f: () => void, icon: React.ReactNode, disabled = false) => (
     <button type="button" role="menuitem" disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={go(f)}>
-      <span className="bm-ic">{icon}</span>
+      <span className="bm-ic" aria-hidden="true">{icon}</span>
       {label}
     </button>
   );

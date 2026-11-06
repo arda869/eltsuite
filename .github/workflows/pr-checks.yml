@@ -60,6 +60,8 @@ jobs:
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
       - name: Video access rules and service checks
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-video-editor "node test/video-access.mjs"
+      - name: Google and password sign-in retain the same identity
+        run: npx --yes firebase-tools@14 emulators:exec --config test/firebase-auth.json --only auth --project demo-ai-access "node test/password-link-integration.mjs"
       - name: File retention regression checks
         run: node --test test/file-bin-cleanup.mjs
       - name: Build and type check
@@ -75,6 +77,10 @@ jobs:
         run: node --test test/spelling.test.mjs test/coach/*.test.mjs
       - name: Task insertion and spelling journey (Firebase simulated)
         run: node test/tuesday-teaching-ui.mjs
+      - name: Gallery, table controls and print layout (Firebase simulated)
+        run: node test/friday-wishes-ui.mjs
+      - name: Downloaded offline lesson and karaoke
+        run: node test/offline-lesson-ui.mjs
       - name: Audio script visibility journey (Firebase simulated)
         run: node test/audio-script-ui.mjs
 

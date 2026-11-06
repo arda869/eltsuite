@@ -123,7 +123,7 @@ export function ClassPage() {
   }
 
   return (
-    <div className="shell" style={style}>
+    <div className="shell classes-shell" style={style}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/classes">Classes</Link>

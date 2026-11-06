@@ -437,7 +437,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
     setCopied(what);
     window.setTimeout(() => setCopied(''), 1400);
   };
-  if (!list) return <div className="dp-msg">Opening your reading…</div>;
+  if (!list) return <div className="dp-msg">Opening your Reading Journal…</div>;
   const words = q.trim().toLowerCase();
   const shown = [...list].sort((a, b) => sortKey(a).localeCompare(sortKey(b))).filter((s) => !words || `${shortName(s)} ${s.title} ${authorLine(s)} ${s.year}`.toLowerCase().includes(words));
   // A new source opens at once: the details at the top, the notes ready underneath.

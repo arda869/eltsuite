@@ -85,7 +85,9 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
     const text = draft.trim(); setPendingText(text);
     const history = saved.history.slice(-16).map(m => ({ role: m.role, text: (m.text+(m.journalDraft?'\nJournal draft:\n'+m.journalDraft:'')).slice(0,6000) }));
     const currentPage = compact && lessonContext ? coachContextOnPage() : null;
-    const attached = currentPage?.lessonContext ?? lessonContext;
+    const pageLesson = currentPage?.lessonContext;
+    const sameLesson = pageLesson && lessonContext && pageLesson.classId === lessonContext.classId && pageLesson.itemId === lessonContext.itemId && pageLesson.taskId === lessonContext.taskId;
+    const attached = sameLesson ? { ...lessonContext, ...pageLesson } : pageLesson ?? lessonContext;
     const payload = { action: 'coach', conversationId, contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, pageContext:coachPageSnapshot(), ...(formContext?{formContext}:{}), ...(attached?{lessonContext:attached}:{}) };
     while (new TextEncoder().encode(JSON.stringify(payload)).length > 40000 && history.length) history.splice(0,2);
     const fingerprint = JSON.stringify(payload);

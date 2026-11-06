@@ -1,3 +1,4 @@
+import { OfflineMedia } from '../offline/OfflineMedia';
 import {GamePlayer} from '../games/GamePlayer';
 import {GameSession} from '../games/GameSession';
 import {Concordance,concordanceRows} from '../linguistics/Concordance';
@@ -1144,7 +1145,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'offlineGame':
         return <GamePlayer key={key} game={node.attrs!.game}/>;
       case 'offlineMedia':
-        return <figure key={key}><figcaption>{node.attrs?.title}</figcaption>{node.attrs?.video?<video controls src={node.attrs.src}/>:<audio controls src={node.attrs?.src}/>}</figure>;
+        return <OfflineMedia key={key} src={node.attrs?.src||''} video={node.attrs?.video} title={node.attrs?.title} script={node.attrs?.script} scriptMode={node.attrs?.scriptMode} inline={node.attrs?.inline} mute={node.attrs?.mute}/>;
       case 'classroomGame':
         return node.attrs?.sessionId ? <GameSession key={key} id={String(node.attrs.sessionId)}/> : <p key={key}>Choose a saved game.</p>;
       case 'studioForm': {const a=node.attrs||{},f=studioDefinition(a.kind);return <section key={key} className="studio-form" id={'studio-form-'+a.id}><span className="coach-kicker">{f?.name}</span><h3>{a.title||f?.name}</h3>{f?.fields.map(([k,l])=><section key={k}><h4>{l}</h4><p className="studio-form-answer">{a.fields?.[k]||'Not recorded'}</p></section>)}{a.kind==='corpus'&&<><Concordance rows={concordanceRows(a.examples||[],a.fields?.query||'')} caption={'Kept examples · '+(a.fields?.query||'search phrase')}/>{a.examples?.map((e:any)=><p key={e.id}>{e.text} — {e.source} · {e.licence}</p>)}</>}</section>;}

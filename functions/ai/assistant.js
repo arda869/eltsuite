@@ -1,3 +1,4 @@
+import { activityMainInstruction } from './activities.js';
 import {selectCostFeature} from '../costs/context.js';
 import {restorePreparedScript} from './prepared-script.js';
 import { conversionInput } from './conversion-input.js';
@@ -109,7 +110,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           tx.create(v.collection('private').doc('key'),version.key);
           tx.create(v.collection('private').doc('notes'),{text:version.notes,updatedAt:Timestamp.now()});
         }
-        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
+        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions:activityMainInstruction(task),content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
         tx.create(ref.collection('private').doc('key'),native.key);
         tx.create(ref.collection('private').doc('notes'),{text:[i===0?Object.entries({'Main aim':plan.mainAim,'Language analysis':plan.languageAnalysis,Assessment:plan.assessment,Differentiation:activities.differentiation,Recycling:activities.recycling}).map(([label,text])=>label.toUpperCase()+'\n'+text).join('\n\n'):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
       });

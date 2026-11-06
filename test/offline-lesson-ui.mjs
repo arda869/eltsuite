@@ -1,0 +1,28 @@
+// Production HTML player, actual media engine and local file. Only source Firestore is simulated.
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';import {spawn} from 'node:child_process';import {mkdirSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';import {pathToFileURL} from 'node:url';
+const base='http://127.0.0.1:5344',server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port','5344','--host','127.0.0.1'],{stdio:'ignore',detached:true});let browser;
+const samples=24000*5,wav=Buffer.alloc(44+samples*2);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(24000,24);wav.writeUInt32LE(48000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(samples*2,40);for(let i=0;i<samples;i++)wav.writeInt16LE(Math.round(Math.sin(i*2*Math.PI*440/24000)*500),44+i*2);
+try{
+ for(let i=0;i<120;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
+ browser=await chromium.launch();const source=await browser.newPage();source.setDefaultTimeout(120000);await source.goto(base+'/test/friday-fixture.html');await source.waitForLoadState('networkidle');await source.reload();
+ const file=await source.evaluate(async audio=>{
+  const {doc,setDoc}=await import('/test/mock/firestore.ts'),{db}=await import('/src/lib/firebase.ts'),{makeOfflineFile}=await import('/src/offline/export.ts');
+  const root='classes/offline-fixture/items/lesson';await setDoc(doc(db,'classes/offline-fixture'),{lessonStyle:'young',themeColor:'teal'});await setDoc(doc(db,root),{title:'Offline presentation verification'});
+  await setDoc(doc(db,'classes/offline-fixture/media/recording'),{kind:'link',url:audio,script:[{t:0,text:'First timed line',who:'Ada'},{t:2,text:'Second timed line',who:'Ben'}],title:'Timed recording',duration:5,size:0});
+  await setDoc(doc(db,root+'/tasks/first'),{kind:'task',title:'Listen and discover',instructions:'Listen to the two speakers.',order:0,content:{type:'doc',content:[{type:'media',attrs:{media:'recording',scriptMode:'karaoke'}},{type:'paragraph',content:[{type:'text',text:'I '},{type:'gap',attrs:{id:'word',answers:[]}},{type:'text',text:' at home.'}]}]}});await setDoc(doc(db,root+'/tasks/first/private/key'),{word:{kind:'gap',answers:['work']}});
+  await setDoc(doc(db,root+'/tasks/second'),{kind:'task',title:'Share your ideas',instructions:'Choose a plan together.',order:1,content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'What would you choose?'}]}]}});
+  document.documentElement.dataset.theme='dark';
+  return makeOfflineFile({lesson:{classId:'offline-fixture',itemId:'lesson',className:'Test',title:'Test',topic:'',at:0,editors:{}}});
+ },'data:audio/wav;base64,'+wav.toString('base64'));
+ mkdirSync('outputs/friday',{recursive:true});const filename=resolve('outputs/friday/offline-lesson.html');writeFileSync(filename,file.html);
+ const context=await browser.newContext({offline:true,viewport:{width:1280,height:900}}),p=await context.newPage(),errors=[],remote=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/^https?:/.test(r.url()))remote.push(r.url());});p.setDefaultTimeout(30000);
+ await p.goto(pathToFileURL(filename).href,{waitUntil:'commit'});await p.locator('#offline-loading').waitFor();await p.screenshot({path:'outputs/friday/offline-loading.png'});
+ await p.locator('#offline-loading').waitFor({state:'detached'});assert.ok(await p.evaluate(()=>performance.now()-window.__eltOfflineStarted)>=3000);
+ assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');
+ await p.getByRole('heading',{name:'Listen and discover'}).waitFor();assert.equal(await p.locator('.task-frame:visible').getAttribute('data-lesson-style'),'young');assert.ok(await p.locator('.task-title:visible').evaluate(el=>getComputedStyle(el).display==='flex'&&parseFloat(getComputedStyle(el).columnGap)>=14));assert.equal(await p.locator('.offline-shell').evaluate(el=>getComputedStyle(el).getPropertyValue('--accent').trim()),'#5f9ea0');
+ await p.getByRole('button',{name:'Play',exact:true}).click();await p.locator('.kl-line.now').filter({hasText:'First timed line'}).waitFor();await p.locator('.kl-line.now').filter({hasText:'Second timed line'}).waitFor();await p.locator('.kl-line').filter({hasText:'First timed line'}).click();await p.locator('.kl-line.now').filter({hasText:'First timed line'}).waitFor();await p.screenshot({path:'outputs/friday/offline-karaoke.png'});await p.getByRole('button',{name:'Pause',exact:true}).click();
+ await p.screenshot({path:'outputs/friday/offline-presenting.png'});await p.getByRole('button',{name:'Play',exact:true}).click();await p.getByRole('button',{name:'Next',exact:true}).click();await p.getByRole('heading',{name:'Share your ideas'}).waitFor();await p.getByRole('button',{name:'Previous',exact:true}).click();await p.getByRole('heading',{name:'Listen and discover'}).waitFor();await p.getByRole('button',{name:'Play',exact:true}).waitFor();
+ await p.setViewportSize({width:390,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.screenshot({path:'outputs/friday/offline-mobile.png'});assert.deepEqual(errors,[]);assert.deepEqual(remote,[]);
+ console.log('PASS downloaded HTML with network disabled: minimum 3-second branded loader, theme, embedded fonts and audio, timed karaoke, seek, pause, task navigation and mobile layout. Source Firestore simulated.');
+}finally{await browser?.close();try{process.kill(-server.pid,'SIGTERM');}catch{}}

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Remembered open/closed state for the side panels of a lesson screen.
-export function usePanels(key: string) {
+export function usePanels(key: string, compactWidth = 0) {
   const read = (k: string) => {
     try {
       return localStorage.getItem(k) !== '0';
@@ -18,12 +18,25 @@ export function usePanels(key: string) {
       /* ignore */
     }
   };
+  const [compact, setCompact] = useState(() => compactWidth > 0 && window.matchMedia(`(max-width: ${compactWidth}px)`).matches);
+  const [compactLeft, setCompactLeft] = useState(false);
+  const [compactRight, setCompactRight] = useState(false);
+  useEffect(() => {
+    if (!compactWidth) return;
+    const media = window.matchMedia(`(max-width: ${compactWidth}px)`);
+    const update = () => { setCompact(media.matches); setCompactLeft(false); setCompactRight(false); };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, [compactWidth]);
+  const shownLeft = compact ? compactLeft : left;
+  const shownRight = compact ? compactRight : right;
   return {
-    left,
-    right,
-    toggleLeft: () => setLeft((v) => (save(key + '.left', !v), !v)),
-    toggleRight: () => setRight((v) => (save(key + '.right', !v), !v)),
-    cls: (left ? '' : ' no-left') + (right ? '' : ' no-right'),
+    compact,
+    left: shownLeft,
+    right: shownRight,
+    toggleLeft: () => compact ? (setCompactRight(false), setCompactLeft(v => !v)) : setLeft((v) => (save(key + '.left', !v), !v)),
+    toggleRight: () => compact ? (setCompactLeft(false), setCompactRight(v => !v)) : setRight((v) => (save(key + '.right', !v), !v)),
+    cls: (shownLeft ? '' : ' no-left') + (shownRight ? '' : ' no-right') + (compact ? ' compact-panels' : ''),
   };
 }
 

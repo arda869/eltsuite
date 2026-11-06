@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // One tooltip for every element with data-tip. It floats above everything (so boxes with
@@ -44,6 +45,7 @@ export function TooltipLayer() {
     document.addEventListener('focusin', focus);
     document.addEventListener('focusout', hide);
     return () => {
+      window.clearTimeout(timer.current);
       document.removeEventListener('pointerover', over);
       document.removeEventListener('pointerdown', hide);
       document.removeEventListener('scroll', hide, true);
@@ -57,12 +59,14 @@ export function TooltipLayer() {
     const el = box.current;
     if (!el || !tip) return;
     const half = el.offsetWidth / 2;
+    el.style.transform = 'translateX(-50%)';
+    el.style.top = Math.max(8, Math.min(tip.below ? tip.y : tip.y - el.offsetHeight, window.innerHeight - el.offsetHeight - 8)) + 'px';
     el.style.left = Math.min(Math.max(tip.x, half + 8), window.innerWidth - half - 8) + 'px';
   }, [tip]);
   if (!tip) return null;
-  return (
+  return createPortal(
     <div ref={box} className={'tip-float' + (tip.below ? ' below' : '')} role="tooltip" style={{ left: tip.x, top: tip.y, animation: 'none' }}>
       {tip.text}
-    </div>
+    </div>, document.body
   );
 }

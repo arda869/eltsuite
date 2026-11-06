@@ -107,9 +107,9 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
   const cur = node.type.name === 'heading' ? 'h' : node.type.name === 'blockquote' ? 'q' : 'p';
   const Item = ({ icon, label, onClick, disabled, keys }: { icon?: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; keys?: string }) => (
     <button type="button" role="menuitem" disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
-      <span className="bm-ic">{icon}</span>
+      <span className="bm-ic" aria-hidden="true">{icon}</span>
       {label}
-      {keys && <span className="bm-keys">{keys}</span>}
+      {keys && <span className="bm-keys" aria-hidden="true">{keys}</span>}
     </button>
   );
   return createPortal(
@@ -153,7 +153,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
       <Item icon={<span className="bm-arrow">↓</span>} label="Move down" disabled={!next} onClick={run(down)} />
       <Item icon={<span className="bm-sel" />} label="Select" onClick={run(() => (select(), editor.view.focus()))} />
       <span className="bm-sep" />
-      <Item icon={<UiIcon name="trash" size={15} />} label="Delete" keys="Del" onClick={run(del)} />
+      <Item icon={<UiIcon name="trash" size={15} />} label={node.type.name==='table'?'Delete table':'Delete'} keys="Del" onClick={run(del)} />
     </div>,
     document.body,
   );
@@ -276,7 +276,7 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       if (document.body.classList.contains('is-dragging-inline')) return;
       let t = e.target as HTMLElement | null;
       if (!editor.isEditable) return setHover(null);
-      if (t?.closest('.block-handle, .block-menu, .line-add')) return;
+      if (t?.closest('.block-handle, .block-menu, .line-add')) {window.clearTimeout(hide.current);return;}
       if (t?.closest('.grip')) return;
       while (t && t.parentElement !== pm) t = t.parentElement;
       // In the margin beside the text: the block level with the pointer.
@@ -328,8 +328,10 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
           style={{ top: hover.top, left: hover.left }}
           draggable
           role="button"
-          aria-label="Drag to move, click for options"
-          data-tip="Drag to move · click for options"
+          tabIndex={0}
+          aria-label={editor.state.doc.nodeAt(hover.pos)?.type.name==='table'?'Table: drag to move, click for options':'Drag to move, click for options'}
+          data-tip={editor.state.doc.nodeAt(hover.pos)?.type.name==='table'?'Move table · click to move or delete the whole table':'Drag to move · click for options'}
+          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setMenu({pos:hover.pos,anchor:e.currentTarget.getBoundingClientRect()});}}}
           onMouseEnter={() => window.clearTimeout(hide.current)}
           onMouseLeave={() => (hide.current = window.setTimeout(() => !menu && setHover(null), 350))}
           onDragStart={startDrag}

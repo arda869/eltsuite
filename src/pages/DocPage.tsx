@@ -128,6 +128,7 @@ export function DocPage() {
             <span className="dp-title ro">{title || KIND_LABEL[kind]}</span>
           )}
           <span className="dp-sub">
+            {kind === 'pd' && <>Reading Journal · </>}
             {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${KIND_LABEL[kind].toLowerCase()} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
             {d?.classes && Object.keys(d.classes).length > 0 && ` · in ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
           </span>

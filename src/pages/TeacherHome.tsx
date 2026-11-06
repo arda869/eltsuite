@@ -143,7 +143,7 @@ export function TeacherHome() {
   });
 
   return (
-    <div className="shell">
+    <div className="shell classes-shell">
       <TopBar>
         <MainNav on="classes" />
       </TopBar>

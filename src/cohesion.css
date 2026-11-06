@@ -1,5 +1,5 @@
 /* Shared suite geometry and AI identity. Feature content retains its own purpose. */
-:root { --suite-width:100%; --suite-gutter:40px; --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; scrollbar-gutter:stable; }
+:root { --suite-width:100%; --suite-gutter:12px; --suite-header-height:64px; --suite-space:16px; --suite-radius:14px; scrollbar-gutter:stable; }
 /* Shared pages keep the same width whether or not they scroll (scrollbar-gutter above), without
    showing an empty scroll bar on pages that fit the screen. */
 :root:has(.suite-topbar) { overflow-y:auto; }
@@ -12,7 +12,7 @@
 :root :is(.sx>.sx-bar,.vx>.sx-bar,.dp>.dp-bar,.dz>.dz-top,.studio-bar) { box-sizing:border-box; height:var(--suite-header-height); min-height:var(--suite-header-height); flex-shrink:0; padding-block:8px; padding-inline:var(--suite-gutter); }
 .song-header>.ai-minimise { margin-left:auto; }
 @media(max-width:700px) { .song-header,.speech-head { flex-wrap:wrap; } .song-header>.ai-minimise,.speech-head>.ai-minimise { font-size:12px; } }
-:root .shell.shell { width:100%; max-width:var(--suite-width); margin:0 auto; padding:0 var(--suite-gutter) 40px; gap:var(--suite-space); }
+:root .shell.shell { width:100%; max-width:var(--suite-width); margin:0 auto; padding:0 var(--suite-gutter) 12px; gap:var(--suite-space); }
 :root .topbar.suite-topbar { box-sizing:border-box; height:var(--suite-header-height); min-height:var(--suite-header-height); max-height:var(--suite-header-height); flex-shrink:0; flex-wrap:nowrap; width:100%; max-width:var(--suite-width); margin:0 auto; padding:10px var(--suite-gutter); top:0; gap:12px; border-bottom:1px solid var(--hair); background:var(--page); }
 :root .shell>.topbar.suite-topbar { width:calc(100% + 2 * var(--suite-gutter)); max-width:none; margin-inline:calc(-1 * var(--suite-gutter)); }
 :root .suite-topbar .suite-mark { min-width:0; flex-shrink:1; }
@@ -20,9 +20,9 @@
 :root .suite-topbar .suite-mark b { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 :root .suite-topbar .right { flex-shrink:0; gap:8px; }
 :root .shell>main:not(.task-frame), :root .shell>main.af { width:100%; max-width:none; margin-inline:0; }
-:root .shell>main.af { padding:0 0 48px; }
-:root :is(main.ai-assistant,main.linguistics,main.observation-studio,.development-shell>main.coach) { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 64px; }
-:root .development-shell>.coach { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 64px; }
+:root .shell>main.af { padding:0 0 12px; }
+:root :is(main.ai-assistant,main.linguistics,main.observation-studio,.development-shell>main.coach) { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 16px; }
+:root .development-shell>.coach { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 16px; }
 :root .development-shell>.coach.coach-chat-page { padding-bottom:16px; }
 @media(max-height:600px) { :root .development-shell>.coach.coach-chat-page { padding-top:8px; padding-bottom:12px; } }
 :root :is(.ai-hero,.ling-hero,.coach-hero,.observation-hero) { padding-top:0; margin-top:0; padding-bottom:20px; }
@@ -34,7 +34,7 @@
 .mp-bar .mp-wave { flex:1 1 80px; }
 .mp-bar .btn { max-width:100%; white-space:normal; height:auto; min-height:28px; }
 @media(max-width:700px) {
-  :root { --suite-gutter:20px; --suite-header-height:60px; --suite-space:20px; }
+  :root { --suite-gutter:8px; --suite-header-height:60px; --suite-space:12px; }
   :root .suite-topbar .suite-mark b { max-width:145px; font-size:17px; }
   :root .suite-topbar .right { gap:4px; }
   :root :is(.page-title,.hm h1,.af h1,.coach-hero h1,.ling-hero h1,.ai-hero h1,.observation-studio>header h1) { font-size:26px; }
@@ -123,7 +123,7 @@ html { touch-action:pan-x pan-y; }
 :root .btn.link.add-link { display:inline-flex; align-items:center; gap:6px; height:34px; margin:6px 0 2px; padding:0 14px; border:1.5px dashed var(--hair-strong); border-radius:10px; background:transparent; color:var(--accent-text); font-weight:600; font-size:13px; text-decoration:none; }
 :root .btn.link.add-link:hover { border-style:solid; border-color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, transparent); }
 /* Room at the bottom of every page for the Messages bar, so it never covers the last card. */
-:root:has(.dock-bar) .shell { padding-bottom:72px; }
+:root:has(.dock-bar) .shell { padding-bottom:12px; }
 /* One launcher for every app: readable names on desktop and a touch-friendly sheet on phones. */
 .apps-scrim { display:none; position:fixed; inset:0; z-index:79; border:0; background:#17130f70; cursor:default; }
 :root .suite-topbar:has(.apps-pop) { z-index:10001; }
@@ -200,3 +200,45 @@ html { touch-action:pan-x pan-y; }
 :root select:not([multiple]):not([size]):focus-visible { outline:none; border-color:var(--ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent); }
 :root select:not([multiple]):not([size]):disabled { opacity:.55; cursor:not-allowed; }
 :root select option { background:var(--paper); color:var(--ink); }
+
+body:has(.dock-bar) .development-shell{height:calc(100dvh - var(--suite-dock-space,40px))}
+:root .set-layout{gap:20px}
+:root .set-layout .set-page{margin-block:16px 20px}
+
+/* Editor tools must fit independently of the lesson's content and side panels. */
+:root .suite-topbar .suite-k { white-space:nowrap; }
+:root .classes-shell .suite-topbar .suite-mark { flex-shrink:0; }
+:root .classes-shell .suite-topbar .suite-mark b { max-width:160px; }
+:root .classes-shell .vc-soon { max-width:100px; font-size:12px; line-height:1.3; }
+:root .classes-shell .lesson-layout.compact-panels { flex-direction:row; }
+:root .classes-shell .compact-panels > .pane-resizer { display:none; }
+:root .classes-shell .compact-panels > :is(.task-list,.task-side) {
+  position:fixed; top:calc(var(--suite-header-height) + 8px); bottom:calc(var(--suite-dock-space, 0px) + 12px);
+  z-index:70; width:min(320px, calc(100vw - 48px)); max-height:none; height:auto;
+  overflow:auto; background:var(--paper); border:1px solid var(--hair-strong);
+  border-radius:12px; box-shadow:0 12px 40px #0004; padding:12px;
+}
+:root .classes-shell .compact-panels > .task-list { left:12px; }
+:root .classes-shell .compact-panels > .task-side { right:12px; }
+:root .classes-shell .compact-panels .panel-toggle { z-index:75; }
+.compact-panel-close { align-self:flex-end; margin-bottom:12px; }
+@media (max-width:1100px) {
+  :root .classes-shell .suite-topbar { gap:8px; }
+  :root .classes-shell .suite-topbar .suite-mark > span:not(.app-logo) { display:none; }
+  :root .classes-shell .suite-topbar nav.crumbs { min-width:0; flex:1; overflow:hidden; }
+  :root .classes-shell .suite-topbar nav.crumbs > :not(.here) { display:none; }
+  :root .classes-shell .suite-topbar nav.crumbs .here { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+}
+
+.vc-soon { display:inline-flex; align-items:center; gap:6px; }
+@media(max-width:700px) {
+  :root .classes-shell .vc-pending-label { display:none; }
+  :root .classes-shell .suite-topbar .save-state { display:none; }
+  :root .classes-shell .suite-topbar .save-state.error { display:block; }
+}
+/* Keep panel handles inside the viewport when the page uses compact gutters. */
+:root .classes-shell .no-left .panel-toggle.left { left:-12px; }
+:root .classes-shell .no-right .panel-toggle.right { right:-12px; }
+:root .classes-shell .compact-panels .panel-toggle { position:fixed; width:24px; background:var(--paper); }
+:root .classes-shell .compact-panels .panel-toggle.left { left:0; }
+:root .classes-shell .compact-panels .panel-toggle.right { right:0; }

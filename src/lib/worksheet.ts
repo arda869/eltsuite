@@ -857,11 +857,12 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     let t = it.task;
     num++;
     secMarks += t.marks;
-    const lead = !(t.instructions?.trim() || t.title?.trim()) && !(t.instrRuns ?? []).some((r) => (r.t ?? '').trim()) && t.blocks[0]?.kind === 'subtask' ? (t.blocks[0] as Extract<Block, { kind: 'subtask' }>) : null;
+    const leadIndex=t.blocks.findIndex(b=>b.kind==='subtask');
+    const lead = !t.instructions?.trim() && !(t.instrRuns ?? []).some((r) => (r.t ?? '').trim()) && leadIndex>=0 ? (t.blocks[leadIndex] as Extract<Block, { kind: 'subtask' }>) : null;
     if (lead) {
-      // No title or instruction: the first sub-task goes on the task's own line.
+      // No main instruction: the first sub-task goes on the task's own line.
       body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: S(23), color: ACC_INK }), new TextRun({ text: lead.letter + '  ', bold: true, font: SANS, color: ACC_INK }), new TextRun({ text: lead.text, font: SERIF, size: S(23) })] }));
-      t = { ...t, blocks: [...lead.blocks, ...t.blocks.slice(1)] };
+      t = { ...t, blocks: [...t.blocks.slice(0,leadIndex), ...lead.blocks, ...t.blocks.slice(leadIndex+1)] };
     } else
     body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: S(23), color: ACC_INK }), ...(t.instrRuns ? runsToDocx(t.instrRuns) : [new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: S(23) })])] }));
     body.push(...toParas(t.blocks, true));
