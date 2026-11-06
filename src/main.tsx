@@ -177,6 +177,14 @@ function SignedIn({ children }: { children: JSX.Element }) {
   return user ? children : <PublicError restricted />;
 }
 
+// Keep a scanned game's address in place while the learner or teacher signs in.
+function GameEntry() {
+  const { user, ready } = useAuth();
+  if (!ready) return <Boot />;
+  if (!user) return onLearnSite() ? <LearnerJoin /> : <SignIn />;
+  return <GameSessionPage />;
+}
+
 function LearnerOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
@@ -247,7 +255,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
-          <Route path="/game/:id" element={<GameSessionPage/>} />
+          <Route path="/game/:id" element={<GameEntry/>} />
           <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/storyboard" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
