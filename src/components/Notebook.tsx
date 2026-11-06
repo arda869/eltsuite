@@ -53,7 +53,7 @@ const SPEAK = (
     <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />
   </svg>
 );
-const when = (t?: { toMillis: () => number }) => (t ? new Date(t.toMillis()).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
+const when = (t?: { toMillis: () => number }) => (t ? new Date(t.toMillis()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 
 // ---------------------------------------------------------------- forms
 

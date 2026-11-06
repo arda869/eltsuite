@@ -912,7 +912,7 @@ export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: 
           <span className="cd-card-who">
             <span className="cd-dot" style={{ background: c.color }} />
             {c.name}
-            <span className="hint">{new Date(c.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+            <span className="hint">{new Date(c.at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}</span>
           </span>
           <span className="cd-msg-text">{c.text}</span>
         </span>

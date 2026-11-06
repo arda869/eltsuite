@@ -24,7 +24,7 @@ type Profile = { kind: 'profile'; learnerId: string; summary?: string; skills?: 
 type FileRec = { id: string; learnerId: string; name: string; type: string; size: number; at: number };
 
 const col = (classId: string) => collection(db, 'classes', classId, 'portfolio');
-const when = (ms: number) => (ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const when = (ms: number) => (ms ? new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function PortfolioTab({ c, learners, items }: { c: ClassDoc; learners: Learner[]; items: Item[] }) {

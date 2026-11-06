@@ -117,7 +117,7 @@ export function downloadTask(t: TaskLike) {
 
 const SCOPE: Record<string, string> = { class: 'Whole class', group: 'Each group', solo: 'Each learner' };
 const TYPE: Record<string, string> = { lesson: 'Lesson', homework: 'Homework', exam: 'Exam', practice: 'Practice' };
-const when = (t: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
+const when = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
 
 function ClassFilter({ classes, value, onChange }: { classes: ClassDoc[]; value: string; onChange: (v: string) => void }) {
   return (

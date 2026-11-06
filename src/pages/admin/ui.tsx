@@ -33,7 +33,7 @@ export function ago(ms?: number) {
   if (d < 60) return `${Math.floor(d / 7)} weeks ago`;
   return dateStr(ms);
 }
-export const dateStr = (ms?: number) => (ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+export const dateStr = (ms?: number) => (ms ? new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 export const millis = (t?: { toMillis?: () => number } | number | null) => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
 
 export function PageHead({ title, lede, actions, crumb }: { title: ReactNode; lede?: ReactNode; actions?: ReactNode; crumb?: ReactNode }) {

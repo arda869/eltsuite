@@ -113,7 +113,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
           <div className="sh-live">
             <span className="sh-live-top">
               <b>{existing.mode === 'link' ? 'Shared with anyone who has the link' : `Shared with ${existing.people?.length ?? 0} ${existing.people?.length === 1 ? 'colleague' : 'colleagues'}`}</b>
-              <span className="hint">Copy made {new Date(existing.updated ?? existing.at ?? Date.now()).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+              <span className="hint">Copy made {new Date(existing.updated ?? existing.at ?? Date.now()).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
             </span>
             <span className="sh-link">
               <input readOnly value={shareLink(existing.id)} onFocus={(e) => e.target.select()} />

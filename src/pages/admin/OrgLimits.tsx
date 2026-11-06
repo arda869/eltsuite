@@ -26,7 +26,7 @@ export function OrgLimitsPanel({ org, owner, usedBytes, note }: { org: Org; owne
     }
     setBusy(false);
   };
-  const month = new Date().toLocaleDateString(undefined, { month: 'long' });
+  const month = new Date().toLocaleDateString('en-GB', { month: 'long' });
   return (
     <Panel
       title="Limits"

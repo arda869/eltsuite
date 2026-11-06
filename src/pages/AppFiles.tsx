@@ -35,7 +35,7 @@ const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty
   recordings: { name: 'Recordings', kinds: [], color: '#a8473a', empty: 'Recordings you make or upload, with scripts, to use in any lesson.' },
 };
 const ms = (d: SharedDoc) => d.updatedAt?.toMillis?.() ?? 0;
-const when = (t: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
+const when = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
 const openDoc = (id: string) => window.open(`/doc/${id}`, '_blank');
 
 export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: boolean }) {

@@ -37,11 +37,11 @@ const SECTION_LABEL: Record<Item['type'], string> = { lesson: 'Lessons', homewor
 function dueText(ms: number) {
   const d = new Date(ms);
   const days = Math.round((d.setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
-  const time = new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   if (days === 0) return `Due today ${time}`;
   if (days === 1) return `Due tomorrow ${time}`;
-  if (days < 0) return `Was due ${new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
-  return `Due ${new Date(ms).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`;
+  if (days < 0) return `Was due ${new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+  return `Due ${new Date(ms).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
 }
 
 function whenText(at: number) {
@@ -380,12 +380,16 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               <span className="hint">
                 {lessonsDone} of {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} worked on
               </span>
-              <div className="lh-stats">
-                <span>
-                  <b>{avg === null ? '–' : `${avg}%`}</b>
-                  <span className="hint">right answers</span>
-                </span>
-              </div>
+              {avg === null ? (
+                <p className="hint lh-empty">Your score shows here after your first checked lesson.</p>
+              ) : (
+                <div className="lh-stats">
+                  <span>
+                    <b>{`${avg}%`}</b>
+                    <span className="hint">right answers</span>
+                  </span>
+                </div>
+              )}
             </section>
             {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
           {recaps.length > 0 && (

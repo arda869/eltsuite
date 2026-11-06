@@ -49,7 +49,7 @@ export function MonthGrid({ days, month, evs: raw, hold, picked, dir, onDay, onC
     <div className={'ttb-month' + (drag ? ' dragging' : '')}>
       <div className="ttb-month-wk" aria-hidden="true">
         {days.slice(0, 7).map((d) => (
-          <span key={d}>{new Date(d).toLocaleDateString(undefined, { weekday: 'short' })}</span>
+          <span key={d}>{new Date(d).toLocaleDateString('en-GB', { weekday: 'short' })}</span>
         ))}
       </div>
       <div className="ttb-month-days ttb-slide" key={month} data-dir={dir} style={{ gridTemplateRows: `repeat(${days.length / 7}, minmax(0, 1fr))` }}>
@@ -69,8 +69,8 @@ export function MonthGrid({ days, month, evs: raw, hold, picked, dir, onDay, onC
                 onCreate(d, r);
               }}
             >
-              <button type="button" className="ttb-mnum" onClick={() => onDay(d)} aria-label={new Date(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ', open the day'}>
-                {new Date(d).getDate() === 1 ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : new Date(d).getDate()}
+              <button type="button" className="ttb-mnum" onClick={() => onDay(d)} aria-label={new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ', open the day'}>
+                {new Date(d).getDate() === 1 ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : new Date(d).getDate()}
               </button>
               {shown.map((ev) => (
                 <button

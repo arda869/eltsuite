@@ -25,7 +25,7 @@ type Tab = 'Forms' | 'Home' | 'Coach' | 'Reflections' | 'Research' | 'Timeline' 
 const tabs: Tab[] = ['Home', 'Reflections', 'Reading', 'Research', 'Forms', 'Coach'];
 const sections: Record<Tab, string> = { Forms:'forms', Home: '', Reading: 'reading', Reflections: 'reflections', Research: 'research', Coach: 'coach', Timeline: 'timeline', 'Profile & beliefs': 'profile' };
 const tabFor = (section: string | null): Tab => (Object.keys(sections) as Tab[]).find(k => sections[k] === section) ?? 'Home';
-const date = (at: number) => new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const date = (at: number) => new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const fieldNames: [keyof Inquiry, string][] = [['title', 'Your classroom question'], ['baseline', 'What happens now?'], ['intervention', 'What small change will you try?'], ['evidence', 'What evidence will you collect, and when?'], ['ethics', 'Consent, anonymity and care'], ['observations', 'What did you observe?'], ['interpretation', 'What might the evidence suggest?'], ['limitations', 'What else could explain it?'], ['next', 'What will you explore next?'], ['sources', 'Research sources: titles, links and your notes']];
 
 export function DevelopmentStudio() {

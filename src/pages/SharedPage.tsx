@@ -127,7 +127,7 @@ function SharedContent({ sh, tasks, cur, setCur, onCopy, play }: { sh: Share; ta
         </span>
         <h1 className="page-title">{sh.title}</h1>
         <span className="hint">
-          {mine ? 'Shared by you' : `Shared by ${sh.ownerName}`} · {new Date(sh.updated ?? sh.at ?? Date.now()).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+          {mine ? 'Shared by you' : `Shared by ${sh.ownerName}`} · {new Date(sh.updated ?? sh.at ?? Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
           {sh.kind === 'lesson' && ` · ${sh.count ?? shown.length} ${(sh.count ?? shown.length) === 1 ? 'task' : 'tasks'}`}
         </span>
         <span className="sp-acts">

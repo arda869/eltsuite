@@ -14,7 +14,7 @@ import type { Report } from '../lib/reportFiles';
 // versions and tasks of different lengths compare.
 
 const TYPE_LABEL: Record<Item['type'], string> = { lesson: 'Lesson', homework: 'Homework', exam: 'Exam', practice: 'Practice' };
-const when = (ms?: number) => (ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
+const when = (ms?: number) => (ms ? new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 
 function StatusTag({ s, late }: { s: Status; late?: boolean }) {
   return (
@@ -300,7 +300,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                     </span>
                     {item.due && (
                       <span>
-                        Due <strong>{new Date(item.due).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong> · {rs.filter((x) => x.r.late).length} late
+                        Due <strong>{new Date(item.due).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong> · {rs.filter((x) => x.r.late).length} late
                       </span>
                     )}
                     <span>

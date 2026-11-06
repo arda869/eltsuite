@@ -46,7 +46,7 @@ const byLevel = (classes: OrgClass[]) => {
   for (const c of classes) m.set(c.level || 'Other', (m.get(c.level || 'Other') ?? 0) + (c.learnerCount ?? 0));
   return [...m.entries()].sort((a, b) => (LEVEL_ORDER.indexOf(a[0]) + 1 || 99) - (LEVEL_ORDER.indexOf(b[0]) + 1 || 99)).map(([label, n]) => ({ label, n }));
 };
-const today = () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+const today = () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // What needs a look, most pressing first; a calm line when nothing does.
 function Ledger({ items, go, calm }: { items: Attention[]; go: Go; calm: string }) {
@@ -205,7 +205,7 @@ export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
       const start = end - 7 * 864e5;
       const n = teachers.filter((t) => (t.createdAt ?? 0) > start && (t.createdAt ?? 0) <= end).length;
       const day = new Date(start);
-      out.push({ label: day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), n, tip: `Week from ${day.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}: ${plural(n, 'new teacher')}` });
+      out.push({ label: day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), n, tip: `Week from ${day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}: ${plural(n, 'new teacher')}` });
     }
     return out;
   }, [teachers]);

@@ -14,7 +14,7 @@ export type Report = {
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const fileName = (r: Report, ext: string) => `${`${r.context} ${r.title}`.replace(/[^\w\- ]+/g, '').trim() || 'Report'}.${ext}`;
-const today = () => new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+const today = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const all = (r: Report) => [r, ...(r.sheets ?? [])];
 const isNum = (v: Cell) => typeof v === 'number' || /^-?\d+(\.\d+)?%?$/.test(String(v).trim());
 const pctOf = (v: Cell) => {

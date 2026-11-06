@@ -135,12 +135,12 @@ export function useClassSessions(classId?: string) {
 }
 
 export const dayKey = (t: number) => new Date(t).toDateString();
-export const timeText = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+export const timeText = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' });
 export function whenText(t: number) {
   const d = new Date(t);
   const today = new Date();
   const tomorrow = new Date(Date.now() + 864e5);
-  const day = d.toDateString() === today.toDateString() ? 'Today' : d.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const day = d.toDateString() === today.toDateString() ? 'Today' : d.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   return `${day}, ${timeText(t)}`;
 }
 

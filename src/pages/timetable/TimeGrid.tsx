@@ -179,8 +179,8 @@ export function TimeGrid({
       <div className="ttb-heads" style={{ ...cs, paddingRight: sbw }}>
         <span className="ttb-tz" />
         {days.map((d) => (
-          <button key={d} type="button" data-dir={dir} className={'ttb-head-day ttb-slide' + (isToday(d) ? ' today' : '') + (d < startOfDay(now) ? ' past' : '')} onClick={() => onDay(d)} aria-label={new Date(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ', open the day'}>
-            <b>{new Date(d).toLocaleDateString(undefined, { weekday: 'short' })}</b>
+          <button key={d} type="button" data-dir={dir} className={'ttb-head-day ttb-slide' + (isToday(d) ? ' today' : '') + (d < startOfDay(now) ? ' past' : '')} onClick={() => onDay(d)} aria-label={new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ', open the day'}>
+            <b>{new Date(d).toLocaleDateString('en-GB', { weekday: 'short' })}</b>
             <i>{new Date(d).getDate()}</i>
           </button>
         ))}
@@ -251,7 +251,7 @@ function Block({ ev, style, mins, start, cls, preview, onDown, onClick }: { ev: 
   const short = mins <= 35;
   const end = start + mins * 60000;
   const when = clockRange(start, end);
-  const label = `${o.s.title || 'Untitled'}, ${new Date(start).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}, ${when}${ev.sub ? ', ' + ev.sub : ''}`;
+  const label = `${o.s.title || 'Untitled'}, ${new Date(start).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}, ${when}${ev.sub ? ', ' + ev.sub : ''}`;
   const body = (
     <>
       {short ? (
