@@ -108,3 +108,4 @@
 .ai-revision{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line,#777);border-radius:12px;background:color-mix(in srgb,currentColor 3%,transparent)}
 .ai-revision h2{font-size:1.25rem;margin-top:0}.ai-revision-proposal{margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--line,#777)}
 .ai-revision-proposal>details{margin:1rem 0}.ai-revision-proposal fieldset:disabled{opacity:1}
+:root[data-theme='dark'] .ai-error { background: color-mix(in srgb, var(--wrong) 14%, var(--paper)); color: var(--ink); border-left-color: var(--wrong); }

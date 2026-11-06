@@ -31,7 +31,7 @@ export function MainNav(_: { on: 'home' | 'classes' | 'colleagues' | 'archive' |
 }
 
 // The learner's main places, the same way: in the top bar on a computer, at the bottom on a phone.
-export function LearnerNav({ on, unreadMsgs = 0, unreadThreads = 0, phoneOnly }: { on: 'home' | 'notebook' | 'messages' | 'discuss'; unreadMsgs?: number; unreadThreads?: number; phoneOnly?: boolean }) {
+export function LearnerNav({ on, unreadMsgs = 0, unreadThreads = 0, phoneOnly }: { on: 'home' | 'notebook' | 'messages' | 'discuss' | null; unreadMsgs?: number; unreadThreads?: number; phoneOnly?: boolean }) {
   const tab = (to: string, key: typeof on, icon: string, label: string, badge?: number) => (
     <Link to={to} className={'mn-tab' + (on === key ? ' on' : '')} aria-current={on === key ? 'page' : undefined}>
       <span className="mn-ic">

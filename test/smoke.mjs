@@ -399,9 +399,9 @@ const J = {
   'Discuss with Teacher’s Companion carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
-    const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
-    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'How learners are doing',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'How your learners are doing'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'How your learners are doing');
     const discuss=dialog.getByRole('button',{name:'Discuss with Teacher’s Companion',exact:true});
     await discuss.waitFor({timeout:12000}).catch(async()=>{throw Error('Saved report discussion missing: '+(await dialog.innerText()).slice(0,1000));});
     await discuss.click();
@@ -490,19 +490,19 @@ const J = {
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
-    let dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
-    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'How learners are doing',exact:true}).click();
+    let dialog=s.p.getByRole('dialog',{name:'How your learners are doing'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'How your learners are doing');
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
     await dialog.getByText('Not enough recorded history for a useful estimate.',{exact:true}).waitFor();
     await dialog.getByText('View evidence (1 activities)',{exact:true}).click();
     await dialog.getByText(/Timing not recorded/).waitFor();
-    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
+    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();await reviewAi(s.p,'How your learners are doing');
     await s.p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.includes('/learningReports/')).length===2);
     await dialog.getByRole('button',{name:'Close',exact:true}).click();
     await s.p.reload();
-    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
-    dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'How learners are doing',exact:true}).click();
+    dialog=s.p.getByRole('dialog',{name:'How your learners are doing'});
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
     await axe(s.p,'Learner readiness',A11Y_FOUND);return s;
   },
@@ -587,15 +587,17 @@ const J = {
     const s=await session(b,{owner:true});
     await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'tool-source']={kind:'task',title:'Yesterday',instructions:'Complete the sentence.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]}]},order:0,hidden:false,locked:false};fs[root+'tool-source/private/key']={missing:{kind:'gap',answers:[]}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await openPlanning(s.p);await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
-    let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
-    await dialog.getByRole('button',{name:'Fill in missing answers'}).click();await reviewAi(s.p,'Generate answer key');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Fill in the answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
+    let dialog=s.p.getByRole('dialog',{name:'Fill in the answer key'});
+    await dialog.getByRole('button',{name:'Fill in missing answers'}).click();await reviewAi(s.p,'Fill in the answer key');
     await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
     await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
     await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
+    if(await s.p.getByRole('region',{name:'AI activity'}).getByText('AI is working').count())throw Error('Opening Differentiate started AI without a press');
+    await dialog.getByRole('button',{name:'Suggest two options',exact:true}).click();
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
     await dialog.getByRole('button',{name:'Make the version'}).click();await reviewAi(s.p,'Differentiate activity');
     await dialog.getByRole('button',{name:'Add differentiated version'}).waitFor();
@@ -604,6 +606,7 @@ const J = {
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
     dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
+    await dialog.getByRole('button',{name:'Suggest two options',exact:true}).click();
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
     await dialog.getByRole('button',{name:'Make the activity'}).click();await reviewAi(s.p,'Suggest next activity');
     await dialog.getByRole('button',{name:'Add activity to lesson'}).click();

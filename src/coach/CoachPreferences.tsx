@@ -18,13 +18,13 @@ export function useCoachPreferences(uid: string) {
   return { value, ready };
 }
 const sources: [keyof ContextPermissions,string,string][] = [
-  ['profile','Professional profile','Training, experience, roles, learners and goals'],
-  ['beliefs','Teaching beliefs','Your ideas and assumptions about teaching'],
-  ['reflections','Reflections','Relevant excerpts from your reflective journal'],
-  ['lessons','Lessons in your classes','Relevant activity content from lessons in classes you own or co-teach'],
-  ['games','Games in relevant lessons','Questions and anonymised current-run scores from games in the lessons used as context'],
-  ['forms','Forms in Collab','Editable development and language forms in documents you can access'],
-  ['inquiries','Research inquiries','Relevant plans, observations and findings'],
+  ['profile','Professional profile','Your training, experience, roles, learners and goals'],
+  ['beliefs','Teaching beliefs','Your ideas about teaching'],
+  ['reflections','Reflections','The parts of your reflective journal that fit the question'],
+  ['lessons','Lessons in your classes','Activities from lessons in classes you teach'],
+  ['games','Games in those lessons','Their questions, and scores without learners’ names'],
+  ['forms','Forms in Collab','Development and language forms you can open'],
+  ['inquiries','Research inquiries','Your plans, observations and findings'],
 ];
 export function CoachPreferences({ uid }: { uid: string }) {
   const { value, ready } = useCoachPreferences(uid);
@@ -41,5 +41,23 @@ export function CoachPreferences({ uid }: { uid: string }) {
     } catch { setError('We couldn’t save that setting. Check your connection and try again.'); }
     finally { setSaving(false); }
   }
-  return <div className="coach-user-preferences"><h3>What your coach can use</h3><p>These sources are available by default. Switch off any source below. Changes keep your saved history but start fresh AI context, so previous context is no longer sent.</p>{!ready && <p role="status">Opening coach settings…</p>}<div className="coach-preference-options">{sources.map(([key,label,detail]) => <label key={key}><input type="checkbox" checked={value[key]} disabled={!ready||saving} onChange={e=>void change({[key]:e.target.checked})}/><span><b>{label}</b><small>{detail}</small></span></label>)}</div><label className="coach-preference-style">Coaching style<NSelect aria-label="Coaching style" value={value.mode} disabled={!ready||saving} onChange={e=>void change({mode:e.target.value as CoachPreferencesValue['mode']})}>{modes.map(mode=><option key={mode}>{mode}</option>)}</NSelect></label>{error&&<p role="alert">{error}</p>}<p className="hint">Standalone Reading Journal text and learner records aren’t read automatically. Collab forms are read from documents you can currently access. Chats are saved privately in History. The coach searches your lesson titles and reads relevant activity excerpts; it does not read every lesson in full on every turn.</p><Link className="btn" to="/development?section=profile">Edit teaching profile and beliefs</Link></div>;
+  return <div className="coach-user-preferences">
+    <p className="hint coach-pref-intro">Choose what the Companion can read when it answers you. A change applies from your next message, and your saved chats stay.</p>
+    {!ready && <p role="status" className="hint">Opening your Companion settings…</p>}
+    <div className="coach-preference-options">
+      {sources.map(([key,label,detail]) => <label key={key} className="set-row">
+        <span className="set-row-t"><b>{label}</b><span className="hint">{detail}</span></span>
+        <span className="set-row-c"><input type="checkbox" className="switch" checked={value[key]} disabled={!ready||saving} onChange={e=>void change({[key]:e.target.checked})}/></span>
+      </label>)}
+      <div className="set-row">
+        <span className="set-row-t"><b>Coaching style</b><span className="hint">How the Companion talks with you</span></span>
+        <span className="set-row-c"><NSelect className="set-select" aria-label="Coaching style" value={value.mode} disabled={!ready||saving} onChange={e=>void change({mode:e.target.value as CoachPreferencesValue['mode']})}>{modes.map(mode=><option key={mode}>{mode}</option>)}</NSelect></span>
+      </div>
+      <div className="set-row">
+        <span className="set-row-t"><b>Your teaching profile</b><span className="hint">Your Reading Journal and learner records are only read when you bring them into a chat. Chats are saved privately in History.</span></span>
+        <span className="set-row-c"><Link className="btn small-btn" to="/development?section=profile">Edit profile</Link></span>
+      </div>
+    </div>
+    {error&&<p role="alert" className="error">{error}</p>}
+  </div>;
 }

@@ -1,9 +1,10 @@
 /* Shared AI interface parts (src/ai/kit.tsx). Calm, on the suite's own tokens: no gradients, no
    glow. The spark mark is the only sign that AI is involved. */
 .aik-header { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 16px; }
-.aik-header > .ai-mark { margin-top: 3px; }
 .aik-header-text { flex: 1; min-width: 0; }
-.aik-kicker { display: block; font: 700 11px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 4px; }
+.aik-kicker { display: block; font: 700 12px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 4px; }
+.aik-kicker { display: flex; align-items: center; gap: 6px; }
+.aik-kicker .ai-mark { flex: none; }
 .aik-title { margin: 0; font: 600 20px/1.25 var(--serif); letter-spacing: -.01em; color: var(--ink); }
 .aik-lede { margin: 6px 0 0; font: 14px/1.55 var(--sans); color: var(--muted); max-width: 62ch; }
 .aik-close { flex: none; }
@@ -102,17 +103,7 @@
 }
 @media (prefers-reduced-motion: reduce) { .aik-steps li[data-state=now]::before { animation: none; } .aik-example { transition: none; } }
 
-@media (max-width: 600px) {
-  .aik-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px 9px; }
-  .aik-header-text { display: contents; }
-  .aik-header > .ai-mark { grid-column: 1; grid-row: 1 / 3; }
-  .aik-header .aik-kicker { grid-column: 2; grid-row: 1; margin: 0; }
-  .aik-header .aik-title { grid-column: 2; grid-row: 2; }
-  .aik-header .aik-close { grid-column: 3; grid-row: 1 / 3; }
-  .aik-header :is(.aik-lede, .aik-uses) { grid-column: 1 / -1; }
-}
 
-.aik-header:has(.aik-window-actions){position:relative;padding-top:44px;}
-.aik-window-actions{position:absolute;top:0;right:0;display:flex;align-items:center;gap:8px;}
+.aik-window-actions{display:flex;flex:none;align-items:center;gap:6px;margin-top:-2px;}
 .aik-window-actions .btn{display:inline-flex;align-items:center;gap:6px;}
-.aik-window-actions .aik-close{padding:7px;min-width:32px;}
+.aik-window-actions :is(.aik-close,.aik-minimise){padding:7px;min-width:34px;min-height:34px;justify-content:center;}

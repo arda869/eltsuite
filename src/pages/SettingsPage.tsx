@@ -165,7 +165,7 @@ export function SettingsPage() {
 
   return (
     <div className="shell">
-      <TopBar>{teacher ? <MainNav on="" /> : <LearnerNav on="home" phoneOnly />}</TopBar>
+      <TopBar>{teacher ? <MainNav on="" /> : <LearnerNav on={null} phoneOnly />}</TopBar>
       <div className="set-layout">
       <SettingsNav />
       <SearchCtx.Provider value={q.trim()}>
@@ -197,19 +197,22 @@ export function SettingsPage() {
           </div>
         </Section>
 
+        <Section icon="phone" title="Appearance and this device">
+          <Row title="Appearance" hint="Light, dark, or the same as your device">
+            <ThemeChoice />
+          </Row>
+          <Row title="App and notifications" hint={push === 'on' ? 'Notifications are on for this device' : 'Add ELT Suite to your home screen and turn on notifications'}>
+            <button type="button" className="btn small-btn" onClick={() => setAppOpen(true)}>
+              Set up
+            </button>
+          </Row>
+        </Section>
+
         {teacher && user?.providerData?.some(p => p.providerId === 'google.com') && <Section icon="lock" title="Sign-in and security"><TeacherPassword key={user.uid} user={user} /></Section>}
 
         {teacher && user && <OrgProfile uid={user.uid} />}
 
-        {teacher && user && (
-          <Section icon="calendar" title="Calendar">
-            <CalendarSettings uid={user.uid} owner={isOwner()} Row={Row} Toggle={Toggle} />
-          </Section>
-        )}
-
-        {profile?.role === 'teacher' && <Section icon="help" title="Feature discovery"><p>Useful ideas based on the tools you use, with quiet hours and room to explore at your own pace.</p><button className="btn" onClick={() => window.dispatchEvent(new Event('elt-discovery-settings'))}>Discovery preferences</button></Section>}
-        {teacher && user && <Section icon="message" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /></Section>}
-        {user&&<Section icon="edit" title="Spelling and English variant"><SpellingSettings uid={user.uid}/></Section>}
+        {user&&<Section icon="edit" title="Spelling"><SpellingSettings uid={user.uid} learner={!teacher} /></Section>}
         <Section icon="message" title="Messages">
           <Row title="Enter to send" hint="Off: Enter starts a new line, and you send with the button">
             <Toggle label="Enter to send" on={enter} onChange={(v) => (saveEnterSend(v), setEnter(v))} />
@@ -237,19 +240,24 @@ export function SettingsPage() {
           )}
         </Section>
 
-        <Section icon="bell" title="This device">
-          <Row title="App and notifications" hint={push === 'on' ? 'Notifications are on for this device' : 'Add ELT Suite to your home screen and turn on notifications'}>
-            <button type="button" className="btn small-btn" onClick={() => setAppOpen(true)}>
-              Set up
-            </button>
-          </Row>
-          <Row title="Appearance">
-            <ThemeChoice />
-          </Row>
-        </Section>
+        {teacher && user && (
+          <Section icon="calendar" title="Calendar">
+            <CalendarSettings uid={user.uid} owner={isOwner()} Row={Row} Toggle={Toggle} />
+          </Section>
+        )}
 
+        {teacher && user && <Section icon="discuss" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /></Section>}
         {teacher && (
-          <Section icon="archive" title="Resources">
+          <Section icon="help" title="Feature tips">
+            <Row title="Tips about features" hint="Short ideas based on the tools you use. Choose how often, set quiet hours or pause them.">
+              <button type="button" className="btn small-btn" onClick={() => window.dispatchEvent(new Event('elt-discovery-settings'))}>
+                Choose…
+              </button>
+            </Row>
+          </Section>
+        )}
+        {teacher && user && (
+          <Section icon="picture" title="Pictures and storage">
             <Row title="Picture quality" hint={PIC_QUALITY.find((p) => p.k === quality)?.about}>
               <span className="seg small-seg">
                 {PIC_QUALITY.map((p) => (
@@ -259,11 +267,6 @@ export function SettingsPage() {
                 ))}
               </span>
             </Row>
-          </Section>
-        )}
-
-        {teacher && user && (
-          <Section icon="archive" title="Storage">
             <StorageCard uid={user.uid} />
           </Section>
         )}

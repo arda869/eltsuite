@@ -140,7 +140,7 @@ export function ClassDatesFields({ start, end, setStart, setEnd }: { start: stri
   );
 }
 
-export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onChange: (k: ClassKind) => void; uid?: string }) {
+export function ClassKindPicker({ kind, onChange, uid, inSettings = false }: { kind: ClassKind; onChange: (k: ClassKind) => void; uid?: string; inSettings?: boolean }) {
   const account = useAccount(uid);
   // Existing courses remain usable if permission to create new ones is removed.
   const blocked = kind === 'training' ? '' : trainingBlock(uid, account);
@@ -166,7 +166,7 @@ export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onCh
           ))}
         </ul>
       )}
-      <span className="hint">You can change this later in class settings.</span>
+      {!inSettings && <span className="hint">You can change this later in class settings.</span>}
     </div>
   );
 }

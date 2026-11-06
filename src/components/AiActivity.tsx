@@ -11,8 +11,9 @@ function remove(id: string) { if (!snapshot.some(a => a.id === id)) return; snap
 
 // The owning editor remains mounted when its panel is minimised. No second paid
 // request is made when returning to it. Work is deliberately scoped to this page.
-export function useAiActivity({ active, title, detail = '', error = '', progress, autoMinimise = false, enabled = true, retainResult = false, onOpen }: {
-  active: boolean; title: string; detail?: string; error?: string; progress?: number; autoMinimise?: boolean; enabled?: boolean; retainResult?: boolean; onOpen?: () => void;
+// A panel never hides itself: it stays open with its progress until the teacher presses Minimise.
+export function useAiActivity({ active, title, detail = '', error = '', progress, enabled = true, retainResult = false, onOpen }: {
+  active: boolean; title: string; detail?: string; error?: string; progress?: number; enabled?: boolean; retainResult?: boolean; onOpen?: () => void;
 }) {
   const id = useId(), wasActive = useRef(false), callback = useRef(onOpen);
   const [minimised,setMinimised] = useState(false);
@@ -22,14 +23,13 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
   useEffect(() => {
     if (!enabled) { remove(id); wasActive.current=false; hiddenPanel.current=false; setMinimised(false); return; }
     if (active) {
-      if (!wasActive.current && autoMinimise) { hiddenPanel.current=true; setMinimised(true); }
-      put({id,title,detail,active:true,progress,open:restore});
+      if (hiddenPanel.current) put({id,title,detail,active:true,progress,open:restore});
     } else if (wasActive.current) {
       if(hiddenPanel.current||retainResult)put({id,title,detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active:false,error,open:restore});
       else remove(id);
     }
     wasActive.current=active;
-  },[active,title,detail,error,progress,enabled,autoMinimise,retainResult,id,restore]);
+  },[active,title,detail,error,progress,enabled,retainResult,id,restore]);
   useEffect(() => () => remove(id),[id]);
   useEffect(() => {
     if (!active) return;
@@ -83,6 +83,6 @@ export function AiActivityDock() {
       <p role="status">{a.error||a.detail}</p>
       {a.active&&a.progress!==undefined&&<progress aria-label={a.title+' progress'} max="1" value={Math.max(0,Math.min(1,a.progress))}/>}
       <div className="ai-activity-actions"><button type="button" className="btn small-btn" onClick={a.open}>{a.active?'Return to task':'Review result'}<span className="sr-only"> · {a.title}</span></button>{!a.active&&<button type="button" className="btn link" onClick={()=>remove(a.id)}>Dismiss<span className="sr-only"> · {a.title}</span></button>}</div>
-    </section>)}</div>{active>0&&<p className="ai-activity-note">Keep this page open. You can continue working here.</p>}</>}
+    </section>)}</div>{active>0&&<p className="ai-activity-note">Keep this page open while the AI works.</p>}</>}
   </div>;
 }
