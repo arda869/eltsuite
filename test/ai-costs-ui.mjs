@@ -25,7 +25,13 @@ try{
   try{await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});break;}
   catch(e){if(attempt===2||!String(e).includes('Execution context was destroyed'))throw e;await p.waitForLoadState('networkidle');}
  }
- await p.goto(base+'/admin?tab=ai-costs');await p.getByRole('heading',{name:'AI Cost Intelligence',exact:true}).waitFor();
+ // Vite can finish optimizing a lazy admin dependency during this navigation and
+ // replace the page once. Retry that interrupted navigation, then inspect the UI.
+ for(let attempt=0;attempt<4;attempt++){
+  try{await p.goto(base+'/admin?tab=ai-costs',{waitUntil:'domcontentloaded'});break;}
+  catch(e){if(attempt===3||!String(e).includes('net::ERR_ABORTED'))throw e;await p.waitForLoadState('domcontentloaded').catch(()=>{});}
+ }
+ await p.getByRole('heading',{name:'AI Cost Intelligence',exact:true}).waitFor();
  await p.getByLabel('Proposed credits: Songs',{exact:true}).waitFor();assert.equal(await p.locator('tbody').first().locator('tr').count(),21);
  // All proposals optional and blank: save, refresh, reload remains valid.
  await p.getByRole('button',{name:'Save proposals and safeguards'}).click();await p.getByText(/Proposals and safeguards saved/).waitFor();await p.reload();await p.getByLabel('Proposed credits: Songs',{exact:true}).waitFor();assert.equal(await p.getByLabel('Proposed credits: Songs',{exact:true}).inputValue(),'');
