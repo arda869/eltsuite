@@ -423,8 +423,9 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .ws-picture { display:inline-flex; flex-direction:column; vertical-align:top; margin:.6mm 2.4mm 1.6mm 0; }
 .ws-picture > .pic { width:100%; margin:0; }
 .ws-picture-caption { display:block; margin-top:auto; padding:1.2mm 1mm 0; text-align:center; font:12pt/1.35 Karla,sans-serif; color:#39352f; overflow-wrap:anywhere; }
-p:has(> .ws-picture ~ .ws-picture) { display:flex; align-items:stretch; }
-p:has(> .ws-picture ~ .ws-picture) > .ws-picture { min-width:0; flex-shrink:1; }
+p:has(> .ws-picture ~ .ws-picture) { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,max-content); grid-template-rows:auto auto; align-items:stretch; }
+p:has(> .ws-picture ~ .ws-picture) > .ws-picture { display:grid; grid-template-rows:subgrid; grid-row:span 2; min-width:0; }
+p:has(> .ws-picture ~ .ws-picture) .ws-picture-caption { margin-top:0; }
 /* Pictures, with their label in the top-right corner */
 .pic { position: relative; display: inline-block; vertical-align: top; margin: .6mm 2.4mm 1.6mm 0; border-radius: 1.6mm; overflow: hidden; line-height: 0; background: #f1efeb; }
 .pic img { display: block; width: 100%; height: auto; max-height: calc(var(--ph, 297mm) - 80mm); object-fit: contain; }

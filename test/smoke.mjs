@@ -343,6 +343,10 @@ const J = {
     if(Math.max(...sheetCaptions.map(c=>c.box.top))-Math.min(...sheetCaptions.map(c=>c.box.top))>2)throw Error('Worksheet picture descriptions are not aligned: '+JSON.stringify(sheetCaptions));
     if(sheetCaptions.some(c=>parseFloat(c.style.font)<16||c.style.color!=='rgb(57, 53, 47)'))throw Error('Worksheet picture descriptions are too faint: '+JSON.stringify(sheetCaptions));
     await s.p.locator('.sh-left').screenshot({path:'outputs/picture-worksheet-preview.png'});
+    await s.p.getByRole('radio',{name:'Digital: the lesson on screen'}).click();
+    await s.p.locator('.task-editor .pic-caption').first().fill('A longer picture description that wraps onto several lines');
+    const wrappedTops=await s.p.locator('.task-editor .pic-caption').evaluateAll(xs=>xs.map(x=>x.getBoundingClientRect().top));
+    if(Math.max(...wrappedTops)-Math.min(...wrappedTops)>2)throw Error('Wrapped descriptions start at different heights: '+wrappedTops);
     await axe(s.p,'Visual question and picture editing',A11Y_FOUND);
     return s;
   },
