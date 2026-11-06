@@ -208,7 +208,7 @@ export function LearnerLesson() {
         const result = await checkSubTask(classId, itemId, current, '', 'read').catch(() => null);
         if (result) setKey(result.key);
       }
-    });
+    }, () => setCheckError('We couldn’t load your saved answers. Reload the lesson to try again.'));
   }, [classId, itemId, current, user]);
 
   const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
