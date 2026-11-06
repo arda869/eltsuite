@@ -194,6 +194,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
                     <button
                       type="button"
                       className="sh-grip"
+                      aria-label={`Move ${b.title || 'task'}`}
                       onPointerDown={(e) => {
                         // Our own pointer drag, so it works with a mouse, a pen and a finger.
                         if (e.button !== 0) return;
