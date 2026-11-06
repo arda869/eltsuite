@@ -72,6 +72,18 @@ export type El = {
   pose?: string;
   face?: string;
   accent?: string;
+  // the side the subject is seen from: a different drawing, not a turn of the picture
+  view?: ArtView;
+  // in a scene: stands on the ground, with a contact shadow, sized by how far away its feet are
+  ground?: boolean;
+  // sized by the teacher by hand, so a move no longer changes its size
+  fit?: boolean;
+  // a saved character from the library, drawn as one of its variations (the picture is in `img`);
+  // `variant` is `${view}.${pose}.${face}`, or `ref` for the reference picture
+  char?: string;
+  variant?: string;
+  // things grouped together move, size and turn as one
+  group?: string;
   // labels: the point they name, on the page
   ax?: number;
   ay?: number;
@@ -87,8 +99,19 @@ export type El = {
   gap?: number;
 };
 
-export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string };
-export type DMeta = { accent?: string; aiStyle?: string; aiReference?: string; type?: 'image' | 'storyboard' };
+// A scene's backdrop (`scene`, drawn in the house style behind everything), where its floor meets the
+// wall (`horizon`, as a part of the page's height) and a caption for the panel in a story.
+export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string; scene?: string; horizon?: number; caption?: string };
+export type DMeta = { accent?: string; aiStyle?: string; aiReference?: string; type?: 'image' | 'storyboard'; charMedia?: Record<string, string> };
+export type ArtView = 'front' | 'tql' | 'left' | 'tqr' | 'right' | 'back';
+export const VIEWS: { k: ArtView; name: string; short: string }[] = [
+  { k: 'left', name: 'Left profile', short: 'L' },
+  { k: 'tql', name: 'Three-quarter left', short: '¾L' },
+  { k: 'front', name: 'Front', short: 'F' },
+  { k: 'tqr', name: 'Three-quarter right', short: '¾R' },
+  { k: 'right', name: 'Right profile', short: 'R' },
+  { k: 'back', name: 'Back', short: 'B' },
+];
 
 export const pagesCol = (id: string) => collection(db, 'sharedDocs', id, 'dpages');
 export const elsCol = (id: string) => collection(db, 'sharedDocs', id, 'dels');
@@ -195,13 +218,31 @@ export const SWATCHES = ['#262420', '#66615b', '#a9a49d', '#ecebe7', '#ffffff', 
 // ------------------------------------------------------------------ pictures
 
 // Shrunk to fit the file's media: PNG when it has see-through parts, JPEG otherwise.
+// Decodes a picture; SVG and some odd files fail createImageBitmap but an <img> can still draw them.
+async function decodePicture(file: Blob): Promise<{ img: CanvasImageSource; width: number; height: number }> {
+  try {
+    const bmp = await createImageBitmap(file);
+    return { img: bmp, width: bmp.width, height: bmp.height };
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const im = new Image();
+      im.src = url;
+      await im.decode();
+      return { img: im, width: im.naturalWidth || 300, height: im.naturalHeight || 300 };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
 export async function storePicture(designId: string, file: Blob): Promise<{ id: string; w: number; h: number }> {
-  const bmp = await createImageBitmap(file);
+  const bmp = await decodePicture(file);
   const probe = document.createElement('canvas');
   probe.width = Math.min(64, bmp.width);
   probe.height = Math.min(64, bmp.height);
   const pg = probe.getContext('2d')!;
-  pg.drawImage(bmp, 0, 0, probe.width, probe.height);
+  pg.drawImage(bmp.img, 0, 0, probe.width, probe.height);
   const px = pg.getImageData(0, 0, probe.width, probe.height).data;
   let alpha = false;
   for (let i = 3; i < px.length; i += 4) if (px[i] < 250) (alpha = true), (i = px.length);
@@ -213,7 +254,7 @@ export async function storePicture(designId: string, file: Blob): Promise<{ id: 
     c.height = Math.round(bmp.height * s);
     const g = c.getContext('2d')!;
     if (!alpha) (g.fillStyle = '#fff'), g.fillRect(0, 0, c.width, c.height);
-    g.drawImage(bmp, 0, 0, c.width, c.height);
+    g.drawImage(bmp.img, 0, 0, c.width, c.height);
     const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), alpha ? 'image/png' : 'image/jpeg', 0.86));
     if (blob.size < 560 * 1024) return { id: await saveImage('doc:' + designId, blob), w: c.width, h: c.height };
     max = Math.round(max * 0.78);

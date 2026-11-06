@@ -515,21 +515,53 @@ const J = {
     await opened.getByRole('button',{name:'Download',exact:true}).waitFor();await opened.getByRole('img',{name:'Page 1',exact:true}).waitFor();await opened.close();
     await s.p.goto(`${BASE}/design`);
     const [story]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create storyboard'}).click()]);
-    await story.locator('.sbf-li').first().click();
-    await story.locator('.sb-item').first().waitFor();
+    // A new storyboard is panels on the Designer canvas, opening on the Scene drawer.
+    await story.getByRole('img',{name:'Panel 1',exact:true}).waitFor({timeout:90000});
+    await story.getByRole('heading',{name:'Scene',exact:true}).waitFor();
     if(await story.getByLabel('Caption',{exact:true}).inputValue())throw Error('Optional caption should be blank');
     const storyId=new URL(story.url()).pathname.split('/').pop();
-    await story.waitForFunction(id=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).some(k=>k.startsWith('sharedDocs/'+id+'/sbitems/')),storyId);
-    await story.reload();await story.locator('.sb-item').first().waitFor();
-    const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type};},storyId);
-    if(saved.kind!=='design'||saved.type!=='storyboard')throw Error('Storyboard did not save as a Designer file');
+    const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type,panel:fs['sharedDocs/'+id+'/dpages/panel1']};},storyId);
+    if(saved.kind!=='design'||saved.type!=='storyboard'||saved.panel?.w!==1280||saved.panel?.h!==720)throw Error('Storyboard did not save as a Designer file with a 16:9 first panel');
+    // A backdrop by click; a person by dragging onto the panel, standing where dropped.
+    await story.getByRole('button',{name:'Backdrop: Café',exact:true}).click();
+    await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);
+    const over=story.locator('.dz-over');const box=await over.boundingBox();
+    await story.getByRole('button',{name:'Maya',exact:true}).dragTo(over,{targetPosition:{x:box.width*0.5,y:box.height*0.9}});
+    const dropped=await story.waitForFunction(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.values(fs).find(v=>v&&v.page==='panel1'&&v.t==='art'&&v.ref==='maya')||null;},storyId).then(h=>h.jsonValue());
+    if(!dropped.ground||Math.abs((dropped.y+dropped.h*286/300)-720*0.9)>12||Math.abs(dropped.x+dropped.w/2-640)>12)throw Error('Dropped person did not stand where dropped: '+JSON.stringify(dropped));
+    // Selected on drop: a different side of the same person is a different drawing, and words go beside the head.
+    await story.getByRole('button',{name:'Left profile',exact:true}).click();
+    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.view==='left'),storyId);
+    await story.getByRole('button',{name:'Add a speech bubble',exact:true}).click();
+    await story.getByRole('textbox',{name:'Text',exact:true}).fill('Two coffees, please.');await story.getByRole('textbox',{name:'Text',exact:true}).press('ControlOrMeta+Enter');
+    const bubble=await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).find(v=>v&&v.page==='panel1'&&v.shape==='speech')||null,storyId).then(h=>h.jsonValue());
+    if(bubble.y+bubble.h>dropped.y+dropped.h*0.5)throw Error('Speech bubble is not beside the head');
+    // Grouping: the person and her bubble move together.
+    await story.keyboard.press('ControlOrMeta+a');await story.keyboard.press('ControlOrMeta+g');
+    await story.waitForFunction(id=>{const els=Object.values(JSON.parse(localStorage.getItem('mockfs'))).filter(v=>v&&v.page==='panel1'&&(v.t==='art'||v.t==='shape'));return els.length===2&&els[0].group&&els[0].group===els[1].group;},storyId);
+    // A saved character stands in the scene; another side of it is drawn once with AI, with the cost shown first.
+    await story.getByRole('button',{name:'Pip the fox',exact:true}).click();
+    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).waitFor();
+    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).getByRole('button',{name:'Left profile',exact:true}).click();
+    await story.getByText('Making it uses 1 of your Designer images (7 of 10 left today).').waitFor();
+    await story.getByRole('button',{name:'Draw this view',exact:true}).click();
+    const variantRequest=await story.waitForFunction(()=>{const r=JSON.parse(localStorage.getItem('lastDesignerRequest')||'{}');return r.action==='variant'?r:null;}).then(h=>h.jsonValue());
+    if(variantRequest.variant!=='left.stand.neutral')throw Error('Variant request wrong: '+JSON.stringify(variantRequest));
+    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.char&&v.variant==='left.stand.neutral'&&v.img),storyId);
+    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).getByRole('button',{name:'Front',exact:true}).click();
+    await story.getByRole('button',{name:'Use the reference picture',exact:true}).waitFor();
+    // Ready-made scenes add panels; the thumbnails in the panel strip follow.
+    await story.getByRole('button',{name:'Templates',exact:true}).click();
+    await story.getByRole('button',{name:/A café/}).click();
+    await story.waitForFunction(id=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.startsWith('sharedDocs/'+id+'/dpages/')).length===2,storyId);
+    await story.reload();await story.getByRole('button',{name:/^Panel 2/}).waitFor();
     const d=await newFile(s,'Collab document');
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Designer',exact:true}).click();
     await d.getByLabel('Search Designer').waitFor();
     await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
-    const pageButton=d.getByRole('button',{name:/Insert page|Insert image|Insert storyboard/}).first();
+    const pageButton=d.getByRole('button',{name:/Insert page|Insert the image|Insert the storyboard|Insert Panel/}).first();
     await pageButton.click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
     if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
@@ -2567,7 +2599,7 @@ try {
       if (s.errors.length) err = s.errors.slice(0, 3).join('\n   ');
     } catch (e) {
       s??=activeSession;
-      if(s){mkdirSync('outputs/cohesion',{recursive:true});await s.p.screenshot({path:'outputs/cohesion/failure-'+name.replace(/[^a-z0-9]/gi,'_').slice(0,120)+'.jpg'}).catch(()=>{});}
+      if(s){mkdirSync('outputs/cohesion',{recursive:true});const stem='outputs/cohesion/failure-'+name.replace(/[^a-z0-9]/gi,'_').slice(0,120);await s.p.screenshot({path:stem+'.jpg'}).catch(()=>{});for(const [i,pg] of s.ctx.pages().entries())if(pg!==s.p)await pg.screenshot({path:`${stem}-tab${i}.jpg`}).catch(()=>{});}
       err = e.message.slice(0, 3500) + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
     }
     await s?.ctx.close().catch(() => {});

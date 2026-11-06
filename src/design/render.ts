@@ -1,4 +1,5 @@
 import { getStroke } from 'perfect-freehand';
+import { drawnOf } from '../storyboard/bounds';
 import type { DPage, El, Fx, ShapeKind } from './model';
 
 // Drawing a page: the same code draws it on screen while you work, and for downloads and printing,
@@ -20,7 +21,29 @@ export const INK = '#262420';
 export const MUTED = '#66615b';
 export const HAIR = '#d6d3cd';
 
-export const artKey = (e: El, accent: string) => `art:${e.art}:${e.ref}:${e.pose ?? ''}:${e.face ?? ''}:${e.accent ?? accent}`;
+export const artKey = (e: El, accent: string) => `art:${e.art}:${e.ref}:${e.pose ?? ''}:${e.face ?? ''}:${e.view ?? ''}:${e.accent ?? accent}`;
+export const sceneKey = (page: DPage, accent: string) => `scene:${page.scene}:${accent}`;
+
+// Where something standing in a scene meets the ground, as a part of its height (see design/scene.ts).
+const footPart = (e: El) => (e.t === 'art' && e.art === 'person' ? 286 / 300 : e.t === 'art' ? drawnOf(e.ref)[3] : 0.985);
+
+// A soft shadow under something standing on the ground: shows it is not floating.
+function drawContactShadow(ctx: CanvasRenderingContext2D, e: El) {
+  const fy = e.y + e.h * footPart(e);
+  const rx = e.w * (e.t === 'art' && e.art === 'person' ? 0.3 : 0.46);
+  const ry = Math.max(3, Math.min(e.h * 0.03, rx * 0.22));
+  ctx.save();
+  ctx.globalAlpha = (e.opacity ?? 1) * 0.9;
+  const g = ctx.createRadialGradient(e.x + e.w / 2, fy, 0, e.x + e.w / 2, fy, rx);
+  g.addColorStop(0, 'rgba(38,36,32,0.22)');
+  g.addColorStop(0.7, 'rgba(38,36,32,0.1)');
+  g.addColorStop(1, 'rgba(38,36,32,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(e.x + e.w / 2, fy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
 export function visible(e: El, view: View) {
   if (e.hidden) return false;
@@ -677,11 +700,27 @@ export function drawPage(ctx: CanvasRenderingContext2D, page: DPage, els: El[], 
   ctx.beginPath();
   ctx.rect(0, 0, page.w, page.h);
   ctx.clip();
+  // The scene's backdrop fills the page, cropped to keep its proportions (its floor line stays where
+  // `horizon` says, so people stand on it).
+  if (page.scene && page.scene !== 'plain') {
+    const bd = env.imgs.get(sceneKey(page, env.accent));
+    if (bd) {
+      const bw = (bd as HTMLImageElement).naturalWidth || (bd as ImageBitmap).width || 1280;
+      const bh = (bd as HTMLImageElement).naturalHeight || (bd as ImageBitmap).height || 720;
+      const s = Math.max(page.w / bw, page.h / bh);
+      const dw = bw * s;
+      const dh = bh * s;
+      ctx.drawImage(bd, (page.w - dw) / 2, page.h - dh, dw, dh);
+    }
+  }
   const mine = els.filter((e) => e.page === page.id).sort((a, b) => a.z - b.z || a.id.localeCompare(b.id));
   const shown = mine.filter((e) => visible(e, env.view));
   const nums = labelNumbers(shown);
   const all = { ...env, page, all: shown };
-  for (const e of shown) drawEl(ctx, e, all, nums);
+  for (const e of shown) {
+    if (e.ground && !e.rot) drawContactShadow(ctx, e);
+    drawEl(ctx, e, all, nums);
+  }
   ctx.restore();
 }
 

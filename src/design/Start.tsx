@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ensureFont, SIZES, type El } from './model';
 import { drawPage } from './render';
 import { TEMPLATES, type Tpl } from './templates';
+import { drawnImages } from './assets';
 
 // A new design: what to start with.
 function Thumb({ t }: { t: Tpl }) {
@@ -14,7 +15,7 @@ function Thumb({ t }: { t: Tpl }) {
     c.width = Math.round(p.w * s * 2);
     c.height = Math.round(p.h * s * 2);
     const els = t.pages[0].els.map((e, i) => ({ ...e, id: 'e' + i, page: 'p', z: i }) as El);
-    void Promise.all([...new Set(els.map((e) => e.font).filter(Boolean) as string[])].map(ensureFont)).then(() => drawPage(c.getContext('2d')!, p, els, { imgs: new Map(), view: 'A', accent: '#c8764a', editing: true }, s * 2));
+    void Promise.all([Promise.all([...new Set(els.map((e) => e.font).filter(Boolean) as string[])].map(ensureFont)), drawnImages([p], els, '#c8764a')]).then(([, imgs]) => drawPage(c.getContext('2d')!, p, els, { imgs, view: 'A', accent: '#c8764a', editing: true }, s * 2));
   }, [t]);
   return <canvas ref={ref} aria-hidden="true" />;
 }

@@ -4,19 +4,20 @@ import { useAuth } from '../lib/auth';
 import { useArchive } from '../lib/archive';
 import { audioUrl } from '../lib/media';
 import { tell } from '../lib/ask';
-import { FACES, PEOPLE, POSES, THINGS } from '../storyboard/art';
 import type { Ctx } from './Editor';
+import { SceneDrawer } from './SceneDrawer';
+import { startDrag } from './dnd';
 import { ensureFont, SIZES, TEXT_STYLES, blobOf, type El, type ShapeKind } from './model';
 import { drawPage, shapePath, textHeight, isLine } from './render';
 import { TEMPLATES, type Tpl } from './templates';
-import { searchPictures, type WebPic } from './assets';
+import { drawnImages, searchPictures, type WebPic } from './assets';
 
 export type DrawerKey = 'ai' | 'templates' | 'elements' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
 
 export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ctx; onClose: () => void; onAiOpen?:()=>void }) {
   const [seenAi,setSeenAi]=useState(k==='ai');
   useEffect(()=>{if(k==='ai')setSeenAi(true);},[k]);
-  const title = k?{ ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'People and things', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k]:'';
+  const title = k?{ ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'Scene', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k]:'';
   return (
     <div className="dz-dr">
       <div className="dz-dr-head">
@@ -31,7 +32,7 @@ export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ct
         {k === 'elements' && <Elements cx={cx} />}
         {k === 'text' && <TextDrawer cx={cx} />}
         {k === 'pictures' && <Pictures cx={cx} />}
-        {k === 'people' && <People cx={cx} />}
+        {k === 'people' && <SceneDrawer cx={cx} />}
         {k === 'teach' && <Teach cx={cx} />}
         {k === 'draw' && <Draw cx={cx} />}
         {k === 'layers' && <Layers cx={cx} />}
@@ -42,7 +43,7 @@ export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ct
 
 // ------------------------------------------------------------------ templates
 
-function TplThumb({ t }: { t: Tpl }) {
+function TplThumb({ t, accent = '#c8764a' }: { t: Tpl; accent?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
@@ -53,26 +54,39 @@ function TplThumb({ t }: { t: Tpl }) {
     c.height = Math.round(p.h * s * 2);
     const els = t.pages[0].els.map((e, i) => ({ ...e, id: 'e' + i, page: 'p', z: i }) as El);
     const fonts = [...new Set(els.map((e) => e.font).filter(Boolean) as string[])];
-    void Promise.all(fonts.map(ensureFont)).then(() => drawPage(c.getContext('2d')!, p, els, { imgs: new Map(), view: 'A', accent: '#c8764a', editing: true }, s * 2));
-  }, [t]);
+    let on = true;
+    void Promise.all([Promise.all(fonts.map(ensureFont)), drawnImages([p], els, accent)]).then(([, imgs]) => on && drawPage(c.getContext('2d')!, p, els, { imgs, view: 'A', accent, editing: true }, s * 2));
+    return () => void (on = false);
+  }, [t, accent]);
   return <canvas ref={ref} className="dz-tpl-c" aria-hidden="true" />;
 }
 
 function Templates({ cx }: { cx: Ctx }) {
+  const story = cx.mode === 'storyboard';
+  const scenes = TEMPLATES.filter((t) => t.story);
+  const plain = TEMPLATES.filter((t) => !t.story);
+  const list = (ts: Tpl[]) => (
+    <div className="dz-tpls">
+      {ts.map((t) => (
+        <button key={t.k} type="button" className="dz-tpl" onClick={() => void cx.addPages(t)} disabled={!cx.canEdit}>
+          <span className="dz-tpl-f">
+            <TplThumb t={t} accent={cx.accent} />
+          </span>
+          <strong>{t.name}</strong>
+          <span>{t.about}</span>
+        </button>
+      ))}
+    </div>
+  );
   return (
     <>
-      <p className="dz-dr-note">Adds the template’s pages after this one.</p>
-      <div className="dz-tpls">
-        {TEMPLATES.map((t) => (
-          <button key={t.k} type="button" className="dz-tpl" onClick={() => void cx.addPages(t)} disabled={!cx.canEdit}>
-            <span className="dz-tpl-f">
-              <TplThumb t={t} />
-            </span>
-            <strong>{t.name}</strong>
-            <span>{t.about}</span>
-          </button>
-        ))}
-      </div>
+      <p className="dz-dr-note">{story ? 'Adds the scene as new panels after this one. Move people and things about, change who is in it, and add words.' : 'Adds the template’s pages after this one.'}</p>
+      {story && <h3 className="dz-dr-h">Scenes</h3>}
+      {story && list(scenes)}
+      {story && <h3 className="dz-dr-h">Other pages</h3>}
+      {list(plain)}
+      {!story && <h3 className="dz-dr-h">Scenes</h3>}
+      {!story && list(scenes)}
       <h3 className="dz-dr-h">Blank pages</h3>
       <div className="dz-sizes">
         {SIZES.filter(s=>['square','slide','story','banner'].includes(s.k)).map((s) => (
@@ -146,7 +160,7 @@ function Elements({ cx }: { cx: Ctx }) {
           stroke: bubble || k === 'cloud' ? '#262420' : k === 'tick' ? '#4f7a55' : k === 'cross' ? '#b64a3c' : '#262420',
           sw: line ? 5 : bubble || k === 'cloud' ? 2.5 : k === 'tick' || k === 'cross' ? 14 : 0,
           radius: k === 'rect' ? 16 : 0,
-          ...(bubble ? { text: 'Hello!', font: 'Playpen Sans', size: 26, align: 'center', valign: 'middle', color: '#262420' } : {}),
+          ...(bubble ? { text: 'Hello.', font: 'Playpen Sans', size: 26, align: 'center', valign: 'middle', color: '#262420' } : {}),
         },
       ],
       { edit: bubble },
@@ -296,7 +310,7 @@ function Pictures({ cx }: { cx: Ctx }) {
         Upload pictures
       </button>
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => (void (async () => { for (const f of Array.from(e.target.files ?? [])) await cx.addPicture(f, { name: f.name.replace(/\.[a-z0-9]+$/i, '') }); })(), (e.target.value = ''))} />
-      <p className="dz-dr-note">You can also drag pictures onto the page, or paste one.</p>
+      <p className="dz-dr-note">You can also drag pictures from here or from your computer onto the page, or paste one.</p>
       <div className="dz-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'mine'} className={tab === 'mine' ? 'on' : ''} onClick={() => setTab('mine')}>
           Your files
@@ -312,7 +326,7 @@ function Pictures({ cx }: { cx: Ctx }) {
         ) : pics.length ? (
           <div className="dz-pics">
             {pics.map((a) => (
-              <button key={a.id} type="button" onClick={() => void fromFiles(a)} aria-label={a.name} data-tip={a.name}>
+              <button key={a.id} type="button" draggable={cx.canEdit} onDragStart={(e) => startDrag(e, { kind: 'url', url: a.home ? () => audioUrl(a.home!.classId, a.home!.mediaId) : a.link!, name: a.name }, e.currentTarget.querySelector('img'))} onClick={() => void fromFiles(a)} aria-label={a.name} data-tip={`${a.name} · click or drag onto the page`}>
                 <img src={a.thumb || a.link} alt="" loading="lazy" />
               </button>
             ))}
@@ -340,7 +354,7 @@ function Pictures({ cx }: { cx: Ctx }) {
           {found && (
             <div className="dz-pics web">
               {found.map((p) => (
-                <button key={p.id} type="button" onClick={() => void fromWeb(p)} aria-label={p.title} data-tip={p.credit}>
+                <button key={p.id} type="button" draggable={cx.canEdit} onDragStart={(e) => startDrag(e, { kind: 'url', url: p.url, name: p.title || q, credit: p.credit, w: p.w, h: p.h }, e.currentTarget.querySelector('img'))} onClick={() => void fromWeb(p)} aria-label={p.title} data-tip={`${p.credit} · click or drag onto the page`}>
                   <img src={p.thumb} alt="" loading="lazy" />
                 </button>
               ))}
@@ -350,71 +364,6 @@ function Pictures({ cx }: { cx: Ctx }) {
         </>
       )}
     </>
-  );
-}
-
-// ------------------------------------------------------------------ people and things
-
-function People({ cx }: { cx: Ctx }) {
-  const [who, setWho] = useState('maya');
-  const [pose, setPose] = useState('stand');
-  const [face, setFace] = useState('happy');
-  const groups = useMemo(() => {
-    const m = new Map<string, [string, string][]>();
-    for (const [k, t] of Object.entries(THINGS)) m.set(t.group, [...(m.get(t.group) ?? []), [k, t.name]]);
-    return [...m.entries()];
-  }, []);
-  return (
-    <>
-      <p className="dz-dr-note">The same people as in Storyboards, in your accent colour.</p>
-      <div className="dz-chips wrap">
-        {Object.entries(PEOPLE).map(([k, p]) => (
-          <button key={k} type="button" className={who === k ? 'on' : ''} onClick={() => setWho(k)}>
-            {p.name}
-          </button>
-        ))}
-      </div>
-      <div className="dz-two">
-        <label>
-          <span>Pose</span>
-          <select value={pose} onChange={(e) => setPose(e.target.value)}>
-            {Object.entries(POSES).map(([k, p]) => (
-              <option key={k} value={k}>{p.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Face</span>
-          <select value={face} onChange={(e) => setFace(e.target.value)}>
-            {Object.entries(FACES).map(([k, f]) => (
-              <option key={k} value={k}>{f.name}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <button type="button" className="btn primary dz-wide" onClick={() => cx.add([{ t: 'art', art: 'person', ref: who, pose, face, ...middle(cx, 160, 240), name: PEOPLE[who]?.name }])}>
-        Add {PEOPLE[who]?.name}
-      </button>
-      {groups.map(([g, list]) => (
-        <div key={g}>
-          <h3 className="dz-dr-h">{g}</h3>
-          <div className="dz-grid four">
-            {list.map(([k, n]) => (
-              <ThingTile key={k} k={k} n={n} accent={cx.accent} onAdd={() => cx.add([{ t: 'art', art: 'thing', ref: k, ...middle(cx, 180, 180), name: n }])} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
-function ThingTile({ k, n, accent, onAdd }: { k: string; n: string; accent: string; onAdd: () => void }) {
-  return (
-    <button type="button" className="dz-tile" onClick={onAdd} aria-label={n} data-tip={n}>
-      <svg viewBox="0 0 200 200" width="56" height="56" style={{ ['--sb-accent' as string]: accent }} aria-hidden="true">
-        {(THINGS[k] ?? THINGS.table).draw()}
-      </svg>
-    </button>
   );
 }
 

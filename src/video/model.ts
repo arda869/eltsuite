@@ -17,6 +17,10 @@ export type VideoAsset = {
   ready: boolean;
   visualStyle?: string;
   provenance?: { provider: string; prompt: string; references: string[] };
+  // characters: the Designer style their variations are drawn in, and the variations made so far
+  // (`${view}.${pose}.${face}` → the id of a `character-variant` asset)
+  style?: string;
+  variants?: Record<string, string>;
 };
 export type VideoClip = {
   id: string;
