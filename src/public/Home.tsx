@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicLayout } from './PublicSite';
+import { NSelect } from '../components/Select';
 import './home.css';
 
 const LanguageMoment = lazy(() => import('./LanguageMoment').then((m) => ({ default: m.LanguageMoment })));
@@ -25,10 +26,14 @@ function Mounted({ children, label }: { children: ReactNode; label: string }) {
   return <div ref={ref} className="pub-mounted">{on ? <Suspense fallback={<p className="pub-note">One moment…</p>}>{children}</Suspense> : <p className="pub-note">{label}</p>}</div>;
 }
 
-// Part of a screen, cut to the region given as fractions of the whole picture.
+// Part of a screen, cut to the region given as fractions of the whole picture. A side that cuts into
+// the screen fades out softly, so it reads as a close-up; a side on the screen's own edge stays sharp.
 type Region = { x: number; y: number; w: number; h: number };
+const fade = (from: boolean, to: boolean, dir: string) => `linear-gradient(${dir}, ${from ? 'transparent 0, #000 13%' : '#000 0'}, ${to ? '#000 87%, transparent 100%' : '#000 100%'})`;
 function Crop({ name, at, alt, width = 300, eager = false }: { name: string; at: Region; alt: string; width?: number; eager?: boolean }) {
-  const style = { aspectRatio: `${at.w * W} / ${at.h * H}`, '--cx': at.x, '--cy': at.y, '--cw': at.w, '--ch': at.h } as CSSProperties;
+  const cut = { l: at.x > 0.002, r: at.x + at.w < 0.998, t: at.y > 0.002, b: at.y + at.h < 0.998 };
+  const mask = `${fade(cut.l, cut.r, 'to right')}, ${fade(cut.t, cut.b, 'to bottom')}`;
+  const style = { aspectRatio: `${at.w * W} / ${at.h * H}`, '--cx': at.x, '--cy': at.y, '--cw': at.w, '--ch': at.h, maskImage: mask, WebkitMaskImage: mask, maskComposite: 'intersect', WebkitMaskComposite: 'source-in' } as CSSProperties;
   return (
     <span className="pub-crop" style={style}>
       <img src={src(name)} srcSet={srcSet(name)} sizes={`${Math.round(width / at.w)}px`} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
@@ -40,20 +45,32 @@ function Screen({ name, alt, eager = false, sizes = '(min-width: 1100px) 760px, 
   return <img className="pub-screen" src={src(name)} srcSet={srcSet(name)} sizes={sizes} width={W} height={H} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />;
 }
 
-// A screenshot (or part of one) in a light frame that opens full size.
+// The enlarged picture: only the picture, fitted to the screen, on a dark blurred backdrop, with a
+// small round close button. The backdrop and Escape close it too.
+function Lightbox({ dlg, name, w, h, alt, kind = '' }: { dlg: React.RefObject<HTMLDialogElement>; name: string; w: number; h: number; alt: string; kind?: string }) {
+  return (
+    <dialog ref={dlg} className={'pub-lightbox' + (kind ? ' pub-lightbox-' + kind : '')} style={{ '--ar': w / h } as CSSProperties} aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
+      <img src={src(name)} width={w} height={h} alt={alt} loading="lazy" />
+      <form method="dialog">
+        <button className="pub-lb-close" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        </button>
+      </form>
+    </dialog>
+  );
+}
+
+// A screenshot (or a close-up of one) that opens full size.
 function Shot({ name, alt, caption, eager, at, className = '' }: { name: string; alt: string; caption?: string; eager?: boolean; at?: Region; className?: string }) {
   const dlg = useRef<HTMLDialogElement>(null);
   return (
     <figure className={'pub-figure ' + className}>
-      <button type="button" className="pub-frame" onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
+      <button type="button" className={'pub-frame' + (at ? ' pub-frame-crop' : '')} onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
         {at ? <Crop name={name} at={at} alt="" width={420} /> : <Screen name={name} alt="" eager={eager} />}
         <span className="pub-enlarge" aria-hidden="true">Full size ↗</span>
       </button>
       {caption && <figcaption>{caption}</figcaption>}
-      <dialog ref={dlg} className="pub-lightbox" aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
-        <img src={src(name)} width={W} height={H} alt={alt} loading="lazy" />
-        <form method="dialog"><button className="pub-secondary">Close</button></form>
-      </dialog>
+      <Lightbox dlg={dlg} name={name} w={W} h={H} alt={alt} />
     </figure>
   );
 }
@@ -80,10 +97,7 @@ function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string
         {kind === 'phone' ? <Phone name={name} /> : <img src={src(name)} width={w} height={h} alt="" loading="lazy" decoding="async" />}
       </button>
       <figcaption>{caption}</figcaption>
-      <dialog ref={dlg} className={'pub-lightbox pub-lightbox-' + kind} aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
-        <img src={src(name)} width={w} height={h} alt={alt} loading="lazy" />
-        <form method="dialog"><button className="pub-secondary">Close</button></form>
-      </dialog>
+      <Lightbox dlg={dlg} name={name} w={w} h={h} alt={alt} kind={kind} />
     </figure>
   );
 }
@@ -112,8 +126,8 @@ function Hero() {
         <div className="pub-hero-stage">
           <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor with the B1 lesson “Expressing and Justifying Opinions”: lesson aims, a two-person recording with numbered lines, and the teacher’s notes." />
           <div className="pub-hero-pops" aria-hidden="true">
-            <span className="pub-pop pub-pop-report"><Crop name="reports" at={{ x: 0.005, y: 0.5, w: 0.56, h: 0.37 }} alt="" width={320} eager /></span>
-            <span className="pub-pop pub-pop-coach"><Crop name="companion" at={{ x: 0.26, y: 0.46, w: 0.58, h: 0.4 }} alt="" width={340} eager /></span>
+            <span className="pub-pop pub-pop-report"><Crop name="reports" at={{ x: 0, y: 0.475, w: 0.53, h: 0.345 }} alt="" width={320} eager /></span>
+            <span className="pub-pop pub-pop-coach"><Crop name="companion" at={{ x: 0.255, y: 0.47, w: 0.71, h: 0.355 }} alt="" width={340} eager /></span>
             <span className="pub-pop pub-pop-phone"><Phone name="learner-phone" eager /></span>
           </div>
         </div>
@@ -164,12 +178,12 @@ function Ways() {
 // ------------------------------------------------------------------ everything in one place
 
 const ALL: { k: string; title: string; text: string; to: string; name: string; at: Region }[] = [
-  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan', name: 'editor-language', at: { x: 0.28, y: 0.1, w: 0.52, h: 0.42 } },
-  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way', name: 'teach', at: { x: 0.5, y: 0.08, w: 0.5, h: 0.42 } },
-  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand', name: 'reports', at: { x: 0.005, y: 0.5, w: 0.5, h: 0.36 } },
-  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio', name: 'speech', at: { x: 0.13, y: 0.5, w: 0.6, h: 0.42 } },
-  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.26, y: 0.46, w: 0.58, h: 0.4 } },
-  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language', name: 'concordance', at: { x: 0.12, y: 0.1, w: 0.6, h: 0.45 } },
+  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan', name: 'editor-language', at: { x: 0.17, y: 0.17, w: 0.6, h: 0.47 } },
+  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way', name: 'teach', at: { x: 0.18, y: 0.25, w: 0.62, h: 0.4 } },
+  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand', name: 'reports', at: { x: 0, y: 0.475, w: 0.43, h: 0.344 } },
+  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio', name: 'speech', at: { x: 0.12, y: 0.47, w: 0.55, h: 0.44 } },
+  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.255, y: 0.255, w: 0.71, h: 0.568 } },
+  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language', name: 'concordance', at: { x: 0.19, y: 0.17, w: 0.6, h: 0.48 } },
 ];
 
 function AllInOne() {
@@ -208,10 +222,6 @@ function Care() {
         <p>We built it to take some of the weight off you, so you have more time and energy for your learners. Every part of it is shaped by what teachers tell us they need.</p>
         <p className="pub-care-ask">We’re listening. <Link to="/contact">Tell us what would help your teaching</Link>, and we’ll keep building.</p>
       </div>
-      <aside className="pub-care-note" aria-label="A note from us">
-        <p>“Good teaching begins with teachers. Technology should support what you do, not get in the way of it.”</p>
-        <span>The ELT Suite team</span>
-      </aside>
     </section>
   );
 }
@@ -327,7 +337,7 @@ function Live() {
 
 // ------------------------------------------------------------------ showcases
 
-type Detail = { name: string; alt: string; at: Region; caption: string };
+type Detail = { name: string; alt: string; at: Region; caption?: string };
 type Showcase = { id: string; kicker: string; title: string; body: string[]; points: string[]; status?: string; main: { name: string; alt: string }; details?: Detail[]; extra?: ReactNode };
 const SHOWCASES: Showcase[] = [
   {
@@ -335,21 +345,21 @@ const SHOWCASES: Showcase[] = [
     body: ['Plan a lesson task by task, with its aims, activities and your notes together.', 'Make materials yourself, or ask for help with a first draft when you want it. The lesson stays yours.'],
     points: ['Gaps, speaking cards, recordings and more in one lesson.', 'Units and lessons for each class.', 'Print any lesson as a worksheet.'],
     main: { name: 'editor-language', alt: 'The lesson editor on the task “Notice the language”: a useful language box, sentences with gaps for point, about and because, and the teacher’s notes.' },
-    details: [{ name: 'class', alt: 'The class page: Unit 1 · Talking together and Unit 2 · Opinions and decisions, with their lessons.', at: { x: 0.01, y: 0.44, w: 0.6, h: 0.56 }, caption: 'Units and lessons in a class' }],
+    details: [{ name: 'class', alt: 'The class page: Unit 1 · Talking together and Unit 2 · Opinions and decisions, with their lessons.', at: { x: 0, y: 0.435, w: 0.6, h: 0.315 } }],
   },
   {
     id: 'understand', kicker: 'Understand', title: 'See how each learner is doing.',
     body: ['The class report shows every learner’s score in every lesson.', 'Open a learner to see their work, your feedback and what they’ve kept in their portfolio.'],
     points: ['Results for the class, lesson by lesson.', 'A portfolio for each learner.', 'A clear picture before you plan the next lesson.'],
     main: { name: 'reports', alt: 'The class report: eight learners and their scores in each of eight lessons.' },
-    details: [{ name: 'portfolio', alt: 'A learner’s portfolio: her average, lessons completed and pieces of work kept.', at: { x: 0.19, y: 0.55, w: 0.81, h: 0.25 }, caption: 'One learner’s portfolio' }],
+    details: [{ name: 'portfolio', alt: 'A learner’s portfolio: her average, lessons completed and pieces of work kept.', at: { x: 0.195, y: 0.555, w: 0.805, h: 0.215 }, caption: 'One learner’s portfolio' }],
   },
   {
     id: 'audio', kicker: 'Recordings', title: 'Make recordings for your class.',
     body: ['Record and edit audio, or make a dialogue with different voices from a script you write.', 'You can also make a short song for a lesson, at your learners’ level.'],
     points: ['A recording editor with the script and timings.', 'Dialogues with two or more voices.', 'Classroom songs for young learners, teenagers and adults.'],
     main: { name: 'sound', alt: 'The recording editor: a dialogue between Flo and Dan as a waveform, their lines on separate script tracks and the script with timings.' },
-    details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.15, y: 0.02, w: 0.7, h: 0.5 }, caption: 'Making a classroom song' }],
+    details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.145, y: 0.02, w: 0.71, h: 0.455 } }],
   },
   {
     id: 'language', kicker: 'Language', title: 'Look closely at language.',
@@ -474,13 +484,13 @@ function InviteForm() {
           <span>Where you teach <i>(optional)</i></span>
           <input autoComplete="organization" maxLength={120} placeholder="A school, or on your own" value={f.place} onChange={set('place')} />
         </label>
-        <label className="pub-field">
-          <span>Who you teach <i>(optional)</i></span>
-          <select value={f.teaches} onChange={set('teaches')}>
-            <option value="">Choose…</option>
+        <div className="pub-field">
+          <span aria-hidden="true">Who you teach <i>(optional)</i></span>
+          <NSelect aria-label="Who you teach (optional)" value={f.teaches} onChange={set('teaches')}>
+            <option value="" disabled>Choose…</option>
             {TEACHES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </label>
+          </NSelect>
+        </div>
       </div>
       <label className="pub-field">
         <span>Anything you’d like us to know <i>(optional)</i></span>

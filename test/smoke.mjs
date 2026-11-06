@@ -1010,7 +1010,7 @@ const J = {
     await form.getByRole('button',{name:'Ask for an invitation'}).click();
     await form.getByText('Check your email address.').waitFor();
     await form.getByLabel('Email').fill('sam@example.com');
-    await form.getByLabel(/Who you teach/).selectOption('Adults');
+    await form.getByRole('button',{name:/Who you teach/}).click();await p.getByRole('option',{name:'Adults'}).click();
     await form.getByLabel(/Where you teach/).fill('A school in Porto');
     await form.getByRole('button',{name:'Ask for an invitation'}).click();
     await p.getByRole('status').getByText('Thanks, Sam.').waitFor();
