@@ -1,5 +1,22 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {lessonSource,teachingExcerpt,reportExcerpt} from '../../functions/ai/coach-lesson-context.js';
+import {lessonSource,lessonSourceForPrompt,loadLessonSource,teachingExcerpt,reportExcerpt} from '../../functions/ai/coach-lesson-context.js';
 test('lesson references are optional and cannot contain forged context or paths',()=>{assert.equal(lessonSource(undefined),null);assert.deepEqual(lessonSource({classId:'c',itemId:'i',teacherUid:'other',content:'forged'}),{classId:'c',itemId:'i',taskId:'',reportId:''});for(const bad of ['../secret','a/b','x'.repeat(101),{}])assert.throws(()=>lessonSource({classId:bad,itemId:'i'}));});
 test('native activity excerpts preserve the task without image URLs or arbitrary attributes',()=>{const out=teachingExcerpt({type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I'},{type:'gap',attrs:{id:'q',answers:['went']}},{type:'text',text:'home.'}]},{type:'picture',attrs:{alt:'A park',url:'PRIVATE_URL'}}]});assert.match(out,/Yesterday I.*\[gap\].*home/);assert.match(out,/A park/);assert.doesNotMatch(out,/PRIVATE_URL|went/);assert.ok(teachingExcerpt({text:'x'.repeat(1000)},100).length<=100);});
 test('report excerpts omit names, raw answers and unrelated learner properties',()=>{const out=reportExcerpt({reportsJson:JSON.stringify([{name:'Private name',learnerId:'secret',rawAnswer:'PRIVATE',summary:{checkedTasks:2},observation:'Two submitted tasks',records:[{id:'e1',title:'Past forms',score:1,total:2,checked:true,responses:{q:'PRIVATE'},questions:[]}]}])});assert.equal(out[0].learner,'Learner 1');assert.equal(out[0].records[0].score,1);assert.doesNotMatch(JSON.stringify(out),/Private name|PRIVATE|secret/);});
+test('an overall-lesson question reads the attached lesson sequence while an activity question stays focused',async()=>{
+ const attached={classId:'class1',itemId:'lesson1',taskId:'listening',reportId:''};
+ assert.equal(lessonSourceForPrompt(attached,'What do you think about this lesson overall?').taskId,'');
+ assert.equal(lessonSourceForPrompt(attached,'How is the overall lesson sequence?').taskId,'');
+ assert.equal(lessonSourceForPrompt(attached,'What is your advice on this activity?').taskId,'listening');
+ const tasks=[{id:'lead',get:key=>({title:'Lead-in',instructions:'Introduce the topic',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Talk about holidays.'}]}]}}[key])},{id:'listening',get:key=>({title:'Listening',instructions:'Listen for the main idea',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Choose the holiday.'}]}]}}[key])}];
+ const taskCollection={doc:id=>({get:async()=>({...tasks.find(t=>t.id===id),exists:true})}),orderBy:()=>({limit:()=>({get:async()=>({docs:tasks})})})};
+ const item={exists:true,get:key=>({title:'Holidays'}[key])};
+ const itemRef={get:async()=>item,collection:()=>taskCollection};
+ const cls={exists:true,get:key=>({teacherId:'teacher1',kind:'language',level:'B1'}[key])};
+ const db={doc:()=>({get:async()=>cls,collection:()=>({doc:()=>itemRef})})};
+ const whole=await loadLessonSource(db,'teacher1',lessonSourceForPrompt(attached,'What do you think about this lesson overall?'),{games:false});
+ assert.deepEqual(whole.context.tasks.map(task=>task.title),['Lead-in','Listening']);
+ assert.equal(whole.sources[0].title,'Holidays');
+ const focused=await loadLessonSource(db,'teacher1',lessonSourceForPrompt(attached,'What is your advice on this activity?'),{games:false});
+ assert.deepEqual(focused.context.tasks.map(task=>task.title),['Listening']);
+});
