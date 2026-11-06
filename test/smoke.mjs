@@ -971,7 +971,7 @@ const J = {
     const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
     const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
-    const HERO='Plan a lesson, teach it live and see every learner’s answer.';
+    const HERO='Plan it, teach it, see how it went. Then keep growing.';
     await p.goto(BASE+'/');
     await p.getByRole('heading',{name:HERO}).waitFor();
     if(await p.getByRole('link',{name:/Buy now|Subscribe|Start free trial/}).count())throw Error('Unapproved public purchase action');
@@ -1075,7 +1075,7 @@ const J = {
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
     await see(p, '.pub-hero', 'public homepage');
-    await see(p, '.pub-hero .pub-stage-main img', 'lesson editor screenshot');
+    await see(p, '.pub-hero .pub-hero-shot img.pub-screen', 'lesson editor screenshot');
     await p.reload();
     await see(p, '.pub-hero', 'public homepage after reload');
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in',exact:true}).click();

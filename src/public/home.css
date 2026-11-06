@@ -18,14 +18,35 @@
 .pub-hero-copy > p { max-width: 560px; font-size: clamp(16.5px, 1.3vw, 18px); line-height: 1.6; color: var(--muted); }
 .pub-hero-copy .pub-actions { margin-top: 4px; }
 .pub-hero-copy .pub-note { max-width: 460px; }
-.pub-hero-shot { position: relative; margin: 0; min-height: 100%; padding: clamp(28px, 4vw, 48px) 0 0 clamp(20px, 3vw, 40px); background: var(--tint); border-left: 1px solid var(--hair); overflow: hidden; }
-.pub-hero-shot .pub-screen { position: relative; display: block; width: 128%; max-width: none; height: auto; border: 1px solid var(--hair); border-right: 0; border-bottom: 0; border-radius: 12px 0 0 0; background: var(--paper); box-shadow: var(--shadow-lift); }
+/* The editor on a tilted stage, with three screens popping out of it */
+.pub-hero-shot { position: relative; display: grid; align-content: center; margin: 0; min-height: 100%; padding: clamp(36px, 5vw, 64px) 0 clamp(36px, 5vw, 64px) clamp(28px, 4vw, 52px); background: var(--tint); border-left: 1px solid var(--hair); overflow: hidden; perspective: 1700px; }
+.pub-hero-stage { position: relative; transform-style: preserve-3d; transform: rotateX(9deg) rotateY(-17deg) rotateZ(2.5deg); transform-origin: 30% 50%; transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pub-hero-shot:hover .pub-hero-stage { transform: rotateX(6deg) rotateY(-11deg) rotateZ(1.5deg); }
+.pub-hero-stage .pub-screen { position: relative; display: block; width: 112%; max-width: none; height: auto; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); box-shadow: 0 30px 60px -28px rgba(51, 48, 44, 0.45), 0 2px 6px rgba(51, 48, 44, 0.06); }
+.pub-hero-pops { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+.pub-pop { position: absolute; display: block; overflow: hidden; border: 1px solid var(--hair); border-radius: 10px; background: var(--paper); box-shadow: 0 24px 44px -20px rgba(51, 48, 44, 0.5), 0 2px 4px rgba(51, 48, 44, 0.06); animation: pub-pop 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pub-pop .pub-crop { border-radius: 0; }
+.pub-pop img { display: block; width: 100%; height: auto; }
+.pub-pop-report { right: -1%; top: -5%; width: 44%; --z: 70px; transform: translateZ(70px); animation-delay: 0.35s; }
+.pub-pop-coach { right: -3%; bottom: -12%; width: 48%; --z: 110px; transform: translateZ(110px); animation-delay: 0.55s; }
+.pub-pop-phone { left: 3%; bottom: -14%; width: 19%; padding: 4px; border-radius: 16px; background: #22211e; border-color: #22211e; --z: 140px; transform: translateZ(140px); animation-delay: 0.75s; }
+.pub-pop-phone img { border-radius: 12px; }
+.pub-hero-shot:hover .pub-pop { transform: translateZ(calc(var(--z) + 30px)); }
+@keyframes pub-pop { from { opacity: 0; transform: translateZ(0) translateY(16px) scale(0.96); } }
 
 @media (max-width: 900px) {
   .pub-home > .pub-hero { grid-template-columns: 1fr; }
-  .pub-hero-shot { border-left: 0; border-top: 1px solid var(--hair); padding: 24px 0 0 20px; }
-  .pub-hero-shot .pub-screen { width: 150%; }
+  .pub-hero-shot { border-left: 0; border-top: 1px solid var(--hair); padding: 36px 0 56px 20px; }
+  .pub-hero-stage .pub-screen { width: 125%; }
+  .pub-pop-report { right: 2%; }
+  .pub-pop-coach { right: -4%; bottom: -18%; }
+  .pub-pop-phone { width: 22%; bottom: -20%; }
 }
+
+/* The cycle under the headline */
+.pub-cycle { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; counter-reset: cyc; }
+.pub-cycle li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border: 1px solid var(--hair); border-radius: 999px; background: var(--paper-soft); font: 700 13px/1.3 var(--sans); color: var(--ink); counter-increment: cyc; }
+.pub-cycle li::before { content: counter(cyc); display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: var(--accent-btn); color: var(--on-accent); font-size: 11px; }
 
 /* ------------------------------------------------------------------ everything in one place */
 
@@ -75,7 +96,8 @@
 .pub-phone-frame { padding: 6px; border-radius: 22px; background: #22211e; border-color: #22211e; }
 .pub-phone-frame img { display: block; width: 100%; height: auto; border-radius: 16px; }
 .pub-paper-frame { padding: 0; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(51, 48, 44, 0.08), 0 14px 28px -16px rgba(51, 48, 44, 0.35); }
-.pub-paper-frame img { display: block; width: 100%; height: auto; }
+.pub-paper-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1130 / 1180; object-fit: cover; object-position: top; }
+.pub-lightbox-paper img { aspect-ratio: auto; }
 .pub-lightbox-phone { width: min(420px, 94vw); }
 .pub-lightbox-paper { width: min(760px, 94vw); }
 @media (max-width: 860px) {
@@ -227,13 +249,14 @@
 .pub-reveal .pub-show-media > .pub-details .pub-frame { transition-delay: 0.1s; }
 
 .pub-frame:hover { transform: translateY(-3px); }
-.pub-hero-shot .pub-screen { transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.5s; }
-.pub-hero-shot:hover .pub-screen[data-shown], .pub-home:not(.pub-reveal) .pub-hero-shot:hover .pub-screen { transform: translate(-6px, -4px); box-shadow: 0 18px 36px -18px rgba(51, 48, 44, 0.38); }
 .pub-ways-list li { transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
 .pub-ways-list li:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, transparent); box-shadow: var(--shadow-lift); }
 .pub-live-learner, .pub-live-teacher { transition: transform 0.25s, box-shadow 0.25s; }
 .pub-live-stage > div:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
 
 @media (prefers-reduced-motion: reduce) {
-  .pub-frame:hover, .pub-hero-shot:hover .pub-screen, .pub-ways-list li:hover, .pub-live-stage > div:hover { transform: none !important; }
+  .pub-frame:hover, .pub-ways-list li:hover, .pub-live-stage > div:hover { transform: none !important; }
+  .pub-pop { animation: none; }
+  .pub-hero-stage, .pub-hero-shot:hover .pub-hero-stage { transition: none; transform: rotateX(9deg) rotateY(-17deg) rotateZ(2.5deg); }
+  .pub-hero-shot:hover .pub-pop { transform: translateZ(var(--z)); }
 }

@@ -8,7 +8,7 @@ const LanguageMoment = lazy(() => import('./LanguageMoment').then((m) => ({ defa
 // Screens from ELT Suite with a fictional class (test/landing-seed.ts, test/landing-shots.mjs).
 // Each is in public/landing at 2400 × 1500, with a 1100 × 688 copy for small screens.
 const W = 2400, H = 1500;
-const PAPER = { w: 972, h: 1092 }; // public/landing/paper.webp, the printed page
+const PAPER = { w: 1130, h: 1598 }; // public/landing/paper.webp, the printed page
 const src = (name: string) => `/landing/${name}.webp`;
 const srcSet = (name: string) => `/landing/${name}-sm.webp 1100w, /landing/${name}.webp 2400w`;
 
@@ -77,13 +77,18 @@ function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string
 
 // ------------------------------------------------------------------ hero
 
+const CYCLE = ['Plan', 'Teach', 'See results', 'Reflect', 'Grow with your coach', 'Connect with colleagues'];
+
 function Hero() {
   return (
     <section className="pub-hero" aria-labelledby="pub-hero-h">
       <div className="pub-hero-copy">
         <span className="pub-kicker">By teachers, for teachers</span>
-        <h1 id="pub-hero-h">Plan a lesson, teach it live and see every learner’s answer.</h1>
-        <p>Everything you need to teach is in one place: your lesson planning, your teaching, your learners’ progress and your own development as a teacher. Teach it your way: online, on the classroom screen or on paper.</p>
+        <h1 id="pub-hero-h">Plan it, teach it, see how it went. Then keep growing.</h1>
+        <ol className="pub-cycle" aria-label="Your teaching cycle in ELT Suite">
+          {CYCLE.map((c) => <li key={c}>{c}</li>)}
+        </ol>
+        <p>Your whole teaching cycle, in one place: plan the lesson, teach it, see your learners’ results, reflect on it, talk it through with your coach and share ideas with colleagues. And teach it your way: online, on the classroom screen or on paper.</p>
         <div className="pub-actions">
           <a className="pub-button" href="#invite">Ask for an invitation</a>
           <Link className="pub-secondary" to="/signin">Sign in</Link>
@@ -91,7 +96,14 @@ function Hero() {
         <span className="pub-note">We’re open by invitation for now. Ask, and we’ll email you when there’s a place.</span>
       </div>
       <figure className="pub-hero-shot">
-        <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor with the B1 lesson “Expressing and Justifying Opinions”: lesson aims, a two-person recording with numbered lines, and the teacher’s notes." />
+        <div className="pub-hero-stage">
+          <Screen name="editor" eager sizes="(min-width: 1100px) 760px, 100vw" alt="The ELT Suite lesson editor with the B1 lesson “Expressing and Justifying Opinions”: lesson aims, a two-person recording with numbered lines, and the teacher’s notes." />
+          <div className="pub-hero-pops" aria-hidden="true">
+            <span className="pub-pop pub-pop-report"><Crop name="reports" at={{ x: 0.005, y: 0.5, w: 0.56, h: 0.37 }} alt="" width={320} eager /></span>
+            <span className="pub-pop pub-pop-coach"><Crop name="companion" at={{ x: 0.26, y: 0.46, w: 0.58, h: 0.4 }} alt="" width={340} eager /></span>
+            <span className="pub-pop pub-pop-phone"><img src={src('learner-phone')} width={780} height={1440} alt="" decoding="async" /></span>
+          </div>
+        </div>
       </figure>
     </section>
   );
