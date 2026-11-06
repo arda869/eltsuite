@@ -63,6 +63,8 @@ import { Wordmark } from '../components/Wordmark';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { chooseLevel, familyOf, isVariant, roomOf, useGroupSets, useMyLevels, useTaskBodies } from '../lib/groups';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { subTasksOf } from '../editor/SubTask';
+import { checkSubTask } from '../lib/subtaskCheck';
 
 export function LearnerLesson() {
   const { itemId = '' } = useParams();
@@ -76,6 +78,9 @@ export function LearnerLesson() {
   const [current, setCurrent] = useState('');
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState(false);
+  const [checkedParts, setCheckedParts] = useState<string[]>([]);
+  const [checkingPart, setCheckingPart] = useState('');
+  const [taskListOpen, setTaskListOpen] = useState(false);
   const [checkError,setCheckError] = useState('');
   const [key, setKey] = useState<AnswerKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -151,7 +156,7 @@ export function LearnerLesson() {
   useEffect(() => {
     if (synced && syncTo) setCurrent(syncTo);
   }, [synced, syncTo]);
-  const go = (id: string) => !synced && setCurrent(id);
+  const go = (id: string) => { if (!synced) setCurrent(id); setTaskListOpen(false); };
   // Arriving from a notification or link: open that task.
   const [params, setParams] = useSearchParams();
   useEffect(() => {
@@ -178,6 +183,7 @@ export function LearnerLesson() {
     if (!classId || !current || !user) return;
     setKey(null);
     setChecked(false);
+    setCheckedParts([]);
     setCheckError('');
     setResponses({});
     setFlags([]);
@@ -192,7 +198,12 @@ export function LearnerLesson() {
       if (dirty.current || s.metadata.hasPendingWrites) return;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
+      setCheckedParts(d?.checkedParts ?? []);
       if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
+      else if (d?.checkedParts?.length) {
+        const result = await checkSubTask(classId, itemId, current, '', 'read').catch(() => null);
+        if (result) setKey(result.key);
+      }
     });
   }, [classId, itemId, current, user]);
 
@@ -221,6 +232,11 @@ export function LearnerLesson() {
   const received = useReceivedFeedback(classId, current, learnerId);
   const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
   const qs = useMemo(() => questionIds(task?.content ?? null, withShared), [task, withShared]);
+  const subTasks = useMemo(() => subTasksOf(task?.content), [task]);
+  const partIds = subTasks.map((node, i) => String(node.attrs?.id || `st${i}`));
+  const partQuestionIds = subTasks.map((node) => questionIds(node, withShared).map((q) => q.id));
+  const groupedChecking = subTasks.length > 0 && qs.length > 0 && partQuestionIds.every((part) => part.length > 0) && qs.every((q) => partQuestionIds.some((part) => part.includes(q.id)));
+  const checkedQuestionIds = groupedChecking ? checkedParts.flatMap((id) => partQuestionIds[partIds.indexOf(id)] ?? []) : undefined;
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
 
@@ -246,7 +262,7 @@ export function LearnerLesson() {
 
   const examLockedRef = useRef(false);
   function change(id: string, v: Responses[string]) {
-    if (!base || task?.locked || examLockedRef.current || (checked && corrections[id]?.status !== 'open')) return;
+    if (!base || task?.locked || checkingPart || examLockedRef.current || (checkedQuestionIds?.includes(id) && corrections[id]?.status !== 'open') || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
     dirty.current = true;
@@ -324,14 +340,39 @@ export function LearnerLesson() {
     }
   }
 
+  async function checkPart(partId: string) {
+    if (!base || busy || checkingPart) return;
+    setCheckingPart(partId);
+    setCheckError('');
+    dirty.current = true;
+    window.clearTimeout(timer.current);
+    let saved = false;
+    try {
+      await saveResponses(classId, base, responses, false);
+      saved = true;
+      const result = await checkSubTask(classId, itemId, base.taskId, partId);
+      setCheckedParts(result.checkedParts);
+      setKey(result.key);
+      setChecked(result.complete);
+      if (result.complete && (item?.type === 'practice' || item?.type === 'homework'))
+        recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, result.key, responses).catch(() => {});
+    } catch {
+      setCheckError(saved ? 'Could not check this part. Your answers are saved; please try again.' : 'Could not save your answers. Check your connection and try again.');
+    } finally {
+      dirty.current = false;
+      setCheckingPart('');
+    }
+  }
+
   async function tryWrongAgain(all = false) {
     if (!base || !key) return;
     const kept: Responses = {};
     if (!all) for (const q of qs) if (isCorrect(key[q.id], responses[q.id]) || q.type === 'writing') kept[q.id] = responses[q.id];
     setResponses(kept);
     setChecked(false);
+    setCheckedParts([]);
     setKey(null);
-    await saveResponses(classId, base, kept, false);
+    await saveResponses(classId, base, kept, false, undefined, { checkedParts: [] });
   }
 
   const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
@@ -405,7 +446,11 @@ export function LearnerLesson() {
       )}
       <NoticeToasts classId={classId} to={learnerId} link={(i, t) => (i === 'disc' ? `/discuss/${t}` : `/learn/${i}?task=${t}`)} />
       <div className={'lesson-layout learner' + panels.cls}>
-        <nav className="task-list" aria-label="Tasks">
+        <button type="button" className="mobile-task-toggle" aria-expanded={taskListOpen} aria-controls="learner-task-list" onClick={() => setTaskListOpen((open) => !open)}>
+          <span><strong>Tasks</strong><span>{task?.title || 'Choose a task'}</span></span>
+          <span aria-hidden="true">{taskListOpen ? '⌃' : '⌄'}</span>
+        </button>
+        <nav id="learner-task-list" className={'task-list' + (taskListOpen ? ' mobile-open' : '')} aria-label="Tasks">
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
           </span>
@@ -560,8 +605,12 @@ export function LearnerLesson() {
                   responses={responses}
                   onChange={change}
                   revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN, singles) : null}
-                  results={checked ? key : null}
-                  disabled={task.locked || examLocked}
+                  results={key}
+                  checkedQuestionIds={!scope && groupedChecking && !checked ? checkedQuestionIds : undefined}
+                  checkedSubTasks={!scope && groupedChecking ? checkedParts : undefined}
+                  checkingSubTask={checkingPart}
+                  onCheckSubTask={!scope && groupedChecking ? checkPart : undefined}
+                  disabled={task.locked || examLocked || !!checkingPart}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
@@ -631,7 +680,7 @@ export function LearnerLesson() {
                         {scope.kind === 'item' ? 'Hand in the exam' : 'Hand in'}
                       </button>
                     ) : null
-                  ) : qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
+                  ) : !groupedChecking && qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
                     <span className="hint saved-auto">{Object.keys(responses).length ? tr('Saved. Your teacher can see your answers.') : ''}</span>
                   ) : qs.length > 0 &&
                     (checked ? (
@@ -646,7 +695,7 @@ export function LearnerLesson() {
                           </button>
                         )
                       )
-                    ) : (
+                    ) : groupedChecking ? null : (
                       <button className="btn primary" disabled={busy || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : (<>Check<span className="foot-long"> answers</span></>)}
                       </button>

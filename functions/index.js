@@ -2,6 +2,7 @@ export { deleteAccount, finishAccountDeletion, retryAccountDeletions } from './a
 export {classroomGames,classroomGameDraft} from './games/index.js';
 export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
+export { checkSubTask } from './learning/check-subtask.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a
 // learner, to see ELT Suite exactly as they do. Only super admins (the owner, or someone in

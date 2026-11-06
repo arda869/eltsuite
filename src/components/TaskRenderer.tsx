@@ -59,7 +59,7 @@ import { LINK_ICON } from '../editor/LessonLink';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
-import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitKey, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
+import { drawnCards, isAnswered, normalise, pickState, questionIds, scoreQuestion, splitKey, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
 import { PickStage, type PickLook } from './PickStage';
 import type { SharedPick } from '../lib/picks';
 import type { SentFeedback } from '../lib/feedback';
@@ -71,6 +71,10 @@ type Props = {
   responses: Responses;
   onChange?: (id: string, value: Response) => void;
   results?: AnswerKey | null; // when present, show right and wrong
+  checkedQuestionIds?: string[]; // partial feedback: only these questions are checked
+  checkedSubTasks?: string[];
+  checkingSubTask?: string;
+  onCheckSubTask?: (partId: string) => void;
   hideAnswers?: boolean; // show only right or wrong, not the correct answer
   disabled?: boolean;
   layout?: 'single' | 'two' | 'two-wide' | 'media';
@@ -198,7 +202,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
   const citationStyle = useCiteStyle();
   const citationSources = useMemo(() => {
     const seen = new Map<string, Source>();
@@ -209,7 +213,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
-  const locked = disabled || !!results;
+  const checkedId = (id: string) => checkedQuestionIds ? checkedQuestionIds.includes(id) : !!results;
+  const lockedId = (id: string) => !!disabled || checkedId(id);
+  const locked = disabled || (!!results && !checkedQuestionIds);
   const training = useTrainingClass(classId);
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
@@ -294,7 +300,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   );
   const num = (id: string, offset = 0) => {
     const flagged = flags?.includes(id);
-    if (onToggleFlag && offset === 0 && !results)
+    if (onToggleFlag && offset === 0 && !checkedId(id))
       return (
         <button
           type="button"
@@ -319,7 +325,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const revealOf = (node: JSONContent): string | null => {
     const id = node.attrs?.id as string;
     const e = revealed?.[id];
-    if (!e || results || inPen(id)) return null;
+    if (!e || checkedId(id) || inPen(id)) return null;
     const options: string[] = node.attrs?.options ?? [];
     switch (e.kind) {
       case 'gap':
@@ -397,7 +403,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const id = node.attrs!.id as string;
     const value = String(responses[id] ?? '');
     const entry = results?.[id];
-    if (results) {
+    if (checkedId(id)) {
       const right = scoreQuestion(entry, value).got === 1;
       return resultText(key, id, value, right, entry?.kind === 'gap' ? entry.answers[0] : undefined);
     }
@@ -432,8 +438,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     );
   };
 
-  const optionState = (i: number, chosen: number[], correct: number[]) => {
-    if (!results) return chosen.includes(i) ? 'on' : '';
+  const optionState = (id: string, i: number, chosen: number[], correct: number[]) => {
+    if (!checkedId(id)) return chosen.includes(i) ? 'on' : '';
     if (correct.includes(i) && (!hideAnswers || chosen.includes(i))) return 'right';
     return chosen.includes(i) ? 'wrong' : '';
   };
@@ -449,8 +455,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     };
     return options.map((o, i) =>
       o.trim() ? (
-        <label key={i + pf(id)} className={'opt ' + optionState(i, chosen, correct) + pf(id)}>
-          <input type={multi ? 'checkbox' : 'radio'} name={id} checked={chosen.includes(i)} disabled={locked} onChange={() => {}} onClick={() => toggle(i)} />
+        <label key={i + pf(id)} className={'opt ' + optionState(id, i, chosen, correct) + pf(id)}>
+          <input type={multi ? 'checkbox' : 'radio'} name={id} checked={chosen.includes(i)} disabled={lockedId(id)} onChange={() => {}} onClick={() => toggle(i)} />
           {display === 'radio' ? (
             <span className={multi ? 'radio square' : 'radio'} aria-hidden="true" />
           ) : (
@@ -460,8 +466,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           )}
           <span>
             {o}
-            {results && optionState(i, chosen, correct) === 'right' && <span className="sr-only">{chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
-            {results && optionState(i, chosen, correct) === 'wrong' && <span className="sr-only">, not right</span>}
+            {checkedId(id) && optionState(id, i, chosen, correct) === 'right' && <span className="sr-only">{chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
+            {checkedId(id) && optionState(id, i, chosen, correct) === 'wrong' && <span className="sr-only">, not right</span>}
           </span>
         </label>
       ) : null,
@@ -489,8 +495,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <span key={key} className="slash-choice" data-qid={id} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
           {num(id)}
           {shown.map(({ o, i }, k) => {
-            const state = optionState(i, chosen, correct);
-            const isOk = results && state === 'right' && chosen.includes(i);
+            const state = optionState(id, i, chosen, correct);
+            const isOk = checkedId(id) && state === 'right' && chosen.includes(i);
             return (
               <span key={i}>
                 {k > 0 && <span className="slash-sep" aria-hidden="true">/</span>}
@@ -500,11 +506,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                   aria-checked={chosen.includes(i)}
                   key={i + pf(id)}
                   className={'slash-opt ' + state + pf(id)}
-                  disabled={locked}
+                  disabled={lockedId(id)}
                   onClick={() => pick(i)}
                 >
                   {o}
-                  {results && state && <span className="sr-only">{state === 'wrong' ? ', not right' : chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
+                  {checkedId(id) && state && <span className="sr-only">{state === 'wrong' ? ', not right' : chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
                 </button>
                 {isOk && TICK}
               </span>
@@ -555,7 +561,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const chosen: number[] = Array.isArray(raw) ? raw : [];
     const entry = results?.[id];
     const map = entry?.kind === 'match' ? entry.map : [];
-    const live = !results && !disabled;
+    const live = !checkedId(id) && !disabled;
     const setMatch = (li: number, rk: number) => {
       const next = [...chosen];
       while (next.length < left.length) next.push(-1);
@@ -586,13 +592,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <ol className="match-left">
           {left.map((l, i) => {
             const c = chosen[i] ?? -1;
-            const ok = results ? c === map[i] : false;
+            const ok = checkedId(id) ? c === map[i] : false;
             return (
               <li key={i}>
                 {num(id, i)}
-                <button type="button" className={'match-item' + (active('l', i) ? ' active' : '')} data-pair={!results && c >= 0 ? i % 6 : undefined} disabled={!live} onClick={() => pickLeft(i)}>
+                <button type="button" className={'match-item' + (active('l', i) ? ' active' : '')} data-pair={!checkedId(id) && c >= 0 ? i % 6 : undefined} disabled={!live} onClick={() => pickLeft(i)}>
                   <span className="match-l">{l}</span>
-                  {results ? (
+                  {checkedId(id) ? (
                     <span className="gap-result">
                       <span className={ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
                       <span className="sr-only">{ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && map[i] >= 0 ? ' The answer is' : ''}</span>
@@ -611,7 +617,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <ul className="match-right">
           {right.map((r, k) => (
             <li key={k}>
-              <button type="button" className={'match-item' + (active('r', k) ? ' active' : '') + (chosen.includes(k) && !results ? ' used' : '')} data-pair={chosen.includes(k) && !results ? chosen.indexOf(k) % 6 : undefined} disabled={!live} onClick={() => pickRight(k)}>
+              <button type="button" className={'match-item' + (active('r', k) ? ' active' : '') + (chosen.includes(k) && !checkedId(id) ? ' used' : '')} data-pair={chosen.includes(k) && !checkedId(id) ? chosen.indexOf(k) % 6 : undefined} disabled={!live} onClick={() => pickRight(k)}>
                 <span className="letter" aria-hidden="true">
                   {LETTERS[k]}
                 </span>
@@ -631,7 +637,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const id = node.attrs!.id as string;
     const value = isAnswered(responses[id]) ? String(responses[id]) : '';
     const entry = results?.[id];
-    if (results) return resultText(key, id, value, scoreQuestion(entry, value).got === 1, entry?.kind === 'drop' ? entry.answer : undefined);
+    if (checkedId(id)) return resultText(key, id, value, scoreQuestion(entry, value).got === 1, entry?.kind === 'drop' ? entry.answer : undefined);
     return (
       <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}
@@ -713,7 +719,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       if (k >= 0) pool.splice(k, 1);
     }
     const entry = results?.[id];
-    if (results) {
+    if (checkedId(id)) {
       const ok = scoreQuestion(entry, responses[id]).got === 1;
       return (
         <div key={key} className="order-q" data-qid={id}>
@@ -762,7 +768,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const corr = writingReview?.corrections?.[id];
     const myAnns = (writingReview?.anns ?? []).filter((a) => a.target === 'answer' && a.qid === id);
     const fixing = corr?.status === 'open';
-    const wLocked = locked && !fixing;
+    const wLocked = lockedId(id) && !fixing;
     return (
       <div key={key} className="writing-q">
         {num(id)}
@@ -804,7 +810,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           {count} {count === 1 ? 'word' : 'words'}
           {aim ? ` · ${aim}` : ''}
           {under ? ' · keep going' : over ? ' · too long' : ''}
-          {results && !fixing ? ' · sent to your teacher' : ''}
+          {checkedId(id) && !fixing ? ' · sent to your teacher' : ''}
         </span>
         {fixing && (
           <button type="button" className="btn small-btn primary" style={{ alignSelf: 'flex-start' }} onClick={() => writingReview?.onResubmit(id)}>
@@ -1063,7 +1069,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             result={res?.kind === 'pack' ? res : null}
             revealed={!inPen(id) && rev?.kind === 'pack' ? rev : null}
             hideAnswers={hideAnswers}
-            locked={locked}
+            locked={lockedId(id)}
             num={num}
             classId={classId}
           />
@@ -1074,7 +1080,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const cards = node.content ?? [];
         const together = sharedOn(node);
         const sp = shared?.[id];
-        const canDraw = !results && (together ? !!onSharedDraw && (teacher || node.attrs?.whoDraws === 'anyone') : !!onChange);
+        const canDraw = !checkedId(id) && (together ? !!onSharedDraw && (teacher || node.attrs?.whoDraws === 'anyone') : !!onChange);
         return (
           <PickStage
             key={key}
@@ -1087,9 +1093,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             seq={together ? sp?.seq ?? 0 : undefined}
             drawnBy={together ? sp?.by : undefined}
             canDraw={canDraw}
-            waitingText={together && !canDraw && !results ? 'Your teacher will draw for the class.' : undefined}
+            waitingText={together && !canDraw && !checkedId(id) ? 'Your teacher will draw for the class.' : undefined}
             onDraw={(next) => (together ? onSharedDraw?.(id, next, (sp?.seq ?? 0) + 1) : onChange?.(id, next as unknown as Response))}
-            onReset={results ? undefined : together ? (onSharedReset && (teacher || node.attrs?.whoDraws === 'anyone') ? () => onSharedReset(id) : undefined) : onChange ? () => onChange(id, { h: [], b: [] } as unknown as Response) : undefined}
+            onReset={checkedId(id) ? undefined : together ? (onSharedReset && (teacher || node.attrs?.whoDraws === 'anyone') ? () => onSharedReset(id) : undefined) : onChange ? () => onChange(id, { h: [], b: [] } as unknown as Response) : undefined}
             resetAnytime={together && !!teacher}
             renderCard={(i) => (cards[i]?.content ?? []).map((c, k) => render(c, key + '.' + i + '.' + k))}
           />
@@ -1109,7 +1115,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             items={(node.attrs?.items as RItem[]) ?? []}
             value={responses[id] as unknown as ReflectAnswer | undefined}
             onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined}
-            disabled={locked}
+            disabled={lockedId(id)}
             classmates={classmates}
             selfId={selfId}
           />
@@ -1129,7 +1135,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         // Sub-tasks: each part starts with its own instruction band, like the task's, and shows once
         // it is open; the open part ends with a small button for the next one.
         const i = subs.indexOf(node);
-        if (!subShown(subs, i, openSubs, !!results || !!asExample)) return null;
+        if (!subShown(subs, i, openSubs, (!!results && !checkedQuestionIds) || !!asExample)) return null;
+        const partId = String(node.attrs?.id || `st${i}`);
+        const partQs = questionIds(node, responses);
+        const partChecked = checkedSubTasks?.includes(partId);
+        const partScore = partQs.reduce((sum, q) => { const r = scoreQuestion(results?.[q.id], responses[q.id]); return { got: sum.got + r.got, max: sum.max + r.max }; }, { got: 0, max: 0 });
         return (
           <section key={key} data-bk={key} className="subtask">
             {/* The same band as the task's own instruction, with the part's letter. */}
@@ -1138,7 +1148,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
               <p className="task-instr">{String(node.attrs?.instr ?? '')}</p>
             </div>
             <div className="st-body">{kids()}</div>
-            {!(!!results || !!asExample) && i + 1 < subs.length && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}
+            {onCheckSubTask && partQs.length > 0 && <div className="st-check-row">
+              {partChecked ? <span className="st-check-result" role="status">Part {subLetter(i)} checked{partScore.max > 0 ? ` · ${Math.round(partScore.got * 10) / 10} of ${partScore.max} correct` : ' · sent to your teacher'}</span> :
+                <button type="button" className="btn primary" disabled={!!disabled || !!checkingSubTask || !partQs.some((q) => isAnswered(responses[q.id]))} onClick={() => onCheckSubTask(partId)}>{checkingSubTask === partId ? 'Checking…' : partQs.every((q) => q.type === 'writing' || q.type === 'reflect') ? `Hand in part ${subLetter(i)}` : `Check part ${subLetter(i)}`}</button>}
+              {!partChecked && !partQs.some((q) => isAnswered(responses[q.id])) && <span className="hint">Answer a question in this part to check it.</span>}
+            </div>}
+            {!((!!results && !checkedQuestionIds) || !!asExample) && i + 1 < subs.length && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}
           </section>
         );
       }
@@ -1161,7 +1176,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const id = String(node.attrs?.id ?? '');
         return (
           <div key={key} data-bk={key} className="task-upload">
-            <UploadBox classId={classId ?? ''} a={node.attrs as UploadAttrs} value={responses[id] as unknown as UploadAnswer | undefined} onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined}  disabled={locked} />
+            <UploadBox classId={classId ?? ''} a={node.attrs as UploadAttrs} value={responses[id] as unknown as UploadAnswer | undefined} onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined}  disabled={lockedId(id)} />
           </div>
         );
       }
@@ -1252,7 +1267,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const id = node.attrs?.id as string;
         return (
           <div key={key} className="tt-wrap">
-            <TTBlock kind={(node.attrs?.kind ?? 'analysis') as TTKind} title={String(node.attrs?.title ?? '')} mode={node.attrs?.mode === 'complete' ? 'complete' : 'model'} data={(node.attrs?.data ?? {}) as Record<string, string>} value={responses[id] as unknown as Fields | undefined} onChange={onChange && node.attrs?.mode === 'complete' ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked}  def={node.attrs?.def ?? undefined} />
+            <TTBlock kind={(node.attrs?.kind ?? 'analysis') as TTKind} title={String(node.attrs?.title ?? '')} mode={node.attrs?.mode === 'complete' ? 'complete' : 'model'} data={(node.attrs?.data ?? {}) as Record<string, string>} value={responses[id] as unknown as Fields | undefined} onChange={onChange && node.attrs?.mode === 'complete' ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={lockedId(id)}  def={node.attrs?.def ?? undefined} />
           </div>
         );
       }
