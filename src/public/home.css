@@ -66,15 +66,11 @@
 
 /* ------------------------------------------------------------------ why we made it */
 
-.pub-home > .pub-care { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px clamp(28px, 4vw, 56px); align-items: center; background: var(--tint); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
-.pub-care-copy { display: grid; gap: 12px; justify-items: start; max-width: 680px; }
+.pub-home > .pub-care { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; justify-items: center; text-align: center; background: var(--tint); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
+.pub-care-copy { display: grid; gap: 12px; justify-items: center; max-width: 680px; }
 .pub-care-copy > p { color: var(--muted); font-size: 16.5px; }
 .pub-care-copy > .pub-care-ask { color: var(--ink); }
 .pub-care-ask a { color: var(--accent-text); font-weight: 700; text-underline-offset: 3px; }
-.pub-care-note { display: grid; gap: 12px; padding: clamp(20px, 2.6vw, 30px); border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); box-shadow: inset 3px 0 0 var(--accent), var(--shadow); }
-.pub-care-note p { font: 500 clamp(19px, 1.7vw, 23px)/1.45 var(--serif); color: var(--ink); }
-.pub-care-note span { font: 800 11.5px/1.4 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); }
-@media (max-width: 900px) { .pub-home > .pub-care { grid-template-columns: 1fr; } }
 
 /* ------------------------------------------------------------------ teach your way */
 
@@ -97,9 +93,6 @@
 .pub-frame.pub-phone-frame:hover { box-shadow: none; }
 .pub-paper-frame { padding: 0; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(51, 48, 44, 0.08), 0 14px 28px -16px rgba(51, 48, 44, 0.35); }
 .pub-paper-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1130 / 1180; object-fit: cover; object-position: top; }
-.pub-lightbox-paper img { aspect-ratio: auto; }
-.pub-lightbox-phone { width: min(420px, 94vw); }
-.pub-lightbox-paper { width: min(760px, 94vw); }
 @media (max-width: 860px) {
   .pub-same-row { grid-template-columns: 1fr 1fr; }
   .pub-same-row .pub-same-edit { grid-column: 1 / -1; }
@@ -178,10 +171,6 @@
 .pub-crop { position: relative; display: block; overflow: hidden; border-radius: 8px; background: var(--tint); }
 .pub-crop img { position: absolute; left: 0; top: 0; width: calc(100% / var(--cw)); max-width: none; height: auto; transform: translate(calc(var(--cx) * -100%), calc(var(--cy) * -100%)); }
 
-.pub-lightbox { width: min(1400px, 94vw); max-width: none; max-height: 94vh; padding: 12px; border: 0; border-radius: var(--radius); background: var(--paper); color: var(--ink); box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6); }
-.pub-lightbox::backdrop { background: rgba(20, 18, 16, 0.74); }
-.pub-lightbox img { display: block; width: 100%; height: auto; max-height: calc(94vh - 90px); object-fit: contain; border-radius: 8px; }
-.pub-lightbox form { display: flex; justify-content: flex-end; margin-top: 12px; }
 
 /* The marked-up sentence in the language card */
 .pub-home .pub-mounted { min-width: 0; }
@@ -280,3 +269,36 @@
 .pub-device-icons u:nth-child(3) { width: 6cqw; height: 3cqw; margin-left: 1.2cqw; border-radius: 0.9cqw; background: none; box-shadow: inset 0 0 0 0.5cqw #1b1a18, inset -2cqw 0 0 0.5cqw #1b1a18; }
 .pub-device-screen img { display: block; width: 100%; height: auto; }
 .pub-device-home { position: absolute; left: 50%; bottom: 2.2cqw; width: 34cqw; height: 1.3cqw; border-radius: 1cqw; background: #1b1a18; transform: translateX(-50%); opacity: 0.85; }
+
+/* ------------------------------------------------------------------ close-ups
+   A close-up has no frame of its own: its cut sides fade out (see Crop), so a border would look
+   like a mistake. Real screen edges stay sharp. */
+
+.pub-frame.pub-frame-crop { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.pub-frame.pub-frame-crop:hover { box-shadow: none; }
+.pub-frame-crop .pub-crop { background: none; }
+.pub-all-list .pub-crop { border: 0; border-radius: 0; background: none; }
+.pub-pop.pub-pop-report, .pub-pop.pub-pop-coach { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; filter: drop-shadow(0 18px 22px rgba(51, 48, 44, 0.28)); }
+.pub-pop .pub-crop { background: none; }
+
+/* ------------------------------------------------------------------ the enlarged picture */
+
+.pub .pub-lightbox, .pub-lightbox { width: fit-content; height: fit-content; max-width: 94vw; max-height: 92vh; padding: 0; border: 0; border-radius: 12px; background: none; box-shadow: none; overflow: visible; }
+.pub-lightbox[open] { animation: pub-lb-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pub-lightbox::backdrop { background: rgba(20, 18, 16, 0.72); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); animation: pub-lb-fade 0.28s ease; }
+.pub-lightbox img, .pub-lightbox-phone img, .pub-lightbox-paper img { display: block; width: min(94vw, calc(92vh * var(--ar, 1.6))); height: auto; max-width: none; max-height: none; aspect-ratio: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.25); }
+.pub-lightbox form { position: absolute; top: 10px; right: 10px; display: block; margin: 0; }
+.pub-lb-close { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: rgba(20, 18, 16, 0.58); color: #fff; cursor: pointer; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background-color 0.15s; }
+.pub-lb-close:hover { background: rgba(20, 18, 16, 0.8); }
+.pub-lb-close:focus-visible { outline: 2.5px solid #fff; outline-offset: 2px; }
+@keyframes pub-lb-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes pub-lb-fade { from { opacity: 0; } }
+
+/* ELT Suite's own dropdown in the invitation form */
+.pub-field .nsel, .pub-field .nsel .sel { display: flex; width: 100%; }
+.pub-field .sel { min-height: 42px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font: 400 16px/1.4 var(--sans); }
+.pub-field .sel:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pub-lightbox[open], .pub-lightbox::backdrop { animation: none; }
+}
