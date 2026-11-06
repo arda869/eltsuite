@@ -896,11 +896,12 @@ service cloud.firestore {
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
       // A new teacher making their account with an organisation's invitation code.
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'code']) && codeForOrg(request.resource.data.code, request.resource.data.org);
-      allow create: if request.resource.data.keys().hasOnly(['code', 'teacherTrainer'])
-        && request.resource.data.get('teacherTrainer', false) == true
-        && redeemTeacherGrant(uid, 'teacherTrainer')
+      allow create: if request.resource.data.keys().hasOnly(['code', 'plan', 'teacherTrainer'])
+        && redeemTeacherCode(uid)
         && request.resource.data.get('code', null) == newTeacherCode(uid)
-        && codeData(newTeacherCode(uid)).get('org', null) == null;
+        && codeData(newTeacherCode(uid)).get('org', null) == null
+        && request.resource.data.get('plan', 'free') == codeData(newTeacherCode(uid)).get('plan', 'free')
+        && request.resource.data.get('teacherTrainer', false) == codeData(newTeacherCode(uid)).get('teacherTrainer', false);
       allow update: if isSelf(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
     }
     // An invitation for this teacher's email to this organisation, not yet answered.
@@ -953,17 +954,17 @@ service cloud.firestore {
     function newTeacherCode(uid) {
       return getAfter(/databases/$(database)/documents/users/$(uid)).data.get('code', null);
     }
-    function redeemTeacherGrant(uid, grant) {
+    function redeemTeacherCode(uid) {
       return isSelf(uid) && !learnerAccount()
         && request.auth.token.get('proxyBy', null) == null
         && !exists(/databases/$(database)/documents/users/$(uid))
         && getAfter(/databases/$(database)/documents/users/$(uid)).data.role == 'teacher'
-        && codeUsedNow(newTeacherCode(uid))
-        && codeData(newTeacherCode(uid)).get(grant, false) == true;
+        && codeUsedNow(newTeacherCode(uid));
     }
     function validInviteGrants() {
       let data = request.resource.data;
       return data.get('aiAccess', false) is bool && data.get('teacherTrainer', false) is bool
+        && (data.get('plan', 'free') == 'free' || (data.get('plan', 'free') == 'teacher' && isOwner() && data.get('org', null) == null))
         && (!data.get('aiAccess', false) || aiAdmin())
         && (!data.get('teacherTrainer', false) || (isOwner() && data.get('org', null) == null));
     }
@@ -982,7 +983,7 @@ service cloud.firestore {
       allow update: if (isOwner() || (adminOfOrg(resource.data.get('org', null)) && request.resource.data.get('org', null) == resource.data.get('org', null)
           && !resource.data.get('aiAccess', false) && !resource.data.get('teacherTrainer', false)))
         && request.resource.data.get('uses', 0) == resource.data.get('uses', 0)
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['aiAccess', 'teacherTrainer', 'org'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan', 'aiAccess', 'teacherTrainer', 'org'])
           || validInviteGrants());
       allow delete: if isOwner() || adminOfOrg(resource.data.get('org', null));
       // A new teacher using it: one more use, by them, with the account made in the same write.
@@ -1183,7 +1184,8 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])
         && request.resource.data.enabled == true
         && request.resource.data.updatedAt == request.time
-        && redeemTeacherGrant(uid, 'aiAccess')
+        && redeemTeacherCode(uid)
+        && codeData(newTeacherCode(uid)).get('aiAccess', false) == true
         && request.resource.data.updatedBy == codeData(newTeacherCode(uid)).by;
       allow create, update: if aiAdmin()
         && request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])

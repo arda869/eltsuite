@@ -45,16 +45,20 @@ try {
   const inviteCode = { by: 'owner', maxUses: 1, uses: 0, usedBy: {} };
   const accessCode = 'GRNT-AB23';
   const plainCode = 'BASE-AB23';
-  await assertSucceeds(setDoc(doc(owner, 'inviteCodes', accessCode), { ...inviteCode, email: 'sam@example.com', aiAccess: true, teacherTrainer: true }));
+  await assertSucceeds(setDoc(doc(owner, 'inviteCodes', accessCode), { ...inviteCode, email: 'sam@example.com', plan: 'teacher' }));
+  // Editing the invitation changes what the original code grants when redeemed.
+  await assertFails(updateDoc(doc(teacher, 'inviteCodes', accessCode), { aiAccess: true }));
+  await assertSucceeds(updateDoc(doc(owner, 'inviteCodes', accessCode), { plan: 'free', aiAccess: true, teacherTrainer: true }));
+  await assertSucceeds(updateDoc(doc(owner, 'inviteCodes', accessCode), { plan: 'teacher' }));
   await assertSucceeds(setDoc(doc(owner, 'inviteCodes', plainCode), inviteCode));
   await assertFails(setDoc(doc(teacher, 'inviteCodes', 'FAKE-AB23'), { ...inviteCode, by: 'teacher', aiAccess: true }));
-  const redeem = (db, uid, code, grant) => {
+  const redeem = (db, uid, code, grant, plan = 'teacher') => {
     const batch = writeBatch(db);
     batch.set(doc(db, 'users', uid), { role: 'teacher', code });
     batch.update(doc(db, 'inviteCodes', code), { uses: 1, [`usedBy.${uid}`]: { name: uid } });
     if (grant) {
       batch.set(doc(db, 'aiPilot', uid), { enabled: true, updatedBy: 'owner', updatedAt: serverTimestamp() });
-      batch.set(doc(db, 'accounts', uid), { code, teacherTrainer: true });
+      batch.set(doc(db, 'accounts', uid), { code, plan, teacherTrainer: true });
     }
     return batch.commit();
   };
@@ -63,10 +67,11 @@ try {
   await assertSucceeds(redeem(teacher, 'teacher', plainCode, false));
   await assertFails(setDoc(doc(teacher, 'aiPilot', 'teacher'), { enabled: true, updatedBy: 'owner', updatedAt: serverTimestamp() }));
   const invitedTeacher = env.authenticatedContext('sam', { email: 'sam@example.com' }).firestore();
+  await assertFails(redeem(invitedTeacher, 'sam', accessCode, true, 'school'));
   await assertSucceeds(redeem(invitedTeacher, 'sam', accessCode, true));
   const aiGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'aiPilot', 'sam')));
   const trainerGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'accounts', 'sam')));
-  if (!aiGrant.data()?.enabled || !trainerGrant.data()?.teacherTrainer) throw Error('Invitation grants were not applied.');
+  if (!aiGrant.data()?.enabled || !trainerGrant.data()?.teacherTrainer || trainerGrant.data()?.plan !== 'teacher') throw Error('Invitation grants were not applied.');
   console.log('Invitation request rules passed: anyone can ask in the right shape; only a super admin reads, marks or deletes.');
 } finally {
   await env.cleanup();

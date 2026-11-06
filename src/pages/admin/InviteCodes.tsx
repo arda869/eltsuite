@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { ask } from '../../lib/ask';
 import { Select } from '../../components/Select';
-import { limitMessage, orgHasRoom, type Org } from '../../lib/admin';
-import { codeLink, codeState, deleteCode, makeCode, resendCode, setCodeOff, useCodes, type InviteCode } from '../../lib/codes';
+import { limitMessage, orgHasRoom, PLANS, type Org } from '../../lib/admin';
+import { codeLink, codeState, deleteCode, makeCode, resendCode, setCodeOff, updateCodeAccess, useCodes, type InviteAccess, type InviteCode } from '../../lib/codes';
 import { Empty, PageHead, Panel, ago, dateStr, useNote } from './ui';
 import { deleteInvitationRequest, inviteFromRequest, useInvitationRequests, type InvitationRequest } from '../../lib/invitationRequests';
 
@@ -22,18 +22,24 @@ const LASTS: { v: string; label: string }[] = [
 ];
 const STATE: Record<ReturnType<typeof codeState>, string> = { open: 'Open', used: 'Used up', expired: 'Run out', off: 'Turned off' };
 
-function InvitePermissions({ aiAccess, teacherTrainer, allowTrainer, onAi, onTrainer }: {
-  aiAccess: boolean;
-  teacherTrainer: boolean;
-  allowTrainer: boolean;
-  onAi: (enabled: boolean) => void;
-  onTrainer: (enabled: boolean) => void;
+function InvitePermissions({ access, orgName, onChange }: {
+  access: InviteAccess;
+  orgName?: string;
+  onChange: (access: InviteAccess) => void;
 }) {
   return (
     <fieldset className="ic-access">
-      <legend>Access for the invited teacher</legend>
-      <label><input type="checkbox" checked={aiAccess} onChange={e => onAi(e.target.checked)} /> AI features</label>
-      {allowTrainer && <label><input type="checkbox" checked={teacherTrainer} onChange={e => onTrainer(e.target.checked)} /> Create teacher-training courses and enrol trainees</label>}
+      <legend>Plan and access for the invited teacher</legend>
+      {orgName ? <span className="hint">Inherits the plan from {orgName}.</span> : (
+        <Select
+          value={access.plan ?? 'free'}
+          options={PLANS.filter(p => p.k !== 'school').map(p => ({ v: p.k, label: p.label, hint: p.about }))}
+          onChange={plan => onChange({ ...access, plan: plan === 'teacher' ? 'teacher' : 'free' })}
+          label="Invitation plan"
+        />
+      )}
+      <label><input type="checkbox" checked={!!access.aiAccess} onChange={e => onChange({ ...access, aiAccess: e.target.checked })} /> AI features</label>
+      {!orgName && <label><input type="checkbox" checked={!!access.teacherTrainer} onChange={e => onChange({ ...access, teacherTrainer: e.target.checked })} /> Create teacher-training courses and enrol trainees</label>}
     </fieldset>
   );
 }
@@ -42,8 +48,9 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
   const { user, profile } = useAuth();
   const superView = !org; // Super Admin: every code, for any organisation
   const list = useCodes(true, org?.id ?? null);
-  const [aiAccess, setAiAccess] = useState(false);
-  const [teacherTrainer, setTeacherTrainer] = useState(false);
+  const [access, setAccess] = useState<InviteAccess>({});
+  const [editing, setEditing] = useState<{ code: string; access: InviteAccess } | null>(null);
+  const [savingAccess, setSavingAccess] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [forOrg, setForOrg] = useState('');
@@ -63,12 +70,11 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
     if (!emailOk || !usesOk || busy || (full && !superView)) return;
     setBusy(true);
     try {
-      const code = await makeCode({ org: target ? { id: target.id, name: target.name } : null, email: clean, name, maxUses: clean ? 1 : n, days: Number(days), me, aiAccess: superView && aiAccess, teacherTrainer: superView && !target && teacherTrainer });
+      const code = await makeCode({ org: target ? { id: target.id, name: target.name } : null, email: clean, name, maxUses: clean ? 1 : n, days: Number(days), me, ...(superView ? access : {}) });
       setMade(code);
       setEmail('');
       setName('');
-      setAiAccess(false);
-      setTeacherTrainer(false);
+      setAccess({});
       say(clean ? `Code ${code} made. We’ll email it to ${clean} within 15 minutes.` : `Code ${code} made.`);
     } catch {
       say(full ? limitMessage(target!, 'teachers') : 'That didn’t work. Try again.');
@@ -87,7 +93,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
   const toggle = (c: InviteCode) => void setCodeOff(c.code, !c.off).then(() => say(c.off ? `${c.code} is on again.` : `${c.code} is turned off.`), () => say('That didn’t work. Try again.'));
   // Teachers who asked for an invitation on the public homepage (super admins only).
   const requests = useInvitationRequests(superView);
-  const [requestAccess, setRequestAccess] = useState<Record<string, { aiAccess?: boolean; teacherTrainer?: boolean }>>({});
+  const [requestAccess, setRequestAccess] = useState<Record<string, InviteAccess>>({});
   const [sending, setSending] = useState('');
   const waiting = requests?.filter((r) => !r.invited) ?? [];
   const invited = requests?.filter((r) => r.invited) ?? [];
@@ -114,11 +120,8 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
       <div className="ic-about">
         <span>{[r.email, r.place, r.teaches].filter(Boolean).join(' · ')}</span>
         {!r.invited && <InvitePermissions
-          aiAccess={!!requestAccess[r.id]?.aiAccess}
-          teacherTrainer={!!requestAccess[r.id]?.teacherTrainer}
-          allowTrainer
-          onAi={enabled => setRequestAccess(current => ({ ...current, [r.id]: { ...current[r.id], aiAccess: enabled } }))}
-          onTrainer={enabled => setRequestAccess(current => ({ ...current, [r.id]: { ...current[r.id], teacherTrainer: enabled } }))}
+          access={requestAccess[r.id] ?? {}}
+          onChange={access => setRequestAccess(current => ({ ...current, [r.id]: access }))}
         />}
         {r.note && <span className="ic-used">“{r.note}”</span>}
         <span>{`asked ${ago(r.at)}`}{r.invited ? ` · code ${r.invited} sent${r.invitedBy ? ` by ${r.invitedBy}` : ''}${r.invitedAt ? `, ${ago(r.invitedAt)}` : ''}` : ''}</span>
@@ -137,6 +140,18 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
   );
   const open = list?.filter((c) => codeState(c) === 'open') ?? [];
   const closed = list?.filter((c) => codeState(c) !== 'open') ?? [];
+  const saveAccess = async (code: InviteCode, access: InviteAccess) => {
+    setSavingAccess(true);
+    try {
+      await updateCodeAccess(code, access);
+      setEditing(null);
+      say('Invitation updated. The same code uses these settings.');
+    } catch {
+      say('We couldn’t update the invitation. Try again.');
+    } finally {
+      setSavingAccess(false);
+    }
+  };
   const row = (c: InviteCode) => {
     const st = codeState(c);
     const people = Object.values(c.usedBy ?? {});
@@ -146,11 +161,12 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
           <code className="ic-code">{c.code}</code>
           <span className={'hq-tag' + (st === 'open' ? '' : ' quiet')}>{STATE[st]}</span>
         </span>
-        <span className="ic-about">
+        <div className="ic-about">
           <span>
             {[c.email ? `for ${c.name ? `${c.name}, ` : ''}${c.email}` : c.name ? `for ${c.name}` : 'anyone with the code', superView ? (c.orgName ? `joins ${c.orgName}` : 'no organisation') : ''].filter(Boolean).join(' · ')}
           </span>
           <span>
+            {superView && !c.org && (c.plan === 'teacher' ? 'Teacher plan · ' : 'Free plan · ')}
             {c.aiAccess && 'AI features · '}
             {c.teacherTrainer && 'Teacher training · '}
             {`used ${c.uses ?? 0} of ${c.maxUses}`}
@@ -159,10 +175,18 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
             {` · made by ${c.byName}, ${ago(c.at)}`}
           </span>
           {people.length > 0 && <span className="ic-used">Accounts made: {people.map((p) => p.name || p.email).join(', ')}</span>}
-        </span>
+          {superView && st === 'open' && editing?.code === c.code && (
+            <div>
+              <InvitePermissions access={editing.access} orgName={c.org ? c.orgName || 'their organisation' : undefined} onChange={access => setEditing({ code: c.code, access })} />
+              <button type="button" className="btn primary small" disabled={savingAccess} onClick={() => void saveAccess(c, editing.access)}>Save access</button>
+              <button type="button" className="btn small" disabled={savingAccess} onClick={() => setEditing(null)}>Cancel</button>
+            </div>
+          )}
+        </div>
         <span className="hq-reg-acts">
           {st === 'open' && (
             <>
+              {superView && editing?.code !== c.code && <button type="button" className="btn link small" disabled={savingAccess} onClick={() => setEditing({ code: c.code, access: { plan: c.plan, aiAccess: c.aiAccess, teacherTrainer: c.teacherTrainer } })}>Edit plan and access</button>}
               <button type="button" className="btn link small" onClick={() => copy(c.code, 'The code is')}>
                 Copy code
               </button>
@@ -238,7 +262,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
             <Select value={days} options={LASTS} onChange={setDays} label="How long the code lasts" />
           </label>
         </div>
-        {superView && <InvitePermissions aiAccess={aiAccess} teacherTrainer={teacherTrainer} allowTrainer={!target} onAi={setAiAccess} onTrainer={setTeacherTrainer} />}
+        {superView && <InvitePermissions access={access} orgName={target?.name} onChange={setAccess} />}
         {!emailOk && <span className="hint">Check the email.</span>}
         {!usesOk && <span className="hint">Choose from 1 to 500 teachers.</span>}
         {full && <span className="hint ic-full">{superView ? `${target!.name} is at its limit of teachers: nobody can join it with a code until you raise the limit.` : limitMessage(target!, 'teachers')}</span>}
