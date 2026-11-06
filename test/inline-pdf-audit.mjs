@@ -26,6 +26,29 @@ try{
   const {docBodyHtml,prepareDocumentPrint,EXPORT_DEFAULT}=await import('/src/collab/export.ts');
   const {htmlToPdf}=await import('/src/lib/folderExport.ts');
   const text=text=>({type:'text',text}),para=(...content)=>({type:'paragraph',content});
+  const choice = (...options) => ({type:'choice',attrs:{options,correct:0}});
+  const listItem = (...content) => ({type:'listItem',content:[para(...content)]});
+  const numbering = flattenWithSections([{
+    title:'Numbering check',
+    content:{type:'doc',content:[
+      {type:'subTask',attrs:{instr:'Choose true or false'},content:[
+        {type:'orderedList',attrs:{start:3},content:[
+          listItem(choice('True','False','  '),text(' The train is late.')),
+          listItem(choice('True','False'),text(' First. '),choice('True','False'),text(' Second.')),
+        ]},
+        para(text('In a paragraph, choose '),choice('True','False'),text('.')),
+      ]},
+    ]},
+  }]);
+  const numberingHtml = worksheetHtml('Numbering check',numbering,{key:true});
+  const numberingDoc = new DOMParser().parseFromString(numberingHtml,'text/html');
+  const numberedRows = numberingDoc.querySelector('#u-main').content.querySelectorAll('.li');
+  if (numberedRows[0].querySelector('.mk').textContent !== '3.' || numberedRows[0].querySelector('.qn')) throw Error('The worksheet repeated the ordered-list label.');
+  if (numberedRows[0].querySelector('.opts').textContent !== 'True / False') throw Error('An empty choice added a separator.');
+  if (numberedRows[1].querySelectorAll('.qn').length !== 2) throw Error('Two questions in one list item lost their separate numbers.');
+  const paragraph = [...numberingDoc.querySelector('#u-main').content.querySelectorAll('p')].find(p=>p.textContent.includes('In a paragraph'));
+  if (!paragraph?.querySelector('.qn')) throw Error('A question inside prose lost its number.');
+  if (!numberingDoc.querySelector('#u-key').content.textContent.includes('a.3')) throw Error('The answer key lost the printed list label.');
   await window.seedPdf();
   const doc={type:'doc',content:[
    para(text('Ask for directions. Complete the sentence: '),{type:'gap',attrs:{id:'gap',answers:['secret-key']}},text('.')),

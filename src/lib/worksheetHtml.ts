@@ -536,7 +536,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
             const scripts = opts.key ? (t.media ?? []).map((id) => SOUNDS[id]).filter((m) => m && m.script.length) : [];
             if (!answers.length && !notes && !scripts.length) return '';
             const sc = scripts.map((m) => `<div class="tscript"><span class="tnotes-h">${m.video ? 'Video script' : 'Audioscript'} <i>${esc(m.title)}</i></span>${m.script.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`).join('');
-            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${sc}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
+            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${esc(String(a.label ?? a.n))}</b>${esc(a.text)}</p>`).join('')}${sc}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
           })
           .filter(Boolean)
       : [];
