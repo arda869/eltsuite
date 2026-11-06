@@ -2477,6 +2477,51 @@ const J = {
     await see(s.p,'text=1 of 1 correct','saved second attempt score');
     return s;
   },
+  'Mobile task list collapses and each sub-task checks separately': async b => {
+    const s = await session(b, { as: 'Mia' });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.evaluate(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const root = `classes/${classId}/items/${itemId}/tasks/`;
+      for (const k of Object.keys(fs)) if (k.startsWith(root)) delete fs[k];
+      fs[root + 'parts-check'] = { kind: 'task', title: 'Two-part practice', instructions: 'Do one part at a time.', order: 0, hidden: false, locked: false, content: { type: 'doc', content: [
+        { type: 'subTask', attrs: { id: 'part-a', instr: 'First sentence' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'I ' }, { type: 'gap', attrs: { id: 'part-gap-a' } }, { type: 'text', text: ' home.' }] }] },
+        { type: 'subTask', attrs: { id: 'part-b', instr: 'Second sentence' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'She ' }, { type: 'gap', attrs: { id: 'part-gap-b' } }, { type: 'text', text: ' school.' }] }] },
+      ] } };
+      fs[root + 'parts-check/private/key'] = { 'part-gap-a': { kind: 'gap', answers: ['went'] }, 'part-gap-b': { kind: 'gap', answers: ['visited'] } };
+      fs[root + 'later-task'] = { kind: 'task', title: 'Later task', instructions: '', order: 1, hidden: false, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Later' }] }] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, s.demo);
+    await s.p.goto(BASE + '/learn/' + s.demo.itemId);
+    const toggle = s.p.getByRole('button', { name: /Tasks Two-part practice/ });
+    await toggle.waitFor();
+    if (await toggle.getAttribute('aria-expanded') !== 'false') throw Error('Mobile tasks should start collapsed.');
+    if (await s.p.locator('#learner-task-list').isVisible()) throw Error('Task list is visible before expanding.');
+    await toggle.click();
+    if (!await s.p.getByRole('navigation', { name: 'Tasks' }).getByRole('button', { name: 'Later task' }).isVisible()) throw Error('Expanded task list does not show tasks.');
+    await s.p.getByRole('navigation', { name: 'Tasks' }).getByRole('button', { name: 'Two-part practice' }).click();
+    if (await toggle.getAttribute('aria-expanded') !== 'false') throw Error('Task list did not close after selection.');
+    await s.p.getByRole('textbox', { name: 'Question 1' }).fill('went');
+    await s.p.getByRole('button', { name: 'Check part a' }).click();
+    await see(s.p, 'text=Part a checked', 'first part feedback');
+    const savedFirst = await s.p.evaluate(({ classId }) => JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/answers/parts-check_${sessionStorage.getItem('mockuid')}`], s.demo);
+    if (savedFirst?.checked || savedFirst?.checkedParts?.join() !== 'part-a') throw Error('Checking part a submitted the whole task.');
+    const firstKey = await s.p.evaluate(() => JSON.parse(localStorage.getItem('lastSubtaskKey')));
+    if (firstKey['part-gap-b']) throw Error('Checking part a revealed the key for part b.');
+    await s.p.reload();
+    await see(s.p, 'text=Part a checked', 'saved first part feedback');
+    await s.p.getByRole('button', { name: 'Next: part b' }).click();
+    const second = s.p.getByRole('textbox', { name: 'Question 2' });
+    if (!await second.isEnabled()) throw Error('Part b was locked when only part a was checked.');
+    await second.fill('visited');
+    await s.p.getByRole('button', { name: 'Check part b' }).click();
+    await see(s.p, 'text=Part b checked', 'second part feedback');
+    await s.p.waitForFunction(({ classId }) => { const d=JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/answers/parts-check_${sessionStorage.getItem('mockuid')}`]; return d?.checked && d.score === 2 && d.total === 2; }, { classId: s.demo.classId });
+    await s.p.reload();
+    await see(s.p, 'text=Part a checked', 'saved first part feedback');
+    await see(s.p, 'text=Part b checked', 'saved second part feedback');
+    return s;
+  },
   'Learner signs in and opens the lesson': async (b) => {
     const s = await session(b, { as: 'Mia' });
     await s.p.goto(BASE + '/');

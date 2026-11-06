@@ -5,6 +5,33 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'checkSubTask') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const answerPath = `classes/${d.classId}/answers/${d.taskId}_${uid}`;
+    const taskPath = `classes/${d.classId}/items/${d.itemId}/tasks/${d.taskId}`;
+    const answer = (await getDoc(doc(db, answerPath))).data();
+    const task = (await getDoc(doc(db, taskPath))).data();
+    if (!answer || !task || answer.learnerUid !== uid) throw Error('This task is not available to you.');
+    const content = task.content;
+    const parts: any[] = [];
+    const walk = (node: any) => { if (node?.type === 'subTask') parts.push(node); node?.content?.forEach(walk); };
+    walk(content);
+    const { questionIds, isAnswered, scoreTask } = await import('../../src/lib/questions');
+    const groups = parts.map((node, i) => ({ id: String(node.attrs?.id || `st${i}`), qs: questionIds(node, answer.responses ?? {}) }));
+    const all = questionIds(content, answer.responses ?? {});
+    if (!groups.length || groups.some((g) => !g.qs.length) || all.some((q: any) => !groups.some((g) => g.qs.some((p: any) => p.id === q.id)))) throw Error('This task uses whole-task checking.');
+    const target = groups.find((g) => g.id === d.partId);
+    if (d.action === 'check' && (!target || !target.qs.some((q: any) => isAnswered(answer.responses?.[q.id])))) throw Error('Answer at least one question in this part first.');
+    const checkedParts = d.action === 'check' && !answer.checkedParts?.includes(d.partId) ? [...(answer.checkedParts ?? []), d.partId] : answer.checkedParts ?? [];
+    const fullKey = (await getDoc(doc(db, `${taskPath}/private/key`))).data() ?? {};
+    const visibleIds = new Set(groups.filter((g) => checkedParts.includes(g.id)).flatMap((g) => g.qs.map((q: any) => q.id)));
+    const key = Object.fromEntries(Object.entries(fullKey).filter(([id]) => visibleIds.has(id)));
+    localStorage.setItem('lastSubtaskKey', JSON.stringify(key));
+    const complete = groups.every((g) => checkedParts.includes(g.id));
+    if (d.action === 'check') await setDoc(doc(db, answerPath), { checkedParts, ...(complete ? { checked: true, ...scoreTask(all, fullKey, answer.responses ?? {}), submittedAt: Date.now(), attempts: (answer.attempts ?? 0) + 1 } : {}) }, { merge: true });
+    return { data: { checkedParts, key, complete } };
+  }
   if(name==='deleteAccount'){if(localStorage.getItem('mockDeleteError'))throw Error(localStorage.getItem('mockDeleteError')!);localStorage.setItem('mockDeleteRequest',JSON.stringify(d));return {data:{accepted:true}};}
   if(name==='adminAiCosts')return (await import('./ai-costs')).aiCosts(d);
   if(name==='appliedLinguistics')return (await import('./linguistics')).linguistics(d);
