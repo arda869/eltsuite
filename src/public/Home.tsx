@@ -8,6 +8,7 @@ const LanguageMoment = lazy(() => import('./LanguageMoment').then((m) => ({ defa
 // Screens from ELT Suite with a fictional class (test/landing-seed.ts, test/landing-shots.mjs).
 // Each is in public/landing at 2400 × 1500, with a 1100 × 688 copy for small screens.
 const W = 2400, H = 1500;
+const PAPER = { w: 972, h: 1092 }; // public/landing/paper.webp, the printed page
 const src = (name: string) => `/landing/${name}.webp`;
 const srcSet = (name: string) => `/landing/${name}-sm.webp 1100w, /landing/${name}.webp 2400w`;
 
@@ -57,17 +58,17 @@ function Shot({ name, alt, caption, eager, at, className = '' }: { name: string;
   );
 }
 
-// A tall screenshot from a phone (780 × 1688), in a phone-shaped frame that opens full size.
-function PhoneShot({ name, alt, caption }: { name: string; alt: string; caption: string }) {
+// A screenshot that isn't a full screen (a phone, a printed page), framed to suit, that opens full size.
+function PicShot({ name, alt, caption, w, h, kind }: { name: string; alt: string; caption: string; w: number; h: number; kind: 'phone' | 'paper' }) {
   const dlg = useRef<HTMLDialogElement>(null);
   return (
-    <figure className="pub-figure pub-phone">
-      <button type="button" className="pub-frame pub-phone-frame" onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
-        <img src={src(name)} width={780} height={1688} alt="" loading="lazy" decoding="async" />
+    <figure className={'pub-figure pub-' + kind}>
+      <button type="button" className={'pub-frame pub-' + kind + '-frame'} onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
+        <img src={src(name)} width={w} height={h} alt="" loading="lazy" decoding="async" />
       </button>
       <figcaption>{caption}</figcaption>
-      <dialog ref={dlg} className="pub-lightbox pub-lightbox-phone" aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
-        <img src={src(name)} width={780} height={1688} alt={alt} loading="lazy" />
+      <dialog ref={dlg} className={'pub-lightbox pub-lightbox-' + kind} aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
+        <img src={src(name)} width={w} height={h} alt={alt} loading="lazy" />
         <form method="dialog"><button className="pub-secondary">Close</button></form>
       </dialog>
     </figure>
@@ -118,8 +119,8 @@ function Ways() {
         <figcaption id="pub-same-cap"><strong>The same lesson, three ways.</strong> One lesson, “Expressing and justifying opinions”, as you edit it, as a learner sees it on their phone, and as it comes out of the printer.</figcaption>
         <div className="pub-same-row">
           <Shot name="editor" alt="The lesson in the editor: the task “Two neighbours decide” with its aims, the recording and the teacher’s notes." caption="In the editor" className="pub-same-edit" />
-          <PhoneShot name="learner-phone" alt="The same task on a learner’s phone: the recording and a question with three choices." caption="On a learner’s phone" />
-          <Shot name="print" alt="The same lesson as a printed A4 worksheet, with the task, a QR code for the recording and lines to write on." caption="On paper" className="pub-same-print" />
+          <PicShot kind="phone" name="learner-phone" w={780} h={1440} alt="The same task on a learner’s phone: the recording and a question, with the right answer checked." caption="On a learner’s phone" />
+          <PicShot kind="paper" name="paper" w={PAPER.w} h={PAPER.h} alt="The same lesson as a printed worksheet: the task with a QR code to play the recording, the useful language and gaps to complete." caption="On paper" />
         </div>
       </figure>
       <ul className="pub-ways-list">
@@ -142,7 +143,7 @@ const ALL: { k: string; title: string; text: string; to: string; name: string; a
   { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way', name: 'teach', at: { x: 0.5, y: 0.08, w: 0.5, h: 0.42 } },
   { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand', name: 'reports', at: { x: 0.005, y: 0.5, w: 0.5, h: 0.36 } },
   { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio', name: 'speech', at: { x: 0.13, y: 0.5, w: 0.6, h: 0.42 } },
-  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.2, y: 0.12, w: 0.6, h: 0.5 } },
+  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.26, y: 0.46, w: 0.58, h: 0.4 } },
   { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language', name: 'concordance', at: { x: 0.12, y: 0.1, w: 0.6, h: 0.45 } },
 ];
 

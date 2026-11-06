@@ -74,7 +74,10 @@
 .pub-same-row .pub-figure figcaption { font: 700 13px/1.4 var(--sans); color: var(--ink); text-align: center; }
 .pub-phone-frame { padding: 6px; border-radius: 22px; background: #22211e; border-color: #22211e; }
 .pub-phone-frame img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.pub-paper-frame { padding: 0; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(51, 48, 44, 0.08), 0 14px 28px -16px rgba(51, 48, 44, 0.35); }
+.pub-paper-frame img { display: block; width: 100%; height: auto; }
 .pub-lightbox-phone { width: min(420px, 94vw); }
+.pub-lightbox-paper { width: min(760px, 94vw); }
 @media (max-width: 860px) {
   .pub-same-row { grid-template-columns: 1fr 1fr; }
   .pub-same-row .pub-same-edit { grid-column: 1 / -1; }

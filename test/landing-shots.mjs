@@ -125,6 +125,26 @@ const shots = {
     await p.waitForTimeout(3000);
     await quiet();
   },
+  // The printed page on its own: the worksheet view with no task selected, tools hidden, and the QR
+  // label showing the live address (as it prints from eltsuite.com).
+  async paper() {
+    await p.setViewportSize({ width: 1440, height: 2000 });
+    await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000);
+    await p.getByRole('radio', { name: /Worksheet: the lesson as printed pages/ }).click();
+    await p.waitForTimeout(1500);
+    await p.locator('.sh-desk').click({ position: { x: 6, y: 6 } });
+    await p.waitForTimeout(1500);
+    await p.addStyleTag({ content: '.sh-tools,.sh-grip,.sh-del,.sh-add,.sh-after,.sh-note,.sh-left-bar{display:none!important}.sh-block,.sh-block.on,.sh-block:hover{outline:0!important;box-shadow:none!important;background:transparent!important}' });
+    await p.evaluate(() => {
+      const walk = (root) => { root.querySelectorAll('*').forEach((el) => { if (el.shadowRoot) walk(el.shadowRoot); if (el.classList?.contains('qr-url')) el.textContent = 'eltsuite.com'; }); };
+      walk(document);
+    });
+    await p.mouse.move(2, 1990);
+    await p.waitForTimeout(800);
+    await quiet();
+    const box = await p.locator('.sh-sheet').first().boundingBox();
+    if (box) await p.evaluate((b) => { window.__clip = b; }, box);
+  },
   async print() {
     await p.setViewportSize({ width: 1440, height: 900 });
     await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000);
@@ -175,7 +195,8 @@ for (const [name, run] of Object.entries(shots)) {
   if (only.length && !only.includes(name)) continue;
   try {
     await Promise.race([run(), new Promise((_, no) => setTimeout(() => no(Error('timed out')), 60000))]);
-    const png = await p.screenshot({ timeout: 20000, animations: 'disabled' });
+    const clip = name === 'paper' ? await p.evaluate(() => window.__clip) : null;
+    const png = await p.screenshot({ timeout: 20000, animations: 'disabled', ...(clip ? { clip } : {}) });
     writeFileSync(raw + name + '.png', png);
     await p.setViewportSize({ width: 1440, height: 900 });
     if (webp) {
