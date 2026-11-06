@@ -1148,9 +1148,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
               <p className="task-instr">{String(node.attrs?.instr ?? '')}</p>
             </div>
             <div className="st-body">{kids()}</div>
-            {onCheckSubTask && partQs.length > 0 && <div className="st-check-row">
+            {(onCheckSubTask || checkedSubTasks) && partQs.length > 0 && <div className="st-check-row">
               {partChecked ? <span className="st-check-result" role="status">Part {subLetter(i)} checked{partScore.max > 0 ? ` · ${Math.round(partScore.got * 10) / 10} of ${partScore.max} correct` : ' · sent to your teacher'}</span> :
-                <button type="button" className="btn primary" disabled={!!disabled || !!checkingSubTask || !partQs.some((q) => isAnswered(responses[q.id]))} onClick={() => onCheckSubTask(partId)}>{checkingSubTask === partId ? 'Checking…' : partQs.every((q) => q.type === 'writing' || q.type === 'reflect') ? `Hand in part ${subLetter(i)}` : `Check part ${subLetter(i)}`}</button>}
+                <button type="button" className="btn primary" disabled={!!disabled || !!checkingSubTask || !partQs.some((q) => isAnswered(responses[q.id]))} onClick={() => onCheckSubTask?.(partId)}>{checkingSubTask === partId ? 'Checking…' : partQs.every((q) => q.type === 'writing' || q.type === 'reflect') ? `Hand in part ${subLetter(i)}` : `Check part ${subLetter(i)}`}</button>}
               {!partChecked && !partQs.some((q) => isAnswered(responses[q.id])) && <span className="hint">Answer a question in this part to check it.</span>}
             </div>}
             {!((!!results && !checkedQuestionIds) || !!asExample) && i + 1 < subs.length && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}

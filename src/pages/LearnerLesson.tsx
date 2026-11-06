@@ -80,6 +80,7 @@ export function LearnerLesson() {
   const [checked, setChecked] = useState(false);
   const [checkedParts, setCheckedParts] = useState<string[]>([]);
   const [checkingPart, setCheckingPart] = useState('');
+  const [readyAnswer, setReadyAnswer] = useState('');
   const [taskListOpen, setTaskListOpen] = useState(false);
   const [checkError,setCheckError] = useState('');
   const [key, setKey] = useState<AnswerKey | null>(null);
@@ -181,6 +182,7 @@ export function LearnerLesson() {
   // Load this learner's saved answers for the current task.
   useEffect(() => {
     if (!classId || !current || !user) return;
+    setReadyAnswer('');
     setKey(null);
     setChecked(false);
     setCheckedParts([]);
@@ -199,6 +201,7 @@ export function LearnerLesson() {
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
       setCheckedParts(d?.checkedParts ?? []);
+      setReadyAnswer(`${classId}:${current}:${user.uid}`);
       if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
       else if (d?.checkedParts?.length) {
         const result = await checkSubTask(classId, itemId, current, '', 'read').catch(() => null);
@@ -237,6 +240,7 @@ export function LearnerLesson() {
   const partQuestionIds = subTasks.map((node) => questionIds(node, withShared).map((q) => q.id));
   const groupedChecking = subTasks.length > 0 && qs.length > 0 && partQuestionIds.every((part) => part.length > 0) && qs.every((q) => partQuestionIds.some((part) => part.includes(q.id)));
   const checkedQuestionIds = groupedChecking ? checkedParts.flatMap((id) => partQuestionIds[partIds.indexOf(id)] ?? []) : undefined;
+  const answerReady = readyAnswer === `${classId}:${current}:${user?.uid ?? ''}`;
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
 
@@ -262,7 +266,7 @@ export function LearnerLesson() {
 
   const examLockedRef = useRef(false);
   function change(id: string, v: Responses[string]) {
-    if (!base || task?.locked || checkingPart || examLockedRef.current || (checkedQuestionIds?.includes(id) && corrections[id]?.status !== 'open') || (checked && corrections[id]?.status !== 'open')) return;
+    if (!base || !answerReady || task?.locked || checkingPart || examLockedRef.current || (checkedQuestionIds?.includes(id) && corrections[id]?.status !== 'open') || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
     dirty.current = true;
@@ -341,7 +345,7 @@ export function LearnerLesson() {
   }
 
   async function checkPart(partId: string) {
-    if (!base || busy || checkingPart) return;
+    if (!base || !answerReady || checked || busy || checkingPart) return;
     setCheckingPart(partId);
     setCheckError('');
     dirty.current = true;
@@ -607,10 +611,10 @@ export function LearnerLesson() {
                   revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN, singles) : null}
                   results={key}
                   checkedQuestionIds={!scope && groupedChecking && !checked ? checkedQuestionIds : undefined}
-                  checkedSubTasks={!scope && groupedChecking ? checkedParts : undefined}
+                  checkedSubTasks={!scope && groupedChecking ? (checked ? partIds : checkedParts) : undefined}
                   checkingSubTask={checkingPart}
-                  onCheckSubTask={!scope && groupedChecking ? checkPart : undefined}
-                  disabled={task.locked || examLocked || !!checkingPart}
+                  onCheckSubTask={!scope && groupedChecking && !checked ? checkPart : undefined}
+                  disabled={task.locked || examLocked || !!checkingPart || !answerReady}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
@@ -696,7 +700,7 @@ export function LearnerLesson() {
                         )
                       )
                     ) : groupedChecking ? null : (
-                      <button className="btn primary" disabled={busy || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>
+                      <button className="btn primary" disabled={busy || !answerReady || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : (<>Check<span className="foot-long"> answers</span></>)}
                       </button>
                     ))}

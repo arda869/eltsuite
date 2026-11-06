@@ -13,6 +13,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const answer = (await getDoc(doc(db, answerPath))).data();
     const task = (await getDoc(doc(db, taskPath))).data();
     if (!answer || !task || answer.learnerUid !== uid) throw Error('This task is not available to you.');
+    if (d.action === 'check' && answer.checked) throw Error('This task has already been checked.');
     const content = task.restricted ? (await getDoc(doc(db, `${taskPath}/private/body`))).data()?.content : task.content;
     const parts: any[] = [];
     const walk = (node: any) => { if (node?.type === 'subTask') parts.push(node); node?.content?.forEach(walk); };
