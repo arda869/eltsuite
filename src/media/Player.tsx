@@ -574,9 +574,10 @@ function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e:
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
 // see, so the script follows the setting and the teacher opens it with a button.
-export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean }) {
+export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline, active = true }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean; active?:boolean }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
+  useEffect(() => { if (!active) e.pause(); }, [active]);
   const [open, setOpen] = useState<boolean|null>(null);
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
   useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);

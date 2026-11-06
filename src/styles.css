@@ -3232,8 +3232,8 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
 .instr-wrap .instr-editor { outline: none; min-height: 1.5em; }
 .instr-wrap .instr-editor p { margin: 0; }
 .instr-wrap .instr-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--faint, #b8b3ad); font-weight: 500; float: left; height: 0; pointer-events: none; }
-.instr-bar { position: absolute; left: -6px; top: calc(100% + 4px); z-index: 20; display: flex; align-items: center; gap: 2px; padding: 3px 4px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--card, #fff); box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.25); opacity: 0; pointer-events: none; transform: translateY(-2px); transition: opacity .12s, transform .12s; font-weight: 400; }
-.instr-wrap:focus-within .instr-bar { opacity: 1; pointer-events: auto; transform: none; }
+.instr-bar { position: relative; display: none; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 8px; padding: 3px 4px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font-weight: 400; }
+.instr-wrap:focus-within .instr-bar { display: flex; }
 .task-instr.rich .task-body, .task-instr.rich .para { padding: 0; margin: 0; font: inherit; color: inherit; }
 .task-instr.rich .task-body > p, .task-instr.rich p { margin: 0; font: inherit; color: inherit; line-height: inherit; }
 

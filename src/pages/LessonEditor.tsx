@@ -460,7 +460,7 @@ export function LessonEditor() {
   const [materialImport,setMaterialImport]=useState(false);
   const [taskStart,setTaskStart]=useState(false);
   const [fromLib, setFromLib] = useState(false);
-  const panels = usePanels('ll.teacherPanels');
+  const panels = usePanels('ll.teacherPanels', 1100);
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -997,6 +997,7 @@ export function LessonEditor() {
       {item && (
         <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls} style={panes.style}>
           <nav className="task-list" aria-label="Tasks">
+            {panels.compact && <button className="btn small-btn compact-panel-close" onClick={panels.toggleLeft}>Close task list</button>}
             <textarea
               className="lesson-title"
               rows={1}
@@ -1464,6 +1465,7 @@ export function LessonEditor() {
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side folds" aria-label="Task settings">
+              {panels.compact && <button className="btn small-btn compact-panel-close" onClick={panels.toggleRight}>Close task settings</button>}
               {questionIds(draft.content).some(q=>questionAcceptsTypedAnswer(q.type))&&<Fold id="spelling" title="Question spelling" open={fold} setOpen={setFold}>
                 <p className="hint">The class spelling rule applies by default. Tick a question to reverse that rule for its answer.</p>
                 {questionIds(draft.content).map((q,i)=>questionAcceptsTypedAnswer(q.type)&&<label className="question-spelling-toggle" key={q.id}><input type="checkbox" aria-label={`Override class spelling for question ${i+1}`} checked={questionSpellingOverride(draft.content,q.id)} onChange={e=>{const content=withQuestionSpellingOverride(draft.content,q.id,e.target.checked);change({content});setEditorKey(task.id+':'+Date.now()+':spelling');}}/><span>Question {i+1} <small>{q.type.replace('pq:','')}</small></span></label>)}

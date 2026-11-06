@@ -423,6 +423,36 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
     await axe(s.p,'Same teacher lesson after password sign-in',A11Y_FOUND);return s;
   },
+  'Lesson editor: compact panels and non-overlapping toolbars': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    mkdirSync('outputs/friday',{recursive:true});
+    for(const theme of ['light','dark'])for(const width of [1280,1100,900,785,390]){
+      if(width===1280){await s.p.setViewportSize({width,height:900});await s.p.reload();await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();}
+      await s.p.setViewportSize({width,height:900});
+      await s.p.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+      if(width>700){await s.p.locator('.instr-wrap [contenteditable="true"]').click();
+      await s.p.locator('.instr-bar').waitFor({state:'visible'});}
+      const layout=await s.p.evaluate(()=>{
+        const rect=s=>document.querySelector(s)?.getBoundingClientRect();
+        const instruction=rect('.instr-bar'),body=rect('.frame-body'),header=rect('.suite-topbar');
+        return {overlap:instruction&&body&&instruction.bottom>body.top+1,overflow:document.documentElement.scrollWidth>innerWidth+1,headerOverflow:[...document.querySelector('.suite-topbar').children].some(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1;})};
+      });
+      if(layout.overlap||layout.overflow||layout.headerOverflow)throw Error(`Editor layout ${theme} ${width}: ${JSON.stringify(layout)}`);
+      if(width>700)await s.p.getByRole('textbox',{name:'Task title',exact:true}).click();
+      if(await s.p.locator('.instr-bar').isVisible())throw Error('Instruction toolbar stayed visible after focus left');
+      if(width<=1100&&width>700){
+        await s.p.getByRole('button',{name:'Show the task settings',exact:true}).click();
+        const panel=s.p.getByRole('complementary',{name:'Task settings',exact:true});await panel.waitFor({state:'visible'});
+        const box=await panel.boundingBox();if(!box||box.y+box.height>870||box.x<0)throw Error('Settings drawer is clipped');
+        await panel.getByRole('button',{name:'Close task settings',exact:true}).click();
+      }
+      await s.p.screenshot({path:`outputs/friday/editor-${theme}-${width}.png`});
+    }
+    return s;
+  },
+
   'Friday wishes: AI edit review, spelling scope and companion window': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs')),root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'friday']={kind:'task',title:'Friday activity',instructions:'',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'I '},{type:'gap',attrs:{id:'typed',answers:[]}},{type:'text',text:' at home.'}]},{type:'mcq',attrs:{id:'choice',prompt:'Where?',options:['Home','School'],correct:-1}}]},order:0,hidden:false,locked:false};fs[root+'friday/private/key']={typed:{kind:'gap',answers:['work']},choice:{kind:'mcq',correct:0}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
