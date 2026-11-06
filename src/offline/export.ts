@@ -52,7 +52,7 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
  const fontCss=lessonFonts()+"\n@font-face{font-family:Karla;src:url('/fonts/Karla.ttf');font-weight:100 900;font-display:block}@font-face{font-family:Fraunces;src:url('/fonts/Fraunces.ttf');font-weight:100 900;font-display:block}";
  let embeddedFonts=fontCss;
  for(const match of [...fontCss.matchAll(/url\('([^']+)'\)/g)]) embeddedFonts=embeddedFonts.replace(match[0],"url('"+await embed(match[1],'')+"')");
- const html=offlineHtml(title,{title,...payload,...appearance,warnings:[...warnings]},js,css.replace(/@font-face\s*\{[^}]*\}/g,'')+'\n'+embeddedFonts);
+ const html=offlineHtml(title,{title,...payload,...appearance,displayTheme:document.documentElement.dataset.theme==='dark'?'dark':'light',warnings:[...warnings]},js,css.replace(/@font-face\s*\{[^}]*\}/g,'')+'\n'+embeddedFonts);
  return {name:title.replace(/[\\/:*?"<>|]/g,' ').slice(0,100)+'.html',html,warnings:[...warnings]};
 }
 export function saveOfflineFile(file:{name:string;html:string}){const url=URL.createObjectURL(new Blob([file.html],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
