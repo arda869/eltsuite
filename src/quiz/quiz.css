@@ -61,7 +61,7 @@
 .qz-tool { appearance: none; border: 1px solid rgba(255, 255, 255, 0.28); background: transparent; color: #fff; border-radius: 999px; padding: 7px 14px; font: 700 14px var(--sans); cursor: pointer; }
 .qz-tool:hover { background: rgba(255, 255, 255, 0.1); }
 .qz-tool[aria-pressed='false'] { opacity: 0.65; }
-.qz-unlock { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 3; margin: 0; background: var(--qz-glow); color: #2a1206; font-weight: 800; padding: 8px 16px; border-radius: 999px; animation: qz-pulse 1.6s ease-in-out infinite; }
+.qz-unlock { position: absolute; bottom: 34px; left: 28px; z-index: 3; margin: 0; background: var(--qz-glow); color: #2a1206; font-weight: 800; padding: 8px 16px; border-radius: 999px; animation: qz-pulse 1.6s ease-in-out infinite; }
 .qz-main { flex: 1; display: flex; flex-direction: column; padding: 0 32px; min-height: 0; }
 .qz-bottom { display: flex; gap: 16px; align-items: center; justify-content: flex-end; padding: 16px 28px 24px; min-height: 92px; }
 .qz-next { font-size: 22px; padding: 18px 34px; }
@@ -82,7 +82,7 @@
 .qz-kick { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: #fff; color: #9a2b1f; font-weight: 800; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
 .qz-name:hover .qz-kick, .qz-kick:focus-visible { opacity: 1; }
 @keyframes qz-pop { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes qz-pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } }
+@keyframes qz-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
 /* Countdown */
 .qz-countdown { margin: auto; display: grid; justify-items: center; gap: 12px; }
@@ -283,6 +283,8 @@
 .qe-chip { display: inline-flex; gap: 6px; align-items: center; background: var(--surface); border-radius: 999px; padding: 6px 6px 6px 12px; font-weight: 700; }
 .qe-chip button { border: 0; background: transparent; cursor: pointer; color: var(--muted); font-weight: 800; }
 .qe-hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+.qe-row label.qe-check, .qe-check { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; font: 600 13px var(--sans); color: var(--ink); cursor: pointer; }
+.qe-check input { width: 16px; height: 16px; margin: 0; }
 .qe-problem { margin: 0; color: var(--wrong); font-weight: 700; font-size: 13px; }
 .qe-preview { border-radius: 16px; overflow: hidden; min-height: 0; }
 .qe-preview .qz-stage { min-height: 360px; padding: 18px; }

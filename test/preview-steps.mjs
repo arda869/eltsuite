@@ -2,6 +2,28 @@
 // screen from lobby to podium, three guests on phones, the results, the lesson menu and Super Admin.
 export default async function steps({ p, ctx, shot, say, demo, BASE }) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // The public homepage first (signed out, its own browser): close-ups and the enlarged picture.
+  try {
+    const pub = await ctx.browser().newContext({ viewport: { width: 1440, height: 900 } });
+    const h = await pub.newPage();
+    await h.goto(`${BASE}/?site=main`);
+    await h.locator('.pub-all-list').waitFor({ timeout: 30000 });
+    await h.locator('.pub-all-list').scrollIntoViewIfNeeded();
+    await wait(2500);
+    await shot('home-all-in-one-place', h.locator('.pub-all'));
+    const song = h.locator('.pub-detail').filter({ has: h.locator('img[src*="song"]') });
+    if (await song.count()) {
+      await song.first().scrollIntoViewIfNeeded();
+      await wait(1500);
+      await shot('home-song-detail', h.locator('.pub-figure.pub-detail').last().locator('xpath=ancestor::section[1]'));
+    }
+    await h.locator('.pub-frame').first().click();
+    await wait(1200);
+    await shot('home-enlarged', h);
+    await pub.close();
+  } catch (e) {
+    say('homepage shots failed', e.message);
+  }
   const mockFs = '/@fs' + process.cwd() + '/test/mock/firestore.ts';
   // A saved quiz with every kind of question.
   const quizId = await p.evaluate(async (mockFs) => {

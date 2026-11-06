@@ -110,12 +110,13 @@ export function useClock(tick = 200, on = true) {
   return now;
 }
 
-// A player's place in a game survives a refresh or a dropped connection.
+// A player's place in a game survives a refresh or a dropped connection. Kept per tab, so two tabs
+// (or two people sharing a computer) are two players.
 export type Seat = { runId: string; pid: string; token: string; name: string; member?: boolean };
 const SEAT = 'quiz.seat';
 export function loadSeat(): Seat | null {
   try {
-    const s = JSON.parse(localStorage.getItem(SEAT) || 'null');
+    const s = JSON.parse(sessionStorage.getItem(SEAT) || 'null');
     return s && s.runId && s.pid && s.token ? s : null;
   } catch {
     return null;
@@ -123,8 +124,8 @@ export function loadSeat(): Seat | null {
 }
 export function saveSeat(s: Seat | null) {
   try {
-    if (s) localStorage.setItem(SEAT, JSON.stringify(s));
-    else localStorage.removeItem(SEAT);
+    if (s) sessionStorage.setItem(SEAT, JSON.stringify(s));
+    else sessionStorage.removeItem(SEAT);
   } catch {
     /* private window: the seat lasts as long as the page */
   }

@@ -8,6 +8,7 @@ import { useAuth } from '../lib/auth';
 import { AiButton } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
 import { AI_ALLOWANCE, AiActions, AiDraft, AiExamples, AiField, AiFootnote, AiHeader, AiMore, AiNotice, AiUses, AiWorking } from '../ai/kit';
+import { NSelect } from '../components/Select';
 type GameRound = { id: string; prompt: string; answer: string; choices: string[] };
 
 const EXAMPLES = [
@@ -64,10 +65,10 @@ function QuizDraftPanel({ gameId, existingCount = 0, onApply }: { gameId: string
       <AiMore summary={classId ? `Context: ${className || 'a class'}${lessonName ? ' · ' + lessonName : ''}` : 'Use a class or lesson for context'}>
         <div className="aik-field-row">
           <AiField label="Class" optional hint="Level and age come from the class.">
-            <select value={classId} disabled={busy} onChange={e => setClassId(e.target.value)}><option value="">No class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <NSelect value={classId} disabled={busy} onChange={e => setClassId(e.target.value)}><option value="">No class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
           </AiField>
           {classId && <AiField label="Lesson" optional hint="Questions follow the lesson's language.">
-            <select value={lessonId} disabled={busy} onChange={e => setLessonId(e.target.value)}><option value="">No lesson</option>{lessons.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <NSelect value={lessonId} disabled={busy} onChange={e => setLessonId(e.target.value)}><option value="">No lesson</option>{lessons.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
           </AiField>}
         </div>
       </AiMore>

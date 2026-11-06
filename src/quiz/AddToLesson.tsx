@@ -13,6 +13,7 @@ import { liveRef } from '../lib/live';
 import { fromSaved, liveQuestions, quizProblems, toTask, type QuizDoc } from './model';
 import { quizApi } from './live';
 import './quiz.css';
+import { NSelect } from '../components/Select';
 
 /** Put a quiz into a lesson as a new task. Returns the new task's id. */
 export async function quizIntoLesson(classId: string, itemId: string, quiz: QuizDoc, title: string, sourceId?: string) {
@@ -89,26 +90,26 @@ export function AddToLesson({ quiz, title, sourceId, onClose }: { quiz: QuizDoc;
             <p className="qe-hint">The quiz goes into the lesson as a task. Play it live with the class, or let learners do it on their own. Their answers are kept with the class, like any other task.</p>
             <label className="field">
               Class
-              <select value={classId} onChange={(e) => setClassId(e.target.value)}>
-                <option value="">Choose a class</option>
+              <NSelect value={classId} onChange={(e) => setClassId(e.target.value)}>
+                <option value="" disabled>Choose a class</option>
                 {(classes || []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             {classId && (
               <label className="field">
                 Lesson
-                <select value={itemId} onChange={(e) => setItemId(e.target.value)}>
-                  <option value="">Choose a lesson</option>
+                <NSelect value={itemId} onChange={(e) => setItemId(e.target.value)}>
+                  <option value="" disabled>Choose a lesson</option>
                   {lessons.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.title}
                     </option>
                   ))}
-                </select>
+                </NSelect>
               </label>
             )}
             {classId && !lessons.length && <p className="qe-hint">This class has no lessons yet. Make a lesson first.</p>}
@@ -260,7 +261,7 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
           </div>
         )}
         {!running && (
-          <label className="game-check" style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <label className="qe-check">
             <input type="checkbox" checked={guests} onChange={(e) => setGuests(e.target.checked)} /> Let people outside the class join with the code, as guests
           </label>
         )}

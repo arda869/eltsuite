@@ -17,6 +17,7 @@ import { Backdrop, Shape, answerStyle } from './Stage';
 import { quizApi } from './live';
 import { KINDS, MAX_OPTIONS, MAX_SLIDES, SECONDS, blankQuiz, choiceOf, fromSaved, newSlide, quizProblems, slideProblem, slideTitle, slidesFromRounds, typedOf, withChoice, withTyped, type QuizDoc, type QuizSlide, type SlideKind } from './model';
 import './quiz.css';
+import { NSelect } from '../components/Select';
 
 export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const { user } = useAuth();
@@ -208,7 +209,7 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <div className="qe-row">
             <label>
               Question type
-              <select
+              <NSelect
                 value={slide.kind}
                 disabled={!canEdit}
                 onChange={(e) => {
@@ -227,26 +228,26 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                     {k.name}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <label>
               Time to answer
-              <select value={slide.seconds} disabled={!canEdit} onChange={(e) => setSlide({ ...slide, seconds: Number(e.target.value) })}>
+              <NSelect value={slide.seconds} disabled={!canEdit} onChange={(e) => setSlide({ ...slide, seconds: Number(e.target.value) })}>
                 {SECONDS.map((n) => (
                   <option key={n} value={n}>
                     {n < 60 ? `${n} seconds` : `${n / 60} ${n === 60 ? 'minute' : 'minutes'}`}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             {slide.kind !== 'poll' && (
               <label>
                 Points
-                <select value={slide.points} disabled={!canEdit} onChange={(e) => setSlide({ ...slide, points: Number(e.target.value) as 0 | 1 | 2 })}>
+                <NSelect value={slide.points} disabled={!canEdit} onChange={(e) => setSlide({ ...slide, points: Number(e.target.value) as 0 | 1 | 2 })}>
                   <option value={1}>Standard</option>
                   <option value={2}>Double points</option>
                   <option value={0}>No points</option>
-                </select>
+                </NSelect>
               </label>
             )}
             {canEdit && (
@@ -374,7 +375,7 @@ function SlideEditor({ slide, onChange, readOnly }: { slide: QuizSlide; onChange
             </button>
           )}
           {slide.kind === 'choice' && (
-            <label className="game-check" style={{ flexDirection: 'row', alignItems: 'center', color: 'var(--ink)' }}>
+            <label className="qe-check">
               <input type="checkbox" checked={c.multi} onChange={(e) => onChange(withChoice(slide, { multi: e.target.checked, correct: e.target.checked ? c.correct : c.correct.slice(0, 1) }))} /> More than one right answer
             </label>
           )}
@@ -447,14 +448,14 @@ function FromCards({ onUse }: { onUse: (s: QuizSlide[], replace: boolean) => voi
       <summary>Make questions from a flashcard set</summary>
       <p className="qe-hint">The front of each card becomes the question and the back the right answer. Other cards’ answers become the wrong ones. Your set stays as it is.</p>
       <div className="qe-row">
-        <select value={source} onChange={(e) => (setSource(e.target.value), setReady(null))} aria-label="Flashcard set">
-          <option value="">Choose a set</option>
+        <NSelect value={source} onChange={(e) => (setSource(e.target.value), setReady(null))} aria-label="Flashcard set">
+          <option value="" disabled>Choose a set</option>
           {sets.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title}
             </option>
           ))}
-        </select>
+        </NSelect>
         <button type="button" className="btn" disabled={!source} onClick={() => void load()}>
           Make questions
         </button>
