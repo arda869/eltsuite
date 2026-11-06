@@ -13,7 +13,7 @@ const SECTIONS: Section[] = [
   {title:'Applied linguistics',blurb:'Selected evidence, language investigations and teacher-reviewed interpretations.',keys:['corpus','discourse','language-awareness','pragmatics','learner-development','research']},
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress', 'phonchart', 'phoncard', 'phonhow'] },
-  { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['classroom-game', 'pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
+  { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['game', 'pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['speaking', 'writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
@@ -792,6 +792,7 @@ const PREVIEW: Record<string, () => ReactNode> = {
 // commands. These are schematic native UI previews, not decorative stock images.
 Object.assign(PREVIEW, {
  'classroom-game':()=> <Box label="Classroom game" tone="sky"><Sent><Chip on>Team A · 120</Chip><Chip>Team B · 100</Chip></Sent><Sent>Choose your next challenge →</Sent></Box>,
+ game:()=> <Box label="Game" tone="sky"><Sent>Where do you go to borrow a book?</Sent><Sent><Chip>A  a bakery</Chip><Chip on>B  a library</Chip></Sent><Sent>Live or at their own pace · cards, moles, balloons</Sent></Box>,
  h1:()=> <span className="gl-sample-heading" style={{fontSize:25}}>A new chapter</span>,
  h2:()=> <span className="gl-sample-heading" style={{fontSize:21}}>The big question</span>,
  h3:()=> <span className="gl-sample-heading" style={{fontSize:17}}>Look more closely</span>,
