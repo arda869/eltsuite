@@ -171,7 +171,7 @@ export function ChatDock() {
   phoneRef.current = phone;
   const bannerEl = banner && phone && !loc.pathname.startsWith('/messages') ? <MsgBanner key={banner.at} b={banner} onDone={() => setBanner(null)} /> : null;
 
-  const hidden = !me || isProxyTab() || (phone && !gameExpanded) || loc.pathname.startsWith('/messages') || /^\/quiz(\/|-host\/|$)/.test(loc.pathname) || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
+  const hidden = !me || isProxyTab() || (phone && !gameExpanded) || loc.pathname.startsWith('/messages') || /^\/(quiz|game)(\/|-host\/|$)/.test(loc.pathname) || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
   if (hidden) return bannerEl;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;

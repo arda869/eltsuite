@@ -1749,7 +1749,7 @@ export function Live() {
 function Games() {
   return (
     <>
-      <p>Play any task with marked questions as a <b>live quiz</b>: the question goes on the big screen, learners answer on their phones against the clock, and they score more for being quick. A leaderboard follows each question and a podium ends the game. In a lesson, choose Activities, then Live quiz. Every answer is kept with the class. To play with people outside a class, make a quiz in Live quiz and share its code: they join with a nickname, no account needed. Or add a card pile, a spinning wheel or boxes to open for speaking practice.</p>
+      <p>Add a <b>game</b> to any task from the + menu, or play any task with marked questions as a game. Play it live (the question goes on the big screen, learners answer on their own screens against the clock, and they score more for being quick) or let learners play at their own pace. Questions can be answered on cards, by whacking moles or by popping balloons. Every answer is kept with the class. To play with people outside a class, make a game in Games and share its code: they join with a nickname, no account needed. Or add a card pile, a spinning wheel or boxes to open for speaking practice.</p>
       <div className="gu-grid2">
         <Try title="Spin the wheel for a speaking topic">
           <Wheel />

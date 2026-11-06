@@ -1,4 +1,4 @@
-// Super Admin → Sounds for everyone → Quiz show music. ELT Suite's own tracks play unless a super admin
+// Super Admin → Sounds for everyone → Game music. ELT Suite's own tracks play unless a super admin
 // uploads one for a moment; then everyone hears the upload, until it's removed.
 import { useEffect, useRef, useState } from 'react';
 import { encodeMp3 } from '../../lib/audioEncode';
@@ -58,7 +58,7 @@ export function QuizMusic() {
   };
   return (
     <div>
-      <p>The big screen plays music during a live quiz. ELT Suite’s own tracks play unless you upload one here. Loops repeat until the moment ends, so a track that loops cleanly sounds best.</p>
+      <p>The big screen plays music during a game. ELT Suite’s own tracks play unless you upload one here. Loops repeat until the moment ends, so a track that loops cleanly sounds best.</p>
       <p className="hint">MP3, WAV, M4A or OGG, from 2 seconds to 5 minutes. Make sure you have the right to use the music.</p>
       <input ref={input} type="file" accept="audio/*" hidden onChange={(e) => (e.target.files?.[0] && void upload(e.target.files[0]), (e.target.value = ''))} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16, marginTop: 12 }}>

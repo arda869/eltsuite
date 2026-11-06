@@ -609,6 +609,11 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       case 'columnBreak':
         return;
+      case 'gameBlock':
+        // On paper, a game's questions print as ordinary questions under its name.
+        cur.push({ kind: 'note', text: 'Game · ' + String(a.title || 'Game') });
+        node.content?.forEach((c) => walk(c));
+        return;
       default:
         if (node.content) node.content.forEach((c) => walk(c));
         else if (node.type && ONLINE[node.type]) online.push(ONLINE[node.type]);

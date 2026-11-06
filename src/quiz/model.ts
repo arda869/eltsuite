@@ -1,4 +1,4 @@
-// A quiz for the live quiz show. Each slide is ordinary task content (the same question blocks as a
+// A game. Each slide is ordinary task content (the same question blocks as a
 // lesson, answers included), so a quiz can become a class task and a class task can be played as a quiz.
 // Saved in sharedDocs/{id}/game/main (version 2). The server's rules are in functions/quiz/engine.js.
 import type { JSONContent } from '@tiptap/react';
@@ -14,9 +14,11 @@ export type QuizSlide = {
   seconds: number;
   /** 0 no points, 1 standard, 2 double. */
   points: 0 | 1 | 2;
+  /** How a multiple-choice question is answered: cards, moles or balloons. */
+  skin?: 'cards' | 'moles' | 'balloons';
 };
 export type QuizDoc = { version: 2; slides: QuizSlide[]; music: string };
-export type QuizPlan = { sizes: number[]; settings: { seconds: number; points: number; poll?: boolean }[]; music?: string; source?: string };
+export type QuizPlan = { sizes: number[]; settings: { seconds: number; points: number; poll?: boolean; skin?: string; kind?: SlideKind; id?: string }[]; music?: string; source?: string };
 
 export const SECONDS = [5, 10, 20, 30, 45, 60, 90, 120, 240] as const;
 export const KINDS: { id: SlideKind; name: string; about: string }[] = [
@@ -126,7 +128,7 @@ export function toTask(q: QuizDoc): { content: JSONContent; plan: QuizPlan } {
   const slides = q.slides.filter((s) => (s.content.content || []).length);
   return {
     content: doc(...slides.flatMap((s) => s.content.content || [])),
-    plan: { sizes: slides.map((s) => (s.content.content || []).length), settings: slides.map((s) => ({ seconds: s.seconds, points: s.points, ...(s.kind === 'poll' ? { poll: true } : {}) })), music: q.music || '' },
+    plan: { sizes: slides.map((s) => (s.content.content || []).length), settings: slides.map((s) => ({ id: s.id, kind: s.kind, seconds: s.seconds, points: s.points, skin: s.skin || 'cards', ...(s.kind === 'poll' ? { poll: true } : {}) })), music: q.music || '' },
   };
 }
 
@@ -165,4 +167,37 @@ export function fromSaved(data: unknown): QuizDoc {
 /** AI-drafted rounds (prompt, answer, wrong choices) become multiple-choice slides. */
 export function slidesFromRounds(rounds: { prompt: string; answer: string; choices: string[] }[]): QuizSlide[] {
   return fromSaved({ rounds: rounds.map((r) => ({ ...r, id: newId() })) }).slides;
+}
+
+/** Questions whose answers can ride on moles or balloons: one right answer from a short list. */
+export const canSkin = (s: QuizSlide) => (s.kind === 'choice' || s.kind === 'truefalse' || s.kind === 'poll') && !choiceOf(s).multi;
+
+// ---- A game inside a lesson task -----------------------------------------------------------------------
+// The block holds the game's questions as its own content, so they're marked, kept and shown to the
+// teacher like any other question in the task; its attributes keep each question's settings.
+export type GameBlockAttrs = { id: string; title: string; sizes: number[]; settings: QuizPlan['settings']; source?: string };
+
+export function blockFromQuiz(q: QuizDoc, title: string, id = newId(), source?: string): JSONContent {
+  const { content, plan } = toTask(q);
+  return { type: 'gameBlock', attrs: { id, title: title || 'Game', sizes: plan.sizes, settings: plan.settings, ...(source ? { source } : {}) }, content: content.content?.length ? content.content : [{ type: 'paragraph' }] };
+}
+
+export function quizFromBlock(node: JSONContent): QuizDoc {
+  const a = (node.attrs || {}) as Partial<GameBlockAttrs>;
+  const blocks = node.content || [];
+  const sizes = Array.isArray(a.sizes) && a.sizes.reduce((x, y) => x + y, 0) === blocks.length ? a.sizes : null;
+  if (!sizes || !blocks.length) return blankQuiz();
+  let at = 0;
+  const slides: QuizSlide[] = sizes.map((n, i) => {
+    const set = a.settings?.[i] || ({} as QuizPlan['settings'][number]);
+    const content = doc(...blocks.slice(at, (at += n)));
+    const kind: SlideKind = set.kind && KINDS.some((k) => k.id === set.kind) ? set.kind : set.poll ? 'poll' : 'task';
+    return { id: set.id || newId(), kind, content, seconds: SECONDS.includes(set.seconds as (typeof SECONDS)[number]) ? set.seconds : 20, points: ([0, 1, 2].includes(set.points) ? set.points : 1) as 0 | 1 | 2, skin: (['cards', 'moles', 'balloons'].includes(String(set.skin)) ? set.skin : 'cards') as QuizSlide['skin'] };
+  });
+  return { version: 2, slides, music: '' };
+}
+
+/** A copy of a game with fresh question ids, so two copies in one lesson keep their answers apart. */
+export function freshIds(q: QuizDoc): QuizDoc {
+  return JSON.parse(JSON.stringify(q).replace(/"id":"[a-z0-9]{8}"/g, () => `"id":"${newId()}"`));
 }

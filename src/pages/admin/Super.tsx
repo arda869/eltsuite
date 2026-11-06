@@ -550,7 +550,7 @@ export function SuperDefaults() {
   return (
     <div className="hq-page">
       <PageHead title="Sounds for everyone" lede="The sound effects and recordings every teacher gets, unless they add their own." />
-      <Panel title="Quiz show music">
+      <Panel title="Game music">
         <QuizMusic />
       </Panel>
       <Panel title="Dialogue voice previews">

@@ -1,37 +1,39 @@
-// Live quizzes in class lessons. A quiz in a lesson is an ordinary task (its questions, with the
-// answer key kept apart as usual) that remembers its slides and timings, so the teacher can play it
-// live, learners can also do it on their own, and every answer is kept with the class.
+// Games in class lessons. A game in a lesson is a game block inside a task: its questions are the
+// block's own content (marked and kept like any other question), and the teacher plays it live or lets
+// learners play it at their own pace. Any task with marked questions can also be played as a game.
 import { useEffect, useState } from 'react';
-import { collection, doc, getDoc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { useTeacherClasses } from '../lib/coteach';
 import { addTask } from '../lib/tasks';
-import { newSharedDoc, useMyDocs } from '../lib/sharedDocs';
+import { useMyDocs } from '../lib/sharedDocs';
 import { liveRef } from '../lib/live';
-import { fromSaved, liveQuestions, quizProblems, toTask, type QuizDoc } from './model';
+import { NSelect } from '../components/Select';
+import { blankQuiz, blockFromQuiz, freshIds, fromSaved, liveQuestions, newId, quizProblems, type QuizDoc } from './model';
+import { startBlock } from './InlineGame';
 import { quizApi } from './live';
 import './quiz.css';
-import { NSelect } from '../components/Select';
 
-/** Put a quiz into a lesson as a new task. Returns the new task's id. */
-export async function quizIntoLesson(classId: string, itemId: string, quiz: QuizDoc, title: string, sourceId?: string) {
+/** Put a game into a lesson as a new task holding a game block. */
+export async function gameIntoLesson(classId: string, itemId: string, quiz: QuizDoc, title: string, sourceId?: string) {
   const tasks = await getDocs(collection(db, 'classes', classId, 'items', itemId, 'tasks'));
   const order = tasks.docs.reduce((m, t) => Math.max(m, Number(t.data().order) || 0), -1) + 1;
-  const { content, plan } = toTask(quiz);
-  const id = await addTask(classId, itemId, order, 'task', { title: title || 'Live quiz', instructions: 'Answer each question.', content });
-  await updateDoc(doc(db, 'classes', classId, 'items', itemId, 'tasks', id), { quiz: { ...plan, ...(sourceId ? { source: sourceId } : {}) } });
-  return id;
+  const blockId = newId();
+  const block = blockFromQuiz(freshIds(quiz), title, blockId, sourceId);
+  const taskId = await addTask(classId, itemId, order, 'task', { title: title || 'Game', instructions: 'Play the game.', content: { type: 'doc', content: [block] } });
+  return { taskId, blockId };
 }
 
-/** Start a live quiz from a class task, on a new tab for the big screen. */
-export async function hostClassTask(classId: string, itemId: string, taskId: string, guests: boolean) {
-  const w = window.open('about:blank', '_blank');
+/** Play a whole task as a game. Live opens the big screen in a new tab. */
+export async function hostClassTask(classId: string, itemId: string, taskId: string, mode: 'live' | 'self', guests: boolean) {
+  const w = mode === 'live' ? window.open('about:blank', '_blank') : null;
   try {
-    const r = await quizApi<{ runId: string }>('host', { source: { kind: 'class', classId, itemId, taskId }, guests });
-    if (w) w.location.href = '/quiz-host/' + r.runId;
-    else window.location.href = '/quiz-host/' + r.runId;
+    const r = await quizApi<{ runId: string }>('host', { source: { kind: 'class', classId, itemId, taskId }, mode, guests });
+    const to = '/game-host/' + r.runId;
+    if (w) w.location.href = to;
+    else window.open(to, '_blank');
     return r.runId;
   } catch (e) {
     w?.close();
@@ -39,7 +41,7 @@ export async function hostClassTask(classId: string, itemId: string, taskId: str
   }
 }
 
-/** From the quiz editor: choose a class and a lesson, and the quiz goes in as a task. */
+/** From the game editor: choose a class and a lesson, and the game goes in as a new task. */
 export function AddToLesson({ quiz, title, sourceId, onClose }: { quiz: QuizDoc; title: string; sourceId: string; onClose: () => void }) {
   const { user } = useAuth();
   const { classes } = useTeacherClasses(user?.uid);
@@ -61,21 +63,21 @@ export function AddToLesson({ quiz, title, sourceId, onClose }: { quiz: QuizDoc;
     setBusy(true);
     setError('');
     try {
-      const taskId = await quizIntoLesson(classId, itemId, quiz, title, sourceId);
+      const { taskId } = await gameIntoLesson(classId, itemId, quiz, title, sourceId);
       setDone({ classId, itemId, taskId });
     } catch {
-      setError('We couldn’t add the quiz just now. Check your connection and try again.');
+      setError('We couldn’t add the game just now. Check your connection and try again.');
     } finally {
       setBusy(false);
     }
   };
   return (
     <div className="scrim" onClick={onClose}>
-      <div className="dialog lq-dialog" role="dialog" aria-label="Add to a class" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: 0 }}>Add “{title}” to a class</h2>
+      <div className="dialog lq-dialog" role="dialog" aria-label="Add to a lesson" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>Add “{title}” to a lesson</h2>
         {done ? (
           <>
-            <p>The quiz is in the lesson as a new task. Open the lesson and choose Activities, then Live quiz, to play it with the class.</p>
+            <p>The game is in the lesson as a new task. Open the lesson to play it live, or let learners play it at their own pace.</p>
             <div className="qe-row">
               <a className="btn primary" href={`/class/${done.classId}/lesson/${done.itemId}?task=${done.taskId}`}>
                 Open the lesson
@@ -87,7 +89,7 @@ export function AddToLesson({ quiz, title, sourceId, onClose }: { quiz: QuizDoc;
           </>
         ) : (
           <>
-            <p className="qe-hint">The quiz goes into the lesson as a task. Play it live with the class, or let learners do it on their own. Their answers are kept with the class, like any other task.</p>
+            <p className="qe-hint">The game goes into the lesson as a new task. Play it live with the class, or let learners play it at their own pace. Their answers are kept with the class, like any other task.</p>
             <label className="field">
               Class
               <NSelect value={classId} onChange={(e) => setClassId(e.target.value)}>
@@ -129,135 +131,158 @@ export function AddToLesson({ quiz, title, sourceId, onClose }: { quiz: QuizDoc;
   );
 }
 
-type TaskLite = { id: string; title: string; content: JSONContent | null; kind?: string; quiz?: unknown };
+type TaskLite = { id: string; title: string; content: JSONContent | null; kind?: string };
+type Running = { runId: string; code: string; title: string; mode?: 'live' | 'self' };
+
+/** The game blocks in some task content. */
+function blocksIn(content: JSONContent | null): { id: string; title: string; n: number }[] {
+  const out: { id: string; title: string; n: number }[] = [];
+  const walk = (n: JSONContent) => {
+    if (n.type === 'gameBlock' && n.attrs?.id) out.push({ id: String(n.attrs.id), title: String(n.attrs.title || 'Game'), n: liveQuestions({ type: 'doc', content: n.content || [] }).length });
+    else n.content?.forEach(walk);
+  };
+  if (content) walk(content);
+  return out;
+}
 
 /**
- * In a lesson (Activities → Live quiz): play a task live, bring in a saved quiz, or make a new one.
- * A quiz that's running shows here too, with its big screen and results.
+ * In a lesson (Activities → Game, or + → Game): play one of the lesson's games or any task with marked
+ * questions, live or at learners' own pace; bring in a saved game; or make a new one here.
  */
-export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose }: { classId: string; itemId: string; tasks: TaskLite[]; currentTaskId?: string; onClose: () => void }) {
+export function GameDialog({ classId, itemId, tasks, currentTaskId, onClose, onSelect }: { classId: string; itemId: string; tasks: TaskLite[]; currentTaskId?: string; onClose: () => void; onSelect?: (taskId: string) => void }) {
   const { user } = useAuth();
   const { mine } = useMyDocs(user?.uid);
+  const [mode, setMode] = useState<'live' | 'self'>('live');
   const [guests, setGuests] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [running, setRunning] = useState<{ runId: string; code: string; title: string } | null>(null);
-  const [runs, setRuns] = useState<{ id: string; title: string; createdAt: number; players: number; status: string }[]>([]);
+  const [running, setRunning] = useState<Record<string, Running | null>>({});
+  const [runs, setRuns] = useState<{ id: string; title: string; createdAt: number; players: number; status: string; mode?: string }[]>([]);
   const [pickSaved, setPickSaved] = useState(false);
-  useEffect(() => onSnapshot(liveRef(classId), (s) => setRunning((s.data()?.liveQuiz as typeof running) || null), () => {}), [classId]);
+  useEffect(() => onSnapshot(liveRef(classId), (s) => setRunning((s.data()?.games as Record<string, Running | null>) || {}), () => {}), [classId]);
   useEffect(
     () =>
       onSnapshot(
         query(collection(db, 'quizRuns'), where('classId', '==', classId)),
-        (s) => setRuns(s.docs.map((d) => ({ id: d.id, ...(d.data() as { title: string; createdAt: number; players: number; status: string }) })).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8)),
+        (s) => setRuns(s.docs.map((d) => ({ id: d.id, ...(d.data() as { title: string; createdAt: number; players: number; status: string; mode?: string }) })).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8)),
         () => {},
       ),
     [classId],
   );
-  const playable = tasks.filter((t) => t.kind !== 'section').map((t) => ({ ...t, n: liveQuestions(t.content).length })).filter((t) => t.n > 0);
-  playable.sort((a, b) => (a.id === currentTaskId ? -1 : b.id === currentTaskId ? 1 : 0));
-  const quizzes = (mine || []).filter((d) => d.kind === 'game' && !d.deletedAt);
+  const games = tasks.flatMap((t) => blocksIn(t.content).map((b) => ({ ...b, taskId: t.id, taskTitle: t.title })));
+  const playable = tasks
+    .filter((t) => t.kind !== 'section' && !blocksIn(t.content).length)
+    .map((t) => ({ ...t, n: liveQuestions(t.content).length }))
+    .filter((t) => t.n > 0)
+    .sort((a, b) => (a.id === currentTaskId ? -1 : b.id === currentTaskId ? 1 : 0));
+  const saved = (mine || []).filter((d) => d.kind === 'game' && !d.deletedAt);
+  const live = Object.values(running).filter(Boolean) as Running[];
 
-  const play = async (taskId: string) => {
-    setBusy(taskId);
+  const run = async (key: string, f: () => Promise<unknown>) => {
+    setBusy(key);
     setError('');
     try {
-      await hostClassTask(classId, itemId, taskId, guests);
+      await f();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy('');
     }
   };
-  const bring = async (id: string, title: string, start: boolean) => {
-    setBusy(id);
-    setError('');
-    try {
+  const bring = (id: string, title: string, start: boolean) =>
+    run(id, async () => {
       const snap = await getDoc(doc(db, 'sharedDocs', id, 'game', 'main'));
       const quiz = fromSaved(snap.data());
-      if (!snap.exists() || quizProblems(quiz).length) throw Error('Open this quiz and finish its questions first.');
-      const taskId = await quizIntoLesson(classId, itemId, quiz, title, id);
+      if (!snap.exists() || quizProblems(quiz).length) throw Error('Open this game and finish its questions first.');
+      const { taskId, blockId } = await gameIntoLesson(classId, itemId, quiz, title, id);
       setPickSaved(false);
-      if (start) await hostClassTask(classId, itemId, taskId, guests);
+      onSelect?.(taskId);
+      if (start) await startBlock(classId, itemId, blockId, mode, guests);
       else onClose();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy('');
-    }
-  };
-  const make = async () => {
-    if (!user) return;
-    const w = window.open('about:blank', '_blank');
-    try {
-      const id = await newSharedDoc({ uid: user.uid, name: user.displayName || 'Teacher' }, 'game', 'New quiz');
-      if (w) w.location.href = '/doc/' + id;
-      else window.location.href = '/doc/' + id;
-    } catch {
-      w?.close();
-      setError('We couldn’t make a quiz just now. Try again.');
-    }
-  };
-  const end = async () => {
-    if (!running || !confirm('End the quiz that’s running? Everyone’s answers are kept.')) return;
-    await quizApi('end', { runId: running.runId }).catch((e) => setError((e as Error).message));
+    });
+  const make = () =>
+    run('new', async () => {
+      const { taskId } = await gameIntoLesson(classId, itemId, blankQuiz(), 'Game');
+      onSelect?.(taskId);
+      onClose();
+    });
+  const end = (r: Running) => {
+    if (!confirm('End this game? Everyone’s answers are kept.')) return;
+    void quizApi('end', { runId: r.runId }).catch((e) => setError((e as Error).message));
   };
 
   return (
     <div className="scrim" onClick={onClose}>
-      <div className="dialog wide lq-dialog" role="dialog" aria-label="Live quiz" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: 0 }}>Live quiz</h2>
-        {running ? (
-          <div className="lq-banner">
+      <div className="dialog wide lq-dialog" role="dialog" aria-label="Games" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>Games</h2>
+        {live.map((r) => (
+          <div key={r.runId} className="lq-banner">
             <div>
-              <strong>{running.title} is running</strong>
+              <strong>
+                {r.title} · {r.mode === 'self' ? 'at their own pace' : 'live'}
+              </strong>
               <br />
-              <span>Code {running.code}. Learners in the class see a Join button in their lesson.</span>
+              <span>Code {r.code}. Learners in the class play it in their lesson.</span>
             </div>
-            <a className="qz-btn" href={'/quiz-host/' + running.runId} target="_blank" rel="noreferrer">
-              Open the big screen
+            <a className="qz-btn" href={'/game-host/' + r.runId} target="_blank" rel="noreferrer">
+              {r.mode === 'self' ? 'See progress' : 'Open the big screen'}
             </a>
-            <button type="button" className="btn" onClick={() => void end()}>
+            <button type="button" className="btn" onClick={() => end(r)}>
               End it
             </button>
           </div>
-        ) : (
-          <p className="qe-hint">Put a question on the big screen. Learners answer on their phones, against the clock, and every answer is kept with the class.</p>
-        )}
+        ))}
+        <div className="lq-mode" role="radiogroup" aria-label="How to play">
+          <button type="button" role="radio" aria-checked={mode === 'live'} className={'lq-mode-opt' + (mode === 'live' ? ' on' : '')} onClick={() => setMode('live')}>
+            <strong>Live</strong>
+            <span>Everyone plays together. You run the clock from the big screen.</span>
+          </button>
+          <button type="button" role="radio" aria-checked={mode === 'self'} className={'lq-mode-opt' + (mode === 'self' ? ' on' : '')} onClick={() => setMode('self')}>
+            <strong>At their own pace</strong>
+            <span>Each learner plays on their own, with a class leaderboard.</span>
+          </button>
+        </div>
         {!pickSaved ? (
           <div className="lq-options">
-            {playable.slice(0, 8).map((t) => (
-              <button key={t.id} type="button" className="lq-option" disabled={!!busy || !!running} onClick={() => void play(t.id)}>
+            {games.map((g) => (
+              <button key={g.id} type="button" className="lq-option" disabled={!!busy || !!running[g.id] || !g.n} onClick={() => void run(g.id, () => startBlock(classId, itemId, g.id, mode, guests))}>
                 <strong>
-                  Play “{t.title || 'Task'}” live
-                  {t.quiz ? <span className="lq-chip" style={{ marginLeft: 8 }}>Quiz</span> : null}
+                  Play “{g.title}” <span className="lq-chip">Game</span>
                 </strong>
+                <span>
+                  {g.n ? `${g.n} ${g.n === 1 ? 'question' : 'questions'} · in “${g.taskTitle || 'Task'}”` : 'Add questions to this game first.'}
+                  {running[g.id] ? ' · running now' : busy === g.id ? ' · Starting…' : ''}
+                </span>
+              </button>
+            ))}
+            {playable.slice(0, 6).map((t) => (
+              <button key={t.id} type="button" className="lq-option" disabled={!!busy || !!running[t.id]} onClick={() => void run(t.id, () => hostClassTask(classId, itemId, t.id, mode, guests))}>
+                <strong>Play the task “{t.title || 'Task'}” as a game</strong>
                 <span>
                   {t.n} {t.n === 1 ? 'question' : 'questions'}
                   {busy === t.id ? ' · Starting…' : ''}
                 </span>
               </button>
             ))}
-            {playable.length === 0 && <p className="qe-hint">No task in this lesson has questions that can be marked yet. Bring in a saved quiz, or make a new one.</p>}
-            <button type="button" className="lq-option" disabled={!!busy || !quizzes.length} onClick={() => setPickSaved(true)}>
-              <strong>Bring in one of your quizzes</strong>
-              <span>{quizzes.length ? 'It goes into this lesson as a task. Play it now or later.' : 'You don’t have any saved quizzes yet.'}</span>
+            <button type="button" className="lq-option" disabled={!!busy || !saved.length} onClick={() => setPickSaved(true)}>
+              <strong>Bring in one of your saved games</strong>
+              <span>{saved.length ? 'It goes into this lesson as a new task. Play it now or later.' : 'You don’t have any saved games yet.'}</span>
             </button>
             <button type="button" className="lq-option" disabled={!!busy} onClick={() => void make()}>
-              <strong>Make a new quiz</strong>
-              <span>Opens the quiz editor in a new tab. Come back here to play it.</span>
+              <strong>Make a new game in this lesson</strong>
+              <span>A new task with a game in it. Add your questions, then play.</span>
             </button>
           </div>
         ) : (
           <div className="lq-options">
-            {quizzes.map((q) => (
+            {saved.map((q) => (
               <div key={q.id} className="lq-option lq-option-row">
                 <strong>{q.title}</strong>
                 <span className="qe-row">
                   <button type="button" className="btn small-btn" disabled={!!busy} onClick={() => void bring(q.id, q.title, false)}>
                     Add to this lesson
                   </button>
-                  <button type="button" className="btn small-btn primary" disabled={!!busy || !!running} onClick={() => void bring(q.id, q.title, true)}>
+                  <button type="button" className="btn small-btn primary" disabled={!!busy} onClick={() => void bring(q.id, q.title, true)}>
                     Add and play now
                   </button>
                   {busy === q.id && <span>One moment…</span>}
@@ -269,11 +294,9 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
             </button>
           </div>
         )}
-        {!running && (
-          <label className="qe-check">
-            <input type="checkbox" checked={guests} onChange={(e) => setGuests(e.target.checked)} /> Let people outside the class join with the code, as guests
-          </label>
-        )}
+        <label className="qe-check">
+          <input type="checkbox" checked={guests} onChange={(e) => setGuests(e.target.checked)} /> Let people outside the class join with the code, as guests
+        </label>
         {error && (
           <p className="qe-problem" role="alert">
             {error}
@@ -281,12 +304,13 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
         )}
         {runs.length > 0 && (
           <div className="qe-runs">
-            <p className="qe-hint">Results of quizzes played in this class</p>
+            <p className="qe-hint">Results of games played in this class</p>
             {runs.map((r) => (
-              <a key={r.id} href={'/quiz-results/' + r.id} target="_blank" rel="noreferrer">
+              <a key={r.id} href={'/game-results/' + r.id} target="_blank" rel="noreferrer">
                 <span>{r.title}</span>
                 <span>
-                  {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {r.players} {r.players === 1 ? 'player' : 'players'}
+                  {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {r.mode === 'self' ? 'own pace · ' : ''}
+                  {r.players} {r.players === 1 ? 'player' : 'players'}
                 </span>
               </a>
             ))}
@@ -302,17 +326,17 @@ export function LiveQuizDialog({ classId, itemId, tasks, currentTaskId, onClose 
   );
 }
 
-/** In a learner's lesson: a quiz has started, join it. */
+/** In a learner's lesson: a game is being played live, join it. */
 export function LearnerQuizBanner({ quiz }: { quiz: { runId: string; title: string } | null | undefined }) {
   if (!quiz?.runId) return null;
   return (
     <div className="lq-banner" role="status">
       <div>
-        <strong>Live quiz: {quiz.title}</strong>
+        <strong>Game: {quiz.title}</strong>
         <br />
-        <span>Your teacher has started a quiz.</span>
+        <span>Your teacher has started a game.</span>
       </div>
-      <a className="qz-btn" href={'/quiz?run=' + encodeURIComponent(quiz.runId)}>
+      <a className="qz-btn" href={'/game?run=' + encodeURIComponent(quiz.runId)}>
         Join
       </a>
     </div>
