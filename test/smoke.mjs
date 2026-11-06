@@ -2045,9 +2045,14 @@ const J = {
     const laptopPanels=await learnerTab.locator('.lesson-layout.learner').evaluate(el=>{const nav=el.querySelector('.task-list').getBoundingClientRect(),center=el.querySelector('.center-col').getBoundingClientRect();return {top:Math.abs(nav.top-center.top),overflow:document.documentElement.scrollWidth>innerWidth+2};});
     if(laptopPanels.top>12||laptopPanels.overflow)throw Error('Learner task list and lesson are misaligned on a laptop.');
     await learnerTab.setViewportSize({width:390,height:844});
-    await see(learnerTab, 'nav[aria-label="Tasks"] .task-pick', 'the learner task tabs on a phone');
-    const taskTabs = await learnerTab.locator('nav[aria-label="Tasks"]').evaluate(el=>({height:el.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+2}));
-    if(taskTabs.height>52||taskTabs.overflow)throw Error('Learner task tabs are too tall or overflow the phone screen.');
+    await see(learnerTab, '.mobile-task-toggle', 'the collapsed learner task list on a phone');
+    const taskToggle=learnerTab.locator('.mobile-task-toggle');
+    if(await taskToggle.getAttribute('aria-expanded')!=='false'||await learnerTab.locator('nav[aria-label="Tasks"]').isVisible())throw Error('Learner tasks should start collapsed on a phone.');
+    const compact=await taskToggle.evaluate(el=>({height:el.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+2}));
+    if(compact.height>60||compact.overflow)throw Error('The mobile task control is too tall or overflows the phone screen.');
+    await taskToggle.click();
+    await see(learnerTab, 'nav[aria-label="Tasks"] .task-pick', 'the expanded learner task list on a phone');
+    if(await taskToggle.getAttribute('aria-expanded')!=='true')throw Error('The mobile task list did not expand.');
     await learnerTab.close();
     await s.p.evaluate(() => { sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid'); });
     await s.p.goto(joinLink);
