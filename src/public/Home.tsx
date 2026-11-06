@@ -57,6 +57,23 @@ function Shot({ name, alt, caption, eager, at, className = '' }: { name: string;
   );
 }
 
+// A tall screenshot from a phone (780 × 1688), in a phone-shaped frame that opens full size.
+function PhoneShot({ name, alt, caption }: { name: string; alt: string; caption: string }) {
+  const dlg = useRef<HTMLDialogElement>(null);
+  return (
+    <figure className="pub-figure pub-phone">
+      <button type="button" className="pub-frame pub-phone-frame" onClick={() => dlg.current?.showModal()} aria-label={`Show full size: ${alt}`}>
+        <img src={src(name)} width={780} height={1688} alt="" loading="lazy" decoding="async" />
+      </button>
+      <figcaption>{caption}</figcaption>
+      <dialog ref={dlg} className="pub-lightbox pub-lightbox-phone" aria-label={alt} onClick={(e) => { if (e.target === dlg.current) dlg.current.close(); }}>
+        <img src={src(name)} width={780} height={1688} alt={alt} loading="lazy" />
+        <form method="dialog"><button className="pub-secondary">Close</button></form>
+      </dialog>
+    </figure>
+  );
+}
+
 // ------------------------------------------------------------------ hero
 
 function Hero() {
@@ -97,6 +114,14 @@ function Ways() {
         <h2 id="pub-ways-h">You decide how you use it.</h2>
         <p>Every class and every room is different. Use ELT Suite online, in the classroom or on paper, and mix them as you like: print the worksheet for the lesson, then set the practice online for homework.</p>
       </div>
+      <figure className="pub-same" aria-labelledby="pub-same-cap">
+        <figcaption id="pub-same-cap"><strong>The same lesson, three ways.</strong> One lesson, “Expressing and justifying opinions”, as you edit it, as a learner sees it on their phone, and as it comes out of the printer.</figcaption>
+        <div className="pub-same-row">
+          <Shot name="editor" alt="The lesson in the editor: the task “Two neighbours decide” with its aims, the recording and the teacher’s notes." caption="In the editor" className="pub-same-edit" />
+          <PhoneShot name="learner-phone" alt="The same task on a learner’s phone: the recording and a question with three choices." caption="On a learner’s phone" />
+          <Shot name="print" alt="The same lesson as a printed A4 worksheet, with the task, a QR code for the recording and lines to write on." caption="On paper" className="pub-same-print" />
+        </div>
+      </figure>
       <ul className="pub-ways-list">
         {WAYS.map((w) => (
           <li key={w.title}>
@@ -112,13 +137,13 @@ function Ways() {
 
 // ------------------------------------------------------------------ everything in one place
 
-const ALL: { k: string; title: string; text: string; to: string }[] = [
-  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan' },
-  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way' },
-  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand' },
-  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio' },
-  { k: '05', title: 'Your development', text: 'Reflect on your lessons, work with colleagues and talk ideas through.', to: '#reflect' },
-  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language' },
+const ALL: { k: string; title: string; text: string; to: string; name: string; at: Region }[] = [
+  { k: '01', title: 'Lesson planning', text: 'Plan lessons task by task, with aims, activities and your notes.', to: '#plan', name: 'editor-language', at: { x: 0.28, y: 0.1, w: 0.52, h: 0.42 } },
+  { k: '02', title: 'Teaching', text: 'Teach online, on the classroom screen or from printed worksheets.', to: '#your-way', name: 'teach', at: { x: 0.5, y: 0.08, w: 0.5, h: 0.42 } },
+  { k: '03', title: 'Learner progress', text: 'Every learner’s answers, results and portfolio, lesson by lesson.', to: '#understand', name: 'reports', at: { x: 0.005, y: 0.5, w: 0.5, h: 0.36 } },
+  { k: '04', title: 'Materials and recordings', text: 'Worksheets, dialogues, recordings and classroom songs.', to: '#audio', name: 'speech', at: { x: 0.13, y: 0.5, w: 0.6, h: 0.42 } },
+  { k: '05', title: 'Your development', text: 'Talk your teaching through with Teacher’s Companion, and reflect with colleagues.', to: '#reflect', name: 'companion', at: { x: 0.2, y: 0.12, w: 0.6, h: 0.5 } },
+  { k: '06', title: 'Language', text: 'Pronunciation marks and real example sentences for your teaching.', to: '#language', name: 'concordance', at: { x: 0.12, y: 0.1, w: 0.6, h: 0.45 } },
 ];
 
 function AllInOne() {
@@ -133,6 +158,7 @@ function AllInOne() {
         {ALL.map((a) => (
           <li key={a.k}>
             <a href={a.to}>
+              <Crop name={a.name} at={a.at} alt="" width={360} />
               <span className="pub-all-k">{a.k}</span>
               <strong>{a.title}</strong>
               <span className="pub-all-t">{a.text}</span>
@@ -339,7 +365,7 @@ const STEPS = [
   { k: 'Teach', line: 'Teach from your lesson and get every learner involved.', name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
   { k: 'Understand', line: 'Look at your learners’ answers, results and feedback.', name: 'reports', alt: 'The class report, learner by lesson.' },
   { k: 'Reflect', line: 'Think back on the lesson in Collab, on your own or with colleagues.', name: 'collab', alt: 'Collab: reflect on a lesson or investigate a question.' },
-  { k: 'Grow', line: 'Talk your ideas through and take them into the next lesson.', name: 'coach', alt: 'Teacher’s Companion in Messages.' },
+  { k: 'Grow', line: 'Talk it through with Teacher’s Companion and take your ideas into the next lesson.', name: 'companion', alt: 'Teacher’s Companion: a conversation about a quiet B1 opinions discussion, with a small change to try next lesson.' },
 ];
 
 function Steps() {

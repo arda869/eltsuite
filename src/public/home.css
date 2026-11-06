@@ -31,8 +31,11 @@
 
 .pub-all { display: grid; gap: 22px; }
 .pub-all-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
-.pub-all-list a { display: grid; gap: 4px; height: 100%; padding: 16px 18px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: inset 0 3px 0 var(--accent); transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+.pub-all-list a { display: grid; align-content: start; gap: 4px; height: 100%; padding: 10px 10px 16px; overflow: hidden; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: inset 0 3px 0 var(--accent); transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
 .pub-all-list a:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: inset 0 3px 0 var(--accent), var(--shadow-lift); }
+.pub-all-list .pub-crop { margin-bottom: 10px; border: 1px solid var(--hair); border-radius: 8px; transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pub-all-list a:hover .pub-crop { transform: scale(1.02); }
+.pub-all-list a > span:not(.pub-crop), .pub-all-list strong { padding: 0 8px; }
 .pub-all-k { font: 800 11px/1.4 var(--sans); letter-spacing: 0.1em; color: var(--accent-text); }
 .pub-all-list strong { font: 600 18px/1.3 var(--serif); }
 .pub-all-t { font-size: 14.5px; line-height: 1.5; color: var(--muted); }
@@ -62,6 +65,20 @@
 .pub-ways-list p { font-size: 15px; line-height: 1.55; color: var(--muted); }
 @media (max-width: 1000px) { .pub-ways-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .pub-ways-list { grid-template-columns: 1fr; } }
+
+/* The same lesson three ways */
+.pub-same { display: grid; gap: 16px; margin: 0; padding: clamp(16px, 2.4vw, 24px); border-radius: 12px; background: var(--tint); }
+.pub-same > figcaption { max-width: 760px; font-size: 15.5px; color: var(--muted); }
+.pub-same > figcaption strong { color: var(--ink); font: 600 17px/1.4 var(--serif); }
+.pub-same-row { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 2.1fr) minmax(0, 4fr); gap: 16px; align-items: end; }
+.pub-same-row .pub-figure figcaption { font: 700 13px/1.4 var(--sans); color: var(--ink); text-align: center; }
+.pub-phone-frame { padding: 6px; border-radius: 22px; background: #22211e; border-color: #22211e; }
+.pub-phone-frame img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.pub-lightbox-phone { width: min(420px, 94vw); }
+@media (max-width: 860px) {
+  .pub-same-row { grid-template-columns: 1fr 1fr; }
+  .pub-same-row .pub-same-edit { grid-column: 1 / -1; }
+}
 
 /* ------------------------------------------------------------------ teach live: the demonstration */
 
@@ -199,6 +216,8 @@
    Screens ease in once as they come into view, and lift a little on hover. Text never moves or
    fades, and none of it runs with reduced motion. */
 
+.pub-reveal .pub-same-row .pub-figure:nth-child(2) .pub-frame { transition-delay: 0.12s; }
+.pub-reveal .pub-same-row .pub-figure:nth-child(3) .pub-frame { transition-delay: 0.24s; }
 .pub-reveal :is(.pub-frame, .pub-hero-shot .pub-screen) { transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.25s, border-color 0.25s; }
 .pub-reveal :is(.pub-frame, .pub-hero-shot .pub-screen):not([data-shown]) { opacity: 0; transform: translateY(18px) scale(0.985); }
 .pub-reveal .pub-details .pub-figure:nth-child(2) .pub-frame { transition-delay: 0.08s; }
