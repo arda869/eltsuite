@@ -142,6 +142,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const [viewResp, setViewResp] = useState<Responses>({});
   const [toc, setToc] = useState(false);
   const [viewEl, setViewEl] = useState<HTMLDivElement | null>(null);
+  const [pdfError,setPdfError] = useState('');
   const [pdfPrev, setPdfPrev] = useState<{ bytes: Uint8Array; name: string } | null>(null);
   useEffect(() => {
     if (!allowed.includes(mode)) setMode(allowed[0] ?? 'view');
@@ -310,13 +311,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
 
   // The document as a PDF, opened in the viewer to save in Resources or download.
   const makePdf = async (o: ExportOpts) => {
+    setPdfError('');
     try {
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
       const content = editor.getJSON();
-      await prepareDocumentPrint(content);
+      await prepareDocumentPrint(content, mediaSpace || classId);
       const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout);
       setPdfPrev({ bytes, name: title || 'Document' });
     } catch (e) {
+      setPdfError('The PDF could not be created. Please try the download again.');
       console.error(e);
     }
   };
@@ -466,6 +469,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       {pageTools0}
       {personAt && <PersonCard p={personAt.p} r={personAt.r} me={me.uid} onClose={() => setPersonAt(null)} />}
       {picFor && <PictureDialog editor={picFor} classId="" onClose={() => setPicFor(null)} />}
+      {pdfError && <p role="alert">{pdfError}</p>}
       {pdfPrev && <PdfPreview bytes={pdfPrev.bytes} name={pdfPrev.name} onClose={() => setPdfPrev(null)} />}
     </>
   );

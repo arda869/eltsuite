@@ -11,7 +11,11 @@ export async function gatherLesson(classId: string, itemId: string): Promise<{ t
   for (const d of snap.docs) {
     const t = { id: d.id, ...(d.data() as Omit<Task, 'id'>) };
     const [key, notes] = await Promise.all([loadKey(classId, itemId, t.id), loadNotes(classId, itemId, t.id).catch(() => '')]);
-    tasks.push({ print: t.print ?? null, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(t.content ?? { type: 'doc' }, key) });
+    const body = t.restricted
+      ? (await getDoc(doc(d.ref, 'private', 'body'))).data()?.content
+      : t.content;
+    if (t.restricted && !body) throw new Error('The saved activity content could not be loaded.');
+    tasks.push({ id: t.id, family: t.family, variant: t.variant, print: t.print ?? null, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(body ?? { type: 'doc' }, key) });
   }
   return { title: (item.data()?.title as string) ?? 'Lesson', tasks };
 }

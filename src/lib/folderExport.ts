@@ -41,19 +41,21 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
   // On the page but clipped away, so the picture of it is not blank and nobody sees it.
   host.style.cssText = 'position:fixed;left:0;top:0;width:595px;background:#fff;color:#111;font:11pt/1.5 Arial,sans-serif;padding:0;z-index:-1;clip-path:inset(0 0 100% 0);pointer-events:none';
   if (metrics) host.style.width = `${metrics.w - 2 * metrics.margin}px`;
-  host.innerHTML = `<style>.pdfx h1{font-size:20pt;margin:0 0 18px;text-align:center}.pdfx h2{font-size:15pt;margin:18px 0 6px}.pdfx h3{font-size:13pt;margin:14px 0 6px}.pdfx p{margin:0 0 10px}.pdfx ul,.pdfx ol{margin:0 0 10px;padding-left:28px}.pdfx table{border-collapse:collapse;width:100%;margin:10px 0}.pdfx td,.pdfx th{border:.5pt solid #666;padding:5px 7px;vertical-align:top;text-align:left}.pdfx img{max-width:100%}.pdfx .brand{display:flex;justify-content:flex-end;margin:0 0 18px}.pdfx .brand img{height:30px}.pdfx .foot{margin-top:28px;color:#8a847d;font-size:9pt;text-align:center}</style><div class="pdfx" style="padding:0 4px">${brand ? `<div class="brand"><img src="${brand.dataUrl}" alt=""></div>` : ''}${bodyHtml}<p class="foot">${esc(credit().by)}<br><span style="font-size:8pt">${esc(credit().note)}</span></p></div>`;
+  const worksheetStyle = bodyHtml.includes('class="doc-worksheet"')
+    ? '@scope (.doc-export) {' + (await import('./worksheetHtml')).sheetCss({header:false,key:false}) + '}' : '';
+  host.innerHTML = `<style>${worksheetStyle}.pdfx h1{font-size:20pt;margin:0 0 18px;text-align:center}.pdfx h2{font-size:15pt;margin:18px 0 6px}.pdfx h3{font-size:13pt;margin:14px 0 6px}.pdfx p{margin:0 0 10px}.pdfx ul,.pdfx ol{margin:0 0 10px;padding-left:28px}.pdfx table{border-collapse:collapse;width:100%;margin:10px 0}.pdfx td,.pdfx th{border:.5pt solid #666;padding:5px 7px;vertical-align:top;text-align:left}.pdfx img,.pdfx svg{max-width:100%;height:auto}.pdfx{overflow-wrap:anywhere}.pdfx table{table-layout:fixed}.doc-worksheet .paper-card{border:1px dashed #777;padding:8px;margin:6px 0}.pdfx .brand{display:flex;justify-content:flex-end;margin:0 0 18px}.pdfx .brand img{height:30px}.pdfx .foot{margin-top:28px;color:#8a847d;font-size:9pt;text-align:center}</style><div class="pdfx" style="padding:0 4px">${brand ? `<div class="brand"><img src="${brand.dataUrl}" alt=""></div>` : ''}${bodyHtml}<p class="foot">${esc(credit().by)}<br><span style="font-size:8pt">${esc(credit().note)}</span></p></div>`;
   host.dataset.pdfhost = '';
   document.body.append(host);
   try {
     await Promise.all([...host.querySelectorAll('img')].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
+    await document.fonts.ready;
     // A picture of the text, cut into A4 pages between blocks so no line is split.
     const scale = 2;
-    const canvas = await h2c.default(host, { scale, useCORS: true, backgroundColor: '#fff', windowWidth: metrics ? metrics.w : 595, onclone: (d) => (d.querySelectorAll<HTMLElement>('[data-pdfhost]').forEach((x) => (x.style.clipPath = 'none')), plainColours(d)) });
     const pageW = metrics ? metrics.w * .75 : 595.28, pageH = metrics ? metrics.h * .75 : 841.89, m = metrics ? metrics.margin * .75 : 50;
     const k = (pageW - 2 * m) / host.offsetWidth; // pt per CSS pixel
     const room = (pageH - 2 * m) / k; // CSS pixels a page holds
     const top = host.getBoundingClientRect().top;
-    const ends = [...host.querySelectorAll('.pdfx > *, .pdfx li, .pdfx tr')].map((e) => e.getBoundingClientRect().bottom - top).sort((a, b) => a - b);
+    const ends = [...host.querySelectorAll('.pdfx > *, .doc-export > *, .doc-worksheet > *, .pdfx li, .pdfx tr')].map((e) => e.getBoundingClientRect().bottom - top).sort((a, b) => a - b);
     const forced = [...host.querySelectorAll('[data-doc-page-break], section[data-new-page]')].map((e) => e.getBoundingClientRect().top - top).filter((n) => n > 1).sort((a, b) => a - b);
     const cuts: number[] = [0];
     const total = host.offsetHeight;
@@ -68,13 +70,16 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
     for (let i = 0; i < cuts.length - 1; i++) {
       const h = cuts[i + 1] - cuts[i];
       if (h < 2) continue;
-      const part = document.createElement('canvas');
-      part.width = canvas.width;
-      part.height = Math.ceil(h * scale);
-      const g = part.getContext('2d')!;
-      g.fillStyle = '#fff';
-      g.fillRect(0, 0, part.width, part.height);
-      g.drawImage(canvas, 0, -cuts[i] * scale);
+      // Render only this page. A tall document can exceed the browser's canvas limit
+      // even when every individual page fits comfortably.
+      const part = await h2c.default(host, {
+        scale, y: cuts[i], height: Math.ceil(h), width: host.offsetWidth,
+        useCORS: true, backgroundColor: '#fff', windowWidth: metrics ? metrics.w : 595,
+        onclone: d => {
+          d.querySelectorAll<HTMLElement>('[data-pdfhost]').forEach(x => x.style.clipPath = 'none');
+          plainColours(d);
+        },
+      });
       if (i) pdf.addPage();
       pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', m, m, pageW - 2 * m, h * k);
       if (layout) {
@@ -97,9 +102,9 @@ async function collabDoc(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> 
   const layout = { ...LAYOUT_DEFAULT, ...state.getMap('layout').toJSON() } as Layout;
   state.destroy();
   const o = { ...EXPORT_DEFAULT, layout, style: ((d as SharedDoc & { citeStyle?: CiteStyle }).citeStyle) || EXPORT_DEFAULT.style };
-  await prepareDocumentPrint(json);
-  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout).catch(() => null)]);
-  return [{ name: safe(d.title) + '.docx', data: docx }, ...(pdf ? [{ name: safe(d.title) + '.pdf', data: pdf }] : [])];
+  await prepareDocumentPrint(json, 'doc:' + d.id);
+  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout)]);
+  return [{ name: safe(d.title) + '.docx', data: docx }, { name: safe(d.title) + '.pdf', data: pdf }];
 }
 
 async function slides(d: SharedDoc): Promise<OutFile[]> {

@@ -10,8 +10,51 @@ import { bakePicture } from '../editor/PicEdit';
 // Uploaded pictures are read from the class first, with their sizes (the Word file needs them).
 export async function sheetPictures(classId: string, items: WsItem[]): Promise<MediaMap> {
   const map: MediaMap = {};
+  const pictures = collectPictures(items);
+  // Draw the selected pages in order, keeping only one source PDF open at a time.
+  const documents = new Map<string, {page:number;key:string;src:string}[]>();
+  for (const {key,src} of pictures) {
+    const match = /^pdf-page:(\d+):((?:media|file):.+)$/.exec(src);
+    if (!match) continue;
+    const pages = documents.get(match[2]) || [];
+    pages.push({page:Number(match[1]),key,src});
+    documents.set(match[2],pages);
+  }
+  for (const [src,pages] of documents) {
+    const {loadPdf,openPdf} = await import('../pdf/pdfData');
+    const pdf = await openPdf(await loadPdf(src,classId));
+    try {
+      for(const {page,key,src:pageRef} of pages) {
+        const source = await pdf.getPage(page);
+        const natural = source.getViewport({scale:1});
+        const viewport = source.getViewport({scale:Math.min(2,1600/Math.max(natural.width,natural.height))});
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+        const ctx = canvas.getContext('2d')!;
+        await source.render({canvasContext:ctx,viewport}).promise;
+        if (key !== pageRef) {
+          const {MARK_COLORS,inkColor} = await import('../pdf/colours');
+          for (const mark of JSON.parse(key.slice(pageRef.length+1))) {
+            if (mark.type === 'pdfMark') {
+              ctx.fillStyle = (MARK_COLORS.find(c => c.k === mark.color) || MARK_COLORS[0]).bg;
+              ctx.fillRect(mark.x*canvas.width,mark.y*canvas.height,mark.w*canvas.width,mark.h*canvas.height);
+            } else if (Array.isArray(mark.pts) && mark.pts.length) {
+              ctx.strokeStyle = inkColor(String(mark.color || 'ink'));
+              ctx.lineWidth = 2*viewport.scale;
+              ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+              ctx.beginPath();
+              mark.pts.forEach(([x,y]:number[],i:number) => i ? ctx.lineTo(x*canvas.width,y*canvas.height) : ctx.moveTo(x*canvas.width,y*canvas.height));
+              ctx.stroke();
+            }
+          }
+        }
+        map[key] = {data:canvas.toDataURL('image/jpeg',0.92),w:canvas.width,h:canvas.height};
+        source.cleanup();
+      }
+    } finally {await pdf.destroy();}
+  }
   await Promise.all(
-    collectPictures(items).map(async ({ key, src, crop, filter }) => {
+    pictures.filter(({src})=>!src.startsWith('pdf-page:')).map(async ({ key, src, crop, filter }) => {
       const data = src.startsWith('media:') ? await audioUrl(classId, src.slice(6)).catch(() => '') : src;
       if (!data) return;
       // A cropped or recoloured picture, or one from the web: a copy made here.

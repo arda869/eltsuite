@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Inline PDF audit</title></head><body><main id="audit">Inline export fixture</main><script type="module">
+await Promise.all([import('/src/lib/worksheet.ts'),import('/src/lib/worksheetHtml.ts'),import('/src/lib/pdfMake.ts'),import('/src/collab/export.ts'),import('/src/lib/folderExport.ts'),import('/src/lib/sheetMedia.ts'),import('jspdf'),import('html-to-image'),import('html2canvas')]);
+const {jsPDF}=await import('jspdf');
+const {saveFilePdf}=await import('/src/pdf/pdfData.ts');
+window.seedPdf=async()=>{
+  const source=new jsPDF();source.text('Original attachment page',15,20);
+  const {doc,setDoc}=await import('firebase/firestore');
+  const {db}=await import('/src/lib/firebase.ts');
+  await setDoc(doc(db,'sharedDocs','audit-source'),{title:'Audit attachment',type:'pdf'});
+  await saveFilePdf('audit-source',new Uint8Array(source.output('arraybuffer')),[{w:595,h:842}]);
+};
+document.querySelector('main').dataset.ready='true';
+</script></body></html>

@@ -108,7 +108,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   const isExam = item?.type === 'exam';
   const look = () => ({ lessonStyle: lessonStyleOf(cls), header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen');
-  const ids = picked ?? new Set(visible.map((x) => x.i));
+  const ids = picked ?? new Set(visible.filter(({t}) => !t.family || t.family === t.id).map((x) => x.i));
   const chosen = () => flattenWithSections(lesson!.tasks, ids, lessonStyleOf(cls));
 
   const [cover, setCover] = useState('');
@@ -177,12 +177,12 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
             <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across pages. Hidden tasks are left out.</span>
             {visible.length === 0 && <span className="load-error">{lesson.tasks.some((t) => t.kind !== 'section') ? 'Every task here is hidden from learners, so there’s nothing to print. Show a task first.' : 'This lesson has no tasks yet.'}</span>}
             <div className="field" style={{ gap: 6 }}>
-              <span>Tasks</span>
+              <span>Tasks</span>{visible.some(({t}) => t.family && t.family !== t.id) && <span className="hint">The main version is selected by default. Select the version your learners need. Selecting several prints each as a separate activity.</span>}
               <div className="aud-pick ws-tasks">
                 {visible.map(({ t, i }) => (
                   <label key={i} className="pop-check">
                     <input type="checkbox" checked={ids.has(i)} onChange={() => setPicked((p) => { const n = new Set(p ?? ids); if (n.has(i)) n.delete(i); else n.add(i); return n; })} />
-                    {t.title}
+                    {t.title}{t.variant ? ' · ' + t.variant : ''}
                   </label>
                 ))}
               </div>

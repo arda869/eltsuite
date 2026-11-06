@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import { useEffect, useState, type ButtonHTMLAttributes } from 'react';
 
 // One suite-owned mark: a rounded spark with a quiet orbit while work is running.
 export function AiMark({ active = false, size = 20 }: { active?: boolean; size?: number }) {
@@ -12,6 +12,9 @@ export function AiButton({ children, working = false, className = '', ...props }
   return <button {...props} className={'ai-button '+className}><AiMark active={working}/>{children}</button>;
 }
 
+// Inline working state with the time so far, so a long wait never looks stuck.
 export function AiProgress({ label, detail }: { label: string; detail?: string }) {
-  return <div className="ai-inline-progress" role="status"><AiMark active size={26}/><div><strong>{label}</strong>{detail&&<p>{detail}</p>}</div></div>;
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => { const t = window.setInterval(() => setSeconds(s => s + 1), 1000); return () => window.clearInterval(t); }, []);
+  return <div className="ai-inline-progress" role="status"><AiMark active size={26}/><div><strong>{label}</strong>{detail&&<p>{detail}</p>}</div><span className="ai-inline-elapsed" aria-hidden="true">{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</span></div>;
 }

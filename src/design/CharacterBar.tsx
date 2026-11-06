@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../lib/firebase';
@@ -20,6 +20,9 @@ const call = httpsCallable<Record<string, unknown>, { status?: string; variantId
 export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
   const [asset, setAsset] = useState<VideoAsset | null | undefined>(undefined);
   const [busy, setBusy] = useState('');
+  const applying = useRef(false);
+  const requests = useRef(new Map<string, string>());
+  const [quoteError, setQuoteError] = useState(false);
   const [quote, setQuote] = useState<{ limit: number | null; left: number | null } | null>(null);
   const cur = parseVariant(e.variant) ?? REF;
   const key = e.variant && e.variant !== 'ref' ? e.variant : 'ref';
@@ -36,11 +39,11 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
   const have = isRef || !!asset?.variants?.[wantKey];
   const same = (isRef ? 'ref' : wantKey) === key;
   useEffect(() => {
-    if (have || same || quote) return;
+    if (have || same || quote || quoteError) return;
     let on = true;
-    void call({ action: 'quote', fileId: cx.d.id }).then((r) => on && setQuote({ limit: r.data.limit ?? null, left: r.data.left ?? null })).catch(() => on && setQuote({ limit: null, left: null }));
+    void call({ action: 'quote', fileId: cx.d.id }).then((r) => on && setQuote({ limit: r.data.limit ?? null, left: r.data.left ?? null })).catch(() => on && setQuoteError(true));
     return () => void (on = false);
-  }, [have, same, quote, cx.d.id]);
+  }, [have, same, quote, quoteError, cx.d.id]);
 
   // Puts a variation (or the reference) in this element: from this file's media if it is already
   // there, otherwise copied in once and remembered in the file.
@@ -59,7 +62,7 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
       await saveMeta(cx.d.id, { charMedia: { ...(meta?.charMedia ?? {}), [mk]: media } });
     } else {
       const bmp = await createImageBitmap(await assetBlob(assetId)).catch(() => null);
-      if (bmp) (iw = bmp.width), (ih = bmp.height);
+      if (bmp) { iw = bmp.width; ih = bmp.height; bmp.close(); }
     }
     // Keep the feet where they are and the height; the width follows the new picture's shape.
     const ratio = iw && ih ? iw / ih : e.w / e.h;
@@ -67,7 +70,8 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
     cx.patch({ [e.id]: { img: media, iw, ih, crop: undefined, variant: variantKeyOrRef, x: Math.round(e.x + e.w / 2 - w / 2), w, view: want.view } });
   };
   const apply = async () => {
-    if (!e.char || !asset) return;
+    if (!e.char || !asset || applying.current) return;
+    applying.current = true;
     setBusy('One moment…');
     try {
       if (isRef) await show('ref', e.char);
@@ -76,7 +80,11 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
         if (id) await show(wantKey, id);
         else {
           setBusy('Drawing this view…');
-          const r = await call({ action: 'variant', fileId: cx.d.id, requestId: crypto.randomUUID(), characterId: e.char, variant: wantKey });
+          const requestKey = `${cx.d.id}:${e.char}:${wantKey}`;
+          const requestId = requests.current.get(requestKey) ?? crypto.randomUUID();
+          requests.current.set(requestKey, requestId);
+          const r = await call({ action: 'variant', fileId: cx.d.id, requestId, characterId: e.char, variant: wantKey });
+          if (r.data.status === 'failed') requests.current.delete(requestKey);
           if (r.data.status !== 'completed' || !r.data.variantId) throw new Error('not-ready');
           setQuote(null);
           await show(wantKey, r.data.variantId);
@@ -86,16 +94,18 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
       const msg = err instanceof Error && /resource-exhausted|daily uses|disabled/.test(err.message) ? err.message : 'We couldn’t show that view just now. Your character is unchanged. Check your connection and try again.';
       void tell(msg);
     } finally {
+      applying.current = false;
       setBusy('');
     }
   };
   const costNote = useMemo(() => {
     if (have || same) return '';
+    if (quoteError) return 'We couldn’t check your remaining images. Please reopen this character to try again.';
     if (!quote) return 'This view isn’t drawn yet. Making it uses one of your Designer images.';
     if (quote.limit === null) return 'This view isn’t drawn yet. Making it uses one Designer image (no daily limit on your account).';
     if (quote.left === 0) return 'This view isn’t drawn yet, and you’ve used all your Designer images for today.';
     return `This view isn’t drawn yet. Making it uses 1 of your Designer images (${quote.left} of ${quote.limit} left today).`;
-  }, [have, same, quote]);
+  }, [have, same, quote, quoteError]);
 
   if (asset === null) return <span className="dz-float-t">This character is no longer in your library. The picture stays as it is.</span>;
   const canEdit = !!asset && !busy;
@@ -124,7 +134,7 @@ export function CharacterBar({ cx, e }: { cx: Ctx; e: El }) {
             {busy || (isRef ? 'Use the reference picture' : 'Show this view')}
           </button>
         ) : (
-          <AiButton className="primary" disabled={!canEdit || quote?.left === 0} onClick={() => void apply()}>
+          <AiButton className="primary" disabled={!canEdit || !quote || quoteError || quote.left === 0} onClick={() => void apply()}>
             {busy || 'Draw this view'}
           </AiButton>
         ))}

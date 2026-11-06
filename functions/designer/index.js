@@ -2,7 +2,7 @@ import { characterReferences } from './characters.js';
 import {HttpsError } from 'firebase-functions/v2/https';
 import {onCall} from '../costs/callable.js';
 import { defineSecret } from 'firebase-functions/params';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldPath, getFirestore } from 'firebase-admin/firestore';
 import { authorizeTeacher } from '../speech/access.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { characterImage } from '../video/contract.js';
@@ -33,11 +33,21 @@ async function variant(db,uid,auth,d) {
  }
  const context=await usageContext(db,auth);
  const job=db.doc(`designerJobs/${uid}_${d.requestId}`);
+ const lock=db.doc(`designerJobs/variant_${d.characterId}_${d.variant.replace(/\./g,'-')}`);
  const existing=await db.runTransaction(async tx=>{
-  const s=await tx.get(job);
-  if(s.exists){if(s.get('fileId')!==d.fileId)throw new HttpsError('invalid-argument','Start a new image request.');return s.data();}
+  const [request, shared]=await Promise.all([tx.get(job),tx.get(lock)]);
+  if(request.exists){
+   if(request.get('fileId')!==d.fileId||request.get('characterId')!==d.characterId||request.get('variant')!==d.variant)
+    throw new HttpsError('invalid-argument','Start a new image request.');
+   return request.data();
+  }
+  if(shared.get('status')==='running'&&Date.now()-shared.get('createdAt')<360000)
+   return {status:'running'};
   await chargeFeature(tx,db,context,'designerImage');
-  tx.create(job,{owner:uid,fileId:d.fileId,status:'running',createdAt:Date.now(),variant:d.variant,characterId:d.characterId});return null;
+  const pending={owner:uid,fileId:d.fileId,status:'running',createdAt:Date.now(),variant:d.variant,characterId:d.characterId};
+  tx.create(job,pending);
+  tx.set(lock,pending);
+  return null;
  });
  if(existing)return {status:existing.status,variantId:existing.variantId??null};
  try {
@@ -50,10 +60,11 @@ async function variant(db,uid,auth,d) {
   await ref.set({kind:'character-variant',parent:d.characterId,variant:d.variant,owner:a.owner,ownerName:a.ownerName??'',org:a.org??'',readers:Array.isArray(a.readers)?a.readers:[],name:`${a.name} · ${d.variant}`,description:'',type:'image/png',size:bytes.length,parts,ready:false,createdAt:Date.now()});
   for(let i=0;i<parts;i++){const slice=bytes.subarray(i*PART,(i+1)*PART);await ref.collection('parts').doc(String(i)).set({data:slice.toString('base64'),size:slice.length});}
   await ref.update({ready:true});
-  await parent.set({variants:{[d.variant]:variantId}},{merge:true});
+  await parent.update(new FieldPath('variants',d.variant),variantId);
   await job.update({status:'completed',variantId});
+  await lock.update({status:'completed',variantId});
   return {status:'completed',variantId,cached:false};
- }catch{await job.update({status:'failed'});throw new HttpsError('unavailable','That view of the character couldn’t be made. Nothing in your file has changed.');}
+ }catch{await Promise.all([job.update({status:'failed'}),lock.update({status:'failed'})]);throw new HttpsError('unavailable','That view of the character couldn’t be made. Nothing in your file has changed.');}
 }
 
 export const designerImage=onCall({region:'us-central1',secrets:[key],timeoutSeconds:300,maxInstances:2,concurrency:4},async req=>{

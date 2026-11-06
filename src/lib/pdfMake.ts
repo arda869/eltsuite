@@ -16,6 +16,7 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' | 'A5' =
     const w = f.contentWindow as unknown as { __laidOut?: boolean };
     const t0 = Date.now();
     while (!w.__laidOut && Date.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 120));
+    if (!w.__laidOut) throw new Error('The worksheet pages did not finish laying out. Please try the export again.');
     await d.fonts.ready;
     await Promise.all([...d.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
     // The pages sit centred on a grey desk on screen; for the picture each is taken on its own, with

@@ -468,6 +468,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             const src = p.kind === 'url' ? (typeof p.url === 'string' ? p.url : await p.url()) : p.kind === 'char' ? p.src : '';
             const blob = p.kind === 'blob' ? p.blob : await fetch(src, { mode: 'cors' }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error('fetch'))));
             await addPicture(blob, { into: frame?.id, at, credit: p.kind === 'url' ? p.credit : undefined, name: p.name, throwOnError: true, el: p.kind === 'char' ? { char: p.id, variant: 'ref', ground: true } : undefined });
+            if (p.kind === 'blob') p.onApplied?.();
           } catch {
             void tell('We couldn’t add that picture. Check your connection and try again.');
           }

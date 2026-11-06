@@ -12,7 +12,7 @@ export type Payload =
   | { kind: 'scene'; key: string; name: string } // a backdrop for the page
   | { kind: 'url'; url: string | (() => Promise<string>); name: string; credit?: string; w?: number; h?: number } // a picture on the web (Wikimedia, a file in the archive); the address may be looked up at drop time
   | { kind: 'media'; id: string; name: string; w?: number; h?: number; img: string } // a picture already in this file's media
-  | { kind: 'blob'; blob: Blob; name: string; w?: number; h?: number } // a picture in memory (an AI result)
+  | { kind: 'blob'; blob: Blob; name: string; w?: number; h?: number; onApplied?: () => void } // a picture in memory (an AI result)
   | { kind: 'char'; id: string; name: string; src: string; w?: number; h?: number }; // a saved character, as its reference or a variant
 
 let current: Payload | null = null;

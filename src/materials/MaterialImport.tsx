@@ -1,3 +1,5 @@
+import { teacherPanel } from '../ai/teacherPanel';
+import { AiNotice } from '../ai/kit';
 import { AiButton, AiProgress } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
 import {importPicturePlans} from '../../functions/ai/import-pictures.js';
@@ -31,7 +33,7 @@ function typeSummary(task:Rebuilt['tasks'][number]):string {
  return [...counts].map(([name,n])=>name+(n>1?' × '+n:'')).join(' · ');
 }
 function normalizeReview(value:Rebuilt):Rebuilt{return {...value,tasks:value.tasks.map(t=>({...t,inlineElements:t.inlineElements??[],subTasks:Array.isArray(t.subTasks)?t.subTasks.map(st=>typeof st==='object'&&st!==null&&!Array.isArray(st)?{...st,inlineElements:st.inlineElements??[]}:st):[]}))};}
-export function MaterialImport({classId,itemId,creationType='lesson',onClose,onDone}:{classId:string;itemId?:string;creationType?:string;onClose:()=>void;onDone:(itemId:string,taskId:string)=>void}){
+function MaterialImportPanel({classId,itemId,creationType='lesson',onClose,onDone}:{classId:string;itemId?:string;creationType?:string;onClose:()=>void;onDone:(itemId:string,taskId:string)=>void}){
  const training=useTrainingClass(classId);
  const [sourcePreviews,setSourcePreviews]=useState<string[]>([]),[prepared,setPrepared]=useState<Record<string,PreparedPicture>>({});
  const [checks,setChecks]=useState<SourceCheck[]>([]),[editedTasks,setEditedTasks]=useState<Set<string>>(new Set());
@@ -69,7 +71,7 @@ export function MaterialImport({classId,itemId,creationType='lesson',onClose,onD
  return <div className={"scrim mi-scrim"+(activity.minimised?" ai-panel-minimised":"")} onClick={close}><div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="mi-title" className="dialog mi-dialog" onClick={e=>e.stopPropagation()} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){const nodes=Array.from(root.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,[href]')).filter(n=>n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===root.current)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===root.current)){e.preventDefault();first?.focus();}}}}>
  <header className="mi-header"><div><h2 id="mi-title">Import existing materials</h2><p>Rebuild {itemId?'one task':'a lesson, homework, exam or practice'} as editable activities. AI chooses the most suitable native inline task types. Review or change those choices before adding.</p></div><button type="button" className="btn ai-minimise" onClick={activity.minimise}>Continue working</button><button type="button" className="btn" disabled={!!busy} aria-label="Close import" onClick={close}><UiIcon name="videoClose"/></button></header>
  {busy&&<AiProgress label={busy+'…'} detail={`Elapsed ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}. Your existing materials are unchanged.`}/>}{busy==='Reading your file locally'&&<button type="button" className="btn" onClick={()=>reading.current?.abort()}>Cancel reading</button>}
- {error&&<p role="alert" className="error">{error}</p>}
+ {error&&<AiNotice kind="error">{error}</AiNotice>}
  {!rebuilt?<fieldset disabled={!!busy} className="mi-main"><legend>1. Choose your source</legend>
  {!itemId&&<label className="mi-field">Rebuild as<select value={type} onChange={e=>{reset();setType(e.target.value);}}>{['lesson','homework','exam','practice'].map(x=><option key={x} value={x}>{x[0].toUpperCase()+x.slice(1)}</option>)}</select></label>}
  <label className="mi-field">PDF pages or PowerPoint slides (optional)<input placeholder="All, up to six · e.g. 1-3 or 2, 4" value={pages} onChange={e=>setPages(e.target.value)}/></label><p className="hint">Set the range before choosing the file. Up to six pages or images and 30,000 characters per import.</p>
@@ -93,3 +95,5 @@ export function TaskStartChoice({onBlank,onImport,onClose}:{onBlank:()=>void;onI
  const ref=useRef<HTMLDivElement>(null);useEffect(()=>{const old=document.activeElement as HTMLElement;ref.current?.querySelector('button')?.focus();return()=>old?.focus();},[]);
  return <div className="scrim mi-scrim" onClick={onClose}><div ref={ref} className="dialog" role="dialog" aria-modal="true" aria-labelledby="mi-new-task" onClick={e=>e.stopPropagation()} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Tab'){const a=Array.from(ref.current!.querySelectorAll('button'));if(e.shiftKey&&document.activeElement===a[0]){e.preventDefault();a.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===a.at(-1)){e.preventDefault();a[0]?.focus();}}}}><h2 id="mi-new-task">Add a task</h2><p>Start with a blank task, or rebuild a task you already have.</p><div className="mi-actions"><button className="btn primary" onClick={onBlank}><UiIcon name="plus"/> Start blank</button><ImportMaterialsButton onClick={onImport}/><button className="btn" onClick={onClose}>Cancel</button></div></div></div>;
 }
+
+export const MaterialImport = teacherPanel(MaterialImportPanel);
