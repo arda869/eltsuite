@@ -28,6 +28,8 @@ export const checkSubTask = onCall({ region: 'us-central1', maxInstances: 10 }, 
   ]);
   if (!member.exists || !item.exists || !task.exists || !answer.exists || answer.get('learnerUid') !== uid || answer.get('itemId') !== itemId)
     throw new HttpsError('permission-denied', 'This task is not available to you.');
+  if (action === 'check' && answer.get('checked') === true)
+    throw new HttpsError('failed-precondition', 'This task has already been checked.');
   const t = task.data(), i = item.data();
   if (i.locked || t.locked || t.hidden || t.kind === 'section' || i.type === 'exam' || t.exam || (t.restricted && !(t.allowed ?? []).includes(member.get('learnerId'))))
     throw new HttpsError('permission-denied', 'This task cannot be checked now.');

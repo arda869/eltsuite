@@ -2545,6 +2545,15 @@ const J = {
     await s.p.reload();
     await see(s.p, 'text=Part a checked', 'saved first part feedback');
     await see(s.p, 'text=Part b checked', 'saved second part feedback');
+    await s.p.evaluate(({classId}) => {
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      delete fs[`classes/${classId}/answers/parts-check_${sessionStorage.getItem('mockuid')}`].checkedParts;
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },{classId:s.demo.classId});
+    await s.p.reload();
+    await see(s.p,'text=Part a checked','legacy checked part feedback');
+    await see(s.p,'text=Part b checked','legacy checked second part feedback');
+    if(await s.p.getByRole('button',{name:'Check part a'}).count())throw Error('An already-checked task offered to check its first part again.');
     return s;
   },
   'Learner signs in and opens the lesson': async (b) => {
