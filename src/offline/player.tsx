@@ -11,6 +11,8 @@ import type {GameConfig} from '../games/model';
 import type {ExportTask} from '../lib/textformat';
 import type {LessonStyle} from '../lib/lessonStyle';
 import '../styles.css';
+import '../friday-ui.css';
+import '../cohesion.css';
 import '../lessons/youngLesson.css';
 import './player.css';
 export type OfflinePackage={title:string;game?:GameConfig;tasks?:ExportTask[];warnings?:string[];lessonStyle?:LessonStyle;themeColor?:string;textScale?:number;reading?:{font?:string;contrast?:boolean;focus?:boolean;letter?:number;line?:number}};
