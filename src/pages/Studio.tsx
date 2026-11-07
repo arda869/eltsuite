@@ -1,7 +1,7 @@
 import { HelpMenu } from '../help/HelpMenu';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { saveScript } from '../editor/MediaNode';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
@@ -14,9 +14,11 @@ import { InstrEditor } from '../editor/InstrEditor';
 import { updateLibTask, type LibTask } from '../lib/libtasks';
 import { findUses, loadManifest, replaceSound, soundUrl, useArchive, type ArchiveItem, type Manifest } from '../lib/archive';
 import { decodeSound } from '../lib/sound';
-import { SoundEditor, type SoundSource } from '../media/SoundEditor';
+import { SoundEditor, type SavedSound, type SoundSource } from '../media/SoundEditor';
 import { ChainIcon } from './LibraryParts';
 import { setFileFavicon } from '../components/FileIcon';
+
+const VideoEditor = lazy(() => import('../video/VideoEditor').then(module => ({ default: module.VideoEditor })));
 
 // The studios: full-screen editors that open in their own tab, with room to work.
 // Task editor (a task in the resources library) and Sound editor (a sound in the library).
@@ -190,4 +192,49 @@ export function SoundStudio() {
     source={source} classId={classId} folder={item.folder} backLabel="Close without saving" onBack={finish} onSaved={() => setDone(true)} onSaveScript={saveLines}
     replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, progress) => replaceSound(uid, item, blob, meta, progress) }}
   /> : <Loader label="Opening the recording" />}</main></div>;
+}
+
+export function SoundUploadStudio() {
+  const [query] = useSearchParams();
+  const classId = query.get('class') || '';
+  const target = query.get('target') || '';
+  const [source, setSource] = useState<SoundSource | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [added, setAdded] = useState(false);
+  const channel = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    if (!target) return;
+    const connection = new BroadcastChannel('elt-recording-upload');
+    channel.current = connection;
+    connection.onmessage = (event: MessageEvent) => {
+      if (event.data?.type === 'added' && event.data.target === target) setAdded(true);
+    };
+    return () => { connection.close(); channel.current = null; };
+  }, [target]);
+  const openFile = async (file?: File) => {
+    if (!file) return;
+    setError('');
+    if (file.type.startsWith('video/')) { setVideoFile(file); return; }
+    setBusy(true);
+    try {
+      const buffer = await decodeSound(file);
+      if (buffer.duration > 20 * 60) throw Error('Recordings can be up to 20 minutes. Trim this file first or use a link.');
+      setSource({ buffer, name: file.name.replace(/\.[a-z0-9]+$/i, '') || 'Recording', file });
+    } catch (cause) {
+      setError(cause instanceof Error && cause.message.startsWith('Recordings can') ? cause.message : 'We couldn’t open that sound. Try an MP3, M4A, WAV or OGG file.');
+    } finally { setBusy(false); }
+  };
+  const onSaved = (result: Pick<SavedSound, 'mediaId' | 'archiveId' | 'title'>, kind: 'audio' | 'video' = 'audio') => {
+    setSaved(true);
+    if (target) channel.current?.postMessage({ type: 'saved', target, classId, kind, mediaId: result.mediaId, archiveId: result.archiveId, title: result.title });
+  };
+  const finish = () => window.opener ? window.close() : (window.location.href = '/recordings');
+  if (!classId) return <div className="studio"><StudioBar app="Recordings" where="Upload" /><p className="hint studio-missing">Open this from a lesson to add a recording.</p></div>;
+  if (saved) return <div className="studio"><StudioBar app="Recordings" where="Saved" /><div className="studio-done"><strong>{videoFile ? 'Video saved' : 'Recording saved'}</strong><span className="hint">{added ? videoFile ? 'The video was added to your lesson.' : 'The recording and its script were added to your lesson.' : 'This file is in your Resources library. If the lesson tab has closed, add it from there.'}</span><button type="button" className="btn primary" onClick={finish}>Done</button></div></div>;
+  if (videoFile) return <div className="sx-full" role="dialog" aria-label="Video editor"><Suspense fallback={<Loader label="Opening the video editor" />}><VideoEditor initialFile={videoFile} classId={classId} onBack={() => setVideoFile(null)} onSaved={result => onSaved(result, 'video')} /></Suspense></div>;
+  if (source) return <div className="studio studio-dark"><main className="studio-sound"><SoundEditor source={source} classId={classId} onSaved={onSaved} onBack={() => setSource(null)} backLabel="Choose another file" /></main></div>;
+  return <div className="studio"><StudioBar app="Recordings" where="Upload to lesson" /><main className="studio-upload"><h1>Upload sound or video</h1><p>Choose a file. It will open here for editing while your lesson stays open in its tab. For recordings with speech, we’ll draft an editable script.</p><label className="studio-upload-pick btn primary">Choose a file<input type="file" accept="audio/*,video/*,.mp3,.m4a,.wav,.ogg" hidden onChange={event => { void openFile(event.target.files?.[0]); event.target.value = ''; }} /></label><p className="hint">Sound: MP3, M4A, WAV or OGG, up to 20 minutes · Video: up to 100 MB</p>{busy && <p role="status">Opening the recording…</p>}{error && <p role="alert">{error}</p>}</main></div>;
 }

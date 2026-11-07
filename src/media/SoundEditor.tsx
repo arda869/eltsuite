@@ -570,6 +570,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     } catch (e) { setRecError((e as Error).message + ' Your original audio is kept. Select the clip and choose Generate script to retry.'); }
     finally { transcriptionLock.current = false; setTranscribing(false); }
   };
+  const startedUploadScript = useRef(false);
+  useEffect(() => {
+    if (startedUploadScript.current || !source.file || source.timedScript?.length || source.script?.length) return;
+    const firstClip = initial.tracks.find(track => track.kind === 'voice')?.clips[0];
+    if (!firstClip) return;
+    startedUploadScript.current = true;
+    void makeTranscript(firstClip);
+    // The uploaded source is transcribed once; editing the project does not start another draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source.file, initial]);
   // The take as it comes in: one peak every 50 ms, drawn on the timeline straight away.
   const [livePeaks, setLivePeaks] = useState<number[]>([]);
   const liveStop = useRef<() => void>(() => {});
@@ -1213,6 +1223,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <span className="sx-sep" aria-hidden="true" />
         <input ref={nameRef} className="sx-name" size={Math.max(18, title.length + 2)} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the recording" aria-label="Name" />
         <span style={{ flex: 1 }} />
+        {transcribing && <span className="sx-transcribing" role="status"><AiMark active size={18} /> Drafting an editable script…</span>}
         {error && <span className="hint warn">{error}</span>}
         <span className="sx-acts">
           <HelpMenu />
