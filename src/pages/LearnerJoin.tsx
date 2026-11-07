@@ -1,15 +1,12 @@
-import { NSelect } from '../components/Select';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth } from '../lib/firebase';
 import { learnerEmail, learnerPassword } from '../lib/learners';
 import { Wordmark } from '../components/Wordmark';
 import { UiIcon } from '../components/UiIcon';
 import { live, mainOrigin } from '../lib/site';
-
-type Found = { code: string; className: string; roster: { id: string; name: string }[] };
 
 const normalise = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})(\d)/, '$1-$2').slice(0, 7);
 
@@ -27,8 +24,7 @@ function lastCode() {
 // The learners' home page (learn.eltsuite.com): join your class with its code and your PIN.
 export function LearnerJoin({ home = false }: { home?: boolean }) {
   const [code, setCode] = useState(lastCode());
-  const [found, setFound] = useState<Found | null>(null);
-  const [learnerId, setLearnerId] = useState('');
+  const [name, setName] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -37,27 +33,6 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  async function lookUp(value: string) {
-    setFound(null);
-    setError('');
-    if (!/^[A-Z]{3}-\d{3}$/.test(value)) return;
-    try {
-      const s = await getDoc(doc(db, 'classCodes', value));
-      if (!s.exists()) return setError('We can’t find that class code. Check it with your teacher.');
-      const d = s.data() as { className: string; roster?: Found['roster'] };
-      const roster = [...(d.roster ?? [])].sort((a, b) => a.name.localeCompare(b.name));
-      setFound({ code: value, className: d.className, roster });
-      setLearnerId((id) => (roster.some((r) => r.id === id) ? id : ''));
-    } catch {
-      setError('No connection. Check your internet and try again.');
-    }
-  }
-
-  useEffect(() => {
-    lookUp(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
 
   function setDigit(i: number, v: string) {
     const d = v.replace(/\D/g, '');
@@ -75,23 +50,26 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!found || !learnerId || !ready) return;
+    if (!/^[A-Z]{3}-\d{3}$/.test(code) || name.trim().length < 2 || !ready) return;
     setBusy(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, learnerEmail(learnerId), learnerPassword(found.code, secret));
+      const resolved = await httpsCallable<{ code: string; name: string }, { learnerId: string }>(getFunctions(app, 'us-central1'), 'resolveLearnerSignIn')({ code, name: name.trim() });
+      await signInWithEmailAndPassword(auth, learnerEmail(resolved.data.learnerId), learnerPassword(code, secret));
       try {
-        localStorage.setItem('lastClassCode', found.code);
+        localStorage.setItem('lastClassCode', code);
       } catch {
         /* ignore */
       }
     } catch (err) {
       const c = (err as { code?: string }).code ?? '';
       setError(
-        c === 'auth/too-many-requests'
+        c === 'functions/resource-exhausted' || c === 'auth/too-many-requests'
           ? 'Too many tries. Wait a minute, or ask your teacher for your PIN.'
-          : c === 'auth/network-request-failed'
+          : c === 'auth/network-request-failed' || c === 'functions/unavailable'
             ? 'No connection. Check your internet and try again.'
+            : c === 'functions/not-found'
+              ? 'We couldn’t match that class code and name. Check with your teacher.'
             : usePassword
               ? 'That password doesn’t match. Try again.'
               : 'That PIN doesn’t match. Try again, or ask your teacher.',
@@ -142,36 +120,27 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
             spellCheck={false}
             style={{ letterSpacing: '0.08em' }}
           />
-          {found && <span className="notice small">{found.className}</span>}
         </label>
 
-        {found && (
+        {/^[A-Z]{3}-\d{3}$/.test(code) && (
           <label className="field">
-            Your name
-            <NSelect aria-label="Your name" value={learnerId} onChange={(e) => setLearnerId(e.target.value)}>
-              <option value="">Choose your name</option>
-              {found.roster.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </NSelect>
-            {found.roster.length === 0 && <span className="hint">Your teacher hasn’t added learners to this class yet.</span>}
+            Your full name
+            <input aria-label="Your full name" value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} />
           </label>
         )}
 
-        {found && learnerId && usePassword && (
+        {/^[A-Z]{3}-\d{3}$/.test(code) && name.trim().length >= 2 && usePassword && (
           <label className="field">
             Your password
             <input type="password" value={password} autoFocus autoComplete="current-password" onChange={(e) => setPassword(e.target.value)} />
           </label>
         )}
-        {found && learnerId && (
+        {/^[A-Z]{3}-\d{3}$/.test(code) && name.trim().length >= 2 && (
           <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => (setUsePassword((v) => !v), setError(''))}>
             {usePassword ? 'Use my PIN instead' : 'I use a password'}
           </button>
         )}
-        {found && learnerId && !usePassword && (
+        {/^[A-Z]{3}-\d{3}$/.test(code) && name.trim().length >= 2 && !usePassword && (
           <fieldset className="pin-field">
             <legend>PIN</legend>
             <div className="pin-boxes">
@@ -194,7 +163,8 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
 
         {error && <span className="error" role="alert">{error}</span>}
 
-        <button className="btn primary tall block" disabled={busy || !found || !learnerId || !ready}>
+        {!busy && (!/^[A-Z]{3}-\d{3}$/.test(code) || name.trim().length < 2 || !ready) && <span className="hint">Enter your class code, full name and {usePassword ? 'password' : 'four-digit PIN'} to join.</span>}
+        <button className="btn primary tall block" disabled={busy || !/^[A-Z]{3}-\d{3}$/.test(code) || name.trim().length < 2 || !ready}>
           {busy ? 'Joining…' : 'Join class'}
         </button>
         <div className="row-between small">

@@ -29,7 +29,6 @@ import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item } from '../lib/classes';
 import {
   answerRef,
-  isCorrect,
   isAnswered,
   scoreTask,
   loadKey,
@@ -67,6 +66,7 @@ import { chooseLevel, familyOf, isVariant, roomOf, useGroupSets, useMyLevels, us
 import { TaskRenderer } from '../components/TaskRenderer';
 import { subTasksOf } from '../editor/SubTask';
 import { checkSubTask } from '../lib/subtaskCheck';
+import { assessTask, resubmitCorrection } from '../lib/assessment';
 import { ResponseSaveQueue } from '../lib/responseSaveQueue';
 
 export function LearnerLesson() {
@@ -202,7 +202,6 @@ export function LearnerLesson() {
     loadKey(classId, itemId, current).then(setRevealKey).catch(() => setRevealKey(null));
   }, [revealN !== 0 || singles.length > 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const attemptsRef = useRef(0);
   // Load this learner's saved answers for the current task.
   useEffect(() => {
     if (!classId || !current || !user) return;
@@ -222,7 +221,6 @@ export function LearnerLesson() {
       setPendingSave(s.metadata.hasPendingWrites);
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
-      attemptsRef.current = d?.attempts ?? 0;
       setMarks(d?.marks ?? {});
       setCorrections(d?.corrections ?? {});
       setReadyAnswer(`${classId}:${current}:${user.uid}`);
@@ -285,7 +283,7 @@ export function LearnerLesson() {
     if (!(await saves.flush(base.taskId))) { setCheckError('Your answer could not be saved. Retry the save before resubmitting.'); return; }
     try {
       await saveResponses(classId, base, responses, checked);
-      await setDoc(answerRef(classId, base.taskId, user.uid), { ...base, corrections: { [qid]: { ...corrections[qid], status: 'resubmitted', at: Date.now() } } }, { merge: true });
+      await resubmitCorrection(classId, base.taskId, qid);
     } catch {
       setCheckError('Your answer could not be resubmitted. Check your connection and try again.');
     }
@@ -337,9 +335,8 @@ export function LearnerLesson() {
 
   async function finishCheck() {
     if (!base) return;
-    const k = await loadKey(classId, itemId, base.taskId);
-    const r = scoreTask(qs, k, responses);
-    await saveResponses(classId, base, responses, true, { score: r.score, total: r.total });
+    const result = await assessTask(classId, itemId, base.taskId);
+    const k = result.key ?? {};
     if (item?.type === 'practice' || item?.type === 'homework') recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, k, responses).catch(() => {});
     setKey(k);
     setChecked(true);
@@ -358,21 +355,15 @@ export function LearnerLesson() {
       setBusy(false);
       return;
     }
-    // Do not read the protected key from the optimistic checked snapshot.
-    // check() owns feedback until the submission write is acknowledged.
+    // The server marks and scores the stored answer before returning its protected key.
     dirty.current = true;
     window.clearTimeout(timer.current);
-    let submitted=false;
     try {
-      const late=!!item?.due && Date.now()>item.due;
-      // Save the submission event before loading a key or calculating feedback.
-      await saveResponses(classId, base, responses, true, undefined, {submittedAt:Date.now(),...(late?{late:true}:{}),attempts:(attemptsRef.current??0)+1});
-      submitted=true;
       await finishCheck();
     } catch {
-      setCheckError(submitted?'Your answers are saved, but feedback could not load. Try loading feedback again.':'Your answers could not be submitted. Check your connection and try again.');
+      setCheckError('Your answers are saved, but feedback could not load. Try loading feedback again.');
     } finally {
-      dirty.current = !submitted;
+      dirty.current = false;
       setBusy(false);
     }
   }
@@ -408,11 +399,10 @@ export function LearnerLesson() {
 
   async function tryWrongAgain(all = false) {
     if (!base || !key) return;
-    const kept: Responses = {};
-    if (!all) for (const q of qs) if (isCorrect(key[q.id], responses[q.id]) || q.type === 'writing') kept[q.id] = responses[q.id];
     setCheckError('');
     try {
-      await saveResponses(classId, base, kept, false, undefined, { checkedParts: [] });
+      const reset = await assessTask(classId, itemId, base.taskId, 'reset', all);
+      const kept = reset.responses ?? {};
       setResponses(kept);
       setChecked(false);
       setCheckedParts([]);
@@ -458,7 +448,7 @@ export function LearnerLesson() {
         setCheckError('The exam was not handed in because some answers could not be saved. Reconnect and try again.');
         return;
       }
-      await submitExam(classId, scope.id, user.uid);
+      await submitExam(classId, scope.id, user.uid, itemId);
     } catch {
       setCheckError('Your answers were saved, but the exam was not handed in. Check your connection and try again.');
     } finally {
@@ -643,7 +633,7 @@ export function LearnerLesson() {
                       <li>{tr('You won’t see the answers until your teacher shares the results.')}</li>
                       <li>When you hand it in{scope.minutes ? ' or the time is up' : ''}, your answers are locked.</li>
                     </ul>
-                    <button type="button" className="btn primary tall" disabled={examState === 'loading'} onClick={() => user && startExam(classId, scope.id, user.uid, learnerId, profile?.role === 'learner' ? profile.displayName : '')}>
+                    <button type="button" className="btn primary tall" disabled={examState === 'loading'} onClick={() => user && startExam(classId, scope.id, user.uid, learnerId, profile?.role === 'learner' ? profile.displayName : '', itemId)}>
                       Start the exam
                     </button>
                   </div>

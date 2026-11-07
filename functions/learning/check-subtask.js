@@ -15,6 +15,7 @@ const subTasksOf = (content) => {
 export const checkSubTask = onCall({ region: 'us-central1', maxInstances: 10 }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Sign in first.');
+  if (request.auth?.token?.proxyBy) throw new HttpsError('permission-denied', 'This task is not available to you.');
   const { classId, itemId, taskId, partId, action } = request.data ?? {};
   if (![classId, itemId, taskId].every((x) => typeof x === 'string' && x.length > 0 && x.length < 150) || !['check', 'read'].includes(action))
     throw new HttpsError('invalid-argument', 'Choose a task and a part.');
@@ -26,12 +27,12 @@ export const checkSubTask = onCall({ region: 'us-central1', maxInstances: 10 }, 
   const [member, item, task, answer] = await Promise.all([
     root.collection('members').doc(uid).get(), itemRef.get(), taskRef.get(), answerRef.get(),
   ]);
-  if (!member.exists || !item.exists || !task.exists || !answer.exists || answer.get('learnerUid') !== uid || answer.get('itemId') !== itemId)
+  if (!member.exists || !item.exists || !task.exists || !answer.exists || answer.get('learnerUid') !== uid || answer.get('itemId') !== itemId || answer.get('learnerId') !== member.get('learnerId'))
     throw new HttpsError('permission-denied', 'This task is not available to you.');
   if (action === 'check' && answer.get('checked') === true)
     throw new HttpsError('failed-precondition', 'This task has already been checked.');
   const t = task.data(), i = item.data();
-  if (i.locked || t.locked || t.hidden || t.kind === 'section' || i.type === 'exam' || t.exam || (t.restricted && !(t.allowed ?? []).includes(member.get('learnerId'))))
+  if (i.hidden || i.locked || t.locked || t.hidden || t.kind === 'section' || i.type === 'exam' || t.exam || (t.restricted && !(t.allowed ?? []).includes(member.get('learnerId'))))
     throw new HttpsError('permission-denied', 'This task cannot be checked now.');
   const content = t.restricted
     ? (await taskRef.collection('private').doc('body').get()).get('content')
@@ -58,16 +59,20 @@ export const checkSubTask = onCall({ region: 'us-central1', maxInstances: 10 }, 
   if (action === 'check' && (!target || !target.questions.length || !target.questions.some((q) => isAnswered(responses[q.id]))))
     throw new HttpsError('failed-precondition', 'Answer at least one question in this part first.');
   const checkedParts = action === 'check' && !stored.includes(partId) ? [...stored, partId] : stored;
+  const checkedResponses = { ...(answer.get('checkedResponses') ?? {}) };
+  if (action === 'check' && !stored.includes(partId)) {
+    for (const q of target.questions) checkedResponses[q.id] = responses[q.id] ?? null;
+  }
   const keySnap = await taskRef.collection('private').doc('key').get();
   const fullKey = keySnap.data() ?? {};
   const visibleIds = new Set(partQuestions.filter((part) => checkedParts.includes(part.id)).flatMap((part) => part.questions.map((q) => q.id)));
   const key = Object.fromEntries([...visibleIds].filter((id) => fullKey[id]).map((id) => [id, fullKey[id]]));
   const complete = parts.every((part) => checkedParts.includes(part.id));
   if (action === 'check') {
-    const update = { checkedParts, updatedAt: FieldValue.serverTimestamp() };
+    const update = { checkedParts, checkedResponses, updatedAt: FieldValue.serverTimestamp() };
     if (complete) {
       const totals = allQuestions.reduce((sum, q) => {
-        const s = scoreQuestion(fullKey[q.id], responses[q.id]);
+        const s = scoreQuestion(fullKey[q.id], Object.hasOwn(checkedResponses, q.id) ? checkedResponses[q.id] : responses[q.id]);
         return { score: sum.score + s.got, total: sum.total + s.max };
       }, { score: 0, total: 0 });
       Object.assign(update, totals, { checked: true, submittedAt: Date.now(), attempts: (answer.get('attempts') ?? 0) + 1 });

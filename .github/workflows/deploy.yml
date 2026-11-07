@@ -37,8 +37,11 @@ jobs:
       - name: Feature discovery privacy rules
         run: |
           # Match PR checks: respect the app lockfile and keep the Firebase CLI in npx's tool cache.
-          npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs && ANSWER_TEST_PROJECT=demo-feature-discovery node test/learner-answer-access.mjs && node test/invitation-requests-access.mjs && SONG_TEST_PROJECT=demo-feature-discovery node test/speech/song-jobs.mjs"
+      - name: Assessment and messaging security boundaries
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security "node test/security-phase2-firestore.mjs"
+      - name: Live classroom security boundaries
+        run: npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security "node test/security-phase2-rtdb.mjs"
       - name: Per-user AI allowance transactions and security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs && node test/ai/costs-integration.mjs"
       - name: Help assistant checks
@@ -133,13 +136,6 @@ jobs:
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
 
-      - name: Deploy database rules
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: |
-          npm install --no-save --no-audit --no-fund google-auth-library@9
-          node scripts/deploy-rules.mjs
-
       - name: Deploy Designer image service
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
@@ -163,7 +159,7 @@ jobs:
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
           node functions/games/check-connection.mjs
@@ -199,6 +195,13 @@ jobs:
             echo "::error::Site deploy failed: ${msg:-see log}"
             exit 1
           fi
+
+      - name: Deploy database rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npm install --no-save --no-audit --no-fund google-auth-library@9
+          node scripts/deploy-rules.mjs
 
       - name: Deploy server functions
         env:

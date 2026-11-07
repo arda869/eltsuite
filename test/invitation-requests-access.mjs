@@ -1,5 +1,4 @@
-// Invitation requests from the public homepage under the production Firestore rules, in an emulator
-// only: anyone can ask (in the right shape), only a super admin can read, mark or delete them.
+// Public requests go through a rate-limited callable. Clients cannot write them directly.
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -13,9 +12,10 @@ try {
   const owner = env.authenticatedContext('owner', { email: 'ardanurioglu@gmail.com', email_verified: true }).firestore();
   const ok = { name: 'Sam Reed', email: 'sam@example.com', place: 'A school in Porto', teaches: 'Adults', note: 'Mostly B1 and B2 classes.', at: serverTimestamp() };
 
-  // Anyone can ask, with or without the optional fields.
-  const asked = await assertSucceeds(addDoc(collection(guest, 'invitationRequests'), ok));
-  await assertSucceeds(addDoc(collection(guest, 'invitationRequests'), { name: 'Ana', email: 'ana@example.com', at: serverTimestamp() }));
+  // Even a well-formed public write must go through the server's rate limiter.
+  await assertFails(addDoc(collection(guest, 'invitationRequests'), ok));
+  const askedId = 'server-created';
+  await env.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), 'invitationRequests', askedId), ok));
 
   // Only in this shape.
   for (const bad of [
@@ -30,18 +30,18 @@ try {
 
   // Nobody else can read, change or delete them.
   for (const db of [guest, teacher]) {
-    await assertFails(getDoc(doc(db, 'invitationRequests', asked.id)));
+    await assertFails(getDoc(doc(db, 'invitationRequests', askedId)));
     await assertFails(getDocs(collection(db, 'invitationRequests')));
-    await assertFails(updateDoc(doc(db, 'invitationRequests', asked.id), { invited: 'ABCD-EF23' }));
-    await assertFails(deleteDoc(doc(db, 'invitationRequests', asked.id)));
+    await assertFails(updateDoc(doc(db, 'invitationRequests', askedId), { invited: 'ABCD-EF23' }));
+    await assertFails(deleteDoc(doc(db, 'invitationRequests', askedId)));
   }
-  await assertFails(setDoc(doc(guest, 'invitationRequests', asked.id), ok));
+  await assertFails(setDoc(doc(guest, 'invitationRequests', askedId), ok));
 
   // A super admin reads them, marks one as invited (and nothing else), and deletes one.
   await assertSucceeds(getDocs(collection(owner, 'invitationRequests')));
-  await assertSucceeds(updateDoc(doc(owner, 'invitationRequests', asked.id), { invited: 'ABCD-EF23', invitedAt: Date.now(), invitedBy: 'Arda' }));
-  await assertFails(updateDoc(doc(owner, 'invitationRequests', asked.id), { email: 'other@example.com' }));
-  await assertSucceeds(deleteDoc(doc(owner, 'invitationRequests', asked.id)));
+  await assertSucceeds(updateDoc(doc(owner, 'invitationRequests', askedId), { invited: 'ABCD-EF23', invitedAt: Date.now(), invitedBy: 'Arda' }));
+  await assertFails(updateDoc(doc(owner, 'invitationRequests', askedId), { email: 'other@example.com' }));
+  await assertSucceeds(deleteDoc(doc(owner, 'invitationRequests', askedId)));
   const inviteCode = { by: 'owner', maxUses: 1, uses: 0, usedBy: {} };
   const accessCode = 'GRNT-AB23';
   const plainCode = 'BASE-AB23';
@@ -72,7 +72,7 @@ try {
   const aiGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'aiPilot', 'sam')));
   const trainerGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'accounts', 'sam')));
   if (!aiGrant.data()?.enabled || !trainerGrant.data()?.teacherTrainer || trainerGrant.data()?.plan !== 'teacher') throw Error('Invitation grants were not applied.');
-  console.log('Invitation request rules passed: anyone can ask in the right shape; only a super admin reads, marks or deletes.');
+  console.log('Invitation request rules passed: client writes blocked; only a super admin reads, marks or deletes.');
 } finally {
   await env.cleanup();
 }

@@ -122,8 +122,9 @@ let gone = 0;
 for (const d of all.docs) {
   const r = d.data();
   const used = r.state === 'used' && Date.now() - (r.usedAt ?? 0) > 8 * 3600e3;
+  const finished = r.state === 'finished';
   const old = r.state === 'free' && Date.now() - (r.at ?? 0) > 25 * DAY;
-  if (!used && !old) continue;
+  if (!used && !finished && !old) continue;
   await api('/rooms/' + d.id, undefined, 'DELETE');
   await d.ref.delete();
   gone++;

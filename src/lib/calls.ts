@@ -1,8 +1,9 @@
-import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, query, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore';
+import { arrayUnion, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { onEngineEnded, startEngine, stopEngine } from './callEngine';
 import { setActivity } from './status';
 import { useEffect, useState } from 'react';
-import { auth, db } from './firebase';
+import { app, auth, db } from './firebase';
 import { chatTitle, sendMsg, type Chat, type Person } from './chat';
 import { currentOrg, limitMessage, orgHasRoom } from './admin';
 import { LimitError } from './limitError';
@@ -14,6 +15,11 @@ export type CallKind = 'audio' | 'video';
 export type ChatCall = { url: string; room: string; kind: CallKind; by: string; byName: string; at: number; ended?: number | null; declined?: string[]; code?: string };
 export const RING_MS = 45_000;
 export const CALL_MAX_MS = 8 * 3600e3;
+const finishReservedRoom = (url: string) => {
+  const room = url.split('/').filter(Boolean).pop() ?? '';
+  if (!room.startsWith('r-') || !auth.currentUser) return;
+  void httpsCallable<{ room: string }, { finished: boolean }>(getFunctions(app, 'us-central1'), 'endCallRoom')({ room }).catch(() => {});
+};
 
 // What to tell someone when a call cannot start: no free room, or the organisation's call minutes used up.
 export const callStartError = (e: unknown, fallback: string) => (e instanceof NoRoomError || e instanceof LimitError ? e.message : fallback);
@@ -32,20 +38,8 @@ export async function takeRoom(forWhat: string): Promise<{ url: string; name: st
   // An organisation that has used its call minutes this month starts no new call (see firestore.rules).
   const org = currentOrg();
   if (org && !orgHasRoom(org, 'callMinutes')) throw new LimitError(limitMessage(org, 'callMinutes'));
-  for (let tries = 0; tries < 5; tries++) {
-    const free = await getDocs(query(collection(db, 'callRooms'), where('state', '==', 'free'), limit(10)));
-    if (free.empty) throw new NoRoomError();
-    const pick = free.docs[Math.floor(Math.random() * free.docs.length)];
-    const ref = doc(db, 'callRooms', pick.id);
-    const got = await runTransaction(db, async (tx) => {
-      const s = await tx.get(ref);
-      if (!s.exists() || s.data().state !== 'free') return null;
-      tx.update(ref, { state: 'used', by: uid, usedAt: Date.now(), for: forWhat });
-      return { url: String(s.data().url), name: s.id };
-    }).catch(() => null);
-    if (got) return got;
-  }
-  throw new NoRoomError();
+  const result = await httpsCallable<{ forWhat: string }, { url: string; name: string }>(getFunctions(app, 'us-central1'), 'startCallRoom')({ forWhat });
+  return result.data;
 }
 
 // A call in a chat: everyone in it is called; the room stays theirs until the call ends.
@@ -103,10 +97,12 @@ export function leaveCall() {
   const others = stopEngine();
   say({ t: 'gone' });
   if (others > 0) return;
+  finishReservedRoom(c.url);
   if (c.chatId) void updateDoc(doc(db, 'chats', c.chatId), { 'call.ended': Date.now() }).catch(() => {});
   if (c.sessionId) void updateDoc(doc(db, 'sessions', c.sessionId), { live: null }).catch(() => {});
 }
 onEngineEnded(() => {
+  if (current) finishReservedRoom(current.url);
   set(null);
   say({ t: 'gone' });
 });

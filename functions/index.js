@@ -5,6 +5,11 @@ export { quizShow } from './quiz/index.js';
 export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
 export { checkSubTask } from './learning/check-subtask.js';
+export { assessTask, manageExam, resubmitCorrection } from './learning/assessment.js';
+export { claimLiveClass, classTeachingAccessChanged } from './learning/class-access.js';
+export { resolveLearnerSignIn } from './learning/join.js';
+export { requestInvitation } from './accounts/invitations.js';
+export { startCallRoom, endCallRoom } from './learning/call-rooms.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a
 // learner, to see ELT Suite exactly as they do. Only super admins (the owner, or someone in

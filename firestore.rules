@@ -91,7 +91,8 @@ service cloud.firestore {
         || (request.resource.data.role == 'learner' && isTeacher() && (teachesClass(request.resource.data.classId) || runsClass(request.resource.data.classId))
             && countedIn(classData(request.resource.data.classId).get('org', null), 'learners'));
       allow update: if isSelf(uid) && request.resource.data.role == resource.data.role
-        && request.resource.data.get('classId', null) == resource.data.get('classId', null);
+        && request.resource.data.get('classId', null) == resource.data.get('classId', null)
+        && request.resource.data.get('learnerId', null) == resource.data.get('learnerId', null);
       allow delete: if signedIn() && resource.data.role == 'learner' && (teachesClass(resource.data.classId) || runsClass(resource.data.classId));
 
       // Editable video projects are private. Shared outputs live in videoAssets.
@@ -322,16 +323,34 @@ service cloud.firestore {
 
       // Learner answers: one document per task per learner
       match /answers/{answerId} {
+        function validAnswerOwner(d) {
+          return memberOf(classId) && d.learnerUid == request.auth.uid
+            && d.learnerId == get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
+            && answerId == d.taskId + '_' + request.auth.uid;
+        }
+        function examStillOpen(d) {
+          let item = get(/databases/$(database)/documents/classes/$(classId)/items/$(d.itemId)).data;
+          let task = get(/databases/$(database)/documents/classes/$(classId)/items/$(d.itemId)/tasks/$(d.taskId)).data;
+          let itemExam = item.get('type', 'lesson') == 'exam';
+          let taskExam = task.get('exam', null) != null;
+          let scope = itemExam ? 'i_' + d.itemId : 't_' + d.taskId;
+          let runId = scope + '_' + request.auth.uid;
+          return (!itemExam && !taskExam)
+            || (exists(/databases/$(database)/documents/classes/$(classId)/examRuns/$(runId))
+              && get(/databases/$(database)/documents/classes/$(classId)/examRuns/$(runId)).data.get('submittedMs', null) == null
+              && ((itemExam ? item.get('exam', {}).get('minutes', null) : task.get('exam', {}).get('minutes', null)) == null
+                || request.time.toMillis() <= get(/databases/$(database)/documents/classes/$(classId)/examRuns/$(runId)).data.startMs
+                  + (itemExam ? item.get('exam', {}).get('minutes', 0) : task.get('exam', {}).get('minutes', 0)) * 60000));
+        }
         allow read: if viewsClass(classId)
           || (memberOf(classId) && (resource == null || resource.data.get('learnerUid', '') == request.auth.uid));
-        allow create: if memberOf(classId)
-          && request.resource.data.learnerUid == request.auth.uid
-          && answerId == request.resource.data.taskId + '_' + request.auth.uid
-          && !('marks' in request.resource.data);
-        allow update: if memberOf(classId)
-          && request.resource.data.learnerUid == request.auth.uid
-          && answerId == request.resource.data.taskId + '_' + request.auth.uid
-          && request.resource.data.get('marks', {}) == resource.data.get('marks', {});
+        allow create: if validAnswerOwner(request.resource.data) && examStillOpen(request.resource.data)
+          && request.resource.data.get('checked', false) == false
+          && request.resource.data.keys().hasOnly(['learnerUid', 'learnerId', 'itemId', 'taskId', 'responses', 'checked', 'updatedAt', 'flags']);
+        allow update: if validAnswerOwner(request.resource.data) && examStillOpen(request.resource.data)
+          && resource.data.get('checked', false) == false
+          && request.resource.data.itemId == resource.data.itemId && request.resource.data.taskId == resource.data.taskId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responses', 'updatedAt', 'flags']);
         // The teacher only adds marks and comments.
         allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'corrections']);
         allow delete: if teachesClass(classId);
@@ -433,11 +452,8 @@ service cloud.firestore {
       // Exam attempts: a learner starts once and can only add the time they submitted
       match /examRuns/{rid} {
         allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
-        allow create: if memberOf(classId) && request.resource.data.uid == request.auth.uid
-          && rid == request.resource.data.scope + '_' + request.auth.uid
-          && request.resource.data.submittedMs == null;
-        allow update: if signedIn() && resource.data.uid == request.auth.uid && resource.data.submittedMs == null
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submittedMs']);
+        // The assessment service sets server-authoritative start and submission times.
+        allow create, update: if false;
         allow delete: if teachesClass(classId);
       }
 
@@ -652,17 +668,15 @@ service cloud.firestore {
     // Ready video rooms (made by scripts/video.mjs). Anyone signed in takes a free one for a call;
     // nobody else can make, change or remove them.
     match /callRooms/{id} {
-      allow read: if signedIn();
-      allow update: if signedIn() && resource.data.state == 'free' && request.resource.data.state == 'used'
-        && request.resource.data.by == request.auth.uid
-        // a teacher whose organisation has used its call minutes this month starts no new call
-        && orgHasRoom(acct(request.auth.uid).get('org', null), 'callMinutes')
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'by', 'usedAt', 'for']);
+      allow get: if signedIn() && resource.data.by == request.auth.uid;
+      allow list, write: if false;
       // The room's host key: only for the teacher who took the room.
       match /host/{k} {
         allow read: if isTeacher() && get(/databases/$(database)/documents/callRooms/$(id)).data.get('by', '') == request.auth.uid;
       }
     }
+    match /callReservationLimits/{id} { allow read, write: if false; }
+    match /callActiveReservations/{id} { allow read, write: if false; }
     // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list
     // them; the person who made it can change or remove it.
     // What people do, for super admins (src/lib/usage.ts): a summary per person and their visits.
@@ -760,7 +774,43 @@ service cloud.firestore {
     function inChat(c) { return signedIn() && chatKey() in c.members; }
     // The class decides: no messages; only with teachers (or groups the teacher makes); or freely.
     function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
-    function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
+    function learnerMayStart(c) {
+      let other = c.members.size() == 2 ? (c.members[0] == chatKey() ? c.members[1] : c.members[0]) : '';
+      let role = c.roles.get(other, '');
+      return c.kind == 'dm' && c.createdBy == chatKey() && c.members.size() in [1, 2]
+        && c.members.hasAll([chatKey()]) && c.roles.get(chatKey(), '') == 'learner'
+        && c.roles.keys().hasOnly(c.members) && c.roles.keys().hasAll(c.members)
+        && ((c.members.size() == 1 && c.members[0] == chatKey())
+          || (role == 'teacher' && msgMode() != 'off'
+            && (other == classData(myClass()).teacherId
+              || classData(myClass()).get('coTeachers', {}).get(other, {}).get('role', '') in ['co', 'viewer']))
+          || (role == 'learner' && msgMode() == 'free'
+            && exists(/databases/$(database)/documents/classes/$(myClass())/learners/$(other))));
+    }
+    function ownChatMap(next, before) { return next.diff(before).affectedKeys().hasOnly([chatKey()]); }
+    function chatMetadataOnly() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['last', 'lastAt', 'seen', 'read', 'got', 'hidden', 'call', 'title'])
+        && (!changed.hasAny(['seen']) || ownChatMap(request.resource.data.get('seen', {}), resource.data.get('seen', {})))
+        && (!changed.hasAny(['read']) || ownChatMap(request.resource.data.get('read', {}), resource.data.get('read', {})))
+        && (!changed.hasAny(['got']) || ownChatMap(request.resource.data.get('got', {}), resource.data.get('got', {})))
+        && (!changed.hasAny(['hidden']) || ownChatMap(request.resource.data.get('hidden', {}), resource.data.get('hidden', {})))
+        && (!changed.hasAny(['last']) || request.resource.data.get('last', {}).get('by', '') == chatKey())
+        && (!changed.hasAny(['title']) || (isTeacher() && resource.data.kind == 'group'));
+    }
+    function teacherGroupMembershipChange() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isTeacher() && resource.data.kind == 'group' && resource.data.createdBy == chatKey()
+        && changed.hasOnly(['members', 'names', 'roles', 'classId'])
+        && request.resource.data.members.size() <= 60
+        && request.resource.data.members.hasAll([chatKey()])
+        && request.resource.data.roles.keys().hasOnly(request.resource.data.members)
+        && request.resource.data.roles.keys().hasAll(request.resource.data.members)
+        && request.resource.data.names.keys().hasOnly(request.resource.data.members)
+        && request.resource.data.names.keys().hasAll(request.resource.data.members)
+        && request.resource.data.roles.get(chatKey(), '') == 'teacher'
+        && request.resource.data.get('classId', null) == resource.data.get('classId', null);
+    }
     // Collaborative documents in a teacher's files, shared person by person.
     // Namespace revision locks serialize names across file kinds and browser sessions.
     match /fileNamespaces/{key} {
@@ -922,18 +972,12 @@ service cloud.firestore {
     // Invitation requests (invitationRequests/{id}): a teacher asks for an invitation on the public
     // homepage, before they have an account, so anyone can add one, but only in this shape. Only a
     // super admin reads them, marks one as invited (with the code made for it) or deletes it.
-    function shortText(d, k, n) { return d.get(k, '') is string && d.get(k, '').size() <= n; }
     match /invitationRequests/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'place', 'teaches', 'note', 'at'])
-        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
-        && request.resource.data.email is string && request.resource.data.email.size() <= 120
-        && request.resource.data.email.matches('^[^ @/]+@[^ @/]+[.][^ @/]+$')
-        && shortText(request.resource.data, 'place', 120) && shortText(request.resource.data, 'teaches', 60)
-        && shortText(request.resource.data, 'note', 600)
-        && request.resource.data.at == request.time;
+      allow create: if false;
       allow read, delete: if isOwner();
       allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invited', 'invitedAt', 'invitedBy']);
     }
+    match /invitationRateLimits/{id} { allow read, write: if false; }
     // Invitation codes (inviteCodes/{code}): made by a super admin, or by an organisation's admins for
     // their organisation. A new teacher types one in to make their account. A code can be used a set
     // number of times, until a date, and only by one email if it names one.
@@ -1144,9 +1188,13 @@ service cloud.firestore {
     match /chats/{id} {
       allow read: if inChat(resource.data);
       allow create: if inChat(request.resource.data) && request.resource.data.members.size() <= 60
+        && request.resource.data.createdBy == chatKey()
         && (isTeacher() || (learnerAccount() && request.resource.data.classId == myClass() && learnerMayStart(request.resource.data)));
       allow update: if inChat(resource.data)
-        && (isTeacher() || request.resource.data.get('classId', null) == resource.data.get('classId', null));
+        && (chatMetadataOnly() || teacherGroupMembershipChange()
+          || (resource.data.kind == 'group'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+            && request.resource.data.members == resource.data.members.removeAll([chatKey()])));
       allow delete: if signedIn() && resource.data.createdBy == chatKey();
       match /msgs/{mid} {
         allow read: if inChat(chatOf(id));
@@ -1216,12 +1264,13 @@ service cloud.firestore {
 
     // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
-      allow get: if true;
+      allow get: if signedIn() && (teachesClass(resource.data.classId) || memberOf(resource.data.classId) || runsClass(resource.data.classId));
       allow list: if false;
       allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId);
       allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId) || runsClass(resource.data.classId))
         && request.resource.data.teacherId == resource.data.teacherId;
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
     }
+    match /joinLookupLimits/{id} { allow read, write: if false; }
   }
 }

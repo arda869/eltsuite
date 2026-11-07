@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { arrayRemove, arrayUnion, collection, deleteField, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
-import { ref, set, remove } from 'firebase/database';
-import { db, rtdb } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, db } from './firebase';
 import type { ClassDoc } from './classes';
 
 // Co-teachers. The class owner invites another teacher by email. When that teacher signs in,
@@ -33,11 +33,11 @@ export async function cancelInvite(c: ClassDoc, email: string) {
 }
 export async function removeCoTeacher(c: ClassDoc, uid: string) {
   await updateDoc(doc(db, 'classes', c.id), { [`coTeachers.${uid}`]: deleteField(), teacherIds: arrayRemove(uid) });
-  await remove(ref(rtdb, `classTeachers/${c.id}/${uid}`)).catch(() => {});
+  await syncLiveTeachers(c);
 }
 export async function changeRole(c: ClassDoc, uid: string, role: CoRole) {
   await updateDoc(doc(db, 'classes', c.id), { [`coTeachers.${uid}.role`]: role });
-  if (role === 'viewer') await remove(ref(rtdb, `classTeachers/${c.id}/${uid}`)).catch(() => {});
+  await syncLiveTeachers(c);
 }
 
 // The invited teacher accepts: they add themselves, which the rules allow when their email is invited.
@@ -58,10 +58,7 @@ export async function declineInvite(c: ClassDoc, email: string) {
 
 // The owner's app keeps the Realtime Database in step, so co-teachers may move the pointer and draw.
 export async function syncLiveTeachers(c: ClassDoc) {
-  for (const [uid, t] of Object.entries(c.coTeachers ?? {})) {
-    if (t.role === 'co') await set(ref(rtdb, `classTeachers/${c.id}/${uid}`), true).catch(() => {});
-    else await remove(ref(rtdb, `classTeachers/${c.id}/${uid}`)).catch(() => {});
-  }
+  await httpsCallable<{ classId: string }, { owner: string }>(getFunctions(app, 'us-central1'), 'claimLiveClass')({ classId: c.id });
 }
 
 // Every class a teacher can open: their own, plus the ones they were added to.

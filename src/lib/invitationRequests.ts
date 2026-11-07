@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, deleteDoc, doc, onSnapshot, updateDoc, type Timestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, db } from './firebase';
 import { makeCode, type InviteAccess } from './codes';
 
 // Invitation requests: a teacher asks for an invitation on the public homepage, before they have an
@@ -23,12 +24,7 @@ export type InvitationRequest = {
 export const EMAIL_OK = /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/;
 
 export async function askForInvitation(r: { name: string; email: string; place: string; teaches: string; note: string }) {
-  const clip = (s: string, n: number) => s.trim().slice(0, n);
-  const data: Record<string, unknown> = { name: clip(r.name, 80), email: r.email.trim().toLowerCase().slice(0, 120), at: serverTimestamp() };
-  if (r.place.trim()) data.place = clip(r.place, 120);
-  if (r.teaches.trim()) data.teaches = clip(r.teaches, 60);
-  if (r.note.trim()) data.note = clip(r.note, 600);
-  await addDoc(collection(db, 'invitationRequests'), data);
+  await httpsCallable<typeof r, { requested: boolean }>(getFunctions(app, 'us-central1'), 'requestInvitation')(r);
 }
 
 const ms = (v: unknown) => (typeof v === 'number' ? v : v && typeof (v as Timestamp).toMillis === 'function' ? (v as Timestamp).toMillis() : Date.now());
