@@ -71,11 +71,21 @@ export function useTeacherClasses(uid?: string | null) {
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    setOwn(null);
+    setShared(null);
     if (!uid) return;
     let timer = 0;
+    const slow = window.setTimeout(() => setError((e) => e || 'Your classes are taking longer than expected to load. Check your connection and try again.'), 15000);
     const u1 = onSnapshot(
       query(collection(db, 'classes'), where('teacherId', '==', uid)),
-      (s) => (setOwn(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), setError('')),
+      { includeMetadataChanges: true },
+      (s) => {
+        // An empty local cache is not proof that this account has no classes.
+        if (s.empty && s.metadata.fromCache) return;
+        clearTimeout(slow);
+        setOwn(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })));
+        setError('');
+      },
       (e) => {
         console.error(e);
         // Try again on its own a few times (a token refresh or a dropped connection) before saying so.
@@ -83,10 +93,13 @@ export function useTeacherClasses(uid?: string | null) {
         else setError('We couldn’t load your classes. Try again.');
       },
     );
-    const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', uid)), (s) => setShared(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), () => setShared([]));
-    return () => (u1(), u2(), clearTimeout(timer));
+    const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', uid)), { includeMetadataChanges: true }, (s) => {
+      if (s.empty && s.metadata.fromCache) return;
+      setShared(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })));
+    }, () => setShared([]));
+    return () => (u1(), u2(), clearTimeout(timer), clearTimeout(slow));
   }, [uid, attempt]);
-  const retry = () => (setError(''), setAttempt(0));
+  const retry = () => (setError(''), setOwn(null), setShared(null), setAttempt((a) => a >= 3 ? 0 : a + 1));
   const classes = useMemo(() => {
     if (!own) return null;
     const seen = new Set(own.map((c) => c.id));

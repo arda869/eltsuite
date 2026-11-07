@@ -79,10 +79,16 @@ export function useMyDocs(uid?: string, includeDeleted = false) {
   const [mine, setMine] = useState<SharedDoc[] | null>(null);
   const [withMe, setWithMe] = useState<SharedDoc[] | null>(null);
   useEffect(() => {
+    setMine(null);
+    setWithMe(null);
     if (!uid) return;
     const map = (s: { docs: { id: string; data: () => unknown }[] }) => s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SharedDoc, 'id'>) })).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0));
-    const a = onSnapshot(query(col, where('owner', '==', uid)), (s) => setMine(map(s)), () => setMine([]));
-    const b = onSnapshot(query(col, where('memberIds', 'array-contains', uid)), (s) => setWithMe(map(s)), () => setWithMe([]));
+    const a = onSnapshot(query(col, where('owner', '==', uid)), { includeMetadataChanges: true }, (s) => {
+      if (!s.empty || !s.metadata.fromCache) setMine(map(s));
+    }, () => setMine([]));
+    const b = onSnapshot(query(col, where('memberIds', 'array-contains', uid)), { includeMetadataChanges: true }, (s) => {
+      if (!s.empty || !s.metadata.fromCache) setWithMe(map(s));
+    }, () => setWithMe([]));
     return () => (a(), b());
   }, [uid]);
   return useMemo(() => ({ mine: includeDeleted ? mine : mine?.filter((d) => !d.deletedAt) ?? null, withMe: withMe?.filter((d) => !d.deletedAt) ?? null }), [mine, withMe, includeDeleted]);

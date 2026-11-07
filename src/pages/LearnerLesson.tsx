@@ -2,6 +2,7 @@ import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import { YoungBuddy, YoungEffects, YoungInstr, YoungProgress, YoungScore, YoungSoundToggle } from '../lessons/young';
 import '../lessons/youngLesson.css';
+import '../lessons/examLesson.css';
 import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';

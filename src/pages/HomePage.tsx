@@ -56,7 +56,7 @@ export function HomePage() {
   useEffect(() => void (uid && saveMyZone(uid)), [uid]);
   const name = (profile?.displayName || user?.displayName || '').split(' ')[0];
   const org = useMyOrg();
-  const { classes } = useTeacherClasses(uid);
+  const { classes, error: classesError, retry: retryClasses } = useTeacherClasses(uid);
   const active = useMemo(() => (classes ?? []).filter((c) => c.status === 'active'), [classes]);
   const { items, live } = useClassDetails(active.map((c) => c.id));
   const docs = useMyDocs(uid);
@@ -68,6 +68,7 @@ export function HomePage() {
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const unread = (chats ?? []).filter((c) => unreadIn(c, uid));
   const lessons = Object.values(items).reduce((n, l) => n + l.length, 0);
+  const lessonsLoading = classes === null || active.some((c) => items[c.id] === undefined);
   const sessions = useTeacherSessions(uid, active.map((c) => c.id));
   const coming = useMemo(
     () =>
@@ -128,14 +129,16 @@ export function HomePage() {
                   ? `Next: ${coming[0].i.title} with ${coming[0].c.name}, ${when(coming[0].at).replace(/^Today, /, 'today at ').replace(/^Tomorrow, /, 'tomorrow at ')}.`
                   : unread.length
                     ? `${unread.length} unread ${unread.length === 1 ? 'conversation' : 'conversations'} waiting.`
-                    : 'Everything is quiet. A good moment to plan.'}
+                    : classes === null || chats === null
+                      ? 'Loading your work…'
+                      : 'Everything is quiet. A good moment to plan.'}
             </p>
           </div>
           <div className="hm-stats">
-            <Stat n={active.length} label={active.length === 1 ? 'class' : 'classes'} to="/classes" />
-            <Stat n={learners} label={learners === 1 ? 'learner' : 'learners'} to="/classes" />
-            <Stat n={lessons} label={lessons === 1 ? 'lesson' : 'lessons'} to="/archive" />
-            <Stat n={unread.length} label="unread" to="/messages" hot={unread.length > 0} />
+            <Stat n={classes === null ? '…' : active.length} label={active.length === 1 ? 'class' : 'classes'} to="/classes" />
+            <Stat n={classes === null ? '…' : learners} label={learners === 1 ? 'learner' : 'learners'} to="/classes" />
+            <Stat n={lessonsLoading ? '…' : lessons} label={lessons === 1 ? 'lesson' : 'lessons'} to="/archive" />
+            <Stat n={chats === null ? '…' : unread.length} label="unread" to="/messages" hot={unread.length > 0} />
           </div>
         </section>
 
@@ -159,7 +162,7 @@ export function HomePage() {
                 <h2 id="hm-coming">Coming up</h2>
                 <Link to="/timetable" className="hm-more">Timetable</Link>
               </header>
-              {coming.length || due.length || upcoming.length ? (
+              {classes === null && !classesError ? <p className="hm-empty" role="status">Loading your schedule…</p> : coming.length || due.length || upcoming.length ? (
                 <ol className="hm-agenda">
                   {upcoming.map((o) => {
                     const c = active.find((x) => x.id === o.s.classId);
@@ -209,7 +212,11 @@ export function HomePage() {
                 <h2 id="hm-classes">Your classes</h2>
                 <Link to="/classes" className="hm-more">Manage</Link>
               </header>
-              {active.length ? (
+              {classesError && classes === null ? (
+                <p className="hm-empty" role="alert">{classesError} <button type="button" className="btn link" onClick={retryClasses}>Try again</button></p>
+              ) : classes === null ? (
+                <p className="hm-empty" role="status">Loading your classes…</p>
+              ) : active.length ? (
                 <div className="hm-classes">
                   {active.slice(0, 6).map((c) => (
                     <Link key={c.id} to={`/class/${c.id}`} className="hm-class" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
@@ -235,7 +242,7 @@ export function HomePage() {
                 <h2 id="hm-files">Recent files</h2>
                 <Link to="/archive" className="hm-more">Resources</Link>
               </header>
-              {recent.length ? (
+              {docs.mine === null || docs.withMe === null ? <p className="hm-empty" role="status">Loading your files…</p> : recent.length ? (
                 <div className="hm-files">
                   {recent.map((d) => (
                     <a key={d.id} href={`/doc/${d.id}`} target="_blank" rel="noopener" className="hm-file">
@@ -278,7 +285,7 @@ export function HomePage() {
                 <h2 id="hm-msgs">Messages</h2>
                 <Link to="/messages" className="hm-more">Open</Link>
               </header>
-              {(chats ?? []).length ? (
+              {chats === null ? <p className="hm-empty" role="status">Loading your messages…</p> : chats.length ? (
                 <ul className="hm-chats">
                   {(chats ?? []).slice(0, 4).map((c) => {
                     const other = c.title || c.members.filter((m) => m !== uid).map((m) => c.names[m]).join(', ') || 'Notes to self';
@@ -353,7 +360,7 @@ export function HomePage() {
   );
 }
 
-function Stat({ n, label, to, hot }: { n: number; label: string; to: string; hot?: boolean }) {
+function Stat({ n, label, to, hot }: { n: number | string; label: string; to: string; hot?: boolean }) {
   return (
     <Link to={to} className={'hm-stat' + (hot ? ' hot' : '')}>
       <b>{n}</b>

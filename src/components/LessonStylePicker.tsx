@@ -5,6 +5,7 @@ export function LessonStylePicker({ value, onChange }: { value: LessonStyle; onC
     Lesson style
     <select value={value} onChange={e => onChange(e.target.value as LessonStyle)}>
       <option value="adult">Adult</option>
+      <option value="exam">Exam Prep</option>
       <option value="young">Young learner</option>
     </select>
     <span className="hint">Changes how lessons and PDFs look. Lesson content and saved answers stay the same.</span>

@@ -11,12 +11,14 @@ import type { Person } from './chat';
 // Who I can write to, in groups: my colleagues and the learners and teachers of each class
 // (for a teacher); my classmates and teachers (for a learner).
 
-export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[]; learnerElements?: boolean; mode?: MessagingMode; nameFor?: (key: string, name: string) => string };
+export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[]; loading?: boolean; error?: string; retry?: () => void; learnerElements?: boolean; mode?: MessagingMode; nameFor?: (key: string, name: string) => string };
 
 export function useDirectory(): Directory | null {
   const { user, profile } = useAuth();
   const [dir, setDir] = useState<Directory | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    setDir(null);
     if (!user || !profile) return;
     let dead = false;
     (async () => {
@@ -46,20 +48,29 @@ export function useDirectory(): Directory | null {
         return;
       }
       const me: Person = { key: user.uid, name: user.displayName || user.email?.split('@')[0] || 'Teacher', role: 'teacher' };
-      const [classes, cols] = await Promise.all([allTeacherClasses(user.uid).catch(() => [] as ClassDoc[]), getDocs(collection(db, 'users', user.uid, 'colleagues')).catch(() => null)]);
+      // Existing chats can open as soon as we know who the teacher is. The contact list
+      // takes longer because it includes every class roster.
+      if (!dead) setDir({ me, groups: [], loading: true });
+      const [classResult, colleagueResult] = await Promise.allSettled([allTeacherClasses(user.uid), getDocs(collection(db, 'users', user.uid, 'colleagues'))]);
+      if (classResult.status === 'rejected') {
+        if (!dead) setDir({ me, groups: [], error: 'We couldn’t load people from your classes.', retry: () => setAttempt((a) => a + 1) });
+        return;
+      }
+      const classes = classResult.value;
+      const cols = colleagueResult.status === 'fulfilled' ? colleagueResult.value : null;
       const groups: Directory['groups'] = [{ id: 'colleagues', label: 'Colleagues', people: (cols?.docs ?? []).map((d) => ({ key: d.id, name: String(d.data().name ?? 'Colleague'), role: 'teacher' as const })).sort((a, b) => a.name.localeCompare(b.name)) }];
-      for (const c of classes.filter((x) => x.status === 'active').sort((a, b) => a.name.localeCompare(b.name))) {
+      const classGroups = await Promise.all(classes.filter((x) => x.status === 'active').sort((a, b) => a.name.localeCompare(b.name)).map(async (c) => {
         const ls = await getDocs(collection(db, 'classes', c.id, 'learners')).catch(() => null);
         const co = Object.entries(c.coTeachers ?? {}).filter(([k]) => k !== user.uid).map(([k, t]) => ({ key: k, name: t.name || 'Teacher', role: 'teacher' as const }));
         const owner = c.teacherId !== user.uid ? [{ key: c.teacherId, name: (c as ClassDoc & { teacherName?: string }).teacherName || 'Class teacher', role: 'teacher' as const }] : [];
-        groups.push({ id: c.id, label: c.name, people: [...owner, ...co, ...(ls?.docs ?? []).map((d) => ({ key: d.id, name: String(d.data().displayName ?? 'Learner'), role: 'learner' as const, classId: c.id })).sort((a, b) => a.name.localeCompare(b.name))] });
-      }
-      if (!dead) setDir({ me, groups });
+        return { id: c.id, label: c.name, people: [...owner, ...co, ...(ls?.docs ?? []).map((d) => ({ key: d.id, name: String(d.data().displayName ?? 'Learner'), role: 'learner' as const, classId: c.id })).sort((a, b) => a.name.localeCompare(b.name))] };
+      }));
+      if (!dead) setDir({ me, groups: [...groups, ...classGroups], loading: false });
     })();
     return () => {
       dead = true;
     };
-  }, [user, profile]);
+  }, [user, profile, attempt]);
   return dir;
 }
 

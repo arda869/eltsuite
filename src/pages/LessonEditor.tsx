@@ -8,6 +8,7 @@ import { MaterialImport } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
+import '../lessons/examLesson.css';
 import { YoungIconPicker, YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
 import { isAnswered, scoreTask } from '../lib/questions';
 import { NSelect } from '../components/Select';
