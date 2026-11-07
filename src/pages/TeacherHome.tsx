@@ -98,7 +98,7 @@ export function TeacherHome() {
     (async () => {
       for (const c of due) {
         setPurging(c.name);
-        await purgeClass(c).catch((e) => console.error(e));
+        await purgeClass(c).catch((e) => { console.error(e); setError(`Could not finish deleting ${c.name}. Its remaining records are still available for retry.`); });
       }
       setPurging('');
     })();
@@ -314,7 +314,7 @@ export function TeacherHome() {
                       onClick={async () => {
                         if (!(await ask(`Delete ${c.name} for good? You can’t undo this.`))) return;
                         setPurging(c.name);
-                        await purgeClass(c).catch((e) => console.error(e));
+                        await purgeClass(c).catch((e) => { console.error(e); setError(`Could not finish deleting ${c.name}. Try again when your connection returns.`); });
                         setPurging('');
                       }}
                     >

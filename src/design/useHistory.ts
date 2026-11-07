@@ -8,6 +8,10 @@ import { clean, elsCol, type El } from './model';
 
 type Snap = Record<string, El | null>;
 type Step = { before: Snap; after: Snap; at: number; key?: string };
+function readRecovery(designId: string): Snap {
+  try { const data = JSON.parse(localStorage.getItem(`elt.designElementsDraft:${designId}`) || '{}'); return data && typeof data === 'object' && !Array.isArray(data) ? data : {}; }
+  catch { return {}; }
+}
 
 export function useEdits(designId: string, els: El[]) {
   const [live, setLiveState] = useState<Record<string, Partial<El>>>({});
@@ -20,14 +24,44 @@ export function useEdits(designId: string, els: El[]) {
   const [, tick] = useState(0);
   const timer = useRef<number>(0);
   const [pending, setPending] = useState(0);
-  const [failed, setFailed] = useState(false);
-  const track = (p: Promise<void>) => {
+  const [recovery, setRecovery] = useState<Snap>(() => readRecovery(designId));
+  const [failed, setFailed] = useState(() => Object.keys(readRecovery(designId)).length > 0);
+  const recoveryRef = useRef(recovery);
+  recoveryRef.current = recovery;
+  const tail = useRef<Promise<void>>(Promise.resolve());
+  const persist = (snap: Snap) => {
+    try { if (Object.keys(snap).length) localStorage.setItem(`elt.designElementsDraft:${designId}`, JSON.stringify(snap)); else localStorage.removeItem(`elt.designElementsDraft:${designId}`); }
+    catch { /* The in-memory recovery still remains. */ }
+  };
+  const track = (snap: Snap) => {
+    const queued = { ...recoveryRef.current, ...snap };
+    recoveryRef.current = queued;
+    setRecovery(queued);
+    persist(queued);
     setPending((n) => n + 1);
-    p.then(() => setFailed(false), () => setFailed(true)).finally(() => setPending((n) => n - 1));
-    return p;
+    const write = tail.current.then(() => writeSnap(snap));
+    tail.current = write.catch(() => {});
+    write.then(() => {
+      const next = { ...recoveryRef.current };
+      Object.keys(snap).forEach(id => { if (next[id] === snap[id]) delete next[id]; });
+      recoveryRef.current = next;
+      setRecovery(next);
+      persist(next);
+      setFailed(previous => previous && Object.keys(next).length > 0);
+    }, () => {
+      setFailed(true);
+    }).finally(() => setPending((n) => n - 1));
+    return write;
   };
 
-  const byId = () => new Map(elsRef.current.map((e) => [e.id, e]));
+  const byId = () => {
+    const map = new Map(elsRef.current.map((e) => [e.id, e]));
+    for (const [id, value] of Object.entries(recoveryRef.current)) {
+      if (value) map.set(id, value);
+      else map.delete(id);
+    }
+    return map;
+  };
 
   const writeSnap = useCallback(
     async (s: Snap) => {
@@ -66,7 +100,7 @@ export function useEdits(designId: string, els: El[]) {
       if (undo.current.length > 200) undo.current.shift();
       redo.current = [];
       tick((n) => n + 1);
-      return track(writeSnap(after));
+      return track(after);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [writeSnap],
@@ -127,15 +161,22 @@ export function useEdits(designId: string, els: El[]) {
     if (!s) return;
     redo.current.push(s);
     tick((n) => n + 1);
-    track(writeSnap(s.before));
+    track(s.before);
   }, [flush, writeSnap]);
   const doRedo = useCallback(() => {
     const s = redo.current.pop();
     if (!s) return;
     undo.current.push(s);
     tick((n) => n + 1);
-    track(writeSnap(s.after));
+    track(s.after);
   }, [writeSnap]);
 
-  return { live, setLive, flush, commit, patch, undo: doUndo, redo: doRedo, canUndo: undo.current.length > 0, canRedo: redo.current.length > 0, saving: pending > 0 || Object.keys(live).length > 0, failed };
+  const retry = useCallback(async () => {
+    await tail.current;
+    const snap = recoveryRef.current;
+    if (!Object.keys(snap).length) return true;
+    try { await track(snap); return true; } catch { return false; }
+  }, [writeSnap]);
+
+  return { live, recovery, setLive, flush, commit, patch, undo: doUndo, redo: doRedo, retry, canUndo: undo.current.length > 0, canRedo: redo.current.length > 0, saving: pending > 0 || Object.keys(live).length > 0, failed };
 }

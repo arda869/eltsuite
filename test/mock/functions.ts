@@ -6,6 +6,10 @@ import { db } from '../../src/lib/firebase';
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
   if (name === 'quizShow') {
+    if (d.action === 'end' && sessionStorage.getItem('mockQuizEndFailure')) {
+      sessionStorage.removeItem('mockQuizEndFailure');
+      throw Error('The game could not be ended. Please try again.');
+    }
     // The real quiz service, against the mock databases. The signed-in user (if any) is the caller.
     const [{ quizService }, { adminDb, adminRtdb }, { getAuth }] = await Promise.all([import('../../functions/quiz/service.js'), import('./quiz-admin'), import('./auth')]);
     const u = getAuth().currentUser;
@@ -49,6 +53,20 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return { data: { checkedParts, key, complete } };
   }
   if(name==='deleteAccount'){if(localStorage.getItem('mockDeleteError'))throw Error(localStorage.getItem('mockDeleteError')!);localStorage.setItem('mockDeleteRequest',JSON.stringify(d));return {data:{accepted:true}};}
+  if(name==='deleteLearnerIdentity'){
+    const {getAuth}=await import('./auth');
+    const uid=getAuth().currentUser?.uid;
+    const data=JSON.parse(localStorage.getItem('mockfs')||'{}');
+    const c=data[`classes/${d.classId}`];
+    if(!uid||!c||(c.teacherId!==uid&&c.coTeachers?.[uid]?.role!=='co'))throw Error('Only a class teacher can remove learners.');
+    const learner=data[`classes/${d.classId}/learners/${d.learnerId}`];
+    if(learner?.authUid){
+      const profile=data[`users/${learner.authUid}`];
+      if(profile&&(profile.role!=='learner'||profile.classId!==d.classId||profile.learnerId!==d.learnerId))throw Error('This sign-in account belongs to someone else.');
+      const authUsers=JSON.parse(localStorage.getItem('mockauth')||'{}');delete authUsers[learner.authUid];localStorage.setItem('mockauth',JSON.stringify(authUsers));
+    }
+    return {data:{deleted:true}};
+  }
   if(name==='adminAiCosts')return (await import('./ai-costs')).aiCosts(d);
   if(name==='appliedLinguistics')return (await import('./linguistics')).linguistics(d);
   if (d.action === 'activities' && localStorage.getItem('mockAiPause')) await new Promise<void>(resolve => { const timer=setInterval(()=>{if(!localStorage.getItem('mockAiPause')) {clearInterval(timer);resolve();}},50); });

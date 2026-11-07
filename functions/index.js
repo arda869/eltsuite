@@ -1,4 +1,5 @@
 export { deleteAccount, finishAccountDeletion, retryAccountDeletions } from './accounts/index.js';
+export { deleteLearnerIdentity } from './learners/delete.js';
 export { classroomGameDraft } from './games/index.js';
 export { quizShow } from './quiz/index.js';
 export { classroomObservation } from './observations/index.js';

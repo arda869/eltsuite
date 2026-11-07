@@ -49,7 +49,7 @@ import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
 import { downloadDocx, wordCount, documentStats, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
-import { useCollabSession, type CollabSession } from './session';
+import { useCollabSession, useCollabSaveStatus, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
@@ -136,6 +136,7 @@ export function CollabDoc({ docKey, title, template, modes, teacher, me, classId
 }
 
 function CollabInner({ docKey, title, template, modes, teacher, me, classId, mediaSpace, display = 'inline', canDownload, head, page, heading, onCitationStyle, toolSlot, session }: CollabProps & { session: CollabSession }) {
+  const saveStatus = useCollabSaveStatus(session.provider);
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = modeChoices(modes, teacher);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
@@ -695,6 +696,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           )}
         </div>
       )}
+      {saveStatus !== 'saved' && <div className={'cd-save-status ' + saveStatus} role="status">{saveStatus === 'error' ? <>Changes are still on this device. <button type="button" className="btn small-btn" onClick={() => session.provider.retrySave()}>Retry save</button></> : 'Saving changes…'}</div>}
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
         <div className={'cd-page' + (paged ? ' pg-on' : '')}>
           {heads.length > 0 && (

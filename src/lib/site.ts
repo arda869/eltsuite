@@ -21,36 +21,37 @@ function testSite(): string {
 export const onLearnSite = () => host().startsWith('learn.') || (!live() && testSite() === 'learn');
 
 // learn.eltsuite.com is used once it answers (its address set up in Firebase Hosting); until then
-// learners stay on eltsuite.com and links point there. Checked once a page load, remembered.
-let learnUp = (() => {
+// learners stay on eltsuite.com and links point there. Recheck after a short expiry.
+const LEARN_CHECK_TTL = 5 * 60 * 1000;
+let learnCheckedAt = (() => {
   try {
-    return localStorage.getItem('ll.learnUp') === '1';
+    return Number(localStorage.getItem('ll.learnCheckedAt') || 0);
   } catch {
-    return false;
+    return 0;
   }
 })();
-export const learnReady = () => learnUp || onLearnSite();
+export const learnReady = () => onLearnSite() || (learnCheckedAt > 0 && Date.now() - learnCheckedAt < LEARN_CHECK_TTL);
 export function probeLearn(then?: () => void) {
   if (!live() || onLearnSite()) return;
-  fetch(LEARN + '/version.json', { mode: 'no-cors', cache: 'no-store' }).then(
-    () => {
-      learnUp = true;
+  fetch(LEARN + '/version.json', { mode: 'cors', cache: 'no-store' }).then(async response => {
+    if (!response.ok) throw Error('Learner site unavailable');
+    const data = await response.json() as { build?: unknown };
+    if (typeof data.build !== 'string' || !data.build.trim()) throw Error('Learner site returned an invalid version');
+    learnCheckedAt = Date.now();
       try {
-        localStorage.setItem('ll.learnUp', '1');
+        localStorage.setItem('ll.learnCheckedAt', String(learnCheckedAt));
       } catch {
         /* private window */
       }
       then?.();
-    },
-    () => {
-      learnUp = false;
+    }).catch(() => {
+      learnCheckedAt = 0;
       try {
-        localStorage.removeItem('ll.learnUp');
+        localStorage.removeItem('ll.learnCheckedAt');
       } catch {
         /* private window */
       }
-    },
-  );
+    });
 }
 export const learnOrigin = () => (live() ? (learnReady() ? LEARN : MAIN) : location.origin);
 export const mainOrigin = () => (live() ? MAIN : location.origin);

@@ -14,7 +14,7 @@ export async function restoreClass(c: ClassDoc) {
 }
 
 async function deleteAll(refs: DocumentReference[]) {
-  for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => deleteDoc(r).catch(() => {})));
+  for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => deleteDoc(r)));
 }
 const docsOf = async (...path: [string, ...string[]]) => (await getDocs(collection(db, ...path))).docs.map((d) => d.ref);
 
@@ -25,7 +25,7 @@ export async function purgeClass(c: ClassDoc, onStep?: (s: string) => void) {
   const learners = await getDocs(collection(db, 'classes', id, 'learners'));
   for (const l of learners.docs) {
     const pin = ((await getDoc(doc(db, 'classes', id, 'secrets', l.id))).data()?.pin as string) ?? '';
-    await removeLearner(c, { id: l.id, ...(l.data() as Omit<Learner, 'id'>) }, pin).catch(() => {});
+    await removeLearner(c, { id: l.id, ...(l.data() as Omit<Learner, 'id'>) }, pin);
   }
   onStep?.('Removing lessons');
   const items = await getDocs(collection(db, 'classes', id, 'items'));
@@ -45,7 +45,7 @@ export async function purgeClass(c: ClassDoc, onStep?: (s: string) => void) {
   const nb = await getDocs(collection(db, 'classes', id, 'notebook'));
   for (const e of nb.docs) await deleteAll(await docsOf('classes', id, 'notebook', e.id, 'history'));
   for (const sub of ['answers', 'feedback', 'notices', 'picks', 'presence', 'live', 'avatars', 'media', 'topics', 'secrets', 'members', 'boards', 'threads', 'annotations', 'announcements', 'groupSets', 'levelChoices', 'examRuns', 'surveyResponses', 'surveyDone', 'surveyResults', 'notebook', 'myNotes', 'attendance', 'mistakes', 'recaps']) await deleteAll(await docsOf('classes', id, sub));
-  await deleteDoc(doc(db, 'classCodes', c.classCode)).catch(() => {});
+  await deleteDoc(doc(db, 'classCodes', c.classCode));
   await deleteDoc(doc(db, 'classes', id));
 }
 

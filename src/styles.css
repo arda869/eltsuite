@@ -3908,6 +3908,8 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .cd-lockbar .ui-icon { color: var(--accent); flex: 0 0 auto; }
 .cd-lockbar.for-teacher { background: var(--tint); color: var(--ink); box-shadow: inset 0 -1px 0 var(--hair); }
 .cd-lockbar.for-teacher .ui-icon { color: var(--accent-text); }
+.cd-save-status { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 7px 16px; background: var(--tint); color: var(--ink); font: 13px var(--sans); }
+.cd-save-status.error { color: var(--danger, #a44235); }
 .cd.is-locked .cd-page { background: repeating-linear-gradient(135deg, #fbfaf8, #fbfaf8 14px, #f6f4f1 14px, #f6f4f1 28px); }
 .cd.is-locked .cd-text { cursor: default; }
 .cd-locked { color: var(--ink) !important; }

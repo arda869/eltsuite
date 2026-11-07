@@ -627,6 +627,27 @@ const J = {
     await axe(s.p,'Lesson tools',A11Y_FOUND);return s;
   },
 
+  'Designer keeps a failed element edit through reload and retry': async b => {
+    const s = await session(b, { owner: true });
+    await s.p.goto(BASE + '/design');
+    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
+    await design.getByRole('button', { name: 'Text', exact: true }).waitFor();
+    const id = new URL(design.url()).pathname.split('/').at(-1);
+    await design.evaluate(fileId => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'set', path: `sharedDocs/${fileId}/dels/`, count: 3, code: 'unavailable' }])), id);
+    await design.getByRole('button', { name: 'Text', exact: true }).click();
+    await design.getByRole('button', { name: 'Add a title', exact: true }).click();
+    await see(design, '.dz-saved.bad', 'failed Designer save');
+    const recovery = await design.evaluate(fileId => localStorage.getItem(`elt.designElementsDraft:${fileId}`), id);
+    if (!recovery) throw Error('Designer edit was not kept locally');
+    await design.reload();
+    await see(design, '.dz-saved.bad', 'recovered Designer edit');
+    await design.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
+    await design.getByRole('button', { name: 'Retry save' }).click();
+    await see(design, '.dz-saved:not(.bad)', 'Designer save after retry');
+    await design.waitForFunction(fileId => Object.keys(JSON.parse(localStorage.getItem('mockfs'))).some(path => path.startsWith(`sharedDocs/${fileId}/dels/`)), id);
+    s.errors.length = 0; // The injected write failure is expected.
+    return s;
+  },
   'Designer: create, edit and reopen images and storyboards with optional fields blank': async (b) => {
     const s=await session(b,{owner:true});await s.p.goto(`${BASE}/design`);
     await s.p.getByRole('heading',{name:'Designer',exact:true}).waitFor();
@@ -2159,6 +2180,30 @@ const J = {
     await see(tab, 'text=Design the cards', 'flashcards opened from Files');
     return s;
   },
+  'Collab restores an edit after a rejected write': async b => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.ProseMirror', 'the document');
+    const docKey = await d.evaluate(() => {
+      const id = location.pathname.split('/').at(-1);
+      return JSON.parse(localStorage.getItem('mockfs'))[`sharedDocs/${id}`]?.docKey;
+    });
+    if (!docKey) throw Error('Could not find the document key for the recovery check');
+    await d.evaluate(key => sessionStorage.setItem('mockrtdb-faults', JSON.stringify([{ path: `collab/${key}/u/`, count: 5, code: 'unavailable' }])), docKey);
+    await d.click('.ProseMirror');
+    await d.keyboard.type('Keep this sentence after a failed save.');
+    await see(d, '.cd-save-status.error', 'visible Collab save failure');
+    const pending = await d.evaluate(key => localStorage.getItem(`ll.collabDraft:${key}:teacher1`), docKey);
+    if (!pending) throw Error('Failed Collab update was not kept on this device');
+    await d.evaluate(() => sessionStorage.removeItem('mockrtdb-faults'));
+    await d.reload();
+    await see(d, 'text=Keep this sentence after a failed save.', 'Collab draft after reload');
+    await d.locator('.cd-save-status').waitFor({ state: 'hidden' });
+    await d.reload();
+    await see(d, 'text=Keep this sentence after a failed save.', 'Collab edit after server recovery');
+    s.errors.length = 0; // The injected write failure is expected.
+    return s;
+  },
   'Collab document keeps a diagram': async (b) => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');
@@ -2568,6 +2613,143 @@ const J = {
     await see(s.p,'text=Part a checked','legacy checked part feedback');
     await see(s.p,'text=Part b checked','legacy checked second part feedback');
     if(await s.p.getByRole('button',{name:'Check part a'}).count())throw Error('An already-checked task offered to check its first part again.');
+    return s;
+  },
+  'Learner creation and PIN reset undo partial failures': async b => {
+    const s = await session(b);
+    const result = await s.p.evaluate(async ({ classId }) => {
+      const { addLearners, resetPin, removeLearner, learnerPassword } = await import('/src/lib/learners.ts');
+      const c = { id: classId, ...JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}`] };
+      const before = Object.keys(JSON.parse(localStorage.getItem('mockauth'))).length;
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'transaction', path: '', count: 1, code: 'unavailable' }]));
+      let creationFailed = false;
+      try { await addLearners(c, ['Recovery Learner']); } catch { creationFailed = true; }
+      const afterFailure = Object.keys(JSON.parse(localStorage.getItem('mockauth'))).length;
+      sessionStorage.removeItem('mockfs-faults');
+      const [created] = await addLearners(c, ['Recovery Learner']);
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const l = { id: created.id, ...fs[`classes/${classId}/learners/${created.id}`] };
+      const oldPassword = learnerPassword(c.classCode, created.pin);
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'set', path: `classes/${classId}/secrets/${created.id}`, count: 1, code: 'unavailable' }]));
+      let pinFailed = false;
+      try { await resetPin(c, l, created.pin); } catch { pinFailed = true; }
+      const restoredPassword = JSON.parse(localStorage.getItem('mockauth'))[l.authUid]?.password;
+      sessionStorage.removeItem('mockfs-faults');
+      const newPin = await resetPin(c, l, created.pin);
+      const updated = JSON.parse(localStorage.getItem('mockauth'))[l.authUid]?.password === learnerPassword(c.classCode, newPin)
+        && JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/secrets/${created.id}`]?.pin === newPin;
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'batch', path: `classes/${classId}/learners/${created.id}`, count: 1, code: 'unavailable' }]));
+      let removalFailed = false;
+      try { await removeLearner(c, l, newPin); } catch { removalFailed = true; }
+      const remained = !!JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/learners/${created.id}`];
+      sessionStorage.removeItem('mockfs-faults');
+      await removeLearner(c, l, newPin);
+      const removed = !JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/learners/${created.id}`];
+      return { creationFailed, before, afterFailure, pinFailed, restoredPassword, oldPassword, updated, removalFailed, remained, removed };
+    }, s.demo);
+    if (!result.creationFailed || result.before !== result.afterFailure || !result.pinFailed || result.restoredPassword !== result.oldPassword || !result.updated || !result.removalFailed || !result.remained || !result.removed)
+      throw Error('Partial learner operation was not recovered: ' + JSON.stringify(result));
+    return s;
+  },
+  'Class deletion stops on a failed step and succeeds on retry': async b => {
+    const s = await session(b);
+    const result = await s.p.evaluate(async () => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const c = { id: 'delete-check', teacherId: 'teacher1', name: 'Deletion check', level: 'B1', themeColor: 'flame', classCode: 'DELETECHK', status: 'deleted' };
+      fs['classes/delete-check'] = c;
+      fs['classCodes/DELETECHK'] = { classId: c.id, roster: [] };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'delete', path: 'classCodes/DELETECHK', count: 1, code: 'unavailable' }]));
+      const { purgeClass } = await import('/src/lib/deletion.ts');
+      let failed = false;
+      try { await purgeClass(c); } catch { failed = true; }
+      const remained = !!JSON.parse(localStorage.getItem('mockfs'))['classes/delete-check'];
+      sessionStorage.removeItem('mockfs-faults');
+      await purgeClass(c);
+      return { failed, remained, removed: !JSON.parse(localStorage.getItem('mockfs'))['classes/delete-check'] };
+    });
+    if (!result.failed || !result.remained || !result.removed) throw Error('Class deletion did not stop and recover: ' + JSON.stringify(result));
+    return s;
+  },
+  'Lesson editor blocks task switching after a failed save and restores the draft': async b => {
+    const s = await session(b);
+    await s.p.evaluate(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const root = `classes/${classId}/items/${itemId}/tasks/`;
+      for (const path of Object.keys(fs)) if (path.startsWith(root)) delete fs[path];
+      fs[root + 'first'] = { kind: 'task', title: 'First task', instructions: 'First instructions', content: { type: 'doc', content: [{ type: 'paragraph' }] }, order: 0, hidden: false, locked: false };
+      fs[root + 'second'] = { kind: 'task', title: 'Second task', instructions: 'Second instructions', content: { type: 'doc', content: [{ type: 'paragraph' }] }, order: 1, hidden: false, locked: false };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'batch', path: root + 'first', count: 3, code: 'unavailable' }]));
+    }, s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.locator('.task-title').fill('First task, edited');
+    await see(s.p, '.save-state.error', 'failed task save');
+    await s.p.locator('.task-row .task-pick').filter({ hasText: 'Second task' }).click();
+    if (await s.p.locator('.task-title').inputValue() !== 'First task, edited') throw Error('Task switch discarded unsaved edits');
+    await s.p.reload();
+    if (await s.p.locator('.task-title').inputValue() !== 'First task, edited') throw Error('Reload did not restore the local teacher draft');
+    await s.p.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
+    await s.p.getByRole('button', { name: 'Retry save' }).click();
+    await see(s.p, '.save-state.saved', 'recovered task save');
+    await s.p.locator('.task-row .task-pick').filter({ hasText: 'Second task' }).click();
+    await s.p.waitForFunction(() => document.querySelector('.task-title')?.value === 'Second task');
+    const stored = await s.p.evaluate(({ classId, itemId }) => JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/first`].title, s.demo);
+    if (stored !== 'First task, edited') throw Error('Recovered task title never reached storage');
+    s.errors.length = 0; // The injected write failures are expected in this journey.
+    return s;
+  },
+  'Game host stays put when ending the game fails': async b => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['quizRuns/audit-run'] = { owner: 'teacher1', title: 'Recovery game', code: '123456', status: 'podium', slide: 0, slides: 1, classId: null, mode: 'live', source: { kind: 'doc', id: 'fixture' } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      localStorage.setItem('mockrtdb', JSON.stringify({ quizLive: { 'audit-run': { title: 'Recovery game', code: '123456', total: 1, mode: 'live', phase: 'podium', slide: 0, players: {} } } }));
+      sessionStorage.setItem('mockQuizEndFailure', '1');
+    });
+    await s.p.goto(BASE + '/game-host/audit-run');
+    await see(s.p, 'button:has-text("End and see results")', 'game end action');
+    await s.p.getByRole('button', { name: 'End and see results' }).click();
+    await see(s.p, 'text=The game could not be ended. Please try again.', 'game end error');
+    if (!s.p.url().includes('/game-host/audit-run')) throw Error('Host navigated away after a failed end request');
+    await s.p.getByRole('button', { name: 'End and see results' }).click();
+    await s.p.waitForURL('**/game-results/audit-run');
+    return s;
+  },
+  'Exam hand-in waits for saved answers and restores a failed write': async b => {
+    const s = await session(b, { as: 'Mia' });
+    await s.p.evaluate(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const itemPath = `classes/${classId}/items/${itemId}`;
+      fs[itemPath] = { ...fs[itemPath], type: 'exam', exam: { minutes: null }, examReleased: false };
+      const root = itemPath + '/tasks/';
+      for (const path of Object.keys(fs)) if (path.startsWith(root)) delete fs[path];
+      fs[root + 'exam-save'] = { kind: 'task', title: 'Final answer', instructions: 'Complete the sentence.', order: 0, hidden: false, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Yesterday I ' }, { type: 'gap', attrs: { id: 'exam-gap', answers: [] } }, { type: 'text', text: ' home.' }] }] } };
+      fs[root + 'exam-save/private/key'] = { 'exam-gap': { kind: 'gap', answers: ['went'] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'set', path: `classes/${classId}/answers/exam-save_`, count: 2, code: 'unavailable' }]));
+    }, s.demo);
+    await s.p.goto(BASE + '/learn/' + s.demo.itemId);
+    await s.p.getByRole('button', { name: 'Start the exam' }).click();
+    await s.p.getByRole('textbox', { name: 'Question 1', exact: true }).fill('went');
+    await see(s.p, '.frame-foot .save-dot button:has-text("Retry save")', 'failed answer save');
+    await s.p.getByRole('button', { name: 'Hand in the exam' }).click();
+    await s.p.getByRole('button', { name: 'Hand in', exact: true }).last().click();
+    await see(s.p, '[role="alert"]:has-text("not handed in")', 'blocked exam hand-in');
+    const submitted = await s.p.evaluate(({ classId, itemId }) => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([path, value]) => path.startsWith(`classes/${classId}/examRuns/i_${itemId}_`) && value.submittedMs), s.demo);
+    if (submitted) throw Error('Exam was submitted despite an unsaved final answer');
+    await s.p.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
+    await s.p.reload();
+    if (await s.p.getByRole('textbox', { name: 'Question 1', exact: true }).inputValue() !== 'went') throw Error('Failed answer disappeared after reload');
+    await see(s.p, '.frame-foot .save-dot:has-text("saved")', 'recovered saved answer');
+    await s.p.getByRole('button', { name: 'Hand in the exam' }).click();
+    await s.p.getByRole('button', { name: 'Hand in', exact: true }).last().click();
+    await s.p.waitForFunction(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      return Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/examRuns/i_${itemId}_`) && value.submittedMs)
+        && Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/answers/exam-save_`) && value.responses?.['exam-gap'] === 'went');
+    }, s.demo);
     return s;
   },
   'Learner signs in and opens the lesson': async (b) => {

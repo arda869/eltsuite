@@ -19,7 +19,7 @@ import { EditorClassContext } from '../../editor/context';
 import { newId } from '../../lib/tasks';
 import { UiIcon } from '../../components/UiIcon';
 import { claimStart, collabRef, readState, setLock, watchFlags } from '../provider';
-import { useCollabSession, type CollabSession } from '../session';
+import { useCollabSession, useCollabSaveStatus, type CollabSession } from '../session';
 import { colorOf, CommentCard, MODE_LABEL, PeopleHere } from '../CollabDoc';
 import type { CollabMode } from '../suggest';
 import { BGS, FILLS, fillOf, H, LAYOUTS, makeEl, makeSlide, PT, readSlides, slideMap, slidesOf, W, type El, type Shape, type Slide, type TextSize } from './model';
@@ -82,6 +82,7 @@ export function SlidesDoc(props: SlidesProps) {
 }
 
 function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'inline', canDownload, head, ownSlides, templateKey, session }: SlidesProps & { session: CollabSession }) {
+  const saveStatus = useCollabSaveStatus(session.provider);
   const doc = session.doc;
   const author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   // Slides have no suggestions: suggesting becomes commenting.
@@ -533,6 +534,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
           <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void addPicture(e.target.files[0]), (e.target.value = ''))} />
         </div>
       )}
+      {saveStatus !== 'saved' && <div className={'cd-save-status ' + saveStatus} role="status">{saveStatus === 'error' ? <>Changes are still on this device. <button type="button" className="btn small-btn" onClick={() => session.provider.retrySave()}>Retry save</button></> : 'Saving changes…'}</div>}
       {phone && eff === 'edit' && <div className="cd-lockbar for-teacher">To change the slides, open them on a tablet or a computer. Here you can look, present and comment.</div>}
       {flags.lock && (
         <div className={'cd-lockbar' + (teacher ? ' for-teacher' : '')} role="status">

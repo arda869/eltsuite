@@ -44,8 +44,10 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
       setError('');
       try {
         await quizApi(action, { runId, ...extra });
+        return true;
       } catch (e) {
         setError((e as Error).message);
+        return false;
       } finally {
         setBusy(false);
       }
@@ -113,7 +115,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
     if (left > 0 && !everyone) return;
     closing.current = live.slide;
     if (left <= 0) playSfx('timeup');
-    setTimeout(() => void act('close'), everyone ? 700 : 300);
+    setTimeout(() => void act('close').then(ok => { if (!ok) closing.current = -1; }), everyone ? 700 : 300);
   }, [phase, counting, left, answered, count, live.slide, act]);
 
   // Joins pop in the lobby.
@@ -137,7 +139,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
       closing.current = live.slide;
       void act('close');
     } else if (phase === 'reveal') void act(last ? 'next' : 'board');
-    else if (phase === 'podium' || phase === 'self') void act('end').then(() => nav('/game-results/' + runId));
+    else if (phase === 'podium' || phase === 'self') void act('end').then(ok => { if (ok) nav('/game-results/' + runId); });
   }, [busy, phase, counting, last, act, nav, runId, live.slide]);
 
   useEffect(() => {
@@ -154,8 +156,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
 
   const end = async () => {
     if (!confirm('End this game? Players can’t join or answer after this. Everyone’s answers are kept.')) return;
-    await act('end');
-    nav('/game-results/' + runId);
+    if (await act('end')) nav('/game-results/' + runId);
   };
   const full = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())?.catch?.(() => {});
 
@@ -187,8 +188,8 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
       </header>
       {!unlocked && phase !== 'ended' && <p className="qz-unlock">Click anywhere to turn on the music.</p>}
       <main className="qz-main">
-        {live.mode === 'self' && <SelfHost live={live} count={count} act={act} />}
-        {phase === 'lobby' && <Lobby live={live} count={count} act={act} />}
+        {live.mode === 'self' && <SelfHost live={live} count={count} act={async (action, extra) => { await act(action, extra); }} />}
+        {phase === 'lobby' && <Lobby live={live} count={count} act={async (action, extra) => { await act(action, extra); }} />}
         {counting && <Countdown n={beat} index={live.slide} total={live.total} poll={!!q?.poll} points={q?.points ?? 1} />}
         {open && q && <Question q={q} left={left} answered={answered} count={count} />}
         {phase === 'reveal' && q && live.reveal && <Reveal q={q} live={live} />}
