@@ -333,8 +333,8 @@ export function LessonEditor() {
   const hands = Object.values(signals).filter((x) => x.hand).sort((a, b) => (a.handAt ?? 0) - (b.handAt ?? 0));
   const stuckN = Object.values(signals).filter((x) => x.stuck).length;
   useEffect(() => {
-    if (user && c && c.teacherId === user.uid) claimClass(classId, user.uid); // boards can be prepared before class
-  }, [user, c?.teacherId, classId]);
+    if (user && c && roleIn(c, user.uid) !== 'viewer' && roleIn(c, user.uid) !== null) void claimClass(classId, user.uid).catch((error) => console.error('Could not connect live classroom controls', error));
+  }, [user, c?.teacherId, c?.coTeachers, classId]);
   // Editing during a live lesson puts the pen and the tools away.
   useEffect(() => {
     if (!editWhileTeaching) return;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, deleteDoc, doc, onSnapshot, query, where, type Timestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, db } from './firebase';
 import type { Item } from './classes';
 import type { Task } from './tasks';
 
@@ -20,9 +21,10 @@ export function examScope(item: Item | null | undefined, task: Task | undefined)
 }
 
 const runRef = (classId: string, scope: string, uid: string) => doc(db, 'classes', classId, 'examRuns', `${scope}_${uid}`);
-export const startExam = (classId: string, scope: string, uid: string, learnerId: string, name: string) =>
-  setDoc(runRef(classId, scope, uid), { scope, uid, learnerId, name, startMs: Date.now(), startedAt: serverTimestamp(), submittedMs: null });
-export const submitExam = (classId: string, scope: string, uid: string) => updateDoc(runRef(classId, scope, uid), { submittedMs: Date.now() });
+const manage = (classId: string, scope: string, itemId: string, action: 'start' | 'submit') =>
+  httpsCallable<{ classId: string; scope: string; itemId: string; action: 'start' | 'submit' }, ExamRun>(getFunctions(app, 'us-central1'), 'manageExam')({ classId, scope, itemId, action });
+export const startExam = (classId: string, scope: string, _uid: string, _learnerId: string, _name: string, itemId = '') => manage(classId, scope, itemId, 'start');
+export const submitExam = (classId: string, scope: string, _uid: string, itemId = '') => manage(classId, scope, itemId, 'submit');
 export const resetExam = (classId: string, scope: string, uid: string) => deleteDoc(runRef(classId, scope, uid));
 
 export function useMyRun(classId: string, scope: string | undefined, uid: string | undefined) {

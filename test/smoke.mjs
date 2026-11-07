@@ -2093,9 +2093,7 @@ const J = {
     await s.p.goto(joinLink);
     await see(s.p, 'h1:has-text("Join your class")', 'learner joining from the copied link');
     if (await s.p.getByLabel('Class code').inputValue() !== classCode) throw Error('The class code was not filled in for the learner.');
-    await see(s.p, '.notice:has-text("Demo class")', 'the linked class');
-    await s.p.getByRole('button', { name: 'Your name' }).click();
-    await s.p.getByRole('option', { name: 'Mia Chan' }).click();
+    await s.p.getByRole('textbox', { name: 'Your full name' }).fill('Mia Chan');
     const mia = s.demo.pins.find((entry) => entry.name === 'Mia Chan');
     if (!mia?.pin) throw Error('The demo learner PIN was not available.');
     await s.p.getByLabel('PIN digit 1').fill(mia.pin);

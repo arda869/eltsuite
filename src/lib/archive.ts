@@ -406,8 +406,11 @@ export async function downloadZip(items: ArchiveItem[], zipName: string, base = 
     if (it.link) links.push(`${dir}${it.name}: ${it.link}`);
     else {
       const f = await itemFile(it).catch(() => null);
+      if (!f) throw new Error(`Could not add “${it.name}” to the download. No ZIP was saved.`);
       if (f) {
-        const bytes = new Uint8Array(await (await fetch(f.url)).arrayBuffer());
+        const response = await fetch(f.url);
+        if (!response.ok) throw new Error(`Could not download “${it.name}” (${response.status}). No ZIP was saved.`);
+        const bytes = new Uint8Array(await response.arrayBuffer());
         let p = dir + f.name;
         for (let k = 2; files[p]; k++) p = dir + f.name.replace(/(\.[a-z0-9]+)$/i, ` (${k})$1`);
         files[p] = bytes;

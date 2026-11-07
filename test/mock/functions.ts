@@ -1,10 +1,98 @@
 import helpLibrary from '../../functions/help/library.json';
 import { AI_FEATURES } from '../../functions/ai/features.js';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { db } from '../../src/lib/firebase';
+import { addDoc, collection, doc, setDoc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { ref, set } from 'firebase/database';
+import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'startCallRoom') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const rooms = await getDocs(collection(db, 'callRooms'));
+    const free = rooms.docs.find(room => room.data().state === 'free');
+    if (!uid || !free) throw Error('No call room is free right now.');
+    await updateDoc(free.ref, { state: 'used', by: uid, usedAt: Date.now(), for: d.forWhat });
+    return { data: { url: free.data().url, name: free.id } };
+  }
+  if (name === 'endCallRoom') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const room = doc(db, 'callRooms', d.room);
+    const existing = (await getDoc(room)).data();
+    if (existing?.by === uid) await updateDoc(room, { state: 'finished', finishedAt: Date.now() });
+    return { data: { finished: existing?.by === uid } };
+  }
+  if (name === 'requestInvitation') {
+    await addDoc(collection(db, 'invitationRequests'), { ...d, at: Date.now() });
+    return { data: { requested: true } };
+  }
+  if (name === 'resolveLearnerSignIn') {
+    const record = (await getDoc(doc(db, 'classCodes', d.code))).data();
+    const matches = (record?.roster ?? []).filter((r: { name: string }) => r.name.trim().toLocaleLowerCase('en') === String(d.name).trim().toLocaleLowerCase('en'));
+    if (matches.length !== 1) throw Object.assign(Error('We couldn’t match that class code and name.'), { code: 'functions/not-found' });
+    return { data: { learnerId: matches[0].id } };
+  }
+  if (name === 'claimLiveClass') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const c = (await getDoc(doc(db, 'classes', d.classId))).data();
+    if (!uid || !c || (c.teacherId !== uid && c.coTeachers?.[uid]?.role !== 'co')) throw Error('Only this class’s teachers can control the live lesson.');
+    await set(ref(rtdb, `classOwners/${d.classId}`), c.teacherId);
+    await set(ref(rtdb, `classTeachers/${d.classId}`), Object.fromEntries(Object.entries(c.coTeachers ?? {}).filter(([, entry]) => (entry as {role?:string}).role === 'co').map(([id]) => [id, true])));
+    return { data: { owner: c.teacherId } };
+  }
+  if (name === 'manageExam') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    if (!uid) throw Error('Sign in first.');
+    const path = `classes/${d.classId}/examRuns/${d.scope}_${uid}`;
+    const existing = (await getDoc(doc(db, path))).data();
+    if (d.action === 'start') {
+      if (existing) return { data: existing };
+      const member = (await getDoc(doc(db, `classes/${d.classId}/members/${uid}`))).data();
+      if (!member) throw Error('This exam is not available to you.');
+      const run = { scope: d.scope, uid, learnerId: member.learnerId, name: member.displayName ?? '', startMs: Date.now(), submittedMs: null };
+      await setDoc(doc(db, path), run);
+      return { data: run };
+    }
+    if (!existing) throw Error('This exam is not available to you.');
+    await setDoc(doc(db, path), { submittedMs: Date.now() }, { merge: true });
+    return { data: { submittedMs: Date.now() } };
+  }
+  if (name === 'assessTask') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const answerPath = `classes/${d.classId}/answers/${d.taskId}_${uid}`;
+    const taskPath = `classes/${d.classId}/items/${d.itemId}/tasks/${d.taskId}`;
+    const answer = (await getDoc(doc(db, answerPath))).data();
+    const task = (await getDoc(doc(db, taskPath))).data();
+    if (!uid || !answer || !task || answer.learnerUid !== uid) throw Error('This task is not available to you.');
+    const { questionIds, scoreTask, scoreQuestion } = await import('../../src/lib/questions');
+    const content = task.restricted ? (await getDoc(doc(db, `${taskPath}/private/body`))).data()?.content : task.content;
+    const key = (await getDoc(doc(db, `${taskPath}/private/key`))).data() ?? {};
+    const qs = questionIds(content, answer.responses ?? {});
+    if (d.action === 'reset') {
+      const kept: Record<string, unknown> = {};
+      if (!d.all) for (const q of qs) {
+        const s = scoreQuestion(key[q.id], answer.responses?.[q.id]);
+        if ((s.max > 0 && s.got === s.max) || q.type === 'writing') if (q.id in (answer.responses ?? {})) kept[q.id] = answer.responses[q.id];
+      }
+      await setDoc(doc(db, answerPath), { responses: kept, checked: false, checkedParts: [], score: 0, total: 0 }, { merge: true });
+      return { data: { key: null, checked: false, responses: kept } };
+    }
+    if (!answer.checked) await setDoc(doc(db, answerPath), { ...scoreTask(qs, key, answer.responses ?? {}), checked: true, submittedAt: Date.now(), attempts: (answer.attempts ?? 0) + 1 }, { merge: true });
+    return { data: { key, checked: true } };
+  }
+  if (name === 'resubmitCorrection') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const path = `classes/${d.classId}/answers/${d.taskId}_${uid}`;
+    const answer = (await getDoc(doc(db, path))).data();
+    if (!uid || answer?.corrections?.[d.questionId]?.status !== 'open') throw Error('This correction is not available to you.');
+    await setDoc(doc(db, path), { corrections: { ...answer.corrections, [d.questionId]: { ...answer.corrections[d.questionId], status: 'resubmitted', at: Date.now() } } }, { merge: true });
+    return { data: { saved: true } };
+  }
   if (name === 'quizShow') {
     if (d.action === 'end' && sessionStorage.getItem('mockQuizEndFailure')) {
       sessionStorage.removeItem('mockQuizEndFailure');

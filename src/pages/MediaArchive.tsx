@@ -378,12 +378,16 @@ export function MediaArchive() {
     if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}”?` : `Remove ${list.length} items?`} Files go to the recycle bin for 30 days and still count towards storage. Existing lessons keep their media until permanent deletion.${lessons ? ' Tasks already in lessons stay there, no longer linked.' : ''}`.trim(), { ok: 'Remove' }))) return;
     list = list.filter((e) => !e.cls && !e.hand);
     if (!list.length) return;
+    const failed: Entry[] = [];
     for (const e of list) {
-      if (e.item) await archiveRemove(uid, e.item.id, e.item).catch(() => {});
-      else if (e.task) await removeLibTask(uid, e.task).catch(() => {});
-      else if (e.doc) await removeSharedDoc(e.doc.id).catch(() => {});
+      try {
+        if (e.item) await archiveRemove(uid, e.item.id, e.item);
+        else if (e.task) await removeLibTask(uid, e.task);
+        else if (e.doc) await removeSharedDoc(e.doc.id);
+      } catch { failed.push(e); }
     }
-    setSel(new Set());
+    setSel(new Set(failed.map((e) => e.key)));
+    if (failed.length) await tell(`${failed.length} ${failed.length === 1 ? 'item was' : 'items were'} not removed: ${failed.map((e) => e.name).join(', ')}. The remaining selection is ready to retry.`);
   };
   const downloadOffline = async (entry: Entry) => {
     setBusy('Preparing offline HTML and embedding media…');
@@ -410,7 +414,8 @@ export function MediaArchive() {
       for (let i = 0; i < others.length; i++) {
         const e = others[i];
         setBusy(`Making the files… ${i + 1} of ${others.length}`);
-        const out = await (e.doc ? sharedDocFiles(e.doc) : classLessonFiles(e.cls!)).catch((err) => (console.error(err), []));
+        const out = await (e.doc ? sharedDocFiles(e.doc) : classLessonFiles(e.cls!)).catch(() => { throw new Error(`Could not prepare “${e.name}”. No ZIP was saved.`); });
+        if (!out.length) throw new Error(`“${e.name}” produced no file. No ZIP was saved.`);
         made.push(...out.map((f) => ({ folder: e.folder, name: f.name, data: f.data })));
       }
       await downloadZip(
@@ -422,20 +427,21 @@ export function MediaArchive() {
         made,
       );
       setBusy('');
-    } catch {
-      setBusy('We couldn’t make the download. Try fewer items.');
+    } catch (error) {
+      setBusy('');
+      await tell(error instanceof Error ? error.message : 'We couldn’t make the download. Try fewer items.');
     }
   };
   const moveTo = async (list: Entry[], to: string) => {
     if (!uid) return;
     if (inClasses(to)) return;
-    list = list.filter((e) => !e.cls);
-    const its = list.filter((e) => e.item && e.folder !== to).map((e) => e.item!);
-    const ts = list.filter((e) => e.task && e.folder !== to).map((e) => e.task!.id);
-    if (its.length) await moveItems(uid, its, to).catch(() => {});
-    if (ts.length) await moveLibTasks(uid, ts, to).catch(() => {});
-    await Promise.all(list.filter((e) => e.doc && e.folder !== to).map((e) => setDocPath(e.doc!.id, to))).catch(() => {});
-    setSel(new Set());
+    list = list.filter((e) => !e.cls && !e.hand);
+    const moving = list.filter((e) => e.folder !== to);
+    const outcomes = await Promise.allSettled(moving.map((e) =>
+      e.item ? moveItems(uid, [e.item], to) : e.task ? moveLibTasks(uid, [e.task.id], to) : e.doc ? setDocPath(e.doc.id, to) : Promise.resolve()));
+    const failed = moving.filter((_, index) => outcomes[index].status === 'rejected');
+    setSel(new Set(failed.map((e) => e.key)));
+    if (failed.length) await tell(`${failed.length} ${failed.length === 1 ? 'item could' : 'items could'} not be moved: ${failed.map((e) => e.name).join(', ')}. The remaining selection is ready to retry.`);
   };
   const beginCut=(ids:string[])=>setCut(ids.filter(id=>id.startsWith('f:')?!inClasses(id.slice(2)):entries.some(e=>e.key===id&&!e.cls&&!e.hand)));
   const pasteCut=async(to=folder)=>{

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { onDisconnect, onValue, ref, remove, serverTimestamp, set, update } from 'firebase/database';
 import { rtdb } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from './firebase';
 
 // Quick, short-lived live signals go through the Realtime Database:
 // the teacher's pointer, hand raises, "I'm stuck" and reactions.
 
 // The teacher claims the class once so the database rules know who may move the pointer.
-export async function claimClass(classId: string, uid: string) {
-  await set(ref(rtdb, `classOwners/${classId}`), uid).catch(() => {});
+export async function claimClass(classId: string, _uid: string) {
+  await httpsCallable<{ classId: string }, { owner: string }>(getFunctions(app, 'us-central1'), 'claimLiveClass')({ classId });
 }
 
 export type Pointer = { taskId: string; bk: string; x: number; y: number; t: number; on: boolean };

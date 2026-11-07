@@ -251,7 +251,9 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
   }, { got: 0, max: 0 }) : { got: 0, max: 0 };
   async function save(qid: string) {
     if (!answer) return;
-    await saveMark(classId, taskId, answer.learnerUid, qid, draft[qid] ?? { score: null, comment: '' });
+    const node = nodes[qid];
+    const max = criteriaOf(node?.attrs)?.reduce((sum, criterion) => sum + criterion.max, 0) ?? (Number(node?.attrs?.points) || 5);
+    await saveMark(classId, taskId, answer.learnerUid, qid, { ...(draft[qid] ?? { score: null, comment: '' }), max });
     setSaved(qid);
     window.setTimeout(() => setSaved(''), 1500);
   }
@@ -286,7 +288,7 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
             <span className="eyebrow">Mark the long answers</span>
             {writing.map((q) => {
               const m = draft[q.id] ?? { score: null, comment: '' };
-              const out = (nodes[q.id]?.attrs?.points as number) ?? 5;
+              const out = criteriaOf(nodes[q.id]?.attrs)?.reduce((sum, criterion) => sum + criterion.max, 0) ?? ((nodes[q.id]?.attrs?.points as number) || 5);
               return (
                 <div key={q.id} className="mark-block">
                   <WritingReview classId={classId} taskId={taskId} learnerUid={answer.learnerUid} qid={q.id} text={textOf(answer.responses?.[q.id])} corr={answer.corrections?.[q.id]} codes={codes} anns={annotations.filter((a) => a.target === 'answer' && a.qid === q.id && a.learnerUid === answer.learnerUid)} />

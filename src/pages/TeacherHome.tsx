@@ -81,7 +81,7 @@ export function TeacherHome() {
   }, [JSON.stringify((classes ?? []).map((c) => c.id))]);
   // Keep the live database in step with the co-teacher list for the classes I own.
   useEffect(() => {
-    for (const c of classes ?? []) if (c.teacherId === user?.uid && c.coTeachers && Object.keys(c.coTeachers).length) syncLiveTeachers(c);
+    for (const c of classes ?? []) if (c.teacherId === user?.uid && c.coTeachers && Object.keys(c.coTeachers).length) void syncLiveTeachers(c).catch((error) => console.error('Could not sync live classroom access', error));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify((classes ?? []).map((c) => [c.id, c.coTeachers ?? null]))]);
 

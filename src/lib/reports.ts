@@ -45,7 +45,7 @@ export function itemResult(item: Item, answers: AnswerDoc[]): ItemResult {
   const mine = answers.filter((a) => a.itemId === item.id);
   const checked = mine.filter((a) => a.checked);
   const score = checked.reduce((s, a) => s + (a.score ?? 0) + Object.values(a.marks ?? {}).reduce((m, x) => m + (x.score ?? 0), 0), 0);
-  const total = checked.reduce((s, a) => s + (a.total ?? 0) + Object.keys(a.marks ?? {}).length * 0, 0);
+  const total = checked.reduce((s, a) => s + (a.total ?? 0) + Object.values(a.marks ?? {}).reduce((m, x) => m + (x.score === null ? 0 : x.max ?? Math.max(5, x.score ?? 0)), 0), 0);
   const tasksTotal = item.taskCount ?? Math.max(mine.length, 1);
   const started = mine.some((a) => a.checked || Object.keys(a.responses ?? {}).length > 0);
   const allIn = checked.length > 0 && checked.length >= tasksTotal;

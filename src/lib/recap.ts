@@ -74,7 +74,7 @@ export function buildRecaps(inp: Inputs, existing: Record<string, Recap>): Recap
       const marks = Object.values(a?.marks ?? {});
       const extra = marks.reduce((s, m) => s + (m.score ?? 0), 0);
       const done = !!a && (a.checked || Object.keys(a.responses ?? {}).length > 0);
-      return { id: t.id, title: t.title, done, score: a?.checked ? (a.score ?? 0) + extra : null, total: a?.checked ? (a.total ?? 0) + marks.filter((m) => m.score !== null).length * 0 : null };
+      return { id: t.id, title: t.title, done, score: a?.checked ? (a.score ?? 0) + extra : null, total: a?.checked ? (a.total ?? 0) + marks.reduce((sum, m) => sum + (m.score === null ? 0 : m.max ?? Math.max(5, m.score ?? 0)), 0) : null };
     });
     const att = inp.attendance.find((a) => a.itemId === inp.item.id && a.uid === l.uid);
     return {

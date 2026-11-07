@@ -2,14 +2,14 @@
   "rules": {
     "classOwners": {
       "$classId": {
-        ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
+        ".read": false,
+        ".write": false
       }
     },
     "classTeachers": {
       "$classId": {
-        ".read": "auth != null",
-        ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+        ".read": false,
+        ".write": false
       }
     },
     "sessions": {
