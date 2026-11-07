@@ -126,7 +126,7 @@ export function MessagesPage() {
           <LearnerNav on="messages" />
         </TopBar>
       )}
-      {!user || !me || chats === null ? (
+      {!user || !me ? (
         <Loader label="Opening your messages" />
       ) : !teacher && dir?.mode === 'off' ? (
         <div className="msg-empty msg-off">
@@ -152,7 +152,7 @@ export function MessagesPage() {
             <input aria-label="Search people and groups" className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
             <div className="msg-list" role={shown.length||teacher ? 'listbox' : undefined} aria-label="Chats">
               {teacher&&(!q||/companion|teacher|coach/i.test(q))&&<button type="button" role="option" aria-selected={coachOpen} className={'msg-row'+(coachOpen?' on':'')} onClick={()=>pick('teaching-coach')}><span className="msg-av"><AiMark/></span><span className="msg-row-t"><span className="msg-row-top"><b>Teacher’s Companion</b><span className="hint">Pinned</span></span><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
-              {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
+              {shown.length === 0 && <span className="hint msg-none" role={chats === null ? 'status' : undefined}>{chats === null ? 'Loading conversations…' : chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);
                 const tagged = un && c.last?.mentions?.includes(me.key);
@@ -177,7 +177,7 @@ export function MessagesPage() {
             </div>
           </aside>
           <main className="msg-main">
-            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid} initialConversationId={params.get('conversation')||undefined} context={(location.state as {coachContext?:CoachContext}|null)?.coachContext}/></div>:cur ? (
+            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid} initialConversationId={params.get('conversation')||undefined} context={(location.state as {coachContext?:CoachContext}|null)?.coachContext}/></div>:chats === null ? <Loader label="Loading conversations" /> : cur ? (
               <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} onMin={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
             ) : (
               <div className="msg-empty">
