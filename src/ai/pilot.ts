@@ -8,8 +8,8 @@ export function useAiPilot() {
   const uid = user?.uid;
   useEffect(() => {
     setGrant(null);
-    if (!uid || import.meta.env.VITE_ELT_AI_PILOT !== 'true') return;
+    if (!uid) return;
     return onSnapshot(doc(db, 'aiPilot', uid), snap => setGrant({ uid, enabled: snap.data()?.enabled === true }), () => setGrant(null));
   }, [uid]);
-  return import.meta.env.VITE_ELT_AI_PILOT === 'true' && !!uid && grant?.uid === uid && grant.enabled;
+  return !!uid && grant?.uid === uid && grant.enabled;
 }
