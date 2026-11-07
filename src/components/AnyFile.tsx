@@ -17,8 +17,8 @@ export function AnyFile({ d }: { d: SharedDoc }) {
     setErr('');
     try {
       await downloadAnyFile(d.id, { ...f, name }, name);
-    } catch {
-      setErr('We couldn’t download the file just now. Check your connection and try again.');
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'We couldn’t download the file just now. Check your connection and try again.');
     } finally {
       setBusy(false);
     }

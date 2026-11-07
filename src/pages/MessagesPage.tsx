@@ -9,7 +9,7 @@ import { ask, tell } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { startSessionWith } from './StudioSession';
 import { isProxyTab } from '../lib/proxy';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type {CoachContext} from '../coach/conversations';
 import { collection, getDocs, type DocumentData } from 'firebase/firestore';
@@ -18,7 +18,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { tickOf, deleteChat, deletesForAll, type Tick } from '../lib/chat';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
-import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessageHistory, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -85,8 +85,12 @@ export function MessagesPage() {
     const all = deletesForAll(c, me.key) && !isSelf(c);
     const ok = await ask(all ? 'Delete this chat? It goes for everyone in it, with all its messages. You can’t undo this.' : isSelf(c) ? 'Delete your notes to self? You can’t undo this.' : 'Delete this chat? It goes from your list, with its messages so far. The others keep theirs. If someone writes again, it comes back.', { ok: 'Delete chat', cancel: 'Keep it' });
     if (!ok) return;
-    if (c.id === open) pick('');
-    await deleteChat(c, me.key).catch(() => void tell('We couldn’t delete the chat just now. Try again.'));
+    try {
+      await deleteChat(c, me.key);
+      if (c.id === open) pick('');
+    } catch {
+      tell('We couldn’t delete the chat just now. Try again.');
+    }
   };
   const rowMenu = (c: Chat): MenuItem[] => [
     { label: 'Open', icon: 'message', onClick: () => pick(c.id) },
@@ -296,7 +300,7 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
 }
 
 export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void; onMin?: () => void }) {
-  const msgs = useMessages(c.id);
+  const { msgs, hasOlder, loadOlder } = useMessageHistory(c.id);
   // Enter sends (Shift + Enter for a new line), unless the person turned that off.
   const [enterSends] = useState(enterSendOn);
   // Every message starts as plain text; Aa shows the writing tools for this one.
@@ -339,6 +343,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [sharing, setSharing] = useState(false);
   const [copying, setCopying] = useState<Msg | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  const historyRestore = useRef<{ height: number; top: number; count: number } | null>(null);
+  const previousMessages = useRef<{ chatId: string; newest: string } | null>(null);
+  const nearBottom = useRef(true);
   const people = c.members.filter((k) => k !== me.key).map((k) => ({ id: k, name: c.names[k] ?? 'Someone' }));
   const colleaguesHere = c.members.filter((k) => k !== me.key && c.roles[k] === 'teacher');
   // The class teacher decides whether learners may send task elements.
@@ -353,11 +360,23 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   }, [c.lastAt, receipts]); // eslint-disable-line react-hooks/exhaustive-deps
   const [forwarding, setForwarding] = useState<Msg | null>(null);
   const [info, setInfo] = useState<Msg | null>(null);
-  useEffect(() => {
-    // Scroll the conversation itself, not the page or its composer (especially on phones).
+  useLayoutEffect(() => {
     const scroller = end.current?.closest<HTMLElement>('.chat-body');
-    if (scroller) scroller.scrollTop = scroller.scrollHeight;
-  }, [msgs?.length]);
+    if (!scroller || !msgs) return;
+    if (historyRestore.current && (msgs.length > historyRestore.current.count || !hasOlder)) {
+      const { height, top } = historyRestore.current;
+      scroller.scrollTop = top + scroller.scrollHeight - height;
+      historyRestore.current = null;
+    } else if (previousMessages.current?.chatId !== c.id || (nearBottom.current && previousMessages.current?.newest !== msgs.at(-1)?.id)) {
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+    previousMessages.current = { chatId: c.id, newest: msgs.at(-1)?.id ?? '' };
+  }, [c.id, msgs, hasOlder]);
+  const showOlder = () => {
+    const scroller = end.current?.closest<HTMLElement>('.chat-body');
+    if (scroller) historyRestore.current = { height: scroller.scrollHeight, top: scroller.scrollTop, count: msgs?.length ?? 0 };
+    loadOlder();
+  };
 
   const reset = () => (keepDraft(null), setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
   // Others see that I am typing (sent at most every few seconds).
@@ -449,8 +468,12 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         )}
       </header>
       {settings && c.kind === 'group' && <GroupSettings c={c} me={me} dir={dir} onLeave={() => (leaveGroup(c, me.key), onBack())} />}
-      <div className="chat-body" tabIndex={0} role="region" aria-label="Message history">
+      <div className="chat-body" tabIndex={0} role="region" aria-label="Message history" onScroll={(event) => {
+        const el = event.currentTarget;
+        nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+      }}>
         {msgs === null && <Loader label="Opening the chat" />}
+        {msgs && hasOlder && <button type="button" className="btn small-btn chat-older" onClick={showOlder}>Load earlier messages</button>}
         {msgs && msgs.length === 0 && <span className="hint chat-start">Say hello. You can tag people with @, and add questions, vocabulary boxes and more from + Add.</span>}
         {days.map(([d, list]) => (
           <div key={d} className="chat-day">

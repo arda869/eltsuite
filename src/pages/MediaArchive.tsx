@@ -402,7 +402,7 @@ export function MediaArchive() {
     const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
     if (!every.length) return;
     if(every.length===1&&!folders.length&&(every[0].cls||every[0].doc?.kind==='lesson'))return downloadOffline(every[0]);
-    if (every.length === 1 && !folders.length && every[0].doc?.kind === 'file') return void downloadAnyFile(every[0].doc.id, every[0].doc.file ? { ...every[0].doc.file, name: dlName(every[0].doc) } : undefined).catch(() => {});
+    if (every.length === 1 && !folders.length && every[0].doc?.kind === 'file') return void downloadAnyFile(every[0].doc.id, every[0].doc.file ? { ...every[0].doc.file, name: dlName(every[0].doc) } : undefined).catch((error) => void tell(error instanceof Error ? error.message : 'We couldn’t download the file just now. Try again.'));
     if (every.length === 1 && !folders.length && (every[0].item || every[0].task)) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
     const base = folders.length === 1 && !list.length ? folders[0] : folder;
@@ -506,7 +506,7 @@ export function MediaArchive() {
       if(w)w.location.href='/doc/'+id;
     }catch{w?.close();void tell('We could not open this image in Designer. Your original is unchanged.');}
   };
-  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' && !isImageFile(en.doc) ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'image' ? void openDesignerImage(en.item) : en.item?.kind === 'video' && en.item.home && !en.item.link ? openVideoStudio(en.item.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' && !isImageFile(en.doc) ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch((error) => void tell(error instanceof Error ? error.message : 'We couldn’t download the file just now. Try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'image' ? void openDesignerImage(en.item) : en.item?.kind === 'video' && en.item.home && !en.item.link ? openVideoStudio(en.item.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
