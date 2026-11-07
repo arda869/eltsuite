@@ -1402,6 +1402,7 @@ export function LessonEditor() {
                       gaps={JSON.stringify(draft.content).includes('"type":"gap"') || JSON.stringify(draft.content).includes('"type":"dropgap"')}
                       writing={JSON.stringify(draft.content).includes('"type":"writing"')}
                       online={sheetData.byId[task.id]?.online ?? []}
+                      young={lessonStyleOf(c) === 'young'}
                     />
                   )}
                   {editFrame}

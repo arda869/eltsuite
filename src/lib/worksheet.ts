@@ -7,6 +7,7 @@ import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType, ImageRun } from 'docx';
 import type { ExportTask } from './textformat';
+import { youngIcon, type YoungAction } from '../lessons/young';
 import { packAnswerText, scorePack, splitPack, type PackKind } from './pack';
 import type { DefData } from '../editor/Definition';
 import { highlightBg } from '../editor/Highlight';
@@ -66,7 +67,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { variant?: string; online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -633,7 +634,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   };
   inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
-  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  const icon = lessonStyle === 'young' ? youngIcon(t.print?.icon && t.print.icon !== 'same' ? t.print.icon : t.ylIcon, t.content) : null;
+  return { ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only

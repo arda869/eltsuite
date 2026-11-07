@@ -9,7 +9,7 @@ import type { ExportTask } from '../lib/textformat';
 // The printed pieces of a lesson for the worksheet view: the page band and footer, and each task and
 // section as the print engine draws it, with its pictures and QR codes.
 
-export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; show?: string } | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
+export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; show?: string; icon?: string } | null; ylIcon?: string | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
 export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null; lessonStyle?: import('../lib/lessonStyle').LessonStyle };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {

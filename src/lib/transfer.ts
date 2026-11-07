@@ -15,7 +15,7 @@ export async function gatherLesson(classId: string, itemId: string): Promise<{ t
       ? (await getDoc(doc(d.ref, 'private', 'body'))).data()?.content
       : t.content;
     if (t.restricted && !body) throw new Error('The saved activity content could not be loaded.');
-    tasks.push({ id: t.id, family: t.family, variant: t.variant, print: t.print ?? null, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(body ?? { type: 'doc' }, key) });
+    tasks.push({ id: t.id, family: t.family, variant: t.variant, print: t.print ?? null, ylIcon: t.ylIcon, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(body ?? { type: 'doc' }, key) });
   }
   return { title: (item.data()?.title as string) ?? 'Lesson', tasks };
 }

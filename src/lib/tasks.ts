@@ -49,7 +49,7 @@ export type Task = {
 };
 // How a task prints: the length of its gaps, the space for writing, and its own instruction on paper.
 // show: on paper and on screen (the default), only on paper (learners don't see it online), or only on screen (not printed).
-export type PaperLook = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen' };
+export type PaperLook = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen'; icon?: import('../lessons/young').YoungAction | 'same' | 'none' };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');
 export const taskRef = (classId: string, itemId: string, taskId: string) => doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId);

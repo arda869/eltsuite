@@ -25,13 +25,10 @@
 [data-lesson-style='young'] .tbox:is(.s-email, .s-browser) .tbox-body { background: var(--paper); }
 [data-lesson-style='young'] .tbox.s-sticky {
   position: relative; transform: none; background: var(--yl-panel); border: 2px solid var(--yl-edge);
-  border-radius: 8px 8px 28px 8px; box-shadow: 2px 3px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 16px; box-shadow: 2px 3px 0 color-mix(in srgb, var(--accent) 12%, transparent);
 }
 [data-lesson-style='young'] .tbox.s-sticky .tbox-body { font-family: Kalam, 'Atkinson Hyperlegible', sans-serif; }
-[data-lesson-style='young'] .tbox.s-sticky::after {
-  content: ''; position: absolute; right: 3px; bottom: 3px; width: 24px; height: 15px;
-  border-radius: 0 0 22px 0; border-right: 1px solid var(--yl-edge); background: var(--paper); pointer-events: none;
-}
+[data-lesson-style='young'] .tbox.s-sticky::after { content: none; }
 [data-lesson-style='young'] .tbox.s-speech { padding-bottom: 12px; }
 [data-lesson-style='young'] .tbox.s-speech .bubble,
 [data-lesson-style='young'] .dialogue .dl-text {

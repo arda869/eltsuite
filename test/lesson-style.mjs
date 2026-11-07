@@ -107,13 +107,18 @@ try {
     const adult=window.flattenTask(window.exportFixture);
     const explicit=window.flattenTask(window.exportFixture,'adult');
     const young=window.flattenTask(window.exportFixture,'young');
-    return {adult,explicit,young,unchanged:original===JSON.stringify(window.exportFixture)};
+    const printIcon=window.flattenTask({...window.exportFixture,ylIcon:'read',print:{icon:'sing'}},'young');
+    const noPrintIcon=window.flattenTask({...window.exportFixture,ylIcon:'read',print:{icon:'none'}},'young');
+    return {adult,explicit,young,printIcon:printIcon.icon,noPrintIcon:noPrintIcon.icon,unchanged:original===JSON.stringify(window.exportFixture)};
   });
   assert.deepEqual(projections.adult,projections.explicit);assert.deepEqual(projections.adult.answers,projections.young.answers);assert.equal(projections.adult.marks,projections.young.marks);assert(projections.unchanged);
   ok('Adult default projection identical; Young projection preserves answers, marks and source JSON');
+  assert(projections.young.icon);assert.equal(projections.adult.icon,undefined);assert.equal(projections.printIcon,'sing');assert.equal(projections.noPrintIcon,undefined);
+  ok('Young print icon follows the task, accepts a separate choice, and can be hidden');
   for(const {paper,clear,columns,size,label} of [{paper:'A4',label:'A4'},{paper:'Letter',label:'Letter'},{paper:'A5',label:'A5'},{paper:'A4',clear:true,columns:2,size:'large',label:'A4-clear-large-two-columns'}]) {
     const html=await p.evaluate(async ({paper,clear,columns,size})=>window.worksheetHtml('Planning a visit',[{kind:'task',task:window.flattenTask(window.exportFixture,'young')}],{lessonStyle:'young',header:true,key:true,notes:true,paper,clear,size,columns:columns||1,accent:'#338399',className:'Teal class',origin:location.origin,sounds:await window.soundFixture()}),{paper,clear,columns,size});
     const print=await b.newPage();await print.setContent(html);await print.waitForFunction(()=>window.__laidOut===true);await print.evaluate(()=>document.fonts.ready);
+    assert(await print.locator('.unit.task .ex-task-icon svg').count()>0,'Young task icon appears on paper');
     assert(await print.locator('.key-page').count()>0);assert((await print.locator('.key-page').innerText()).includes('Ask learners'));
     if(clear){assert((await print.locator('.tbox.s-sticky .tbox-body').first().evaluate(el=>getComputedStyle(el).fontFamily)).includes('Atkinson'));assert((await print.locator('.ipa').first().evaluate(el=>getComputedStyle(el).fontFamily)).includes('Lesson IPA'));}
     assert(await print.locator('.cut-page').count()>0);assert(await print.locator('.qr-code svg').count()>0);assert(await print.locator('.pic img').count()>0);

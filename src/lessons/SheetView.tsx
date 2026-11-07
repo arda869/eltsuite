@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UiIcon } from '../components/UiIcon';
 import { DOTS } from '../editor/nodes';
+import { YOUNG_ICONS, type YoungAction } from './young';
 
 // Worksheet view of a lesson: the same tasks, on A4 pages, one column, in the printed house style
 // (see "How printed worksheets look" in CLAUDE.md). Every task you are not editing is drawn by the
@@ -268,8 +269,8 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
 }
 
 // How the task being edited looks on paper: its gaps, its writing space and an instruction for paper.
-export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen' };
-export function PaperBar({ look, onChange, gaps, writing, online }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[] }) {
+export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen'; icon?: YoungAction | 'same' | 'none' };
+export function PaperBar({ look, onChange, gaps, writing, online, young = false }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[]; young?: boolean }) {
   const [instrOn, setInstrOn] = useState(!!look.instr);
   const set = (p: Partial<Paper>) => onChange({ ...look, ...p });
   return (
@@ -283,6 +284,16 @@ export function PaperBar({ look, onChange, gaps, writing, online }: { look: Pape
           <option value="screen">Only on screen</option>
         </select>
       </label>
+      {young && (
+        <label className="sh-pb-f">
+          <span>Print icon</span>
+          <select value={look.icon ?? 'same'} onChange={(e) => set({ icon: e.target.value as Paper['icon'] })}>
+            <option value="same">Same as on screen</option>
+            <option value="none">No icon</option>
+            {YOUNG_ICONS.map((icon) => <option key={icon.id} value={icon.id}>{icon.label}</option>)}
+          </select>
+        </label>
+      )}
       {gaps && (
         <label className="sh-pb-f">
           <span>Gaps</span>

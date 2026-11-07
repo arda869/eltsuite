@@ -1,4 +1,5 @@
 import { youngSheetCss } from './youngWorksheet';
+import { YoungArt, youngIconLabel } from '../lessons/young';
 import { credit } from './brand';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { MARK } from '../components/Wordmark';
@@ -238,10 +239,11 @@ const CARDS = '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.2" y="3.4"
 // Small square icons at the start of an exercise: a play sign with the recording's number, or cards
 // for an exercise with cards to cut out.
 function exIcons(t: WsTask) {
+  const taskIcon = t.icon ? `<span class="ex-task-icon" title="${esc(youngIconLabel(t.icon))}">${renderToStaticMarkup(createElement(YoungArt, { action: t.icon, size: 28 }))}</span>` : '';
   const ids = [...new Set(t.media ?? [])];
   const play = ids.map((id) => `<span class="ex-ic" title="Recording ${MEDIA_NO[id] ?? ''}"><i>${PLAY}</i><b>${MEDIA_NO[id] ?? ''}</b></span>`).join('');
   const cards = t.cutouts?.some((c) => c.cards.length) ? `<span class="ex-ic" title="Cards to cut out"><i>${CARDS}</i></span>` : '';
-  return play + cards;
+  return taskIcon + play + cards;
 }
 
 // The worksheet's styles: the house style (see "How printed worksheets look" in CLAUDE.md).
@@ -705,7 +707,10 @@ ${sheetCss(opts)}
       if (mark) u.removeChild(mark);
       cut(col, body, restBody);
       if (!restBody.children.length) { nextCol(); continue; }
-      var n = rest.querySelector('.ex-n'); if (n) n.textContent = n.textContent.replace(/ ?\\(cont\\.\\)$/, '') + ' (cont.)';
+      var n = rest.querySelector('.ex-n'); if (n) {
+        ${opts.lessonStyle === 'young' ? `var label = rest.querySelector('.ex-text');
+        if (label && !label.querySelector('.ex-cont')) { var continued = document.createElement('small'); continued.className = 'ex-cont'; continued.textContent = ' (continued)'; label.appendChild(continued); }` : `n.textContent = n.textContent.replace(/ ?\\(cont\\.\\)$/, '') + ' (cont.)';`}
+      }
       units.splice(i + 1, 0, rest);
       nextCol();
     }
