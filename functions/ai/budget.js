@@ -1,12 +1,13 @@
 // USD accounting uses integer millionths of a dollar; no floating-point balance.
-// Standard short-context prices verified 30 October 2026:
+// Standard short-context prices verified 8 November 2026:
 // https://developers.openai.com/api/docs/pricing
 export const PILOT_MODEL = 'gpt-6.1-sol';
 export const MONTHLY_LIMIT_MICRO_USD = 20_000_000;
 export const MAX_INPUT_TOKENS = 100_000;
 export const MAX_OUTPUT_TOKENS = 24_000;
 export const RESERVATION_PER_CALL = 2 * MAX_INPUT_TOKENS + 10 * MAX_OUTPUT_TOKENS;
-export const PRICE_REVIEW_AFTER = Date.parse('2026-12-01T00:00:00Z');
+// Recheck provider prices before this date; all generation paths fail closed afterward.
+export const PRICE_REVIEW_AFTER = Date.parse('2027-02-01T00:00:00Z');
 
 export function checkModel(model, now = Date.now()) {
   if (model !== PILOT_MODEL || now >= PRICE_REVIEW_AFTER) throw Error('The pilot model prices need review before generation can continue.');
