@@ -41,7 +41,7 @@
 .task-frame[data-lesson-style='exam'] .task-instr,
 .task-frame[data-lesson-style='exam'] .task-instr.rich .task-body {
   color: var(--exam-ink);
-  font: italic 500 17px/1.52 Arial, sans-serif;
+  font: 500 14px/1.52 Arial, sans-serif;
 }
 .task-frame[data-lesson-style='exam'] .frame-body {
   background: #fff;
@@ -53,7 +53,7 @@
   --sans: Arial, sans-serif;
   color: var(--exam-ink);
   font-family: Arial, sans-serif;
-  font-size: 17px;
+  font-size: 14px;
   line-height: 1.58;
 }
 .task-frame[data-lesson-style='exam'] :is(.task-body, .ProseMirror) :is(h1, h2, h3, h4),
@@ -90,5 +90,5 @@
 @media (max-width: 640px) {
   .task-frame[data-lesson-style='exam'] .frame-head { padding: 16px 16px 14px; }
   .task-frame[data-lesson-style='exam'] .frame-body { padding: 16px; }
-  .task-frame[data-lesson-style='exam'] :is(.task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc) { font-size: 16px; }
+  .task-frame[data-lesson-style='exam'] :is(.task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc) { font-size: 14px; }
 }

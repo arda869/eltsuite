@@ -4,12 +4,13 @@ export function examSheetCss() {
   return `
 :root { --ink: #17202b; --muted: #4b5563; }
 body, .page, .page * { font-family: Arial, sans-serif !important; }
+.page .brand .logo, .page .brand .logo * { font-family: Karla, sans-serif !important; }
 .page { color: var(--ink); }
 .section h2 { color: var(--accent-ink); letter-spacing: .12em; }
 .section h2::after { background: var(--accent); opacity: .42; }
 .ex-head { align-items: baseline; gap: 3mm; margin-bottom: 2.3mm; font-family: Arial, sans-serif; font-weight: 700; }
 .ex-n { min-width: 6mm; color: var(--accent-ink); font: 800 1.08em Arial, sans-serif; }
-.ex-text { font-style: italic; }
+.ex-text { font-style: normal; }
 .ex-body { padding-left: 9mm; }
 .ex-body :is(p, .li, .subex-b) { line-height: 1.48; }
 .qn { min-width: 4.2mm; color: var(--accent-ink); font: 800 1em Arial, sans-serif; }

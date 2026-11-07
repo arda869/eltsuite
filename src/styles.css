@@ -3027,6 +3027,10 @@ html, body { background: var(--page); }
 .lesson-layout.learner > .task-list { padding-top: 18px; }
 .classes-shell[data-lesson-style='exam'], .lesson-shell[data-lesson-style='exam'] { --serif: Arial, sans-serif; --sans: Arial, sans-serif; font-family: Arial, sans-serif; }
 .classes-shell[data-lesson-style='exam'] :is(.topbar, .task-list) *, .lesson-shell[data-lesson-style='exam'] :is(.topbar, .task-list) * { font-family: Arial, sans-serif !important; }
+.classes-shell[data-lesson-style='exam'] .topbar .suite-k { font-family: 'Karla', 'Segoe UI', system-ui, sans-serif !important; }
+.classes-shell[data-lesson-style='exam'] .topbar .suite-mark b,
+.lesson-shell[data-lesson-style='exam'] .topbar .wm-name,
+.lesson-shell[data-lesson-style='exam'] .topbar .wm-name b { font-family: 'Fraunces', Georgia, serif !important; }
 .lesson-layout > .task-side:not(.live-panel), .lesson-layout:not(.present) > .live-panel { flex: 0 0 var(--rw, 260px); width: var(--rw, 260px); }
 .lesson-layout { gap: 0; }
 .lesson-layout > .center-col { margin: 0 6px; }
