@@ -4,6 +4,12 @@ import { RtdbProvider } from './provider';
 
 export type CollabSession = { doc: Y.Doc; provider: RtdbProvider; pud: Y.PermanentUserData };
 
+export function useCollabSaveStatus(provider: RtdbProvider) {
+  const [status, setStatus] = useState(provider.saveStatus);
+  useEffect(() => provider.watchSave(setStatus), [provider]);
+  return status;
+}
+
 // A shared document and its live connection, made in an effect (React may mount twice in
 // development) and closed when the component goes or opens another document.
 export function useCollabSession(docKey: string, uid: string) {

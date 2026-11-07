@@ -17,7 +17,8 @@ import {
   EmailAuthProvider,
 } from 'firebase/auth';
 import { setDoc } from 'firebase/firestore';
-import { auth as mainAuth } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth as mainAuth } from './firebase';
 import { useEffect, useState } from 'react';
 import { arrayRemove, arrayUnion, collection, doc, getDoc, increment, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
@@ -63,20 +64,27 @@ export async function addLearners(c: ClassDoc, names: string[], from: Record<str
     const orgRef = orgSnap?.exists() && countOne(orgSnap.data(), 'learners') !== null ? orgSnap.ref : null;
     const learnerId = newLearnerId();
     const pin = newPin();
-    const authUid = await withSecondaryAuth(async (auth) => {
+    await withSecondaryAuth(async (auth) => {
       const cred = await createUserWithEmailAndPassword(auth, learnerEmail(learnerId), learnerPassword(c.classCode, pin));
-      return cred.user.uid;
-    });
-    // One write: the learner, and for a limited organisation, the learner counted in (see firestore.rules).
-    await runTransaction(db, async (tx) => {
-      const count = orgRef ? countOne((await tx.get(orgRef)).data(), 'learners') : null;
-      tx.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid, ...(from[raw] ? { teacherUid: from[raw] } : {}), createdAt: serverTimestamp() });
-      tx.set(doc(db, 'classes', c.id, 'secrets', learnerId), { pin });
-      tx.set(doc(db, 'classes', c.id, 'members', authUid), { learnerId, displayName });
-      tx.set(doc(db, 'users', authUid), { role: 'learner', classId: c.id, learnerId, displayName });
-      tx.update(doc(db, 'classCodes', c.classCode), { roster: arrayUnion({ id: learnerId, name: displayName }) });
-      tx.update(doc(db, 'classes', c.id), { learnerCount: increment(1) });
-      if (orgRef && count !== null) tx.update(orgRef, { 'usage.learners': count });
+      try {
+        // Keep the new sign-in session until every associated record is committed.
+        await runTransaction(db, async (tx) => {
+          const count = orgRef ? countOne((await tx.get(orgRef)).data(), 'learners') : null;
+          tx.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid: cred.user.uid, ...(from[raw] ? { teacherUid: from[raw] } : {}), createdAt: serverTimestamp() });
+          tx.set(doc(db, 'classes', c.id, 'secrets', learnerId), { pin });
+          tx.set(doc(db, 'classes', c.id, 'members', cred.user.uid), { learnerId, displayName });
+          tx.set(doc(db, 'users', cred.user.uid), { role: 'learner', classId: c.id, learnerId, displayName });
+          tx.update(doc(db, 'classCodes', c.classCode), { roster: arrayUnion({ id: learnerId, name: displayName }) });
+          tx.update(doc(db, 'classes', c.id), { learnerCount: increment(1) });
+          if (orgRef && count !== null) tx.update(orgRef, { 'usage.learners': count });
+        });
+      } catch (error) {
+        // Authentication and Firestore cannot share a transaction. Undo the account
+        // while this secondary sign-in is still available to us.
+        try { await cred.user.delete(); }
+        catch (rollbackError) { console.error('Could not undo learner sign-in creation', learnerId, rollbackError); }
+        throw error;
+      }
     });
     added.push({ name: displayName, pin, id: learnerId });
   }
@@ -88,10 +96,14 @@ export async function resetPin(c: ClassDoc, learner: Learner, oldPin: string) {
   await withSecondaryAuth(async (auth) => {
     const cred = await signInWithEmailAndPassword(auth, learnerEmail(learner.id), learnerPassword(c.classCode, oldPin));
     await updatePassword(cred.user, learnerPassword(c.classCode, pin));
+    try {
+      await setDoc(doc(db, 'classes', c.id, 'secrets', learner.id), { pin });
+    } catch (error) {
+      try { await updatePassword(cred.user, learnerPassword(c.classCode, oldPin)); }
+      catch (rollbackError) { console.error('Could not restore previous learner PIN', learner.id, rollbackError); }
+      throw error;
+    }
   });
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'classes', c.id, 'secrets', learner.id), { pin });
-  await batch.commit();
   return pin;
 }
 
@@ -109,19 +121,19 @@ export async function changeMySecret(o: { classId: string; classCode: string; le
     throw new Error('That’s not your current PIN or password.');
   }
   await updatePassword(u, learnerPassword(o.classCode, o.next));
-  await setDoc(doc(db, 'classes', o.classId, 'secrets', o.learnerId), { own: true, kind: o.kind, at: Date.now() });
+  try {
+    await setDoc(doc(db, 'classes', o.classId, 'secrets', o.learnerId), { own: true, kind: o.kind, at: Date.now() });
+  } catch (error) {
+    try { await updatePassword(u, learnerPassword(o.classCode, o.current)); }
+    catch (rollbackError) { console.error('Could not restore previous learner secret', o.learnerId, rollbackError); }
+    throw error;
+  }
 }
 
-export async function removeLearner(c: ClassDoc, learner: Learner, pin: string) {
-  // Delete the sign-in account first so the learner can no longer get in.
-  await withSecondaryAuth(async (auth) => {
-    try {
-      const cred = await signInWithEmailAndPassword(auth, learnerEmail(learner.id), learnerPassword(c.classCode, pin));
-      await cred.user.delete();
-    } catch (e) {
-      console.warn('Learner account could not be deleted; removing access anyway', e);
-    }
-  });
+export async function removeLearner(c: ClassDoc, learner: Learner, _pin: string) {
+  // Server deletion is idempotent, so a failed Firestore batch can be retried
+  // even when the sign-in account was already removed on the first attempt.
+  await httpsCallable<{ classId: string; learnerId: string }, { deleted: boolean }>(getFunctions(app, 'us-central1'), 'deleteLearnerIdentity')({ classId: c.id, learnerId: learner.id });
   const batch = writeBatch(db);
   batch.delete(doc(db, 'classes', c.id, 'learners', learner.id));
   batch.delete(doc(db, 'classes', c.id, 'secrets', learner.id));

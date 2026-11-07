@@ -18,6 +18,14 @@ function setAt(t: Record<string, unknown>, p: string, v: unknown) {
 }
 export const getDatabase = () => ({});
 export const ref = (_db: unknown, path = '') => ({ path });
+async function beforeWrite(path: string) {
+  const faults = JSON.parse(sessionStorage.getItem('mockrtdb-faults') || '[]') as { path: string; count: number; code?: string }[];
+  const fault = faults.find(f => path.startsWith(f.path) && f.count > 0);
+  if (!fault) return;
+  fault.count--;
+  sessionStorage.setItem('mockrtdb-faults', JSON.stringify(faults));
+  if (fault.code) throw Object.assign(new Error(fault.code), { code: fault.code });
+}
 export function onValue(r: Ref, cb: (s: { val: () => unknown; exists: () => boolean }) => void) {
   let last = '';
   const fire = () => {
@@ -32,6 +40,7 @@ export function onValue(r: Ref, cb: (s: { val: () => unknown; exists: () => bool
   return subscribe(fire);
 }
 export async function set(r: Ref, v: unknown) {
+  await beforeWrite(r.path);
   const t = tree();
   setAt(t, r.path, v);
   persist('mockrtdb', t);

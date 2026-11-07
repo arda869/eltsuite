@@ -86,7 +86,14 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const { pages, els: server, meta } = useDesign(d.id);
   const edits = useEdits(d.id, server);
   const { live, setLive, flush, commit, patch } = edits;
-  const els = useMemo(() => server.map((e) => (live[e.id] ? { ...e, ...live[e.id] } : e)), [server, live]);
+  const els = useMemo(() => {
+    const merged = new Map(server.map(e => [e.id, e]));
+    for (const [id, value] of Object.entries(edits.recovery)) {
+      if (value) merged.set(id, value);
+      else merged.delete(id);
+    }
+    return [...merged.values()].map(e => live[e.id] ? { ...e, ...live[e.id] } : e);
+  }, [server, live, edits.recovery]);
   const [pageId, setPageId] = useState('');
   const page = pages?.find((p) => p.id === pageId) ?? pages?.[0];
   const here = useMemo(() => els.filter((e) => e.page === page?.id).sort((a, b) => a.z - b.z || a.id.localeCompare(b.id)), [els, page?.id]);
@@ -1130,7 +1137,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <button type="button" className="dz-ib" onClick={() => setZoom((v) => Math.min(5, v * 1.25))} aria-label="Zoom in">+</button>
         </div>
         <span className="dz-grow" />
-        {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? 'Not saved. Check your connection.' : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
+        {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? <>Not saved. <button type="button" className="btn small-btn" onClick={() => void edits.retry()}>Retry save</button></> : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
         <DownloadMenu cx={cx} />
       </div>
       <div className="dz-body">

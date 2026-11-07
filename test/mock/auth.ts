@@ -2,7 +2,7 @@ import { load, persist } from './store';
 type U = { uid: string; email: string; displayName: string; password?: string; providers?: string[] };
 const users = () => load<Record<string, U>>('mockauth', {});
 export type User = { uid: string; email: string | null; displayName: string | null; providerData: {providerId:string}[]; getIdTokenResult: () => Promise<{ claims: Record<string, unknown> }>; delete: () => Promise<void> };
-const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, providerData:(u.providers|| (u.password?['password']:[])).map(providerId=>({providerId})), getIdTokenResult: async () => ({ claims: {} }), delete: async () => {} });
+const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, providerData:(u.providers|| (u.password?['password']:[])).map(providerId=>({providerId})), getIdTokenResult: async () => ({ claims: {} }), delete: async () => { const all=users();delete all[u.uid];persist('mockauth',all); } });
 const autos: Record<string, { currentUser: User | null; app: { name: string } }> = {};
 export function getAuth(app: { name: string } = { name: '[DEFAULT]' }) {
   if (!autos[app.name]) {

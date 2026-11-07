@@ -19,12 +19,17 @@ export class RtdbProvider {
   doc: Y.Doc;
   awareness: Awareness;
   synced = false;
+  saveStatus: 'saved' | 'pending' | 'error' = 'saved';
+  private saveListeners = new Set<(status: 'saved' | 'pending' | 'error') => void>();
   private key: string;
   private uid: string;
   private offs: (() => void)[] = [];
   private seen = new Set<string>();
   private pending: Uint8Array[] = [];
   private timer = 0;
+  private startTimer = 0;
+  private writing = false;
+  private inFlight: Uint8Array | null = null;
   private onSynced: ((p: RtdbProvider) => void)[] = [];
   private awRef: DatabaseReference;
   private dead = false;
@@ -35,10 +40,41 @@ export class RtdbProvider {
     this.uid = uid;
     this.awareness = new Awareness(doc);
     this.awRef = collabRef(key, `aw/${doc.clientID}`);
+    try {
+      const stored = localStorage.getItem(this.draftKey());
+      if (stored) this.pending = [unb64(stored)];
+    } catch { /* Keep edits in memory if device storage is unavailable. */ }
+    if (this.pending.length) this.saveStatus = 'pending';
     doc.on('update', this.onUpdate);
     window.addEventListener('pagehide', this.flush);
+    window.addEventListener('online', this.flush);
     this.awareness.on('update', this.onAwareness);
-    void this.start();
+    this.connect();
+  }
+
+  private draftKey() { return `ll.collabDraft:${this.key}:${this.uid}`; }
+  watchSave(listener: (status: 'saved' | 'pending' | 'error') => void) {
+    this.saveListeners.add(listener);
+    listener(this.saveStatus);
+    return () => { this.saveListeners.delete(listener); };
+  }
+  private setSaveStatus(status: 'saved' | 'pending' | 'error') {
+    this.saveStatus = status;
+    this.saveListeners.forEach(listener => listener(status));
+  }
+  retrySave() { this.flush(); }
+  private persist() {
+    try {
+      const unsaved = [...(this.inFlight ? [this.inFlight] : []), ...this.pending];
+      if (unsaved.length) localStorage.setItem(this.draftKey(), b64(Y.mergeUpdates(unsaved)));
+      else localStorage.removeItem(this.draftKey());
+    } catch { /* Keep the in-memory queue. */ }
+  }
+  private connect() {
+    void this.start().catch((e) => {
+      console.error('collab sync', e);
+      if (!this.dead) this.startTimer = window.setTimeout(() => this.connect(), 2000);
+    });
   }
 
   whenSynced(f: (p: RtdbProvider) => void) {
@@ -47,7 +83,7 @@ export class RtdbProvider {
   }
 
   private async start() {
-    const [snap, list] = await Promise.all([get(collabRef(this.key, 'snap')).catch(() => null), get(collabRef(this.key, 'u')).catch(() => null)]);
+    const [snap, list] = await Promise.all([get(collabRef(this.key, 'snap')), get(collabRef(this.key, 'u'))]);
     if (this.dead) return;
     Y.transact(
       this.doc,
@@ -59,10 +95,12 @@ export class RtdbProvider {
           this.seen.add(k);
           if (v?.u) Y.applyUpdate(this.doc, unb64(v.u), this);
         }
+        for (const update of this.pending) Y.applyUpdate(this.doc, update, this);
       },
       this,
     );
     this.synced = true;
+    if (this.pending.length) this.timer = window.setTimeout(this.flush, 0);
     this.onSynced.splice(0).forEach((f) => f(this));
     // New changes from everyone else.
     this.offs.push(
@@ -89,17 +127,37 @@ export class RtdbProvider {
   private onUpdate = (u: Uint8Array, origin: unknown) => {
     if (origin === this || this.dead) return;
     this.pending.push(u);
+    this.persist();
+    this.setSaveStatus('pending');
     window.clearTimeout(this.timer);
     this.timer = window.setTimeout(this.flush, 120); // typing sends a few updates a second, not one per key
   };
 
   private flush = () => {
-    if (!this.pending.length) return;
+    if (!this.pending.length || this.writing) return;
+    this.writing = true;
     const u = this.pending.length === 1 ? this.pending[0] : Y.mergeUpdates(this.pending);
     this.pending = [];
+    this.inFlight = u;
+    this.persist();
     const r = push(collabRef(this.key, 'u'));
     if (r.key) this.seen.add(r.key);
-    set(r, { u: b64(u), by: this.uid, c: this.doc.clientID, at: serverTimestamp() }).catch((e) => console.error('collab', e));
+    set(r, { u: b64(u), by: this.uid, c: this.doc.clientID, at: serverTimestamp() }).then(() => {
+      this.inFlight = null;
+      this.writing = false;
+      this.persist();
+      this.setSaveStatus(this.pending.length ? 'pending' : 'saved');
+      if (this.pending.length && !this.dead) this.timer = window.setTimeout(this.flush, 0);
+    }).catch((e) => {
+      console.error('collab', e);
+      if (r.key) this.seen.delete(r.key);
+      this.pending.unshift(u);
+      this.inFlight = null;
+      this.writing = false;
+      this.persist();
+      this.setSaveStatus('error');
+      if (!this.dead) this.timer = window.setTimeout(this.flush, 2000);
+    });
   };
 
   private onAwareness = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
@@ -118,14 +176,17 @@ export class RtdbProvider {
   destroy() {
     this.flush();
     window.removeEventListener('pagehide', this.flush);
+    window.removeEventListener('online', this.flush);
     this.dead = true;
     window.clearTimeout(this.timer);
+    window.clearTimeout(this.startTimer);
     this.offs.forEach((f) => f());
     this.doc.off('update', this.onUpdate);
     this.awareness.off('update', this.onAwareness);
     removeAwarenessStates(this.awareness, [this.doc.clientID], 'local');
     remove(this.awRef).catch(() => {});
     this.awareness.destroy();
+    this.saveListeners.clear();
   }
 }
 
