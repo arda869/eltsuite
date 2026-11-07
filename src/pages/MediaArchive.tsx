@@ -333,7 +333,8 @@ export function MediaArchive() {
     let n = 'New folder';
     for (let k = 2; allFolders.includes(inside ? `${inside}/${n}` : n); k++) n = `New folder ${k}`;
     const path = inside ? `${inside}/${n}` : n;
-    await addFolder(uid, path).catch(() => {});
+    try { await addFolder(uid, path); }
+    catch { await tell('We couldn’t create this folder. Check your connection and try again.'); return; }
     if (inside !== folder) setFolder(inside);
     setSel(new Set(['f:' + path]));
     setRenaming('f:' + path); // straight into typing its name, like on a computer
@@ -348,9 +349,21 @@ export function MediaArchive() {
       if (leaf === leafOf(f)) return;
       const to = parentOf(f) ? `${parentOf(f)}/${leaf}` : leaf;
       if (allFolders.some((x) => x.toLocaleLowerCase() === to.toLocaleLowerCase())) return void tell('A folder with that name already exists here.');
-      await renameFolder(uid, f, to, all, allFolders).catch(() => {});
-      await Promise.all(tasks.filter((t) => inTree(t.folder, f)).map((t) => moveLibTasks(uid, [t.id], to + t.folder.slice(f.length)))).catch(() => {});
-      for (const d of ownDocs.filter((d) => inTree(d.path || '', f))) await setDocPath(d.id, to + (d.path || '').slice(f.length));
+      let folderRenamed = false;
+      try {
+        await renameFolder(uid, f, to, all, allFolders);
+        folderRenamed = true;
+        const results = await Promise.allSettled([
+          ...tasks.filter((t) => inTree(t.folder, f)).map((t) => moveLibTasks(uid, [t.id], to + t.folder.slice(f.length))),
+          ...ownDocs.filter((d) => inTree(d.path || '', f)).map((d) => setDocPath(d.id, to + (d.path || '').slice(f.length))),
+        ]);
+        if (results.some((result) => result.status === 'rejected')) throw new Error('Some contents could not be moved.');
+      } catch {
+        await tell('We couldn’t finish renaming this folder and moving everything inside it. Check both folder names and retry any items left behind.');
+        if (folderRenamed && inTree(folder, f)) setFolder(to + folder.slice(f.length));
+        setSel(new Set(['f:' + (folderRenamed ? to : f)]));
+        return;
+      }
       if (inTree(folder, f)) setFolder(to + folder.slice(f.length));
       setSel(new Set(['f:' + to]));
       return;
@@ -358,16 +371,28 @@ export function MediaArchive() {
     const e = entries.find((x) => x.key === key);
     if (!e || n === e.name || e.cls) return;
     if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch((e) => void tell(e.message));
-    else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => {});
+    else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => void tell('We couldn’t rename this task. Try again.'));
     else if (e.doc) await renameDoc(e.doc.id, n).catch((e) => void tell(e.message));
   };
   const deleteF = async (f: string) => {
     const n = countIn(f);
     if (!(await ask(`Delete the folder “${leafOf(f)}”? ${n ? `The ${n === 1 ? 'item' : `${n} items`} in it move up to ${parentOf(f) ? `“${leafOf(parentOf(f))}”` : 'the library'}.` : 'It’s empty.'}`, { ok: 'Delete the folder' }))) return;
     if (!uid) return;
-    await removeFolder(uid, f, all, allFolders).catch(() => {});
-    await moveLibTasks(uid, tasks.filter((t) => inTree(t.folder, f)).map((t) => t.id), parentOf(f)).catch(() => {});
-    for (const d of ownDocs.filter((d) => inTree(d.path || '', f))) await setDocPath(d.id, parentOf(f));
+    let folderDeleted = false;
+    try {
+      await removeFolder(uid, f, all, allFolders);
+      folderDeleted = true;
+      const results = await Promise.allSettled([
+        moveLibTasks(uid, tasks.filter((t) => inTree(t.folder, f)).map((t) => t.id), parentOf(f)),
+        ...ownDocs.filter((d) => inTree(d.path || '', f)).map((d) => setDocPath(d.id, parentOf(f))),
+      ]);
+      if (results.some((result) => result.status === 'rejected')) throw new Error('Some contents could not be moved.');
+    } catch {
+      await tell('We couldn’t finish deleting this folder and moving everything inside it. Check the folder and its parent for items that need moving.');
+      if (folderDeleted && inTree(folder, f)) setFolder(parentOf(f));
+      setSel(folderDeleted ? new Set() : new Set(['f:' + f]));
+      return;
+    }
     if (inTree(folder, f)) setFolder(parentOf(f));
     setSel(new Set());
   };
