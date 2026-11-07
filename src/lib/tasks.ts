@@ -31,6 +31,7 @@ export type Task = {
   locked: boolean;
   afterCheck?: 'reveal' | 'retry'; // show the correct answers, or only right/wrong so learners try again
   layout?: 'single' | 'two' | 'two-wide' | 'media';
+  ylIcon?: import('../lessons/young').YoungIconSetting; // young learners: the task's icon ('auto', an icon, or 'none')
   showScore?: boolean; // show learners their score after checking (default on) // column widths when the task has a column break
   colScroll?: 'separate' | 'together';
   // Groups and versions (see lib/groups.ts)
@@ -95,7 +96,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   if (patch.content && JSON.stringify(patch.content).includes('"text"')) noteFeature('lessons', classId + ':' + itemId);
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'spelling' | 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'spelling' | 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print' | 'ylIcon'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

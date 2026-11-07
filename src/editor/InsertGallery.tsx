@@ -545,7 +545,7 @@ const PREVIEW: Record<string, () => ReactNode> = {
       </span>
     </span>
   ),
-  image: () => <span className="gl-photo wide" />,
+  image: () => <span className="gl-picture"><span className="gl-photo wide" /><small>A street market</small></span>,
   collab: () => (
     <span className="gl-col">
       <span className="gl-collab">
@@ -591,14 +591,10 @@ const PREVIEW: Record<string, () => ReactNode> = {
     </span>
   ),
   upload: () => (
-    <span className="gl-col">
-      <span className="gl-upload">
-        <i />
-        <span className="gl-col">
-          <Line w="70%" />
-          <Line w="40%" faint />
-        </span>
-      </span>
+    <span className="gl-files">
+      <span className="gl-file pdf"><b>PDF</b><small>my-poster.pdf</small></span>
+      <span className="gl-file img"><span className="gl-photo" /><small>photo.jpg</small></span>
+      <span className="gl-file add" aria-hidden="true">↑</span>
     </span>
   ),
   media: () => (
@@ -792,7 +788,7 @@ const PREVIEW: Record<string, () => ReactNode> = {
 // commands. These are schematic native UI previews, not decorative stock images.
 Object.assign(PREVIEW, {
  'classroom-game':()=> <Box label="Classroom game" tone="sky"><Sent><Chip on>Team A · 120</Chip><Chip>Team B · 100</Chip></Sent><Sent>Choose your next challenge →</Sent></Box>,
- game:()=> <Box label="Game" tone="sky"><Sent>Where do you go to borrow a book?</Sent><Sent><Chip>A  a bakery</Chip><Chip on>B  a library</Chip></Sent><Sent>Live or at their own pace · cards, moles, balloons</Sent></Box>,
+ game:()=> <span className="gl-game"><b>Where do you borrow a book?</b><span className="gl-game-cards"><i style={{['--c' as string]:'#c8643c'}}><u>A</u>bakery</i><i className="on" style={{['--c' as string]:'#1f8a80'}}><u>B</u>library</i><i style={{['--c' as string]:'#c99a1e'}}><u>C</u>bank</i><i style={{['--c' as string]:'#7a4f9a'}}><u>D</u>garage</i></span></span>,
  h1:()=> <span className="gl-sample-heading" style={{fontSize:25}}>A new chapter</span>,
  h2:()=> <span className="gl-sample-heading" style={{fontSize:21}}>The big question</span>,
  h3:()=> <span className="gl-sample-heading" style={{fontSize:17}}>Look more closely</span>,
@@ -831,12 +827,12 @@ const Star = ({ on }: { on?: boolean }) => (
 
 function questionPosition(anchor: HTMLElement) {
   const rect = anchor.getBoundingClientRect();
-  const width = Math.min(470, window.innerWidth - 24);
+  const width = Math.min(640, window.innerWidth - 24);
   const left = Math.max(12, Math.min(rect.left - 10, window.innerWidth - width - 12));
   const below = window.innerHeight - rect.bottom - 12;
   const above = rect.top - 12;
   const showAbove = below < 300 && above > below;
-  const height = Math.min(600, Math.max(180, showAbove ? above - 6 : below - 6));
+  const height = Math.min(640, Math.max(180, showAbove ? above - 6 : below - 6));
   return { position: 'fixed' as const, left, top: showAbove ? Math.max(12, rect.top - height - 6) : rect.bottom + 6, width, maxHeight: height };
 }
 
@@ -879,10 +875,12 @@ export function QuestionDropdown({ anchor, commands, onPick, onClose }: { anchor
         {!sections.length && <p className="hint">No questions match.</p>}
         {sections.map(section => <section key={section.title}>
           <h3>{section.title}</h3>
+          <div className="question-pop-grid">
           {section.items.map(item => <button type="button" key={item.key} className="question-pop-item" onClick={() => onPick(item.key)}>
-            <span className="gallery-pic" data-preview={item.key} aria-hidden="true">{PREVIEW[item.key]?.() ?? <Lines n={3} />}</span>
+            <span className="gallery-pic" data-preview={item.key} aria-hidden="true">{PREVIEW[item.key]?.() ?? <Box label={item.label}><Sent>{item.hint}</Sent></Box>}</span>
             <span className="question-pop-copy"><strong>{item.label}</strong><small>{item.hint}</small></span>
           </button>)}
+          </div>
         </section>)}
       </div>
     </div>, document.body,
@@ -916,7 +914,20 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
           </button>
         </div>
         <div className="gallery-body">
-          {!query && (
+          {query ? (
+            <nav className="gallery-nav" aria-label="Matches by group">
+              <span className="hint gallery-found">{shown.reduce((n, sec) => n + sec.items.length, 0) || 'No'} {shown.reduce((n, sec) => n + sec.items.length, 0) === 1 ? 'match' : 'matches'}</span>
+              {shown.map((sec) => (
+                <button key={sec.title} type="button" onClick={() => document.getElementById('gallery-sec-' + sec.title.replace(/\W+/g, '-'))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                  {sec.title}
+                  <span className="hint">{sec.items.length}</span>
+                </button>
+              ))}
+              <button type="button" className="gallery-clear" onClick={() => setQ('')}>
+                Clear the search
+              </button>
+            </nav>
+          ) : (
             <nav className="gallery-nav" aria-label="Groups">
               <button type="button" className={'gallery-fav-nav' + (section === -1 ? ' on' : '')} onClick={() => setSection(-1)}>
                 <Star on />
@@ -933,9 +944,9 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
             </nav>
           )}
           <div className="gallery-main">
-            {!shown.length && (section === -1 && !query ? <p className="hint gallery-nofav">Star the elements you use most, with the star on each card, and they appear here and first in the / menu.</p> : <p className="hint">Nothing matches.</p>)}
+            {!shown.length && (section === -1 && !query ? <p className="hint gallery-nofav">Star the elements you use most, with the star on each card, and they appear here and first in the / menu.</p> : <p className="hint">Nothing matches “{q.trim()}”. Try another word, such as “gap”, “picture” or “speak”.</p>)}
             {shown.map((s) => (
-              <section key={s.title} className="gallery-sec">
+              <section key={s.title} className="gallery-sec" id={'gallery-sec-' + s.title.replace(/\W+/g, '-')}>
                 <h3>{s.title}</h3>
                 <p className="hint">{s.blurb}</p>
                 <div className="gallery-grid">

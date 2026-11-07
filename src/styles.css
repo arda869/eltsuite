@@ -8506,3 +8506,31 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
 .ic-access { display: flex; flex-wrap: wrap; gap: 6px 16px; border: 0; padding: 0; margin: 8px 0; min-width: 0; }
 .ic-access legend { padding: 0; margin-bottom: 4px; }
 .ic-access label { display: inline-flex; align-items: baseline; gap: 5px; }
+
+/* Add menus: search keeps the groups beside a full-width grid; Questions is a grid of picture cards. */
+.gallery-found { padding: 6px 10px 8px; font-weight: 700; }
+.gallery-nav .gallery-clear { margin-top: 8px; color: var(--accent-text); }
+.question-pop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 8px; margin-bottom: 6px; }
+.question-pop-grid .question-pop-item { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-height: 0; margin: 0; padding: 7px; border: 1px solid var(--hair); background: var(--paper); text-align: left; }
+.question-pop-grid .question-pop-item:hover, .question-pop-grid .question-pop-item:focus-visible { border-color: var(--accent); background: var(--paper); box-shadow: 0 6px 16px rgba(51, 48, 44, .08); }
+.question-pop-grid .question-pop-item .gallery-pic { width: 100%; height: 84px; padding: 8px; }
+.question-pop-grid .question-pop-copy { padding: 0 3px 2px; }
+@media (max-width: 480px) { .question-pop-grid { grid-template-columns: 1fr 1fr; } .question-pop-grid .question-pop-item .gallery-pic { height: 70px; } }
+/* Pictures in previews: a small drawn scene, not a blank block. */
+.gl-photo { position: relative; overflow: hidden; background: linear-gradient(#cfe5f0 0 58%, #a9cf9a 58%); }
+.gl-photo::before { content: ''; position: absolute; width: 22%; aspect-ratio: 1; top: 14%; right: 14%; border-radius: 50%; background: #f6c34f; }
+.gl-photo::after { content: ''; position: absolute; left: -10%; right: -10%; bottom: 0; height: 62%; background: radial-gradient(60% 70% at 25% 100%, #7fb07a 0 98%, transparent 100%), radial-gradient(55% 80% at 78% 100%, #93be86 0 98%, transparent 100%); }
+.gl-picture { display: grid; justify-items: center; gap: 4px; }
+.gl-picture small { font: 10px var(--sans); color: var(--muted); }
+.gl-files { display: flex; gap: 8px; align-items: center; }
+.gl-file { display: grid; justify-items: center; gap: 3px; width: 58px; padding: 6px 4px; border-radius: 8px; background: var(--paper); border: 1px solid var(--hair-strong); }
+.gl-file b { display: grid; place-items: center; width: 34px; height: 30px; border-radius: 4px; background: #c8643c; color: #fff; font: 800 10px var(--sans); }
+.gl-file .gl-photo { width: 40px; height: 30px; border-radius: 4px; }
+.gl-file small { font: 8.5px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gl-file.add { width: 34px; height: 34px; padding: 0; place-items: center; border-style: dashed; color: var(--accent-text); font: 700 16px var(--sans); }
+.gl-game { display: grid; gap: 6px; width: 100%; padding: 6px 8px; border-radius: 8px; background: #17332f; }
+.gl-game b { padding: 4px 6px; border-radius: 4px; background: #f6efe2; color: #2a2116; font: 600 10px var(--serif); text-align: center; }
+.gl-game-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.gl-game-cards i { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 3px; background: #f6efe2; border-left: 3px solid var(--c); font: normal 600 8.5px var(--sans); color: #2a2116; }
+.gl-game-cards i.on { box-shadow: 0 0 0 1.5px #6fcf97; }
+.gl-game-cards u { display: grid; place-items: center; width: 11px; height: 11px; border-radius: 2px; background: var(--c); color: #fff; text-decoration: none; font: 700 7px var(--serif); }

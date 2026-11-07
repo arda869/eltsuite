@@ -8,7 +8,7 @@ import { MaterialImport } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
-import { YoungAuthorBar, YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
+import { YoungIconPicker, YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
 import { isAnswered, scoreTask } from '../lib/questions';
 import { NSelect } from '../components/Select';
 import { TeacherLiveVideo } from '../components/LiveVideo';
@@ -868,8 +868,14 @@ export function LessonEditor() {
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={async () => { await flush(); }} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-                  <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
-                  {lessonStyleOf(c) === 'young' && <YoungAuthorBar content={draft.content} instructions={draft.instructions} onPreview={() => void changeMode('preview')} />}
+                  {lessonStyleOf(c) === 'young' ? (
+                    <div className="yl-instr-edit">
+                      <YoungIconPicker value={task.ylIcon} content={draft.content} instructions={draft.instructions} onChange={(ylIcon) => void setTaskFlags(classId, itemId, task.id, { ylIcon })} />
+                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                    </div>
+                  ) : (
+                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                  )}
                 </div>
                 <div className="frame-body">
                   <TaskEditor
@@ -1253,7 +1259,7 @@ export function LessonEditor() {
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{draft.title}</h1>
                   {lessonStyleOf(c) === 'young' && (draft.instrDoc || draft.instructions) ? (
-                    <YoungInstr content={draft.content}>
+                    <YoungInstr content={draft.content} icon={task.ylIcon}>
                       <InstrView classId={classId} doc={draft.instrDoc} text={draft.instructions} />
                     </YoungInstr>
                   ) : (
