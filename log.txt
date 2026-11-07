@@ -1,0 +1,35 @@
+groups ["Favourites\n0","Questions checked by the app\n20","Listening and pronunciation\n9","Puzzles and games\n6","Speaking, writing and reflection\n9","Collaboration tools\n2","Diagrams\n9","Text and layout\n18","Lesson boxes\n14","Question bank\n1"]
+shot preview-out/01-gallery-00.png
+shot preview-out/02-gallery-01.png
+shot preview-out/03-gallery-02.png
+shot preview-out/04-gallery-03.png
+shot preview-out/05-gallery-04.png
+shot preview-out/06-gallery-05.png
+shot preview-out/07-gallery-06.png
+shot preview-out/08-gallery-07.png
+shot preview-out/09-gallery-08.png
+shot preview-out/10-gallery-09.png
+shot preview-out/11-gallery-search-match.png
+shot preview-out/12-gallery-search-listen.png
+shot preview-out/13-questions-top.png
+shot preview-out/14-questions-scrolled.png
+shot preview-out/15-questions-search.png
+collab groups ["Favourites\n0","Professional forms\n7","Basic\n13","Pictures and media\n4","Academic writing\n2","Language\n9","Diagrams\n9","Questions\n38","Teacher training\n4"]
+shot preview-out/16-collab-00.png
+shot preview-out/17-collab-01.png
+shot preview-out/18-collab-02.png
+shot preview-out/19-collab-03.png
+shot preview-out/20-collab-04.png
+shot preview-out/21-collab-05.png
+shot preview-out/22-collab-06.png
+shot preview-out/23-collab-07.png
+shot preview-out/24-collab-08.png
+shot preview-out/25-collab-search.png
+shot preview-out/26-young-editor.png
+shot preview-out/27-young-icon-picker.png
+shot preview-out/28-young-icon-listen.png
+shot preview-out/29-young-icon-none.png
+shot preview-out/30-young-learner.png
+shot preview-out/31-young-learner-practice.png
+shot preview-out/32-young-learner-checked.png
+shot preview-out/33-young-learner-tablet.png
