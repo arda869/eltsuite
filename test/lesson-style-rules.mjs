@@ -1,7 +1,7 @@
 // Start the Firestore emulator with this repository's firestore.rules on 127.0.0.1:8089.
 import assert from 'node:assert/strict';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc, getDoc, terminate } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc, getDoc, terminate, writeBatch } from 'firebase/firestore';
 const projectId='demo-lesson-style';
 const [host,portText]=(process.env.STYLE_FIRESTORE_EMULATOR || '127.0.0.1:8089').split(':');const port=Number(portText);
 const value=v=>v===null?{nullValue:null}:Array.isArray(v)?{arrayValue:{values:v.map(value)}}:typeof v==='object'?{mapValue:{fields:Object.fromEntries(Object.entries(v).map(([k,x])=>[k,value(x)]))}}:typeof v==='boolean'?{booleanValue:v}:typeof v==='number'?{integerValue:String(v)}:{stringValue:v};
@@ -12,6 +12,7 @@ async function seed(path,data) {
 await seed('users/teacher1',{role:'teacher'});await seed('users/co',{role:'teacher'});
 const initial={teacherId:'teacher1',classCode:'STY-234',name:'Style fixture',themeColor:'flame',coTeachers:{co:{role:'co'},viewer:{role:'viewer'}}};
 await seed('classes/style',initial);await seed('classes/style/members/learner',{learnerId:'learner'});
+await seed('classCodes/STY-234',{teacherId:'teacher1',classId:'style',className:'Style fixture'});
 const clients=[];
 function as(uid) {const app=initializeApp({projectId},uid);const db=getFirestore(app);connectFirestoreEmulator(db,host,port,{mockUserToken:{sub:uid,email:`${uid}@example.test`,email_verified:true}});clients.push({app,db});return db;}
 let passes=0;
@@ -22,10 +23,14 @@ try {
  await allowed('Existing class with no style remains writable',()=>updateDoc(doc(owner,'classes/style'),{name:'Still Adult'}));
  await allowed('Owner changes Adult → Young',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'young'}));
  await allowed('Owner changes Young → Adult',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'adult'}));
+ await allowed('Owner changes Adult → Exam Prep',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'exam'}));
+ await allowed('Owner changes Exam Prep → Adult',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'adult'}));
+ await allowed('Class settings saves Exam Prep with its class-code update',async()=>{const batch=writeBatch(owner);batch.update(doc(owner,'classes/style'),{lessonStyle:'exam',name:'Style fixture'});batch.update(doc(owner,'classCodes/STY-234'),{className:'Style fixture'});await batch.commit();});
+ await allowed('Class settings returns to Adult',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'adult'}));
  await allowed('Co-teacher changes presentation',()=>updateDoc(doc(co,'classes/style'),{lessonStyle:'young'}));
  for(const [name,db] of [['Viewer',viewer],['Learner',learner],['Unrelated teacher',other]]) await denied(`${name} cannot change presentation`,()=>updateDoc(doc(db,'classes/style'),{lessonStyle:'adult'}));
  for(const invalid of ['teen','',null,1,{}]) await denied(`Invalid style ${JSON.stringify(invalid)} rejected on update`,()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:invalid}));
- for(const style of ['adult','young']) await allowed(`Create ${style} class`,()=>setDoc(doc(owner,`classes/new-${style}`),{teacherId:'teacher1',classCode:`NEW-${style}`,name:'New class',lessonStyle:style}));
+ for(const style of ['adult','young','exam']) await allowed(`Create ${style} class`,()=>setDoc(doc(owner,`classes/new-${style}`),{teacherId:'teacher1',classCode:`NEW-${style}`,name:'New class',lessonStyle:style}));
  await allowed('Legacy create without style accepted',()=>setDoc(doc(owner,'classes/new-legacy'),{teacherId:'teacher1',classCode:'NEW-legacy',name:'Legacy'}));
  await denied('Teen style rejected on create',()=>setDoc(doc(owner,'classes/new-teen'),{teacherId:'teacher1',classCode:'NEW-teen',name:'New class',lessonStyle:'teen'}));
  await allowed('Learner can read class preference',async()=>assert.equal((await getDoc(doc(learner,'classes/style'))).data().lessonStyle,'young'));

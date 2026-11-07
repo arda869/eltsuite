@@ -139,8 +139,8 @@ export function DocPage() {
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
-            <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
-              <UiIcon name="lock" size={15} /> Share
+            <button type="button" className="btn primary dp-share" data-shared={others > 0} onClick={() => setSharing(true)}>
+              <UiIcon name={others ? 'groups' : 'lock'} size={15} /> Share
             </button>
           )}
           {d && (

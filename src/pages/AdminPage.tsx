@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { SuperUsage } from './admin/Usage';
+import { lazy, Suspense, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -8,22 +7,33 @@ import { Loader } from '../components/Loader';
 import { Select } from '../components/Select';
 import { OrgOverview, SuperOverview } from './AdminOverview';
 import { useSuper, logOrg, useAccounts, useAllClasses, useAllInvites, useDrive, useOrgAccounts, useOrgClasses, useOrgInvites, useOrgLog, useOrgPictures, useOrgs, useTeachers, type Org } from '../lib/admin';
-import { OrgAdmins, OrgInvites, OrgTeachers } from './admin/OrgPeople';
-import { OrgClasses } from './admin/OrgClasses';
-import { OrgBrand, OrgRules, OrgSpace } from './admin/OrgSettings';
-import { OrgDrives, OrgForms } from './admin/OrgLibrary';
-import { OrgActivity } from './admin/OrgActivity';
-import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
-import {AiCosts} from './admin/AiCosts';
-import { SuperAi } from './admin/SuperAi';
-import { SuperAdmins } from './admin/SuperAdmins';
-import { InviteCodes } from './admin/InviteCodes';
-import { BrandKit } from './admin/BrandKit';
 import { codeState, useCodes } from '../lib/codes';
 import { WAIT_DAYS } from './admin/attention';
 import { daysSince, plural } from './admin/ui';
 import type { OrgData, Go, SuperData } from './admin/types';
 import './admin.css';
+
+// The overview opens with the app. Load the deeper admin tools only when selected.
+const SuperUsage = lazy(() => import('./admin/Usage').then((m) => ({ default: m.SuperUsage })));
+const OrgAdmins = lazy(() => import('./admin/OrgPeople').then((m) => ({ default: m.OrgAdmins })));
+const OrgInvites = lazy(() => import('./admin/OrgPeople').then((m) => ({ default: m.OrgInvites })));
+const OrgTeachers = lazy(() => import('./admin/OrgPeople').then((m) => ({ default: m.OrgTeachers })));
+const OrgClasses = lazy(() => import('./admin/OrgClasses').then((m) => ({ default: m.OrgClasses })));
+const OrgBrand = lazy(() => import('./admin/OrgSettings').then((m) => ({ default: m.OrgBrand })));
+const OrgRules = lazy(() => import('./admin/OrgSettings').then((m) => ({ default: m.OrgRules })));
+const OrgSpace = lazy(() => import('./admin/OrgSettings').then((m) => ({ default: m.OrgSpace })));
+const OrgDrives = lazy(() => import('./admin/OrgLibrary').then((m) => ({ default: m.OrgDrives })));
+const OrgForms = lazy(() => import('./admin/OrgLibrary').then((m) => ({ default: m.OrgForms })));
+const OrgActivity = lazy(() => import('./admin/OrgActivity').then((m) => ({ default: m.OrgActivity })));
+const SuperApps = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperApps })));
+const SuperDefaults = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperDefaults })));
+const SuperOrgs = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperOrgs })));
+const SuperTeachers = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperTeachers })));
+const AiCosts = lazy(() => import('./admin/AiCosts').then((m) => ({ default: m.AiCosts })));
+const SuperAi = lazy(() => import('./admin/SuperAi').then((m) => ({ default: m.SuperAi })));
+const SuperAdmins = lazy(() => import('./admin/SuperAdmins').then((m) => ({ default: m.SuperAdmins })));
+const InviteCodes = lazy(() => import('./admin/InviteCodes').then((m) => ({ default: m.InviteCodes })));
+const BrandKit = lazy(() => import('./admin/BrandKit').then((m) => ({ default: m.BrandKit })));
 
 // Super Admin (/admin) is for super admins (the owner, and whoever they make one): every teacher,
 // organisation and switch.
@@ -69,7 +79,10 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
         </div>
       </Frame>
     );
-  if (!user || orgs === null) return <Loader full label={mode === 'super' ? 'Opening Super Admin' : 'Opening Organisation admin'} />;
+  if (!user) return <Loader full label={mode === 'super' ? 'Opening Super Admin' : 'Opening Organisation admin'} />;
+  // The owner can use the admin navigation while the organisation list arrives.
+  if (owner && orgs === null) return <SuperArea orgs={null} tab={tab} params={params} go={go} mainRef={mainRef} />;
+  if (orgs === null) return <Loader full label="Opening Organisation admin" />;
   if (!owner && !orgs.length)
     return (
       <Frame>
@@ -142,18 +155,18 @@ const hrefFor = (tab: string) => {
 };
 
 // ------------------------------------------------------------------ the whole of ELT Suite
-function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: string; params: URLSearchParams; go: Go; mainRef: React.RefObject<HTMLElement> }) {
+function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[] | null; tab: string; params: URLSearchParams; go: Go; mainRef: React.RefObject<HTMLElement> }) {
   const teachers = useTeachers(true);
   const accounts = useAccounts(true);
   const classes = useAllClasses(true);
   const invites = useAllInvites(true);
   const codes = useCodes(true);
-  const d: SuperData = { teachers: teachers ?? [], accounts, orgs, classes: classes ?? [], invites, loading: teachers === null || classes === null };
+  const d: SuperData = { teachers: teachers ?? [], accounts, orgs: orgs ?? [], classes: classes ?? [], invites, loading: orgs === null || teachers === null || classes === null };
   const items: NavItem[] = [
     { k: 'overview', label: 'Overview', icon: 'poll' },
     { k: 'teachers', label: 'Teachers', icon: 'person', n: teachers?.length },
     { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
-    { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
+    { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs?.length },
     { k: 'ai-costs', label: 'AI Cost Intelligence', icon: 'poll' },
     { k: 'ai', label: 'AI usage and access', icon: 'board' },
     { k: 'apps', label: 'Apps', icon: 'board' },
@@ -185,13 +198,15 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
                   <span>All of ELT Suite</span>
                 </span>
               </div>
-              {orgs.length > 0 && <div className="hq-side-switch"><label className="hq-nav-h">Open an organisation</label><Select value="" options={[{v:'',label:'Choose organisation…'},...orgs.map(o=>({v:o.id,label:o.name}))]} onChange={v=>v&&go({org:v,tab:'overview'})} label="Open an organisation" search /></div>}
+              {orgs && orgs.length > 0 && <div className="hq-side-switch"><label className="hq-nav-h">Open an organisation</label><Select value="" options={[{v:'',label:'Choose organisation…'},...orgs.map(o=>({v:o.id,label:o.name}))]} onChange={v=>v&&go({org:v,tab:'overview'})} label="Open an organisation" search /></div>}
 
             </>
           }
         />
         <main className="hq-main" ref={mainRef}>
-          {known === 'overview' && <SuperOverview d={d} go={go} />}
+          <Suspense fallback={<Loader label="Opening this section" />}>
+          {orgs === null ? <div className="hq-page"><h1>Your admin workspace</h1><p role="status">Loading organisations and activity…</p></div> : known === 'overview' && <SuperOverview d={d} go={go} />}
+          {orgs !== null && <>
           {known === 'teachers' && <SuperTeachers d={d} go={go} params={params} />}
           {known === 'codes' && <InviteCodes orgs={orgs} />}
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
@@ -202,6 +217,8 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'activity' && <SuperUsage teachers={teachers ?? []} />}
           {known === 'supers' && <SuperAdmins />}
           {known === 'brand' && <BrandKit />}
+          </>}
+          </Suspense>
         </main>
       </div>
     </Frame>
@@ -294,6 +311,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
           }
         />
         <main className="hq-main" ref={mainRef}>
+          <Suspense fallback={<Loader label="Opening this section" />}>
           {known === 'overview' && <OrgOverview d={d} go={go} />}
           {known === 'activity' && <OrgActivity d={d} params={params} go={go} />}
           {known === 'teachers' && <OrgTeachers d={d} params={params} go={go} />}
@@ -306,6 +324,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
           {known === 'rules' && <OrgRules d={d} />}
           {known === 'brand' && <OrgBrand d={d} />}
           {known === 'space' && <OrgSpace d={d} go={go} />}
+          </Suspense>
         </main>
       </div>
     </Frame>
