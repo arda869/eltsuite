@@ -145,7 +145,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   const q = JSON.parse(w.read(`quizLive/${runId}/q`));
   assert.equal(q.kind, 'choice');
   assert.ok(!JSON.stringify(q).includes('correct":0'), 'no answer on the phones');
-  await assert.rejects(call(null, { action: 'answer', runId, pid: guest.pid, token: 'wrong', slide: 0, responses: { q1: 0 } }, 14000), /not in this quiz/);
+  await assert.rejects(call(null, { action: 'answer', runId, pid: guest.pid, token: 'wrong', slide: 0, responses: { q1: 0 } }, 14000), /not in this game/);
   await call(null, { action: 'answer', runId, pid: guest.pid, token: guest.token, slide: 0, responses: { q1: 0 } }, 13500);
   await assert.rejects(call(null, { action: 'answer', runId, pid: guest.pid, token: guest.token, slide: 0, responses: { q1: 1 } }, 13600), /already answered/);
   await call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 23500);
@@ -187,7 +187,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   assert.equal(w.read(`quizLive/${runId}/phase`), 'podium');
   await call(auth('teacher'), { action: 'end', runId }, 90000);
   assert.equal(w.data.get('classes/c1/live/state').liveQuiz, null);
-  await assert.rejects(call(null, { action: 'join', code, name: 'Late' }), /find a quiz|finished/);
+  await assert.rejects(call(null, { action: 'join', code, name: 'Late' }), /find a game|finished/);
   // The run stays for the results page.
   assert.equal(w.data.get(`quizRuns/${runId}/players/learner`).score, 2850);
 });
@@ -201,7 +201,7 @@ test('class-only quizzes keep guests out; the host can lock the room and remove 
   await call(auth('teacher'), { action: 'kick', runId, pid: lina.pid });
   assert.equal(w.read(`quizLive/${runId}/players/${lina.pid}`), undefined);
   await call(auth('teacher'), { action: 'next', runId }, 5000);
-  await assert.rejects(call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 9000), /not in this quiz/);
+  await assert.rejects(call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 9000), /not in this game/);
 });
 
 test('a saved quiz is hosted for anyone with the code, slides as the teacher made them', async () => {
@@ -227,4 +227,60 @@ test('a saved quiz is hosted for anyone with the code, slides as the teacher mad
   await quizService(w.db, w.rtdb, auth('teacher'), { action: 'close', runId }, 90000);
   assert.equal(w.read(`quizLive/${runId}/players/${g.pid}/s`), 500, 'half right, instantly: half of 1000');
   assert.equal(w.read(`quizLive/${runId}/players/${g.pid}/ok`), 0.5);
+});
+
+test('a game block inside a task: learners play at their own pace, answers sit with the task’s other answers', async () => {
+  const w = world();
+  const call = (who, d, now) => quizService(w.db, w.rtdb, who, d, now);
+  const learner = auth('learner', 'l_L1@learners.lesson-lit.firebaseapp.com');
+  const block = { type: 'gameBlock', attrs: { id: 'g1', title: 'Fruit game', settings: [{ seconds: 10, skin: 'moles' }, { seconds: 20 }], sizes: [1, 1] }, content: [
+    { type: 'mcq', attrs: { id: 'b1', prompt: 'Which is a fruit?', options: ['Pear', 'Desk'], correct: 0 } },
+    { type: 'paragraph', content: [{ type: 'text', text: 'I ' }, { type: 'gap', attrs: { id: 'b2', answers: ['am'] } }, { type: 'text', text: ' happy.' }] },
+  ] };
+  const { content, key } = splitKey({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Read, then play.' }] }, { type: 'mcq', attrs: { id: 'other', prompt: 'Not in the game', options: ['a', 'b'], correct: 1 } }, block] });
+  w.data.set('classes/c1/items/i1/tasks/t2', { title: 'Reading', content });
+  w.data.set('classes/c1/items/i1/tasks/t2/private/key', key);
+  // The learner already answered the task's own question.
+  w.data.set('classes/c1/answers/t2_learner', { learnerUid: 'learner', taskId: 't2', responses: { other: 1 }, checked: true, score: 1, total: 1 });
+  const { runId } = await call(auth('teacher'), { action: 'host', mode: 'self', source: { kind: 'block', classId: 'c1', itemId: 'i1', blockId: 'g1' } }, 1000);
+  assert.equal(w.read(`quizLive/${runId}/phase`), 'self');
+  assert.equal(w.data.get('classes/c1/live/state').games.g1.mode, 'self');
+  assert.equal(w.data.get('classes/c1/live/state').liveQuiz, undefined, 'own-pace games show no live banner');
+  await assert.rejects(call(auth('teacher'), { action: 'next', runId }), /move on by themselves/);
+  const me = await call(learner, { action: 'join', runId }, 2000);
+  const first = await call(null, { action: 'self-next', runId, pid: me.pid, token: me.token }, 3000);
+  assert.equal(first.q.kind, 'choice');
+  assert.equal(first.q.skin, 'moles');
+  assert.ok(!JSON.stringify(first.q).includes('"correct"'), 'no answer before answering');
+  const r1 = await call(null, { action: 'answer', runId, pid: me.pid, token: me.token, slide: 0, responses: { b1: 0 } }, first.startsAt + 2500);
+  assert.equal(r1.frac, 1);
+  assert.equal(r1.gained, 875, 'right after a quarter of the time');
+  assert.deepEqual(r1.reveal.correct, [0], 'the answer comes back once answered');
+  const again = await call(null, { action: 'self-next', runId, pid: me.pid, token: me.token }, 6000);
+  assert.equal(again.answered, true, 'a refresh shows the same question, already answered');
+  const second = await call(null, { action: 'self-next', runId, pid: me.pid, token: me.token, advance: true }, 7000);
+  assert.equal(second.q.kind, 'task');
+  const r2 = await call(null, { action: 'answer', runId, pid: me.pid, token: me.token, slide: 1, responses: { b2: 'am' } }, second.startsAt + 10000);
+  assert.equal(r2.gained, 750 + 100, 'half time, plus a streak bonus');
+  assert.equal(r2.last, true);
+  const done = await call(null, { action: 'self-next', runId, pid: me.pid, token: me.token, advance: true }, 30000);
+  assert.equal(done.done, true);
+  const rec = w.data.get('classes/c1/answers/t2_learner');
+  assert.deepEqual([rec.responses.other, rec.responses.b1, rec.responses.b2], [1, 0, 'am'], 'game answers join the task’s own answers');
+  assert.deepEqual([rec.checked, rec.score, rec.total], [true, 1, 1], 'the task’s own marking is untouched');
+  assert.equal(rec.games.g1.points, 875 + 850);
+  assert.equal(w.read(`quizLive/${runId}/players/learner/f`), 1);
+});
+
+test('own pace: a late answer scores nothing but the learner can carry on', async () => {
+  const w = world();
+  const call = (who, d, now) => quizService(w.db, w.rtdb, who, d, now);
+  const { runId } = await call(auth('teacher'), { action: 'host', mode: 'self', guests: true, source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, 1000);
+  const g = await call(null, { action: 'join', runId, name: 'Kim' }, 2000);
+  const q = await call(null, { action: 'self-next', runId, pid: g.pid, token: g.token }, 3000);
+  const r = await call(null, { action: 'answer', runId, pid: g.pid, token: g.token, slide: 0, responses: { q1: 0 } }, q.endsAt + 10000);
+  assert.equal(r.late, true);
+  assert.equal(r.gained, 0);
+  const next = await call(null, { action: 'self-next', runId, pid: g.pid, token: g.token, advance: true }, q.endsAt + 11000);
+  assert.equal(next.q.index, 1);
 });

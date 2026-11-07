@@ -250,10 +250,13 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
-          <Route path="/game/:id" element={<Navigate to="/quiz" replace />} />
+          <Route path="/game" element={<QuizPlayPage />} />
+          <Route path="/game/:code" element={<QuizPlayPage />} />
           <Route path="/quiz" element={<QuizPlayPage />} />
           <Route path="/quiz/:code" element={<QuizPlayPage />} />
+          <Route path="/game-host/:runId" element={<TeacherOnly><QuizHostPage /></TeacherOnly>} />
           <Route path="/quiz-host/:runId" element={<TeacherOnly><QuizHostPage /></TeacherOnly>} />
+          <Route path="/game-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
           <Route path="/quiz-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
           <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />

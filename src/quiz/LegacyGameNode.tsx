@@ -8,7 +8,7 @@ function View({ editor, deleteNode }: NodeViewProps) {
     <NodeViewWrapper contentEditable={false}>
       <section className="game-workspace">
         <p>
-          <strong>An old game was here.</strong> Games are now live quizzes. In the lesson, choose Activities, then Live quiz.
+          <strong>An old game was here.</strong> Games have changed. Add a new game from the + menu in the task.
         </p>
         {editor.isEditable && (
           <button type="button" className="btn" onClick={deleteNode}>

@@ -1,8 +1,9 @@
-// The quiz editor: a saved quiz in Files (kind 'game'). Slides on the left; the chosen slide on the
-// right. Quick slides (multiple choice, true or false, type the answer, poll) are made from boxes;
-// "Any class question" is the lesson task editor, so every marked question type works. From here a
-// teacher hosts the quiz for anyone with a code, or puts it into a class lesson.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// The game editor. A saved game in Files (kind 'game'), or a game inside a lesson task, uses the same
+// editor: questions on the left, the chosen question on the right. Quick questions (multiple choice,
+// true or false, type the answer, poll) are made from boxes; "Any class question" is the lesson task
+// editor, so every marked question type works. Multiple-choice questions can be answered on cards,
+// by whacking moles or by popping balloons.
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, doc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -11,24 +12,27 @@ import { useMyDocs, type SharedDoc } from '../lib/sharedDocs';
 import { configOf, plainOf, type Card, type FlashConfig } from '../lib/flash';
 import { TaskEditor } from '../editor/TaskEditor';
 import { UiIcon } from '../components/UiIcon';
+import { NSelect } from '../components/Select';
 import { QuizDraft } from './QuizDraft';
 import { AddToLesson } from './AddToLesson';
-import { Backdrop, Shape, answerStyle } from './Stage';
+import { Backdrop } from './Stage';
+import { AnswerPad, SKIN_ABOUT, SKIN_NAMES, type Skin } from './Skins';
 import { quizApi } from './live';
-import { KINDS, MAX_OPTIONS, MAX_SLIDES, SECONDS, blankQuiz, choiceOf, fromSaved, newSlide, quizProblems, slideProblem, slideTitle, slidesFromRounds, typedOf, withChoice, withTyped, type QuizDoc, type QuizSlide, type SlideKind } from './model';
+import { KINDS, MAX_OPTIONS, MAX_SLIDES, SECONDS, blankQuiz, canSkin, choiceOf, fromSaved, newSlide, quizProblems, slideProblem, slideTitle, slidesFromRounds, typedOf, withChoice, withTyped, type QuizDoc, type QuizSlide, type SlideKind } from './model';
+import { Shape, answerStyle } from './Stage';
 import './quiz.css';
-import { NSelect } from '../components/Select';
 
+/** A saved game in Files. */
 export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const { user } = useAuth();
   const nav = useNavigate();
   const [quiz, setQuiz] = useState<QuizDoc | null>(null);
-  const [selected, setSelected] = useState('');
   const [status, setStatus] = useState('Saved');
   const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [focus, setFocus] = useState('');
   const dirtyRef = useRef(false);
   const latest = useRef<QuizDoc | null>(null);
   latest.current = quiz;
@@ -79,15 +83,79 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   const problems = useMemo(() => (quiz ? quizProblems(quiz) : []), [quiz]);
   if (!quiz) return <p role="status">One moment…</p>;
-  const index = Math.max(0, quiz.slides.findIndex((s) => s.id === selected));
-  const slide = quiz.slides[index];
-
   const change = (q: QuizDoc) => {
     dirtyRef.current = true;
     setDirty(true);
     setStatus('Unsaved changes');
     setQuiz(q);
   };
+  const addMany = (more: QuizSlide[], replace = false) => {
+    const empty = quiz.slides.length === 1 && !!slideProblem(quiz.slides[0]) && !slideTitle(quiz.slides[0]).trim();
+    change({ ...quiz, slides: (replace || empty ? more : [...quiz.slides, ...more]).slice(0, MAX_SLIDES) });
+    setFocus(more[0]?.id || '');
+  };
+  const host = async (mode: 'live' | 'self') => {
+    setBusy(mode);
+    setError('');
+    try {
+      if (dirtyRef.current && !(await save())) return;
+      const r = await quizApi<{ runId: string }>('host', { source: { kind: 'doc', id: d.id }, mode });
+      nav('/game-host/' + r.runId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  };
+  const ready = problems.length === 0;
+  return (
+    <div className="qe">
+      <header className="qe-bar">
+        <h2>Game</h2>
+        <span className="qe-status" role="status">
+          {canEdit ? status : 'You can view this game'}
+        </span>
+        {canEdit && (
+          <button type="button" className="btn" disabled={!ready} onClick={() => setAdding(true)} title={ready ? 'Put this game in a lesson' : 'Finish every question first'}>
+            <UiIcon name="plus" />
+            Add to a lesson
+          </button>
+        )}
+        <button type="button" className="btn" disabled={!ready || !!busy} onClick={() => void host('self')} title={ready ? 'Players join with a code and play at their own pace' : 'Finish every question first'}>
+          {busy === 'self' ? 'Starting…' : 'Share for own pace'}
+        </button>
+        <button type="button" className="btn primary" disabled={!ready || !!busy} onClick={() => void host('live')} title={ready ? 'Run the game on this screen. Players join with a code.' : 'Finish every question first'}>
+          <UiIcon name="videoPlay" />
+          {busy === 'live' ? 'Starting…' : 'Play live'}
+        </button>
+      </header>
+      {error && (
+        <p role="alert" className="game-error">
+          {error}
+        </p>
+      )}
+      {adding && <AddToLesson quiz={quiz} title={d.title} sourceId={d.id} onClose={() => setAdding(false)} />}
+      {canEdit && (
+        <div className="game-sources">
+          <QuizDraft gameId={d.id} existingCount={quiz.slides.length} onApply={(rounds, append) => addMany(slidesFromRounds(rounds), !append)} />
+          <FromCards onUse={(s, replace) => addMany(s, replace)} />
+        </div>
+      )}
+      <GameEditor quiz={quiz} onChange={change} canEdit={canEdit} focus={focus} below={<PastRuns sourceId={d.id} uid={user?.uid} />} />
+    </div>
+  );
+}
+
+/** The questions of a game, and the chosen question to edit. */
+export function GameEditor({ quiz, onChange, canEdit, focus, below }: { quiz: QuizDoc; onChange: (q: QuizDoc) => void; canEdit: boolean; focus?: string; below?: ReactNode }) {
+  const [selected, setSelected] = useState('');
+  useEffect(() => {
+    if (focus) setSelected(focus);
+  }, [focus]);
+  const problems = quizProblems(quiz);
+  const index = Math.max(0, quiz.slides.findIndex((s) => s.id === selected));
+  const slide = quiz.slides[index];
+  const change = onChange;
   const setSlide = (s: QuizSlide) => change({ ...quiz, slides: quiz.slides.map((x) => (x.id === s.id ? s : x)) });
   const add = (kind: SlideKind) => {
     if (quiz.slides.length >= MAX_SLIDES) return;
@@ -96,12 +164,6 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     slides.splice(index + 1, 0, s);
     change({ ...quiz, slides });
     setSelected(s.id);
-  };
-  const addMany = (more: QuizSlide[], replace = false) => {
-    const empty = quiz.slides.length === 1 && !!slideProblem(quiz.slides[0]) && !slideTitle(quiz.slides[0]).trim();
-    const slides = replace || empty ? more : [...quiz.slides, ...more];
-    change({ ...quiz, slides: slides.slice(0, MAX_SLIDES) });
-    setSelected(more[0]?.id || '');
   };
   const remove = () => {
     if (quiz.slides.length === 1) return change({ ...quiz, slides: [newSlide(slide.kind)] });
@@ -123,59 +185,15 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     change({ ...quiz, slides });
     setSelected(copy.id);
   };
-
-  const host = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      if (dirtyRef.current && !(await save())) return;
-      const r = await quizApi<{ runId: string }>('host', { source: { kind: 'doc', id: d.id } });
-      nav('/quiz-host/' + r.runId);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const ready = problems.length === 0;
   return (
-    <div className="qe">
-      <header className="qe-bar">
-        <h2>Live quiz</h2>
-        <span className="qe-status" role="status">
-          {canEdit ? status : 'You can view this quiz'}
-        </span>
-        {canEdit && (
-          <button type="button" className="btn" disabled={!ready} onClick={() => setAdding(true)} title={ready ? '' : 'Finish every question first'}>
-            <UiIcon name="plus" />
-            Add to a class
-          </button>
-        )}
-        <button type="button" className="btn primary" disabled={!ready || busy} onClick={() => void host()} title={ready ? 'Start the quiz on this screen. Players join with a code.' : 'Finish every question first'}>
-          <UiIcon name="videoPlay" />
-          {busy ? 'Starting…' : 'Host live'}
-        </button>
-      </header>
-      {error && (
-        <p role="alert" className="game-error">
-          {error}
-        </p>
-      )}
-      {!ready && (
+    <>
+      {problems.length > 0 && (
         <p className="qe-hint">
           {problems.length === 1 ? 'One question needs' : `${problems.length} questions need`} finishing before you can play.{' '}
           <button type="button" className="btn link" onClick={() => setSelected(quiz.slides[problems[0].i].id)}>
             Go to question {problems[0].i + 1}
           </button>
         </p>
-      )}
-      {adding && <AddToLesson quiz={quiz} title={d.title} sourceId={d.id} onClose={() => setAdding(false)} />}
-      {canEdit && (
-        <div className="game-sources">
-          <QuizDraft gameId={d.id} existingCount={quiz.slides.length} onApply={(rounds, append) => addMany(slidesFromRounds(rounds), !append)} />
-          <FromCards onUse={(s, replace) => addMany(s, replace)} />
-        </div>
       )}
       <div className="qe-grid">
         <nav className="qe-list" aria-label="Questions">
@@ -186,7 +204,7 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                 <span className="qe-slide-n">{i + 1}</span>
                 <span>
                   <strong>{slideTitle(s) || 'New question'}</strong>
-                  <small className={p ? 'qe-warn' : ''}>{p ? 'Needs finishing' : `${KINDS.find((k) => k.id === s.kind)?.name} · ${s.seconds} s${s.points === 2 ? ' · double' : s.points === 0 && s.kind !== 'poll' ? ' · no points' : ''}`}</small>
+                  <small className={p ? 'qe-warn' : ''}>{p ? 'Needs finishing' : `${KINDS.find((k) => k.id === s.kind)?.name}${canSkin(s) && s.skin && s.skin !== 'cards' ? ' · ' + SKIN_NAMES[s.skin].toLowerCase() : ''} · ${s.seconds} s${s.points === 2 ? ' · double' : s.points === 0 && s.kind !== 'poll' ? ' · no points' : ''}`}</small>
                 </span>
               </button>
             );
@@ -203,7 +221,7 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
               </div>
             </div>
           )}
-          <PastRuns sourceId={d.id} uid={user?.uid} />
+          {below}
         </nav>
         <section className="qe-card" aria-label={`Question ${index + 1}`}>
           <div className="qe-row">
@@ -250,6 +268,18 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                 </NSelect>
               </label>
             )}
+            {canSkin(slide) && (
+              <label>
+                How learners answer
+                <NSelect value={slide.skin || 'cards'} disabled={!canEdit} onChange={(e) => setSlide({ ...slide, skin: e.target.value as Skin })}>
+                  {(['cards', 'moles', 'balloons'] as Skin[]).map((k) => (
+                    <option key={k} value={k}>
+                      {SKIN_NAMES[k]}
+                    </option>
+                  ))}
+                </NSelect>
+              </label>
+            )}
             {canEdit && (
               <span className="game-editor-actions" style={{ marginLeft: 'auto' }}>
                 <button type="button" className="btn small-btn" disabled={index === 0} onClick={() => move(-1)} aria-label="Move up">
@@ -267,13 +297,16 @@ export function QuizFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
               </span>
             )}
           </div>
-          <p className="qe-hint">{KINDS.find((k) => k.id === slide.kind)?.about}</p>
+          <p className="qe-hint">
+            {KINDS.find((k) => k.id === slide.kind)?.about}
+            {canSkin(slide) && slide.skin && slide.skin !== 'cards' ? ' ' + SKIN_ABOUT[slide.skin] : ''}
+          </p>
           <SlideEditor key={slide.id} slide={slide} onChange={setSlide} readOnly={!canEdit} />
           {slideProblem(slide) && <p className="qe-problem">{slideProblem(slide)}</p>}
           <SlidePreview slide={slide} n={index + 1} total={quiz.slides.length} />
         </section>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -403,16 +436,11 @@ function SlidePreview({ slide, n, total }: { slide: QuizSlide; n: number; total:
           </div>
           <div />
           {choice ? (
-            <div className={'qz-tiles n' + choice.options.length}>
-              {choice.options.map((o, i) => (
-                <div key={i} className="qz-tile" style={answerStyle(i)}>
-                  <Shape i={i} size={28} />
-                  <span className="qz-tile-text">{o || '…'}</span>
-                </div>
-              ))}
+            <div className={'qz-pad skin-' + (canSkin(slide) ? slide.skin || 'cards' : 'cards')}>
+              <AnswerPad key={slide.id + (slide.skin || '')} skin={canSkin(slide) ? slide.skin || 'cards' : 'cards'} options={choice.options.map((o) => o || '…')} display />
             </div>
           ) : (
-            <p className="qz-phone-hint">Learners answer on their phones.</p>
+            <p className="qz-phone-hint">Learners answer on their own screens.</p>
           )}
         </div>
       </Backdrop>
@@ -492,7 +520,7 @@ function PastRuns({ sourceId, uid }: { sourceId: string; uid?: string }) {
     <div className="qe-runs">
       <p className="qe-hint">Games played</p>
       {runs.map((r) => (
-        <a key={r.id} href={(r.status === 'ended' ? '/quiz-results/' : '/quiz-host/') + r.id}>
+        <a key={r.id} href={(r.status === 'ended' ? '/game-results/' : '/game-host/') + r.id}>
           <span>{new Date(r.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
           <span>
             {r.players} {r.players === 1 ? 'player' : 'players'}

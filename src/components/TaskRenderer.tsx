@@ -1,3 +1,4 @@
+import { InlineGame } from '../quiz/InlineGame';
 import { OfflineMedia } from '../offline/OfflineMedia';
 import {Concordance,concordanceRows} from '../linguistics/Concordance';
 import {studioDefinition} from '../coach/studioForms';
@@ -1160,7 +1161,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'offlineMedia':
         return <OfflineMedia key={key} src={node.attrs?.src||''} video={node.attrs?.video} title={node.attrs?.title} script={node.attrs?.script} scriptMode={node.attrs?.scriptMode} inline={node.attrs?.inline} mute={node.attrs?.mute}/>;
       case 'classroomGame':
-        return <p key={key} className="placeholder">Your teacher may start a live quiz. You’ll see a Join button at the top of the lesson.</p>;
+        return <p key={key} className="placeholder">Your teacher may start a game. You’ll see a Join button at the top of the lesson.</p>;
+      case 'gameBlock':
+        return <InlineGame key={key} node={node} classId={classId && !classId.startsWith('chat:') ? classId : undefined} teacher={!!teacher} />;
       case 'studioForm': {const a=node.attrs||{},f=studioDefinition(a.kind);return <section key={key} className="studio-form" id={'studio-form-'+a.id}><span className="coach-kicker">{f?.name}</span><h3>{a.title||f?.name}</h3>{f?.fields.map(([k,l])=><section key={k}><h4>{l}</h4><p className="studio-form-answer">{a.fields?.[k]||'Not recorded'}</p></section>)}{a.kind==='corpus'&&<><Concordance rows={concordanceRows(a.examples||[],a.fields?.query||'')} caption={'Kept examples · '+(a.fields?.query||'search phrase')}/>{a.examples?.map((e:any)=><p key={e.id}>{e.text} — {e.source} · {e.licence}</p>)}</>}</section>;}
       case 'investigation':
         return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId||classId.startsWith('chat:')} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;

@@ -30,14 +30,16 @@ export type LiveSlide = {
   multi?: boolean;
   lead?: JSONContent | null;
   content?: JSONContent;
+  skin?: string;
 };
 export type LiveReveal = { right: number; partly: number; wrong: number; none: number; answered: number; key: AnswerKey; counts?: number[]; correct?: number[] };
-export type LivePlayer = { n: string; s: number; k?: number; g?: number; r?: number; a?: number; ok?: number | null; m?: number };
-export type Phase = 'lobby' | 'question' | 'reveal' | 'board' | 'podium' | 'ended';
+export type LivePlayer = { n: string; s: number; k?: number; g?: number; r?: number; a?: number; ok?: number | null; m?: number; d?: number; f?: number };
+export type Phase = 'lobby' | 'self' | 'question' | 'reveal' | 'board' | 'podium' | 'ended';
 export type LiveState = {
   title: string;
   code: string;
   total: number;
+  mode?: 'live' | 'self';
   phase: Phase;
   slide: number;
   startsAt?: number;
@@ -132,7 +134,7 @@ export function saveSeat(s: Seat | null) {
 }
 
 /** Where players join: the learners' address, so the code works on any phone. */
-export const joinPath = (code?: string) => '/quiz' + (code ? '/' + code : '');
+export const joinPath = (code?: string) => '/game' + (code ? '/' + code : '');
 
 /** Players sorted for the leaderboard. */
 export const leaders = (players: Record<string, LivePlayer>) =>
