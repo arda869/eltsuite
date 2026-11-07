@@ -127,7 +127,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
       onClose();
     } catch (err) {
       console.error(err);
-      setError('We couldn’t save your changes. Check your connection and try again.');
+      setError('We couldn’t save these class settings. Please try again. If it keeps happening, contact support.');
       setBusy(false);
     }
   }

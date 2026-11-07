@@ -140,21 +140,25 @@ async function beforeOperation(op: string, path: string) {
   if (fault.code) throw Object.assign(new Error(fault.code), { code: fault.code });
 }
 export async function getDoc(r: DocRef) { await beforeOperation('get', r.path); return snapDoc(r.path, all()[r.path]); }
-export async function getDocs(q: Q | CollRef) { return runQuery(q); }
+export async function getDocs(q: Q | CollRef) { await beforeOperation('query', q.path); return runQuery(q); }
 export const getDocFromServer = getDoc;
 export function onSnapshot(target: DocRef | Q | CollRef, ...args: unknown[]) {
   const fns = args.filter((a) => typeof a === 'function') as ((s: unknown) => void)[];
   const next = fns[0];
   let last = '';
+  let ready = false;
+  let active = true;
   const fire = () => {
+    if (!ready || !active) return;
     const s = target.type === 'document' ? snapDoc(target.path, all()[target.path]) : runQuery(target);
     const key = target.type === 'document' ? JSON.stringify(all()[target.path] ?? null) : JSON.stringify((s as ReturnType<typeof runQuery>).docs.map((d) => [d.id, d.data()]));
     if (key === last) return;
     last = key;
     next(s);
   };
-  setTimeout(fire, 0);
-  return subscribe(fire);
+  setTimeout(() => { void beforeOperation(target.type === 'collection' && target.path === 'orgs' ? 'listen-orgs-all' : 'listen', target.path).then(() => { ready = true; fire(); }); }, 0);
+  const unsubscribe = subscribe(fire);
+  return () => { active = false; unsubscribe(); };
 }
 
 function write(ops: ((s: Record<string, Data>) => void)[]) {

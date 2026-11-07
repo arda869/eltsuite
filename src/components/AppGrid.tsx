@@ -92,6 +92,36 @@ const GROUPS: [App['group'], string][] = [
 const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
+// Fetch an app's code as the pointer reaches its tile, before navigation starts.
+// Route-level lazy loading still keeps apps out of the initial Home download.
+const appModules: Record<string, () => Promise<unknown>> = {
+  home: () => import('../pages/HomePage'),
+  classes: () => import('../pages/TeacherHome'),
+  timetable: () => import('../pages/TimetablePage'),
+  rooms: () => import('../pages/RoomsPage'),
+  collab: () => import('../pages/AppFiles'),
+  design: () => import('../pages/AppFiles'),
+  pdf: () => import('../pages/AppFiles'),
+  reading: () => import('../pages/AppFiles'),
+  recordings: () => import('../pages/AppFiles'),
+  games: () => import('../pages/AppFiles'),
+  files: () => import('../pages/MediaArchive'),
+  messages: () => import('../pages/MessagesPage'),
+  colleagues: () => import('../pages/ColleaguesPage'),
+  superadmin: () => import('../pages/AdminPage'),
+  orgadmin: () => import('../pages/AdminPage'),
+  guide: () => import('../pages/GuidePage'),
+  video: () => import('../video/VideoEditor'),
+};
+const warmedApps = new Set<string>();
+const warmApp = (key: string) => {
+  if (warmedApps.has(key)) return;
+  const load = appModules[key];
+  if (!load) return;
+  warmedApps.add(key);
+  void load().catch(() => warmedApps.delete(key));
+};
+
 // The app a page belongs to, for the tab's icon.
 export function appAt(pathname: string) {
   if (pathname === '/observations') return APPS.find(a => a.k === 'collab') ?? null;
@@ -180,7 +210,7 @@ export function AppGrid() {
                 <span className="apps-h">{head}</span>
                 <div className="apps-row">
                   {list.map((a) => (
-                    <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
+                    <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onMouseEnter={() => warmApp(a.k)} onFocus={() => warmApp(a.k)} onTouchStart={() => warmApp(a.k)} onClick={() => setOpen(false)}>
                       <span className="app-ico">{a.icon}</span>
                       <span className="app-tile-copy"><b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b><small>{a.about}</small></span>
                     </Link>
@@ -194,7 +224,7 @@ export function AppGrid() {
             return foot.length ? (
               <div className="apps-foot">
                 {foot.map((a) => (
-                  <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="apps-chip" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
+                  <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="apps-chip" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onMouseEnter={() => warmApp(a.k)} onFocus={() => warmApp(a.k)} onTouchStart={() => warmApp(a.k)} onClick={() => setOpen(false)}>
                     <span className="apps-chip-ic">{a.icon}</span>
                     {a.short ?? a.name}
                   </Link>
