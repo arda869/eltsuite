@@ -34,10 +34,11 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
   const { user } = useAuth();
   const slides = a.kind === 'slides';
   // Every shared document is listed with its class, so it can be found and continued later.
+  const modeKey = (a.modes ?? []).join(',');
   useEffect(() => {
     if (!classId || !a.docKey) return;
-    setDoc(doc(registryCol(classId), a.docKey), { title: a.title || 'Shared document', kind: a.kind, scope: a.scope, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-  }, [classId, a.docKey, a.title, a.kind, a.scope]);
+    setDoc(doc(registryCol(classId), a.docKey), { title: a.title || 'Shared document', kind: a.kind, scope: a.scope, groupSet: a.groupSet || '', modes: a.modes ?? ['edit'], fileDoc: a.fileDoc || '', updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  }, [classId, a.docKey, a.title, a.kind, a.scope, a.groupSet, modeKey, a.fileDoc]);
   const modes = a.modes ?? [];
   // Suggesting and commenting go together.
   const toggleMode = (m: CollabMode) => {

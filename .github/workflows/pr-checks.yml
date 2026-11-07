@@ -46,7 +46,9 @@ jobs:
       - name: Assessment, roster, invitation and call security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security 'node test/security-phase2-firestore.mjs'
       - name: Live classroom security boundaries
-        run: npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security 'node test/security-phase2-rtdb.mjs'
+        run: |
+          node test/collab-access.mjs
+          npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security 'node test/security-phase2-rtdb.mjs'
       - name: Per-user AI allowances and admin security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
       - name: Private coaching history and durable replies
