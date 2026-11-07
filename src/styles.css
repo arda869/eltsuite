@@ -877,7 +877,7 @@ a.btn.primary { color: #ffffff; }
 .pick-tools { flex-wrap: wrap; row-gap: 6px; margin-bottom: 8px; }
 .pick-tools .remove { margin-left: auto; }
 .pick-settings { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 10px; }
-.pick-settings .small-seg { align-items: center; line-height: 1; }
+.pick-settings .small-seg { align-items: center; font-size: 0; line-height: 0; }
 .pick-cards { counter-reset: pkcard; display: flex; flex-direction: column; gap: 10px; }
 .pick-cards > div { display: flex; flex-direction: column; gap: 10px; }
 .pick-card-node { counter-increment: pkcard; border: 1px solid var(--hair-strong); border-radius: 12px; padding: 8px 14px 6px; background: var(--paper); box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
