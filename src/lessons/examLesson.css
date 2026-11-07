@@ -1,0 +1,101 @@
+/* Exam Prep is a class presentation style. Keep editing controls and answer logic shared. */
+.task-frame[data-lesson-style='exam'] {
+  --exam-blue: #0755a4;
+  --exam-navy: #073f7e;
+  --exam-ink: #17202b;
+  --exam-wash: #eef5fe;
+  --exam-line: #9ebbdc;
+  --accent: #0755a4;
+  --accent-text: #073f7e;
+  --tint: #eef5fe;
+  --ink: #17202b;
+  --muted: #4b5563;
+  --paper: #fff;
+  --card: #fff;
+  --surface: #f6f9fd;
+  --hair: #d7e2ed;
+  --hair-strong: #9ebbdc;
+  background: #fff;
+  color: var(--exam-ink);
+  border: 1px solid #c8d5e3;
+  border-radius: 5px;
+  box-shadow: 0 2px 14px rgba(10, 42, 77, .08);
+}
+.task-frame[data-lesson-style='exam'] .frame-head {
+  gap: 9px;
+  padding: 22px 28px 18px;
+  background: #fff;
+  border-bottom: 2px solid var(--exam-blue);
+}
+.task-frame[data-lesson-style='exam'] .frame-head::before {
+  content: 'EXAM PREP';
+  align-self: flex-start;
+  padding: 5px 9px 4px;
+  background: var(--exam-navy);
+  color: #fff;
+  font: 800 11px/1 Karla, Arial, sans-serif;
+  letter-spacing: .16em;
+}
+.task-frame[data-lesson-style='exam'] .yl-activity-number { display: none; }
+.task-frame[data-lesson-style='exam'] .task-title,
+.task-frame[data-lesson-style='exam'] .frame-head > input.task-title {
+  color: var(--exam-blue);
+  font: 800 clamp(22px, 2vw, 28px)/1.22 Karla, Arial, sans-serif;
+  letter-spacing: .025em;
+}
+.task-frame[data-lesson-style='exam'] .task-instr,
+.task-frame[data-lesson-style='exam'] .task-instr.rich .task-body {
+  color: var(--exam-ink);
+  font: italic 500 17px/1.52 Karla, Arial, sans-serif;
+}
+.task-frame[data-lesson-style='exam'] .frame-body {
+  background: #fff;
+  color: var(--exam-ink);
+  padding: 22px 28px 28px;
+}
+.task-frame[data-lesson-style='exam'] :is(.task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc) {
+  --serif: Karla, Arial, sans-serif;
+  --sans: Karla, Arial, sans-serif;
+  color: var(--exam-ink);
+  font-family: Karla, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.58;
+}
+.task-frame[data-lesson-style='exam'] :is(.task-body, .ProseMirror) :is(h1, h2, h3, h4),
+.task-frame[data-lesson-style='exam'] :is(.tbox-title, .subtask .st-l) {
+  color: var(--exam-navy);
+  font-family: Karla, Arial, sans-serif;
+  font-weight: 800;
+}
+.task-frame[data-lesson-style='exam'] :is(.q-num, .c-letter),
+.task-frame[data-lesson-style='exam'] .mcq-node::before,
+.task-frame[data-lesson-style='exam'] .gap-node::before,
+.task-frame[data-lesson-style='exam'] .choice-node::before,
+.task-frame[data-lesson-style='exam'] .drop-node::before {
+  color: var(--exam-blue);
+  font-family: Karla, Arial, sans-serif;
+  font-weight: 800;
+}
+.task-frame[data-lesson-style='exam'] .mcq-q { margin-block: 14px 22px; }
+.task-frame[data-lesson-style='exam'] .mcq-q legend { font-weight: 700; }
+.task-frame[data-lesson-style='exam'] .mcq-node { box-shadow: inset 2px 0 var(--exam-blue); }
+.task-frame[data-lesson-style='exam'] .subtask { border-color: var(--exam-line); }
+.task-frame[data-lesson-style='exam'] .subtask .st-band {
+  background: var(--exam-wash);
+  border-bottom: 1px solid var(--exam-line);
+}
+.task-frame[data-lesson-style='exam'] :is(.tbox.s-box, .tbox.s-info, .callout, .sortcol, .dgw-c) {
+  border: 1px solid var(--exam-line);
+  border-radius: 2px;
+  background: var(--exam-wash);
+}
+.task-frame[data-lesson-style='exam'] .tbox.s-info { border-left: 3px solid var(--exam-blue); }
+.task-frame[data-lesson-style='exam'] .gap-input { border-bottom: 1.5px dotted var(--exam-blue); }
+.task-frame[data-lesson-style='exam'] .frame-foot { border-top-color: var(--exam-line); background: #fff; }
+@media (max-width: 640px) {
+  .task-frame[data-lesson-style='exam'] .frame-head { padding: 16px 16px 14px; }
+  .task-frame[data-lesson-style='exam'] .frame-body { padding: 16px; }
+  .task-frame[data-lesson-style='exam'] :is(.task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc) { font-size: 16px; }
+}
+/* In the paged editor the worksheet itself supplies the printed heading. */
+.sh-edit .task-frame[data-lesson-style='exam'] .frame-head::before { content: none; }

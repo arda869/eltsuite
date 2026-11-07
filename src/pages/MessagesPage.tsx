@@ -234,7 +234,7 @@ function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory;
             </div>
           );
         })}
-        {dir.groups.every((g) => !g.people.length) && <span className="hint">There’s no one to write to yet.</span>}
+        {dir.loading ? <span className="hint" role="status">Finding people from your classes…</span> : dir.error ? <span className="error" role="alert">{dir.error} <button type="button" className="btn link small" onClick={dir.retry}>Try again</button></span> : dir.groups.every((g) => !g.people.length) && <span className="hint">There’s no one to write to yet.</span>}
       </div>
     </div>
   );
@@ -280,6 +280,7 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
         )}
         {classes.size > 1 && <span className="error">Put learners from one class in a chat at a time.</span>}
         {err && <span className="error">{err}</span>}
+        {busy && <span className="hint" role="status">Opening the chat…</span>}
         <span className="sh-foot">
           <span className="hint">{picked.length ? `${picked.length} chosen${picked.length > 1 ? ' · a group' : group ? ' · choose at least two' : ''}` : group ? 'Choose at least two people' : ''}</span>
           <button type="button" className="btn" onClick={onClose}>
@@ -516,6 +517,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
+        {busy && <span className="hint" role="status">Sending your message…</span>}
         {/* The writing box starts as one line, with its buttons at the right. When the words reach
             them, the box grows and the buttons move under the words, as in Teams. */}
         {gifOpen && <GifPicker space={'chat:' + c.id} onClose={() => setGifOpen(false)} onPick={(src, alt) => (setGifOpen(false), chime('out'), void sendMsg(c, me, { text: 'GIF', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt, size: 'm', mark: '' } }] }] }, blocks: 0, mentions: [] }).catch(() => setErr('We couldn’t send the GIF. Try again.')))} />}

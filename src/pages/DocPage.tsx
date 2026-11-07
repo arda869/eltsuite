@@ -174,7 +174,10 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
       extra={Object.entries(d.classes ?? {}).map(([k, c]) => ({ k, name: c.name, about: `Whole class, in a lesson · ${ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}` }))}
       onShare={async (people, role, tell, note) => {
         await shareWith(d, people, role);
-        if (tell && dir) await sendDocInChat(d, dir.me, people, note);
+        if (tell && dir) {
+          try { await sendDocInChat(d, dir.me, people, note); }
+          catch (e) { console.error('Document access was granted, but the chat notification failed', e); return 'The document is shared, but we couldn’t send the message with its link. You can copy the link and send it yourself.'; }
+        }
       }}
       onRole={(k, r) => void setMemberRole(d, k, r)}
       onRemove={(k) => void unshare(d, k)}
@@ -183,7 +186,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   );
 }
 
-export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void | string>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -203,8 +206,8 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
     if (!picked.length) return;
     setBusy(true);
     try {
-      await onShare(picked, role, tell, note);
-      setDone(`Shared with ${picked.map((p) => p.name.split(' ')[0]).join(', ')}.`);
+      const result = await onShare(picked, role, tell, note);
+      setDone(result || `Shared with ${picked.map((p) => p.name.split(' ')[0]).join(', ')}.`);
       setPicked([]);
       setNote('');
     } catch (e) {
@@ -242,6 +245,9 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
             </span>
           )}
         </div>
+        {dir?.loading && <p className="hint" role="status">Finding colleagues and learners…</p>}
+        {dir?.error && <p className="error" role="alert">{dir.error} <button type="button" className="btn link small" onClick={dir.retry}>Try again</button></p>}
+        {!dir?.loading && !dir?.error && s && found.length === 0 && <p className="hint">No matching people found.</p>}
         {picked.length > 0 && (
           <>
             {!noRoles && <span className="dp-roles" role="radiogroup" aria-label="What they can do">

@@ -42,7 +42,8 @@ try {
     assert.equal(await p.evaluate(cid=>JSON.parse(localStorage.mockfs)[`classes/${cid}`].lessonStyle,demo.classId),style);
   }
   await settings('young'); assert.deepEqual(await protectedData(),before);ok('Settings save and reload Adult → Young; all lesson and progress documents unchanged');
-  await settings('adult'); assert.deepEqual(await protectedData(),before);ok('Settings save and reload Young → Adult; all lesson and progress documents unchanged');
+  await settings('exam'); assert.deepEqual(await protectedData(),before);ok('Settings save and reload Young → Exam Prep; all lesson and progress documents unchanged');
+  await settings('adult'); assert.deepEqual(await protectedData(),before);ok('Settings save and reload Exam Prep → Adult; all lesson and progress documents unchanged');
   await p.goto(`${BASE}/classes`);
   await p.getByRole('button',{name:/New class|Make a class/}).first().click();
   await p.getByLabel('Class name',{exact:true}).fill('Young learner persistence fixture');
@@ -50,6 +51,13 @@ try {
   await p.getByRole('button',{name:'Make class',exact:true}).click();
   await p.waitForFunction(()=>Object.values(JSON.parse(localStorage.mockfs)).some(v=>v.name==='Young learner persistence fixture'&&v.lessonStyle==='young'));
   ok('New class stores Young learner preference');
+  await p.goto(`${BASE}/classes`);
+  await p.getByRole('button',{name:/New class|Make a class/}).first().click();
+  await p.getByLabel('Class name',{exact:true}).fill('Exam Prep persistence fixture');
+  await p.getByLabel('Lesson style').selectOption('exam');
+  await p.getByRole('button',{name:'Make class',exact:true}).click();
+  await p.waitForFunction(()=>Object.values(JSON.parse(localStorage.mockfs)).some(v=>v.name==='Exam Prep persistence fixture'&&v.lessonStyle==='exam'));
+  ok('New class stores Exam Prep preference');
   }
   if (process.env.STYLE_ONLY === 'classes') { console.log('Class persistence checks complete'); } else {
 
@@ -63,7 +71,7 @@ try {
   await p.getByRole('button',{name:'Read the hint',exact:true}).click();
   const responses=await p.evaluate(()=>window.responses);
   const score=await p.evaluate(()=>{const {content,key}=window.splitKey(window.fixture);return window.scoreTask(window.questionIds(content),key,window.responses)});
-  for(const style of ['adult','young','adult','young']) {
+  for(const style of ['adult','young','exam','adult','young','exam']) {
     await p.getByLabel('Fixture style').selectOption(style);
     assert.equal(await p.evaluate(()=>JSON.stringify(window.fixture)),baseline);
     assert.deepEqual(await p.evaluate(()=>window.responses),responses);
@@ -72,6 +80,15 @@ try {
     assert.deepEqual(await p.locator('#outside').evaluate(el=>[getComputedStyle(el).fontFamily,getComputedStyle(el).backgroundColor]),outside);
   }
   ok('Nested answers survive repeated presentation toggles; content and outside typography unchanged');
+  const examScreen=await p.locator('.task-frame').evaluate(el=>({background:getComputedStyle(el).backgroundColor,font:getComputedStyle(el.querySelector('.task-body')).fontFamily,kicker:getComputedStyle(el.querySelector('.frame-head'),'::before').content}));
+  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(examScreen.font.includes('Karla'));assert(examScreen.kicker.includes('EXAM PREP'));
+  await p.locator('.task-frame').screenshot({path:`${OUT}/exam-screen-desktop.png`});
+  await p.setViewportSize({width:390,height:844});
+  assert(await p.locator('.task-frame').evaluate(el=>el.scrollWidth<=el.clientWidth+2));
+  await p.locator('.task-frame').screenshot({path:`${OUT}/exam-screen-mobile.png`});
+  await p.setViewportSize({width:1300,height:900});
+  ok('Exam Prep screen design and mobile width');
+  await p.getByLabel('Fixture style').selectOption('young');
   const tails=await p.locator('.tbox.s-speech .bubble').evaluateAll(els=>els.map(el=>({height:el.clientHeight,bottom:getComputedStyle(el,'::after').bottom,position:getComputedStyle(el,'::after').position})));
   assert(tails.every(t=>t.position==='absolute'&&t.bottom==='-7px'));assert(tails[1].height>tails[0].height);
   ok('Left/right speech tails stay anchored with wrapped and long text');
@@ -115,6 +132,15 @@ try {
   ok('Adult default projection identical; Young projection preserves answers, marks and source JSON');
   assert(projections.young.icon);assert.equal(projections.adult.icon,undefined);assert.equal(projections.printIcon,'sing');assert.equal(projections.noPrintIcon,undefined);
   ok('Young print icon follows the task, accepts a separate choice, and can be hidden');
+  const examHtml=await p.evaluate(()=>window.worksheetHtml('Practice test',[{kind:'section',title:'Listening'},{kind:'task',task:window.flattenTask(window.exportFixture,'exam')}],{lessonStyle:'exam',header:true,key:false,notes:false,paper:'A4',columns:1,accent:'#d98f63',className:'Exam class',level:'B2',origin:location.origin}));
+  const examPrint=await b.newPage();await examPrint.setContent(examHtml);await examPrint.waitForFunction(()=>window.__laidOut===true);await examPrint.evaluate(()=>document.fonts.ready);
+  assert(examHtml.includes('Exam Prep · B2'));
+  assert.equal(await examPrint.locator('.page .unit.section h2').first().evaluate(el=>getComputedStyle(el).color),'rgb(7, 63, 126)');
+  assert.equal(await examPrint.locator('.page .ex-n').first().evaluate(el=>getComputedStyle(el).color),'rgb(7, 63, 126)');
+  const examOverflow=await examPrint.locator('.col').evaluateAll(els=>els.map(el=>({w:el.scrollWidth-el.clientWidth,h:el.scrollHeight-el.clientHeight})).filter(x=>x.w>2||x.h>2));
+  assert.deepEqual(examOverflow,[],'Exam Prep paper has no clipped column');
+  await examPrint.locator('.page').first().screenshot({path:`${OUT}/exam-print-A4.png`});
+  await examPrint.close();ok('Exam Prep A4 print theme matches the editor and fits the page');
   for(const {paper,clear,columns,size,label} of [{paper:'A4',label:'A4'},{paper:'Letter',label:'Letter'},{paper:'A5',label:'A5'},{paper:'A4',clear:true,columns:2,size:'large',label:'A4-clear-large-two-columns'}]) {
     const html=await p.evaluate(async ({paper,clear,columns,size})=>window.worksheetHtml('Planning a visit',[{kind:'task',task:window.flattenTask(window.exportFixture,'young')}],{lessonStyle:'young',header:true,key:true,notes:true,paper,clear,size,columns:columns||1,accent:'#338399',className:'Teal class',origin:location.origin,sounds:await window.soundFixture()}),{paper,clear,columns,size});
     const print=await b.newPage();await print.setContent(html);await print.waitForFunction(()=>window.__laidOut===true);await print.evaluate(()=>document.fonts.ready);

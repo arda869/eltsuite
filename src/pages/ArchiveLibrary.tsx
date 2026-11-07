@@ -331,7 +331,10 @@ function FolderView({ f, uid, onBack, folders }: { f: SharedFolder; uid: string;
           chatLabel="Send them a message about the folder"
           onShare={async (people, role, tell, note) => {
             await shareFolder(f, people, role, docs ?? []);
-            if (tell && dir) await sendFolderInChat(f, dir.me, people, docs ?? [], note);
+            if (tell && dir) {
+              try { await sendFolderInChat(f, dir.me, people, docs ?? [], note); }
+              catch (e) { console.error('Folder access was granted, but the chat notification failed', e); return 'The folder is shared, but we couldn’t send the message about it.'; }
+            }
           }}
           onRemove={(k) => void unshareFolder(f, k, docs ?? [])}
           onClose={() => setSharing(false)}

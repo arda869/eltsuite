@@ -1,6 +1,6 @@
 import { quietNow } from './status';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, type DocumentData } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, writeBatch, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db, rtdb } from './firebase';
 import { onDisconnect, onValue, ref, remove, set } from 'firebase/database';
@@ -62,10 +62,15 @@ export const msgsCol = (chatId: string) => collection(db, 'chats', chatId, 'msgs
 export function useChats(me?: string) {
   const [list, setList] = useState<Chat[] | null>(null);
   useEffect(() => {
+    setList(null);
     if (!me) return;
     return onSnapshot(
       query(col, where('members', 'array-contains', me)),
-      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Chat, 'id'>) })).filter((c) => !((c.hidden?.[me] ?? 0) >= c.lastAt)).sort((a, b) => b.lastAt - a.lastAt)),
+      { includeMetadataChanges: true },
+      (s) => {
+        if (s.empty && s.metadata.fromCache) return;
+        setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Chat, 'id'>) })).filter((c) => !((c.hidden?.[me] ?? 0) >= c.lastAt)).sort((a, b) => b.lastAt - a.lastAt));
+      },
       () => setList([]),
     );
   }, [me]);
@@ -87,7 +92,10 @@ export function useMessages(chatId?: string) {
   useEffect(() => {
     if (!chatId) return;
     setList(null);
-    return onSnapshot(query(msgsCol(chatId), orderBy('at', 'desc'), limit(200)), (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Msg, 'id'>) })).reverse()), () => setList([]));
+    return onSnapshot(query(msgsCol(chatId), orderBy('at', 'desc'), limit(200)), { includeMetadataChanges: true }, (s) => {
+      if (s.empty && s.metadata.fromCache) return;
+      setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Msg, 'id'>) })).reverse());
+    }, () => setList([]));
   }, [chatId]);
   return list;
 }
@@ -189,9 +197,13 @@ export const isEmptyContent = (n?: JSONContent | null) => !plainOf(n).trim() && 
 export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'name' | 'role' | 'at'>) {
   const at = Date.now();
   const clean = JSON.parse(JSON.stringify({ ...m, by: me.key, name: me.name, role: me.role, at }));
-  await addDoc(msgsCol(c.id), clean);
   const preview = m.text.trim() || (m.share ? `Shared “${m.share.title}”` : m.blocks ? 'Sent a task element' : 'Sent a picture');
-  await updateDoc(doc(col, c.id), { lastAt: at, last: { text: preview.slice(0, 140), name: me.name, by: me.key, mentions: m.mentions ?? [] }, [`seen.${me.key}`]: at });
+  // The message and the chat preview must either both save or both fail. A partial
+  // send used to leave a message behind while telling the sender to retry it.
+  const batch = writeBatch(db);
+  batch.set(doc(msgsCol(c.id)), clean);
+  batch.update(doc(col, c.id), { lastAt: at, last: { text: preview.slice(0, 140), name: me.name, by: me.key, mentions: m.mentions ?? [] }, [`seen.${me.key}`]: at });
+  await batch.commit();
 }
 export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => updateDoc(doc(msgsCol(c.id), id), JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));
 export const deleteMsg = (c: Chat, id: string) => updateDoc(doc(msgsCol(c.id), id), { deleted: true, content: null, text: '', key: {}, share: null, blocks: 0 });
