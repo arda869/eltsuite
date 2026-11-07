@@ -461,14 +461,73 @@
 [data-lesson-style='young'] .yl-burst i:nth-child(3n+2) { background: var(--yl-rose); }
 [data-lesson-style='young'] .yl-burst i:nth-child(3n) { background: var(--yl-leaf); border-radius: 50%; width: 8px; height: 8px; }
 
-/* Teachers: what learners will see, and tips. */
-.yl-author { margin-top: 4px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); font-family: var(--sans); }
-.yl-author-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.yl-author .yl-cue { width: 40px; height: 40px; border-radius: 12px; }
-.yl-author .yl-cue svg { width: 28px; height: 28px; }
-.yl-author-text { flex: 1 1 220px; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; color: var(--muted); }
-.yl-author-text b { font-size: 14px; color: var(--ink); }
-.yl-author-list { margin: 10px 0 2px; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; color: var(--ink); }
+/* Teachers: the task icon, changed or turned off from a small picker beside the instruction. */
+[data-lesson-style='young'] .yl-instr-edit { display: flex; align-items: flex-start; gap: 12px; }
+[data-lesson-style='young'] .yl-instr-edit > :last-child { flex: 1; min-width: 0; }
+.yl-pick { position: relative; flex: none; }
+[data-lesson-style='young'] .yl-pick-btn { position: relative; cursor: pointer; border: 0; padding: 0; transition: transform .15s var(--yl-ease); }
+[data-lesson-style='young'] .yl-pick-btn:hover { transform: scale(1.06) rotate(-3deg); }
+[data-lesson-style='young'] .yl-pick-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+[data-lesson-style='young'] .yl-pick-btn.none { width: 54px; height: 54px; border-radius: 16px; background: none; box-shadow: inset 0 0 0 2px var(--hair-strong); color: var(--muted); }
+.yl-pick-off { font: 700 10.5px/1.1 var(--sans); padding: 0 4px; }
+.yl-pick-dot { position: absolute; top: -3px; right: -3px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--paper); }
+.yl-pick-pop { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; width: min(440px, 86vw); padding: 14px; border-radius: 16px; background: var(--paper); border: 1px solid var(--hair); box-shadow: 0 18px 40px rgba(0, 0, 0, .16); animation: yl-land .18s ease-out; }
+.yl-pick-h { margin: 0 0 8px; font: 700 13px var(--sans); color: var(--ink); }
+.yl-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.yl-pick-opt { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: 12px; background: none; cursor: pointer; font: 600 11.5px/1.2 var(--sans); color: var(--ink); text-align: center; }
+.yl-pick-opt:hover { background: var(--surface); }
+.yl-pick-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--paper)); }
+[data-lesson-style='young'] .yl-pick-opt .yl-cue { width: 42px; height: 42px; border-radius: 12px; }
+[data-lesson-style='young'] .yl-pick-opt .yl-cue svg { width: 28px; height: 28px; }
+.yl-pick-none { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--hair-strong); color: var(--muted); }
+.yl-pick-tips { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.yl-pick-tips ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font: 13px/1.45 var(--sans); color: var(--ink); }
+
+/* Icon colours for the choosable icons. */
+[data-lesson-style='young'] .yl-cue-watch { --c: var(--yl-sky); }
+[data-lesson-style='young'] .yl-cue-sing { --c: var(--yl-rose); }
+[data-lesson-style='young'] .yl-cue-draw { --c: var(--yl-peach); }
+[data-lesson-style='young'] .yl-cue-play { --c: var(--yl-sun); }
+[data-lesson-style='young'] .yl-cue-partner { --c: var(--yl-leaf); }
+[data-lesson-style='young'] .yl-cue-find { --c: var(--yl-lilac); }
+[data-lesson-style='young'] .yl-cue-think { --c: var(--yl-sun); }
+/* The icon says hello when the task opens. */
+[data-lesson-style='young'] .frame-head .yl-cue { animation: yl-hello .7s var(--yl-ease) .15s both; }
+
+/* Pip the owl. */
+.yl-buddy { display: inline-block; flex: none; line-height: 0; }
+.yl-buddy svg { overflow: visible; }
+.yl-buddy-body { transform-origin: 50% 90%; }
+.yl-buddy-happy-eyes { display: none; }
+.yl-buddy-wing { transform-box: fill-box; }
+.yl-buddy-wing-l { transform-origin: 90% 10%; }
+.yl-buddy-wing-r { transform-origin: 10% 10%; }
+.yl-buddy-eyes { animation: yl-blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
+.yl-buddy-hello .yl-buddy-body { animation: yl-hop .6s var(--yl-ease) both; }
+.yl-buddy-hello .yl-buddy-wing-r { animation: yl-wave .45s ease-in-out .3s 3 alternate; }
+.yl-buddy-happy .yl-buddy-eyes, .yl-buddy-cheer .yl-buddy-eyes { display: none; }
+.yl-buddy-happy .yl-buddy-happy-eyes, .yl-buddy-cheer .yl-buddy-happy-eyes { display: inline; }
+.yl-buddy-happy .yl-buddy-body { animation: yl-hop .6s var(--yl-ease) both; }
+.yl-buddy-cheer .yl-buddy-body { animation: yl-jump .55s var(--yl-ease) 4 alternate; }
+.yl-buddy-cheer .yl-buddy-wing-l { animation: yl-flap-l .28s ease-in-out 8 alternate; }
+.yl-buddy-cheer .yl-buddy-wing-r { animation: yl-flap-r .28s ease-in-out 8 alternate; }
+.yl-buddy-think .yl-buddy-body { animation: yl-tilt 1.6s ease-in-out 2 alternate; }
+.yl-buddy-think .yl-buddy-pupil { transform: translate(-1.5px, -2px); }
+[data-lesson-style='young'] .foot-status { display: inline-flex; align-items: center; gap: 10px; }
+[data-lesson-style='young'] .foot-status .yl-buddy { margin: -14px 0 -8px; }
+[data-lesson-style='young'] .yl-score .yl-buddy { margin: -16px -4px -8px 0; }
+
+/* The sound switch in the learner's header. */
+.yl-sound { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; border: 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.yl-sound.on { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); color: var(--accent-text); }
+
+/* A new task springs in; answers react when checked. */
+[data-lesson-style='young'].task-frame.yl-enter > .frame-inner, [data-lesson-style='young'].task-frame.yl-enter > :is(.frame-head, .frame-body) { animation: yl-spring .5s var(--yl-ease) both; }
+[data-lesson-style='young'] .task-body :is(.opt, .c-opt, .gap-result .ans, .match-item, .order-word, .lg-word).right { animation: yl-cheer .5s var(--yl-ease) both; }
+[data-lesson-style='young'] .task-body :is(.opt, .c-opt, .gap-result .ans, .match-item, .order-word, .lg-word).wrong { animation: yl-wobble .5s ease-in-out both; }
+[data-lesson-style='young'] .task-body :is(.opt, .c-opt, .match-item, .bank-word, .order-word):active { transform: scale(.95); transition: transform .08s; }
+[data-lesson-style='young'] .yl-progress.steps i.on { animation: yl-pop .35s var(--yl-ease) both; }
+[data-lesson-style='young'] .yl-score.all { animation: yl-cheer .6s var(--yl-ease) both; }
 
 @keyframes yl-pick { 0% { transform: scale(.96); } 60% { transform: scale(1.03); } 100% { transform: none; } }
 @keyframes yl-cheer { 0% { transform: scale(.92); } 55% { transform: scale(1.06); } 100% { transform: none; } }
@@ -476,6 +535,15 @@
 @keyframes yl-land { 0% { transform: translateY(-8px) scale(1.06); } 100% { transform: none; } }
 @keyframes yl-wobble { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
 @keyframes yl-breathe { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 24%, transparent); } }
+@keyframes yl-hello { 0% { transform: scale(.6) rotate(-12deg); opacity: 0; } 70% { transform: scale(1.12) rotate(4deg); opacity: 1; } 100% { transform: none; } }
+@keyframes yl-spring { 0% { transform: translateY(14px) scale(.985); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes yl-hop { 0% { transform: translateY(8px) scale(.9); } 60% { transform: translateY(-6px) scale(1.04); } 100% { transform: none; } }
+@keyframes yl-jump { 0% { transform: translateY(0) scaleY(.96); } 100% { transform: translateY(-9px) scaleY(1.03); } }
+@keyframes yl-wave { 0% { transform: rotate(0); } 100% { transform: rotate(-28deg); } }
+@keyframes yl-flap-l { 0% { transform: rotate(0); } 100% { transform: rotate(30deg); } }
+@keyframes yl-flap-r { 0% { transform: rotate(0); } 100% { transform: rotate(-30deg); } }
+@keyframes yl-tilt { 0% { transform: rotate(-4deg); } 100% { transform: rotate(5deg); } }
+@keyframes yl-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes yl-star { 0% { transform: scale(.3) rotate(-30deg); opacity: 0; } 70% { transform: scale(1.15) rotate(6deg); opacity: 1; } 100% { transform: none; } }
 @keyframes yl-confetti {
   0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(.4); }

@@ -1,6 +1,6 @@
 import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
-import { YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
+import { YoungBuddy, YoungEffects, YoungInstr, YoungProgress, YoungScore, YoungSoundToggle } from '../lessons/young';
 import '../lessons/youngLesson.css';
 import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
@@ -429,6 +429,7 @@ export function LearnerLesson() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <span className="right-push icon-row">
+          {lessonStyleOf(c) === 'young' && <YoungSoundToggle />}
           {c?.meeting?.url && c.meeting.visibility === 'always' && <IconLink icon="call" label="Join the call" href={c.meeting.url} />}
           <IconLink icon="discuss" label="Class discussion" to="/discuss" />
           {NOTEBOOK && <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
@@ -511,7 +512,7 @@ export function LearnerLesson() {
                 )}
                 <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{task.title}</h1>
                 {lessonStyleOf(c) === 'young' && (task.instrDoc || task.instructions) ? (
-                  <YoungInstr content={task.content}>
+                  <YoungInstr content={task.content} icon={task.ylIcon}>
                     <InstrView classId={classId} doc={task.instrDoc} text={task.instructions} />
                   </YoungInstr>
                 ) : (
@@ -645,6 +646,7 @@ export function LearnerLesson() {
                 />
                 )}
               </div>
+              {lessonStyleOf(c) === 'young' && <YoungEffects taskId={task.id} answered={answered} checked={checked} got={score} total={result.total} />}
               <div className="frame-foot">
                 {scope && examState === 'running' ? (
                   <span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
@@ -671,6 +673,7 @@ export function LearnerLesson() {
                   </span>
                 ) : (
                   <span className="hint foot-status">
+                    {lessonStyleOf(c) === 'young' && <YoungBuddy key={task.id} mood={qs.length > 0 && answered >= qs.length ? 'happy' : 'hello'} size={46} />}
                     {lessonStyleOf(c) === 'young' && <YoungProgress done={answered} total={qs.length} />}
                     {qs.length > 0 && <span className="foot-short">{answered}/{qs.length}</span>}
                     {qs.length > 0 ? <span className="foot-long">{`${answered} of ${qs.length} answered`}</span> : ''}
