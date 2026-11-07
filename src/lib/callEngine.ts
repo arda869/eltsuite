@@ -175,8 +175,9 @@ export function startEngine(call: OpenCall) {
         const { data, fromId } = ev as { data?: { hand?: boolean; cmd?: HostCmd; to?: string }; fromId: string };
         const from = st.tiles.find((t) => t.id === fromId);
         const mine = st.tiles.find((t) => t.local);
-        // Only a teacher (or the room's host) can turn things off or ask for them on.
-        if (data?.cmd && (from?.role === 'teacher' || from?.owner) && (data.to === '*' || data.to === mine?.id) && mine?.role !== 'teacher') {
+        // Daily assigns owner from a host meeting token. userData.role is supplied by the
+        // joining browser and must never authorise moderation or exemption from it.
+        if (data?.cmd && from?.owner === true && (data.to === '*' || data.to === mine?.id) && mine?.owner !== true) {
           const by = from?.name ?? 'Your teacher';
           if (data.cmd === 'mute' && co?.localAudio()) (co.setLocalAudio(false), emit({ note: `${by} turned off your microphone` }));
           if (data.cmd === 'camOff' && co?.localVideo()) (co.setLocalVideo(false), emit({ note: `${by} turned off your camera` }));

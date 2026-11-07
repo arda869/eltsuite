@@ -34,7 +34,8 @@ try {
   await admin.doc('users/teacher').set({ role: 'teacher', displayName: 'Teacher' });
   await admin.doc('users/learner').set({ role: 'learner', learnerId: 'one', classId: 'c1', displayName: 'One' });
   await admin.doc('users/other').set({ role: 'learner', learnerId: 'two', classId: 'c1', displayName: 'Two' });
-  await admin.doc('classes/c1').set({ teacherId: 'teacher', classCode: 'CLS-234', status: 'active' });
+  await admin.doc('users/viewer').set({ role: 'teacher', displayName: 'Viewer' });
+  await admin.doc('classes/c1').set({ teacherId: 'teacher', coTeachers: { viewer: { role: 'viewer' } }, classCode: 'CLS-234', status: 'active' });
   await admin.doc('classCodes/CLS-234').set({ classId: 'c1', teacherId: 'teacher', className: 'Demo', roster: [{ id: 'one', name: 'One Learner' }] });
   assert.equal((await resolveLearner(admin, { code: 'CLS-234', name: ' One Learner ', address: 'test-a' })).learnerId, 'one');
   await assert.rejects(() => resolveLearner(admin, { code: 'CLS-234', name: 'Other Learner', address: 'test-a' }), { code: 'not-found' });
@@ -49,7 +50,11 @@ try {
   await admin.doc('classes/c1/learners/two').set({ displayName: 'Two', authUid: 'other' });
   await admin.doc('classes/c1/items/i1').set({ type: 'lesson', hidden: false, locked: false });
   await admin.doc('classes/c1/items/i1/tasks/t1').set({ kind: 'task', hidden: false, locked: false, content: { type: 'doc', content: [] } });
-  const learner = as('learner', true), other = as('other', true), teacher = as('teacher'), outsider = as('outsider');
+  const learner = as('learner', true), other = as('other', true), teacher = as('teacher'), viewer = as('viewer'), outsider = as('outsider');
+  await admin.doc('classes/c1/video/host').set({ token: 'emulator-only-host-token' });
+  await getDoc(doc(teacher, 'classes/c1/video/host'));
+  await denied('view-only co-teacher cannot read the video host token', () => getDoc(doc(viewer, 'classes/c1/video/host')));
+  await denied('learner cannot read the video host token', () => getDoc(doc(learner, 'classes/c1/video/host')));
   await denied('unrelated account cannot download class roster', () => getDoc(doc(outsider, 'classCodes/CLS-234')));
   await getDoc(doc(learner, 'classCodes/CLS-234'));
   await denied('client cannot write an invitation request directly', () => setDoc(doc(outsider, 'invitationRequests/forged'), { name: 'Spam', email: 'spam@example.test', at: new Date() }));
