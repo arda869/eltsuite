@@ -7,6 +7,7 @@ export { observeLearnerResponses } from './learning/observations.js';
 export { checkSubTask } from './learning/check-subtask.js';
 export { assessTask, manageExam, resubmitCorrection } from './learning/assessment.js';
 export { claimLiveClass, classTeachingAccessChanged } from './learning/class-access.js';
+export { sharedDocumentAccessChanged, inlineDocumentAccessChanged, sharedClassMemberAccessChanged, sharedClassGroupsChanged } from './collab/access.js';
 export { resolveLearnerSignIn } from './learning/join.js';
 export { requestInvitation } from './accounts/invitations.js';
 export { startCallRoom, endCallRoom } from './learning/call-rooms.js';

@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getDatabase } from 'firebase-admin/database';
+import { refreshClassDocumentAccess } from '../collab/access.js';
 
 const RTDB = 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app';
 const validId = id => typeof id === 'string' && id.length > 0 && id.length < 150 && !id.includes('/');
@@ -25,14 +26,16 @@ export const claimLiveClass = onCall({ region: 'us-central1', maxInstances: 10 }
   return syncClassAccess(getFirestore(), getDatabase(undefined, RTDB), req.data?.classId, req.auth.uid);
 });
 
-export const classTeachingAccessChanged = onDocumentWritten({ document: 'classes/{classId}', region: 'us-central1', maxInstances: 10 }, async event => {
+export const classTeachingAccessChanged = onDocumentWritten({ document: 'classes/{classId}', region: 'us-central1', maxInstances: 10, retry: true }, async event => {
   const before = event.data?.before.data();
   const after = event.data?.after.data();
   if (before && after && before.teacherId === after.teacherId
       && JSON.stringify(before.coTeachers ?? {}) === JSON.stringify(after.coTeachers ?? {})) return;
   if (!event.data?.after.exists) {
     await getDatabase(undefined, RTDB).ref().update({ [`classOwners/${event.params.classId}`]: null, [`classTeachers/${event.params.classId}`]: null });
+    await refreshClassDocumentAccess(getFirestore(), getDatabase(undefined, RTDB), event.params.classId, Date.parse(event.time ?? '') || Date.now());
     return;
   }
   await syncClassAccess(getFirestore(), getDatabase(undefined, RTDB), event.params.classId);
+  await refreshClassDocumentAccess(getFirestore(), getDatabase(undefined, RTDB), event.params.classId, Date.parse(event.time ?? '') || Date.now());
 });

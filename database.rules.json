@@ -59,43 +59,58 @@
     },
     "collab": {
       "$doc": {
-        ".read": "auth != null",
+        ".read": "auth != null && (root.child('collabAccess').child($doc).child('read').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true))",
         "u": {
           "$k": {
-            ".write": "auth != null && (!newData.exists() || newData.child('by').val() === auth.uid || root.child('collab').child($doc).child('snap').exists())"
+            ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true && (!newData.exists() || newData.child('by').val() === auth.uid || root.child('collab').child($doc).child('snap').exists())"
           }
         },
         "snap": {
-          ".write": "auth != null"
+          ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true"
         },
         "aw": {
           "$c": {
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('collabAccess').child($doc).child('read').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true))"
           }
         },
         "who": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid"
+            ".write": "auth != null && auth.uid === $uid && (root.child('collabAccess').child($doc).child('read').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true))"
           }
         },
         "init": {
-          ".write": "auth != null && !data.exists()"
+          ".write": "auth != null && !data.exists() && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true"
         },
         "c": {
           "$id": {
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true))"
           }
         },
         "flags": {
-          ".write": "auth != null"
+          ".write": "auth != null && root.child('collabAccess').child($doc).child('flags').child(auth.uid).val() === true",
+          "shared": {
+            ".read": "auth != null && (root.child('collabAccess').child($doc).child('read').child(auth.uid).val() === true || root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true)"
+          }
         },
-        ".write": "auth != null && newData.hasChildren(['snap'])",
+        ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true && newData.hasChildren(['snap'])",
         "versions": {
           "$version": {
-            ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid",
+            ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true && !data.exists() && newData.child('by').val() === auth.uid",
             ".validate": "newData.hasChildren(['name', 'by', 'author', 'at', 'content', 'layout']) && newData.child('content').isString() && newData.child('content').val().length <= 500000 && newData.child('layout').isString() && newData.child('name').isString() && newData.child('name').val().length <= 100"
           }
         }
+      }
+    },
+    "collabAccess": {
+      "$doc": {
+        ".read": false,
+        ".write": false
+      }
+    },
+    "collabAccessIndex": {
+      "$doc": {
+        ".read": false,
+        ".write": false
       }
     },
     "collabLocks": {

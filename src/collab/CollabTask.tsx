@@ -25,6 +25,7 @@ export type CollabAttrs = {
   download: boolean;
   start: JSONContent | null;
   ownSlides?: boolean;
+  fileDoc?: string;
 };
 
 type AnyProps = CollabProps & { kind?: 'doc' | 'slides'; ownSlides?: boolean; templateKey?: string };
