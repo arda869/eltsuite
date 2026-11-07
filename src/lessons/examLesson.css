@@ -18,9 +18,9 @@
   border-radius: 5px;
   box-shadow: 0 2px 14px rgba(10, 42, 77, .08);
 }
-/* Exam Prep uses the same typeface in the editor and while teaching. */
-.task-frame[data-lesson-style='exam'],
-.task-frame[data-lesson-style='exam'] * {
+/* Only authored task content uses the exam typeface. Keep the surrounding editor controls in the suite style. */
+.task-frame[data-lesson-style='exam'] :is(.task-title, .task-instr, .task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc),
+.task-frame[data-lesson-style='exam'] :is(.task-title, .task-instr, .task-body, .frame-body .ProseMirror, .frame-body .task-editor .doc) * {
   --serif: Arial, sans-serif;
   --sans: Arial, sans-serif;
   font-family: Arial, sans-serif !important;
