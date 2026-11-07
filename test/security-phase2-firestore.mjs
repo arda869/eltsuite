@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc, getDoc, terminate } from 'firebase/firestore';
 import { assessTaskForLearner, runExamForLearner } from '../functions/learning/assessment.js';
+import { checkSubTaskForLearner } from '../functions/learning/check-subtask.js';
 import { syncClassAccess } from '../functions/learning/class-access.js';
 import { resolveLearner } from '../functions/learning/join.js';
 import { createInvitationRequest } from '../functions/accounts/invitations.js';
@@ -96,6 +97,34 @@ try {
   const checked = await assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 't1' });
   assert.equal(checked.checked, true);
   assert.equal((await admin.doc('classes/c1/answers/t1_learner').get()).get('score'), 1);
+  await admin.doc('classes/c1/answers/t1_learner').update({ checked: false, attempts: 0 });
+  await Promise.all([
+    assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 't1' }),
+    assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 't1' }),
+  ]);
+  assert.equal((await admin.doc('classes/c1/answers/t1_learner').get()).get('attempts'), 1, 'concurrent checks must count once');
+  await admin.doc('classes/c1/items/i1/tasks/tparts').set({
+    kind: 'task', hidden: false, locked: false,
+    content: { type: 'doc', content: [
+      { type: 'subTask', attrs: { id: 'part1' }, content: [{ type: 'gap', attrs: { id: 'q1' } }] },
+      { type: 'subTask', attrs: { id: 'part2' }, content: [{ type: 'gap', attrs: { id: 'q2' } }] },
+    ] },
+  });
+  await admin.doc('classes/c1/items/i1/tasks/tparts/private/key').set({
+    q1: { kind: 'gap', answers: ['one'] }, q2: { kind: 'gap', answers: ['two'] },
+  });
+  await admin.doc('classes/c1/answers/tparts_learner').set({
+    learnerUid: 'learner', learnerId: 'one', itemId: 'i1', taskId: 'tparts',
+    responses: { q1: 'one', q2: 'two' }, checked: false, checkedParts: [],
+  });
+  await Promise.all(['part1', 'part2'].map(partId => checkSubTaskForLearner(admin, { uid: 'learner' }, {
+    classId: 'c1', itemId: 'i1', taskId: 'tparts', partId, action: 'check',
+  })));
+  const checkedParts = (await admin.doc('classes/c1/answers/tparts_learner').get()).data();
+  assert.deepEqual(new Set(checkedParts.checkedParts), new Set(['part1', 'part2']), 'concurrent part checks must preserve both parts');
+  assert.equal(checkedParts.score, 2);
+  assert.equal(checkedParts.total, 2);
+  assert.equal(checkedParts.attempts, 1);
   await admin.doc('classes/c1/items/exam').set({ type: 'exam', exam: { minutes: 5 }, hidden: false, locked: false });
   const started = await runExamForLearner(admin, { uid: 'learner' }, { classId: 'c1', scope: 'i_exam', action: 'start' }, 1000);
   assert.equal(started.startMs, 1000);

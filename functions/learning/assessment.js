@@ -16,12 +16,10 @@ export async function assessTaskForLearner(db, auth, data, now = Date.now()) {
   const itemRef = root.collection('items').doc(itemId);
   const taskRef = itemRef.collection('tasks').doc(taskId);
   const answerRef = root.collection('answers').doc(`${taskId}_${uid}`);
-  const [member, item, task, answer] = await Promise.all([
-    root.collection('members').doc(uid).get(), itemRef.get(), taskRef.get(), answerRef.get(),
+  const [member, item, task] = await Promise.all([
+    root.collection('members').doc(uid).get(), itemRef.get(), taskRef.get(),
   ]);
-  if (!member.exists || !item.exists || !task.exists || !answer.exists
-      || answer.get('learnerUid') !== uid || answer.get('itemId') !== itemId
-      || answer.get('learnerId') !== member.get('learnerId')) throw denied();
+  if (!member.exists || !item.exists || !task.exists) throw denied();
   const i = item.data(), t = task.data();
   if (i.hidden || i.locked || t.hidden || t.locked || t.kind === 'section'
       || (t.restricted && !(t.allowed ?? []).includes(member.get('learnerId')))) throw denied();
@@ -30,50 +28,56 @@ export async function assessTaskForLearner(db, auth, data, now = Date.now()) {
     const run = await root.collection('examRuns').doc(`${scope}_${uid}`).get();
     if (!run.exists || !run.get('submittedMs') || !(i.type === 'exam' ? i.examReleased : t.examReleased)) throw denied();
   }
-  if (action === 'reset') {
-    if (!answer.get('checked') || t.afterCheck !== 'retry' || scope) throw denied();
-  }
   const content = t.restricted ? (await taskRef.collection('private').doc('body').get()).get('content') : t.content;
   const key = (await taskRef.collection('private').doc('key').get()).data() ?? {};
-  const responses = answer.get('responses') ?? {};
-  const questionResponses = { ...responses };
   const picks = [];
   const visit = node => {
     if (node?.type === 'randomPick' && node.attrs?.play === 'class' && node.attrs?.id) picks.push(String(node.attrs.id));
     node?.content?.forEach(visit);
   };
   visit(content);
+  const sharedPicks = {};
   await Promise.all(picks.map(async id => {
     const pick = await root.collection('picks').doc(`${taskId}_${id}`).get();
-    if (pick.exists) questionResponses[id] = { h: pick.get('h') ?? [], b: pick.get('b') ?? [] };
+    if (pick.exists) sharedPicks[id] = { h: pick.get('h') ?? [], b: pick.get('b') ?? [] };
   }));
-  const questions = questionIds(content, questionResponses);
   const parts = [];
   const collectParts = node => { if (node?.type === 'subTask') parts.push(node); node?.content?.forEach(collectParts); };
   collectParts(content);
-  if (!scope && parts.length && !answer.get('checked')) {
-    const covered = new Set(parts.flatMap(part => questionIds(part, questionResponses).map(q => q.id)));
-    if (questions.length && questions.every(q => covered.has(q.id)))
-      throw new HttpsError('failed-precondition', 'Check each part of this activity separately.');
-  }
-  if (action === 'reset') {
-    const kept = {};
-    if (!all) for (const q of questions) {
-      const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
-      if ((score.max > 0 && score.got === score.max) || q.type === 'writing')
-        if (Object.hasOwn(responses, q.id)) kept[q.id] = responses[q.id];
+  // Reading the answer inside the transaction makes grading and freezing the responses one
+  // operation. A concurrent save retries this calculation against the final saved answers.
+  return db.runTransaction(async tx => {
+    const answer = await tx.get(answerRef);
+    if (!answer.exists || answer.get('learnerUid') !== uid || answer.get('itemId') !== itemId
+        || answer.get('learnerId') !== member.get('learnerId')) throw denied();
+    const responses = answer.get('responses') ?? {};
+    const questionResponses = { ...responses, ...sharedPicks };
+    const questions = questionIds(content, questionResponses);
+    if (!scope && parts.length && !answer.get('checked')) {
+      const covered = new Set(parts.flatMap(part => questionIds(part, questionResponses).map(q => q.id)));
+      if (questions.length && questions.every(q => covered.has(q.id)))
+        throw new HttpsError('failed-precondition', 'Check each part of this activity separately.');
     }
-    await answerRef.update({ responses: kept, checked: false, checkedParts: [], score: FieldValue.delete(), total: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() });
-    return { responses: kept, checked: false, key: null };
-  }
-  if (!answer.get('checked')) {
-    const total = questions.reduce((sum, q) => {
-      const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
-      return { score: sum.score + score.got, total: sum.total + score.max };
-    }, { score: 0, total: 0 });
-    await answerRef.update({ ...total, checked: true, submittedAt: now, attempts: (answer.get('attempts') ?? 0) + 1, updatedAt: FieldValue.serverTimestamp(), late: !!i.due && now > i.due });
-  }
-  return { key, checked: true };
+    if (action === 'reset') {
+      if (!answer.get('checked') || t.afterCheck !== 'retry' || scope) throw denied();
+      const kept = {};
+      if (!all) for (const q of questions) {
+        const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
+        if ((score.max > 0 && score.got === score.max) || q.type === 'writing')
+          if (Object.hasOwn(responses, q.id)) kept[q.id] = responses[q.id];
+      }
+      tx.update(answerRef, { responses: kept, checked: false, checkedParts: [], score: FieldValue.delete(), total: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() });
+      return { responses: kept, checked: false, key: null };
+    }
+    if (!answer.get('checked')) {
+      const total = questions.reduce((sum, q) => {
+        const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
+        return { score: sum.score + score.got, total: sum.total + score.max };
+      }, { score: 0, total: 0 });
+      tx.update(answerRef, { ...total, checked: true, submittedAt: now, attempts: (answer.get('attempts') ?? 0) + 1, updatedAt: FieldValue.serverTimestamp(), late: !!i.due && now > i.due });
+    }
+    return { key, checked: true };
+  });
 }
 
 export const assessTask = onCall({ region: 'us-central1', maxInstances: 10 }, request =>
