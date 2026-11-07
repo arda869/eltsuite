@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, db } from './firebase';
 import type { AnswerDoc } from './tasks';
 import type { Item } from './classes';
 import type { Attendance } from './reports';
-import type { Post, Thread } from './discussion';
 
 // What learners have been doing: one learner's full timeline, and the latest across classes.
 
@@ -52,48 +52,47 @@ export async function fromAnswer(a: AnswerDoc, classId: string, items: Item[]): 
 // Everything one learner has done in a class, newest first.
 export function useLearnerTimeline(classId: string, uid: string, learnerId: string, items: Item[]) {
   const [list, setList] = useState<Activity[] | null>(null);
+  const [error, setError] = useState(false);
   const itemKey = items.map((i) => i.id + i.title).join();
   useEffect(() => {
     if (!classId || !uid) return;
     let dead = false;
     setList(null);
+    setError(false);
     (async () => {
-      const [ans, att, files, threads] = await Promise.all([
-        getDocs(query(collection(db, 'classes', classId, 'answers'), where('learnerUid', '==', uid))).catch(() => null),
-        getDocs(query(collection(db, 'classes', classId, 'attendance'), where('uid', '==', uid))).catch(() => null),
-        getDocs(query(collection(db, 'classes', classId, 'files'), where('owner', '==', uid))).catch(() => null),
-        getDocs(collection(db, 'classes', classId, 'threads')).catch(() => null),
-      ]);
-      const out: Activity[] = [];
-      for (const d of ans?.docs ?? []) out.push(await fromAnswer(d.data() as AnswerDoc, classId, items));
-      for (const d of att?.docs ?? []) {
-        const a = d.data() as Attendance;
-        const item = items.find((i) => i.id === a.itemId);
-        const mins = Math.round((a.corrected ?? a.minutes) || 0);
-        out.push({ at: a.firstAt, kind: 'live', title: `In the live lesson, ${mins} min`, where: item?.title ?? 'a lesson', itemId: a.itemId });
-      }
-      for (const d of files?.docs ?? []) {
-        const f = d.data() as { name?: string; taskId?: string; createdAt?: unknown };
-        if (!f.name) continue; // a part of a file
-        out.push({ at: ms(f.createdAt), kind: 'file', title: 'Sent a file', where: f.name, taskId: f.taskId });
-      }
-      for (const t of threads?.docs ?? []) {
-        const th = t.data() as Thread;
-        if (th.learnerId === learnerId) out.push({ at: ms((th as { at?: unknown }).at) || th.lastAt, kind: 'post', title: 'Started a discussion', where: th.title });
-        const ps = await getDocs(collection(db, 'classes', classId, 'threads', t.id, 'posts')).catch(() => null);
-        for (const p of ps?.docs ?? []) {
-          const pd = p.data() as Post;
-          if (pd.learnerId === learnerId) out.push({ at: pd.at, kind: 'reply', title: 'Replied in a discussion', where: th.title });
+      try {
+        const [ans, att, files, discussion] = await Promise.all([
+          getDocs(query(collection(db, 'classes', classId, 'answers'), where('learnerUid', '==', uid))),
+          getDocs(query(collection(db, 'classes', classId, 'attendance'), where('uid', '==', uid))),
+          getDocs(query(collection(db, 'classes', classId, 'files'), where('owner', '==', uid))),
+          httpsCallable<{ classId: string; learnerId: string; learnerUid: string }, { entries: Activity[] }>(getFunctions(app, 'us-central1'), 'learnerDiscussionTimeline')({ classId, learnerId, learnerUid: uid }),
+        ]);
+        const out: Activity[] = [];
+        for (const d of ans.docs) out.push(await fromAnswer(d.data() as AnswerDoc, classId, items));
+        for (const d of att.docs) {
+          const a = d.data() as Attendance;
+          const item = items.find((i) => i.id === a.itemId);
+          const mins = Math.round((a.corrected ?? a.minutes) || 0);
+          out.push({ at: a.firstAt, kind: 'live', title: `In the live lesson, ${mins} min`, where: item?.title ?? 'a lesson', itemId: a.itemId });
         }
+        for (const d of files.docs) {
+          const f = d.data() as { name?: string; taskId?: string; createdAt?: unknown };
+          if (!f.name) continue; // a part of a file
+          out.push({ at: ms(f.createdAt), kind: 'file', title: 'Sent a file', where: f.name, taskId: f.taskId });
+        }
+        out.push(...discussion.data.entries);
+        if (!dead) setList(out.filter((x) => x.at).sort((a, b) => b.at - a.at));
+      } catch (cause) {
+        console.error('Could not load learner activity', cause);
+        if (!dead) setError(true);
       }
-      if (!dead) setList(out.filter((x) => x.at).sort((a, b) => b.at - a.at));
     })();
     return () => {
       dead = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, uid, learnerId, itemKey]);
-  return list;
+  return { list, error };
 }
 
 // The latest work across classes, for the home screen.

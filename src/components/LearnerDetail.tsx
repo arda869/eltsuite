@@ -46,7 +46,7 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
   const attendance = useAttendance(c.id).filter((a) => a.uid === uid);
   const mistakes = useMistakes(c.id, undefined, true).filter((m) => m.learnerUid === uid && !m.done);
   const { byLearner } = useLearnerAvatars(c.id);
-  const timeline = useLearnerTimeline(c.id, uid, learner.id, items);
+  const { list: timeline, error: timelineError } = useLearnerTimeline(c.id, uid, learner.id, items);
   const [filter, setFilter] = useState('All');
   const first = learner.displayName.split(' ')[0];
 
@@ -183,7 +183,8 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
               ))}
             </span>
           </span>
-          {timeline === null && <span className="hint">Gathering {first}’s activity…</span>}
+          {timelineError && <span role="alert" className="hint">Couldn’t load {first}’s activity. Reopen this learner to try again.</span>}
+          {timeline === null && !timelineError && <span className="hint">Gathering {first}’s activity…</span>}
           {timeline && !shown.length && <span className="hint">{filter === 'All' ? `${first} hasn’t done anything here yet.` : 'Nothing of this kind yet.'}</span>}
           {days.map(([d, list]) => (
             <div key={d} className="ld-day">
