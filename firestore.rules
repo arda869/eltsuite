@@ -896,6 +896,12 @@ service cloud.firestore {
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
       // A new teacher making their account with an organisation's invitation code.
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'code']) && codeForOrg(request.resource.data.code, request.resource.data.org);
+      allow create: if request.resource.data.keys().hasOnly(['code', 'plan', 'teacherTrainer'])
+        && redeemTeacherCode(uid)
+        && request.resource.data.get('code', null) == newTeacherCode(uid)
+        && codeData(newTeacherCode(uid)).get('org', null) == null
+        && request.resource.data.get('plan', 'free') == codeData(newTeacherCode(uid)).get('plan', 'free')
+        && request.resource.data.get('teacherTrainer', false) == codeData(newTeacherCode(uid)).get('teacherTrainer', false);
       allow update: if isSelf(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
     }
     // An invitation for this teacher's email to this organisation, not yet answered.
@@ -945,19 +951,40 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/inviteCodes/$(c)).data.get('uses', 0) == codeData(c).get('uses', 0) + 1
         && request.auth.uid in getAfter(/databases/$(database)/documents/inviteCodes/$(c)).data.get('usedBy', {});
     }
+    function newTeacherCode(uid) {
+      return getAfter(/databases/$(database)/documents/users/$(uid)).data.get('code', null);
+    }
+    function redeemTeacherCode(uid) {
+      return isSelf(uid) && !learnerAccount()
+        && request.auth.token.get('proxyBy', null) == null
+        && !exists(/databases/$(database)/documents/users/$(uid))
+        && getAfter(/databases/$(database)/documents/users/$(uid)).data.role == 'teacher'
+        && codeUsedNow(newTeacherCode(uid));
+    }
+    function validInviteGrants() {
+      let data = request.resource.data;
+      return data.get('aiAccess', false) is bool && data.get('teacherTrainer', false) is bool
+        && (data.get('plan', 'free') == 'free' || (data.get('plan', 'free') == 'teacher' && isOwner() && data.get('org', null) == null))
+        && (!data.get('aiAccess', false) || aiAdmin())
+        && (!data.get('teacherTrainer', false) || (isOwner() && data.get('org', null) == null));
+    }
     function codeForOrg(c, orgId) { return codeOpen(c) && codeData(c).get('org', '') == orgId; }
     match /inviteCodes/{code} {
       // The code is the secret: anyone who has it can look it up, before they have an account.
       allow get: if true;
       allow list: if isOwner() || adminOfOrg(resource.data.org);
       allow create: if (isOwner() || (adminOfOrg(request.resource.data.get('org', null)) && orgHasRoom(request.resource.data.org, 'teachers')))
+        && validInviteGrants()
         && request.resource.data.by == request.auth.uid
         && request.resource.data.get('uses', 0) == 0 && request.resource.data.get('usedBy', {}).size() == 0
         && request.resource.data.maxUses is int && request.resource.data.maxUses >= 1 && request.resource.data.maxUses <= 500
         && code.size() >= 8 && code.size() <= 24;
       // Its makers turn it off, change how many uses or the date, or delete it; an organisation's admins, only theirs.
-      allow update: if (isOwner() || (adminOfOrg(resource.data.get('org', null)) && request.resource.data.get('org', null) == resource.data.get('org', null)))
-        && request.resource.data.get('uses', 0) == resource.data.get('uses', 0);
+      allow update: if (isOwner() || (adminOfOrg(resource.data.get('org', null)) && request.resource.data.get('org', null) == resource.data.get('org', null)
+          && !resource.data.get('aiAccess', false) && !resource.data.get('teacherTrainer', false)))
+        && request.resource.data.get('uses', 0) == resource.data.get('uses', 0)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan', 'aiAccess', 'teacherTrainer', 'org'])
+          || validInviteGrants());
       allow delete: if isOwner() || adminOfOrg(resource.data.get('org', null));
       // A new teacher using it: one more use, by them, with the account made in the same write.
       allow update: if signedIn() && !learnerAccount() && codeOpen(code)
@@ -1154,6 +1181,12 @@ service cloud.firestore {
     match /aiPilot/{uid} {
       allow get: if isSelf(uid) || isOwner();
       allow list: if isOwner();
+      allow create: if request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])
+        && request.resource.data.enabled == true
+        && request.resource.data.updatedAt == request.time
+        && redeemTeacherCode(uid)
+        && codeData(newTeacherCode(uid)).get('aiAccess', false) == true
+        && request.resource.data.updatedBy == codeData(newTeacherCode(uid)).by;
       allow create, update: if aiAdmin()
         && request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])
         && request.resource.data.enabled is bool
