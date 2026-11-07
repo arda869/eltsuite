@@ -81,7 +81,7 @@ try {
   }
   ok('Nested answers survive repeated presentation toggles; content and outside typography unchanged');
   const examScreen=await p.locator('.task-frame').evaluate(el=>({background:getComputedStyle(el).backgroundColor,shellFont:getComputedStyle(el).fontFamily,headFont:getComputedStyle(el.querySelector('.frame-head')).fontFamily,font:getComputedStyle(el.querySelector('.task-body')).fontFamily,size:getComputedStyle(el.querySelector('.task-body')).fontSize,instructionStyle:getComputedStyle(el.querySelector('.task-instr')).fontStyle,kicker:getComputedStyle(el.querySelector('.frame-head'),'::before').content}));
-  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(!examScreen.shellFont.includes('Arial'));assert(!examScreen.headFont.includes('Arial'));assert(examScreen.font.includes('Arial'));assert.equal(examScreen.size,'14px');assert.equal(examScreen.instructionStyle,'normal');assert.equal(examScreen.kicker,'none');
+  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(!examScreen.shellFont.includes('Arial'));assert(!examScreen.headFont.includes('Arial'));assert(examScreen.font.includes('Arial'));assert.equal(examScreen.size,'16px');assert.equal(examScreen.instructionStyle,'normal');assert.equal(examScreen.kicker,'none');
   await p.locator('.task-frame').evaluate(el=>el.style.setProperty('--ts','1.2'));
   assert.equal(await p.locator('.task-frame .frame-inner').evaluate(el=>getComputedStyle(el).zoom),'1.2');
   await p.locator('.task-frame').evaluate(el=>el.style.removeProperty('--ts'));
