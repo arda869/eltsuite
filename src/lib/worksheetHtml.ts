@@ -250,7 +250,7 @@ function exIcons(t: WsTask) {
 // The worksheet's styles: the house style (see "How printed worksheets look" in CLAUDE.md).
 export function sheetCss(opts: Options) {
   const org = currentOrg();
-  const accent = opts.lessonStyle === 'exam' ? '#0755a4' : (opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
+  const accent = (opts.lessonStyle === 'exam' || opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
   const cols = opts.columns ?? 2;
@@ -500,7 +500,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   // An organisation's teachers print with its logo and colour.
   const org = currentOrg();
   const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
-  const accent = opts.lessonStyle === 'exam' ? '#0755a4' : (opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
+  const accent = (opts.lessonStyle === 'exam' || opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
   const brandName = org?.name ?? '';
   const cols = opts.columns ?? 2;
   const marks = !!opts.marks;
@@ -564,7 +564,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
     }
   }
 
-  const kicker = opts.lessonStyle === 'exam' ? ['Exam Prep', opts.level].filter(Boolean).join(' · ') : [opts.className, opts.level].filter(Boolean).join(' · ');
+  const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `
     <header class="band">
       <div class="band-left">

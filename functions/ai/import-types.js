@@ -11,6 +11,8 @@ const answers=list(required,1,8),extras=list(word,0,20),options=list(word,2,12);
 const records=list(obj({name:word,value:str}),0,30);
 const entries=[
  ['text','Text or reading','Keep a passage or instruction in its original place.',{text:required}],
+ ['boxedText','Boxed text','Preserve a visibly bordered or shaded group of source text as an editable box, including its instructions and bullets.',{style:choice('box','info'),tone:choice('grey','mist','sand','sage','sky','rose'),label:short,text:required}],
+ ['dialogue','Dialogue','Keep speaker turns together in the native Dialogue element. Use ___ for each answer gap and give its answer in the same turn, in order.',{layout:choice('stacked','side'),turns:list(obj({speaker:text(1,60),text:text(1,1000),answers:list(word,0,12)}),2,30)}],
  ['picture','Source illustration','Recreate only the illustration region from a supplied page, retaining every answer-critical detail.',{ref:text(1,60),sourceImage:integer(1,6),x:number(),y:number(),width:number(1,100),height:number(1,100),alt:text(1,300),recreationPrompt:text(1,1200),asset:text(0,64)}],
  ['gap','Text gap','Complete one blank with a word or phrase.',{answers}],
  ['shortAnswer','Short answer','Answer a question with a word, number or short phrase.',{answers}],

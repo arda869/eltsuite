@@ -937,7 +937,7 @@ export function LessonEditor() {
   ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
-    <div className="shell wide classes-shell" data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide classes-shell" data-lesson-style={lessonStyleOf(c)} data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/classes">Classes</Link>

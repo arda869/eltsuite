@@ -284,7 +284,7 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       if (!t) return;
       let pos = -1;
       // Every top-level part gets a handle, except those with their own (questions, boards…).
-      const own = !!(t.matches('.block-node') || t.querySelector(':scope > .block-node, :scope > * > .block-node'));
+      const own = !!(t.matches('.block-node, .tbox-node') || t.querySelector(':scope > .block-node, :scope > .tbox-node, :scope > * > .block-node, :scope > * > .tbox-node'));
       editor.state.doc.forEach((n, off) => {
         if (pos < 0 && editor.view.nodeDOM(off) === t) pos = own && !HANDLED.has(n.type.name) ? -2 : off;
       });
