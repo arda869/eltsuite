@@ -80,8 +80,11 @@ try {
     assert.deepEqual(await p.locator('#outside').evaluate(el=>[getComputedStyle(el).fontFamily,getComputedStyle(el).backgroundColor]),outside);
   }
   ok('Nested answers survive repeated presentation toggles; content and outside typography unchanged');
-  const examScreen=await p.locator('.task-frame').evaluate(el=>({background:getComputedStyle(el).backgroundColor,font:getComputedStyle(el.querySelector('.task-body')).fontFamily,kicker:getComputedStyle(el.querySelector('.frame-head'),'::before').content}));
-  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(examScreen.font.includes('Arial'));assert.equal(examScreen.kicker,'none');
+  const examScreen=await p.locator('.task-frame').evaluate(el=>({background:getComputedStyle(el).backgroundColor,font:getComputedStyle(el.querySelector('.task-body')).fontFamily,size:getComputedStyle(el.querySelector('.task-body')).fontSize,instructionStyle:getComputedStyle(el.querySelector('.task-instr')).fontStyle,kicker:getComputedStyle(el.querySelector('.frame-head'),'::before').content}));
+  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(examScreen.font.includes('Arial'));assert.equal(examScreen.size,'14px');assert.equal(examScreen.instructionStyle,'normal');assert.equal(examScreen.kicker,'none');
+  await p.locator('.task-frame').evaluate(el=>el.style.setProperty('--ts','1.2'));
+  assert.equal(await p.locator('.task-frame .frame-inner').evaluate(el=>getComputedStyle(el).zoom),'1.2');
+  await p.locator('.task-frame').evaluate(el=>el.style.removeProperty('--ts'));
   await p.locator('.task-frame').screenshot({path:`${OUT}/exam-screen-desktop.png`});
   await p.setViewportSize({width:390,height:844});
   assert(await p.locator('.task-frame').evaluate(el=>el.scrollWidth<=el.clientWidth+2));
@@ -132,13 +135,17 @@ try {
   ok('Adult default projection identical; Young projection preserves answers, marks and source JSON');
   assert(projections.young.icon);assert.equal(projections.adult.icon,undefined);assert.equal(projections.printIcon,'sing');assert.equal(projections.noPrintIcon,undefined);
   ok('Young print icon follows the task, accepts a separate choice, and can be hidden');
-  const examHtml=await p.evaluate(()=>window.worksheetHtml('Practice test',[{kind:'section',title:'Listening'},{kind:'task',task:window.flattenTask(window.exportFixture,'exam')}],{lessonStyle:'exam',header:true,key:false,notes:false,paper:'A4',columns:1,accent:'#d98f63',className:'Exam class',level:'B2',origin:location.origin}));
+  const examHtml=await p.evaluate(()=>window.worksheetHtml('Practice test',[{kind:'section',title:'Listening'},{kind:'task',task:window.flattenTask(window.exportFixture,'exam')}],{lessonStyle:'exam',header:true,key:false,notes:false,paper:'A4',columns:1,accent:'#d98f63',className:'Exam class',level:'B2',cover:'<svg viewBox="0 0 600 200"><rect width="600" height="200" fill="#d98f63"/></svg>',origin:location.origin}));
   const examPrint=await b.newPage();await examPrint.setContent(examHtml);await examPrint.waitForFunction(()=>window.__laidOut===true);await examPrint.evaluate(()=>document.fonts.ready);
   assert(examHtml.includes('Exam class · B2'));
   assert(!examHtml.includes('Exam Prep · B2'));
   assert.equal(await examPrint.locator('.page').first().evaluate(el=>getComputedStyle(el).getPropertyValue('--accent').trim()),'#d98f63');
   assert((await examPrint.locator('.page .band').first().evaluate(el=>getComputedStyle(el).backgroundColor))!=='rgb(255, 255, 255)');
   assert((await examPrint.locator('.page .brand').first().evaluate(el=>getComputedStyle(el).fontFamily)).includes('Arial'));
+  assert((await examPrint.locator('.page .brand .logo').first().evaluate(el=>getComputedStyle(el).fontFamily)).includes('Karla'));
+  assert(await examPrint.locator('.page .band-cover svg').first().isVisible());
+  assert.equal(await examPrint.locator('.page').first().evaluate(el=>getComputedStyle(el).fontSize),'13.6px');
+  assert.equal(await examPrint.locator('.page .ex-text').first().evaluate(el=>getComputedStyle(el).fontStyle),'normal');
   const examOverflow=await examPrint.locator('.col').evaluateAll(els=>els.map(el=>({w:el.scrollWidth-el.clientWidth,h:el.scrollHeight-el.clientHeight})).filter(x=>x.w>2||x.h>2));
   assert.deepEqual(examOverflow,[],'Exam Prep paper has no clipped column');
   await examPrint.locator('.page').first().screenshot({path:`${OUT}/exam-print-A4.png`});
