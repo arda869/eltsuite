@@ -406,8 +406,11 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         n++;
         marks += Number(a.points) || 5;
         answers.push({ n, text: a.model ? 'Model: ' + a.model : '(marked by the teacher)' });
-        const words = a.maxWords ?? a.minWords;
-        const prompt = words ? `${a.minWords ? a.minWords + '–' : 'up to '}${a.maxWords ?? a.minWords} words` : undefined;
+        const min = Number(a.minWords) || 0;
+        const rawMax = Number(a.maxWords) || 0;
+        const max = rawMax >= min ? rawMax : 0;
+        const words = max || min;
+        const prompt = min && max ? `${min}–${max} words` : min ? `at least ${min} words` : max ? `up to ${max} words` : undefined;
         // The teacher can choose the number of lines, or none (learners write on their own paper).
         const want = t.print?.lines;
         if (want === 0) {

@@ -7,6 +7,7 @@ test('an overall-lesson question reads the attached lesson sequence while an act
  const attached={classId:'class1',itemId:'lesson1',taskId:'listening',reportId:''};
  assert.equal(lessonSourceForPrompt(attached,'What do you think about this lesson overall?').taskId,'');
  assert.equal(lessonSourceForPrompt(attached,'How is the overall lesson sequence?').taskId,'');
+ assert.equal(lessonSourceForPrompt(attached,'How does this activity fit in the overall lesson?').taskId,'');
  assert.equal(lessonSourceForPrompt(attached,'What is your advice on this activity?').taskId,'listening');
  const tasks=[{id:'lead',get:key=>({title:'Lead-in',instructions:'Introduce the topic',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Talk about holidays.'}]}]}}[key])},{id:'listening',get:key=>({title:'Listening',instructions:'Listen for the main idea',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Choose the holiday.'}]}]}}[key])}];
  const taskCollection={doc:id=>({get:async()=>({...tasks.find(t=>t.id===id),exists:true})}),orderBy:()=>({limit:()=>({get:async()=>({docs:tasks})})})};

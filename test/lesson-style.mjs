@@ -81,7 +81,7 @@ try {
   }
   ok('Nested answers survive repeated presentation toggles; content and outside typography unchanged');
   const examScreen=await p.locator('.task-frame').evaluate(el=>({background:getComputedStyle(el).backgroundColor,font:getComputedStyle(el.querySelector('.task-body')).fontFamily,kicker:getComputedStyle(el.querySelector('.frame-head'),'::before').content}));
-  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(examScreen.font.includes('Karla'));assert(examScreen.kicker.includes('EXAM PREP'));
+  assert.equal(examScreen.background,'rgb(255, 255, 255)');assert(examScreen.font.includes('Arial'));assert.equal(examScreen.kicker,'none');
   await p.locator('.task-frame').screenshot({path:`${OUT}/exam-screen-desktop.png`});
   await p.setViewportSize({width:390,height:844});
   assert(await p.locator('.task-frame').evaluate(el=>el.scrollWidth<=el.clientWidth+2));
@@ -134,9 +134,11 @@ try {
   ok('Young print icon follows the task, accepts a separate choice, and can be hidden');
   const examHtml=await p.evaluate(()=>window.worksheetHtml('Practice test',[{kind:'section',title:'Listening'},{kind:'task',task:window.flattenTask(window.exportFixture,'exam')}],{lessonStyle:'exam',header:true,key:false,notes:false,paper:'A4',columns:1,accent:'#d98f63',className:'Exam class',level:'B2',origin:location.origin}));
   const examPrint=await b.newPage();await examPrint.setContent(examHtml);await examPrint.waitForFunction(()=>window.__laidOut===true);await examPrint.evaluate(()=>document.fonts.ready);
-  assert(examHtml.includes('Exam Prep · B2'));
-  assert.equal(await examPrint.locator('.page .unit.section h2').first().evaluate(el=>getComputedStyle(el).color),'rgb(7, 63, 126)');
-  assert.equal(await examPrint.locator('.page .ex-n').first().evaluate(el=>getComputedStyle(el).color),'rgb(7, 63, 126)');
+  assert(examHtml.includes('Exam class · B2'));
+  assert(!examHtml.includes('Exam Prep · B2'));
+  assert.equal(await examPrint.locator('.page').first().evaluate(el=>getComputedStyle(el).getPropertyValue('--accent').trim()),'#d98f63');
+  assert((await examPrint.locator('.page .band').first().evaluate(el=>getComputedStyle(el).backgroundColor))!=='rgb(255, 255, 255)');
+  assert((await examPrint.locator('.page .brand').first().evaluate(el=>getComputedStyle(el).fontFamily)).includes('Arial'));
   const examOverflow=await examPrint.locator('.col').evaluateAll(els=>els.map(el=>({w:el.scrollWidth-el.clientWidth,h:el.scrollHeight-el.clientHeight})).filter(x=>x.w>2||x.h>2));
   assert.deepEqual(examOverflow,[],'Exam Prep paper has no clipped column');
   await examPrint.locator('.page').first().screenshot({path:`${OUT}/exam-print-A4.png`});

@@ -466,7 +466,7 @@ export function LearnerLesson() {
 
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
-    <div className="shell wide lesson-shell" data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide lesson-shell" data-lesson-style={lessonStyleOf(c)} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <header className="topbar">
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Wordmark />

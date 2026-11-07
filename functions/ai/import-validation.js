@@ -6,6 +6,9 @@ export function checkImportElements(elements,training){
  validate({type:'array',items:IMPORT_ELEMENT_SCHEMA,minItems:0,maxItems:60},elements);
  for(const e of elements){const d=e.data;
   if(e.kind==='picture'&&(!/^[a-zA-Z0-9_-]{1,60}$/.test(d.ref)||d.x+d.width>100.01||d.y+d.height>100.01||d.asset&&!/^[a-f0-9]{64}$/.test(d.asset)))throw Error('Choose a valid source illustration reference and crop within its page.');
+  if(e.kind==='dialogue'){
+   if(new Set(d.turns.map(turn=>turn.speaker.trim())).size>4||d.turns.some(turn=>!turn.speaker.trim()||!turn.text.trim()||(turn.text.match(/___/g)||[]).length!==turn.answers.length))throw Error('A dialogue needs 2–4 speakers and one answer for each ___ gap in its turns.');
+  }
   if(e.kind.startsWith('tt-')&&training===false)throw Error('Teacher-training forms need a teacher-training class.');
   if(['gap','lettergap','wordform','drop'].includes(e.kind)&&e.prompt.split('___').length!==2)throw Error('A '+e.kind+' needs exactly one ___ in its prompt.');
   if(['radio','dropdown','multi'].includes(e.kind)&&new Set(d.options).size!==d.options.length)throw Error('Choice options must be distinct.');

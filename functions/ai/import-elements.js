@@ -48,6 +48,15 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
    const data=Object.fromEntries(d.fields.map((f,j)=>[kind==='custom'?'field_'+j:f.name,f.value]));
    nodes=[...paragraphs(e.prompt),{type:'tt',attrs:{id,kind,title:d.title,mode:kind==='custom'?'complete':d.mode,data,...(kind==='custom'?{def:{id:id+'_form',name:d.title,fields:d.fields.map((f,j)=>({id:'field_'+j,label:f.label,kind:f.kind,hint:f.hint}))}}:{})}}];
   }else if(e.kind==='text')nodes=[...paragraphs(e.prompt),...paragraphs(d.text)];
+  else if(e.kind==='boxedText')nodes=[...paragraphs(e.prompt),{type:'textBox',attrs:{style:d.style,tone:d.tone,label:d.label,meta:'',side:'left',symbol:'',numbering:'none',width:'full'},content:paragraphs(d.text)}];
+  else if(e.kind==='dialogue'){
+   const speakers=[...new Set(d.turns.map(turn=>turn.speaker.trim()))];
+   nodes=[...paragraphs(e.prompt),{type:'dialogue',attrs:{speakers,layout:d.layout},content:d.turns.map((turn,turnIndex)=>{
+    const pieces=turn.text.split('___');
+    const content=pieces.flatMap((part,gapIndex)=>gapIndex?[{type:'gap',attrs:{id:id+'_gap'+turnIndex+'_'+(gapIndex-1),answers:[turn.answers[gapIndex-1]],feedback:e.feedback||''}},...textNodes(part)]:textNodes(part));
+    return {type:'dialogueLine',attrs:{who:speakers.indexOf(turn.speaker.trim())},content};
+   })}];
+  }
   else throw Error('Unsupported imported inline type: '+e.kind);
   content.push(...nodes);
  }

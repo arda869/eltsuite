@@ -11,7 +11,7 @@ import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, 
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
-import { canCoach, coachInstructions, coachRequest, coachReplySchema, dialogueFramework } from './coach-contract.js';
+import { canCoach, coachInstructions, coachRequest, coachReplySchema, dialogueFramework, candidLessonReview } from './coach-contract.js';
 import { generate } from './provider.js';
 import { checkModel, reserveBudget, settleBudget } from './budget.js';
 
@@ -107,7 +107,7 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   });
   if (existing) return existing;
   try {
-    const generated = await generateReply({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied lesson or activity, without generating a lesson plan or assessing the teacher. For questions about the lesson overall, consider the sequence of supplied activities rather than only the visible page snapshot, and say when excerpts limit what you can assess. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
+    const generated = await generateReply({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + candidLessonReview + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied lesson or activity, without generating a lesson plan or assessing the teacher. For questions about the lesson overall, consider the sequence of supplied activities rather than only the visible page snapshot, and say when excerpts limit what you can assess. Give concrete improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
     const result = { reply: generated.value.reply, journalDraft: generated.value.journalDraft ?? null, basis, sources };
     await db.runTransaction(async tx => {
       const [b,j] = await Promise.all([tx.get(budget),tx.get(job)]);

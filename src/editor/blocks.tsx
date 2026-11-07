@@ -290,7 +290,7 @@ function WritingView(props: NodeViewProps) {
         </label>
         <label className="inline-field small-field">
           Maximum words
-          <input aria-label="Most words" inputMode="numeric" value={node.attrs.maxWords ?? ''} placeholder="120" onChange={(e) => updateAttributes({ maxWords: num(e.target.value) })} />
+          <input aria-label="Most words" inputMode="numeric" value={node.attrs.maxWords ?? ''} placeholder="No limit" onChange={(e) => updateAttributes({ maxWords: num(e.target.value) })} />
         </label>
       </div>
       <div className="writing-edit">
