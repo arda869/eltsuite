@@ -39,8 +39,8 @@ export class AppError extends Component<{ children: ReactNode }, { err: unknown 
     if(publicPage)return <div className="app-err" role="alert"><h1>This page isn’t available right now.</h1><p>We’re having trouble opening it. Please try again in a moment.</p><button className="btn primary" onClick={()=>window.location.reload()}>Try Again</button><a href="/">Return to Homepage</a></div>;
     return (
       <div className="app-err" role="alert">
-        <strong>Something didn’t load</strong>
-        <span className="hint">{isChunkError(this.state.err) ? 'A new version of ELT Suite is out. Reload to get it.' : 'Reload the page to try again.'}</span>
+        <strong>This page couldn’t load</strong>
+        <span className="hint">{isChunkError(this.state.err) ? 'ELT Suite has been updated. Reload the page to open the latest version.' : 'Try reloading the page. If the problem continues, return to teacher sign-in. Any unsaved changes may need to be entered again.'}</span>
         <a className="btn" href="https://eltsuite.com/">Teacher sign-in</a>
         <button type="button" className="btn primary" onClick={() => window.location.reload()}>
           Reload

@@ -102,7 +102,7 @@ function NoAccess() {
         <h1>You’re signed out of this class</h1>
         <span className="hint">Your teacher may have removed you from the class or reset your PIN.</span>
         <button className="btn primary tall block" onClick={signOutNow}>
-          Back to sign-in
+          Back to sign in
         </button>
       </div>
     </div>
