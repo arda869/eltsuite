@@ -10,11 +10,10 @@
 //             quizRuns/{runId}/players/*  each player: name, score, streak, token (guests' proof)
 //             quizRuns/{runId}/answers/*  every answer, one per player per slide
 //             quizCodes/{code}            the open join codes
-// In a class, each learner's answers also go into classes/{classId}/answers/{taskId}_{uid}, the same
-// record as any other task, so the teacher sees them with every other answer and they're kept.
+// In a class, every run has its own gameAttempts record. A replay must never replace a learner's
+// ordinary task answer or an earlier game attempt.
 import { HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
-import { ServerValue } from 'firebase-admin/database';
 import { splitKey } from '../ai/import-question-core.js';
 import { COUNTDOWN_MS, GRACE_MS, MAX_PLAYERS, SELF_READY_MS, cleanName, cleanResponses, findBlock, newCode, newToken, publicSlide, ranked, revealFor, scoreAnswer, slideLabel, slidesOf, uniqueName } from './engine.js';
 
@@ -96,19 +95,16 @@ async function loadSource(db, who, source) {
 /** Where a class's learners find a running game: in the class's live state, by block or task. */
 const classSlot = (src) => (src.kind === 'block' ? src.blockId : src.taskId);
 
-/** A learner's game answers, kept with the class like any other task's answers. */
+/** A learner's game attempt, separate from their ordinary task answer. */
 function classWrite(db, run, runId, player, responses, totals, now) {
   const src = run.source;
   if (!player.uid || !src || (src.kind !== 'class' && src.kind !== 'block')) return null;
-  const ref = db.doc(`classes/${src.classId}/answers/${src.taskId}_${player.uid}`);
-  const base = { learnerUid: player.uid, learnerId: player.learnerId || '', itemId: src.itemId, taskId: src.taskId, updatedAt: FieldValue.serverTimestamp() };
-  const fields = ['learnerUid', 'learnerId', 'itemId', 'taskId', 'updatedAt', ...Object.keys(responses).map((q) => `responses.${q}`)];
-  if (src.kind === 'block') {
-    // A game inside a task: its answers sit with the task's other answers; the task isn't marked as done.
-    const game = { runId, mode: run.mode || 'live', points: totals.score, got: totals.got, max: totals.max, at: now };
-    return { ref, data: { ...base, responses, games: { [src.blockId]: game } }, fields: [...fields, `games.${src.blockId}`] };
-  }
-  return { ref, data: { ...base, responses, checked: true, score: totals.got, total: totals.max, quiz: { runId, points: totals.score }, submittedAt: now }, fields: [...fields, 'checked', 'score', 'total', 'quiz', 'submittedAt'] };
+  const ref = db.doc(`classes/${src.classId}/gameAttempts/${runId}_${player.uid}`);
+  return { ref, data: {
+    runId, learnerUid: player.uid, learnerId: player.learnerId || '', itemId: src.itemId,
+    taskId: src.taskId, blockId: src.blockId || null, mode: run.mode || 'live',
+    responses, points: totals.score, score: totals.got, total: totals.max, updatedAt: FieldValue.serverTimestamp(),
+  } };
 }
 
 export async function quizService(db, rtdb, auth, data, now = Date.now()) {
@@ -174,12 +170,12 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
     const state = (await live(runId).get()).val() || {};
     if (!member) {
       if (!run.guests) fail('permission-denied', 'This game is for the class. Sign in with your class account to join.');
-      if (state.locked) fail('permission-denied', 'The teacher has closed this game to new players.');
     }
     if (member) {
       const existing = (await ref.collection('players').doc(member.uid).get()).data();
       if (existing && !existing.kicked) return { runId, pid: member.uid, token: existing.token, name: existing.name, member: true };
     }
+    if (state.locked) fail('permission-denied', 'The teacher has closed this game to new players.');
     if (run.players >= MAX_PLAYERS) fail('resource-exhausted', 'This game is full.');
     let name;
     if (member) name = member.name;
@@ -228,33 +224,60 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
   if (action === 'answer') {
     const { ref, run, player, playerRef } = await seat(db, data);
     const self = run.mode === 'self';
+    const answerRef = ref.collection('answers').doc(`${data.slide}_${player.id}`);
+    const previous = (await answerRef.get()).data();
+    if (previous && !self && run.slide !== data.slide) return { ok: true };
     const at = self ? player : run;
     const current = self ? player.slide : run.slide;
-    if ((!self && run.status !== 'question') || current !== data.slide) fail('failed-precondition', 'This question has closed.');
-    if (now < at.startsAt - 500) fail('failed-precondition', 'Wait for the question to start.');
+    if (!previous && ((!self && run.status !== 'question') || current !== data.slide)) fail('failed-precondition', 'This question has closed.');
+    if (!previous && now < at.startsAt - 500) fail('failed-precondition', 'Wait for the question to start.');
     const late = now > at.endsAt + GRACE_MS;
-    if (late && !self) fail('deadline-exceeded', 'Time ran out.');
+    if (late && !self && !previous) fail('deadline-exceeded', 'Time ran out.');
     const { slides, key } = self ? await loadPrivate(ref) : { slides: null, key: null };
     const qids = self ? slides[data.slide].qids : Array.isArray(run.qids) ? run.qids : [];
+    if (previous && !self && JSON.stringify(previous.responses) !== JSON.stringify(cleanResponses(data.responses, qids))) fail('already-exists', 'You’ve already answered this one.');
     const answer = { pid: player.id, slide: data.slide, responses: late ? {} : cleanResponses(data.responses, qids), at: now, ms: Math.max(0, now - at.startsAt), late };
-    try {
-      await ref.collection('answers').doc(`${data.slide}_${player.id}`).create(answer);
-    } catch {
-      fail('already-exists', 'You’ve already answered this one.');
+    let saved = previous || answer;
+    if (!previous) {
+      try {
+        await answerRef.create(answer);
+      } catch (error) {
+        const existing = (await answerRef.get()).data();
+        if (!existing) throw error;
+        if (JSON.stringify(existing.responses) !== JSON.stringify(answer.responses)) fail('already-exists', 'You’ve already answered this one.');
+        saved = existing;
+      }
     }
     if (!self) {
-      await live(run.id).child('answered/' + data.slide).set(ServerValue.increment(1));
+      // Keep the public count and the per-player receipt in one Realtime Database transaction.
+      // A function retry after answer creation can safely finish this step.
+      await live(run.id).transaction((state) => {
+        if (!state) return;
+        const bySlide = state.answeredBy?.[data.slide] || {};
+        if (bySlide[player.id]) return;
+        return {
+          ...state,
+          answeredBy: { ...(state.answeredBy || {}), [data.slide]: { ...bySlide, [player.id]: true } },
+          answered: { ...(state.answered || {}), [data.slide]: (state.answered?.[data.slide] || 0) + 1 },
+        };
+      });
       return { ok: true };
     }
     // At their own pace, the answer is marked straight away.
     const slide = slides[data.slide];
-    const s = scoreAnswer(slide, key, player, late ? null : answer);
-    await playerRef.update({ ...s.next, [`slides.${data.slide}`]: { pts: s.gained, frac: s.frac, answered: !late } });
-    const w = classWrite(db, run, run.id, player, answer.responses, s.next, now);
-    if (w) await w.ref.set(w.data, { mergeFields: w.fields });
-    await live(run.id).child('players/' + player.id).update({ s: s.next.score, k: s.next.streak, g: s.gained, d: data.slide + 1, ok: !s.scored ? null : s.frac === 1 ? 1 : s.frac > 0 ? 0.5 : 0 });
-    const reveal = revealFor(slide, key, [answer]);
-    return { ok: true, late, gained: s.gained, score: s.next.score, streak: s.next.streak, frac: s.frac, scored: s.scored, reveal: { key: reveal.key, correct: reveal.correct ?? null }, last: data.slide + 1 >= slides.length };
+    const result = await db.runTransaction(async (tx) => {
+      const current = (await tx.get(playerRef)).data();
+      if (!current) fail('not-found', 'This player is no longer in the game.');
+      if (current.slides?.[data.slide]?.processed) return { next: current, gained: current.slides[data.slide].pts, frac: current.slides[data.slide].frac, scored: true };
+      const s = scoreAnswer(slide, key, { ...current, id: player.id }, saved.late ? null : saved);
+      tx.update(playerRef, { ...s.next, [`slides.${data.slide}`]: { pts: s.gained, frac: s.frac, answered: !saved.late, processed: true } });
+      const w = classWrite(db, run, run.id, { ...current, id: player.id }, saved.responses, s.next, now);
+      if (w) tx.set(w.ref, w.data, { merge: true });
+      return s;
+    });
+    await live(run.id).child('players/' + player.id).update({ s: result.next.score, k: result.next.streak, g: result.gained, d: data.slide + 1, ok: !result.scored ? null : result.frac === 1 ? 1 : result.frac > 0 ? 0.5 : 0 });
+    const reveal = revealFor(slide, key, [saved]);
+    return { ok: true, late: saved.late, gained: result.gained, score: result.next.score, streak: result.next.streak, frac: result.frac, scored: result.scored, reveal: { key: reveal.key, correct: reveal.correct ?? null }, last: data.slide + 1 >= slides.length };
   }
 
   // ---- Everything else is the host's ------------------------------------------------------------------
@@ -268,7 +291,7 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
   if (action === 'next') {
     // From the lobby, the leaderboard or a reveal: open the next question, or finish on the podium.
     if (run.mode === 'self') fail('failed-precondition', 'Players move on by themselves in this game.');
-    if (run.status === 'question') fail('failed-precondition', 'Close this question first.');
+    if (run.status === 'question' || run.status === 'scoring') fail('failed-precondition', 'Close this question first.');
     const { slides } = await loadPrivate(ref);
     const i = run.slide + 1;
     if (i >= run.slides) {
@@ -285,39 +308,45 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
   }
 
   if (action === 'close') {
-    // Mark every answer to the open question, update scores and places, then show the reveal.
-    if (run.status !== 'question') return { ok: true };
+    // Claim the round before scoring. Each player and class attempt are committed together in
+    // one transaction, so a concurrent close or an interrupted retry cannot award points twice.
+    if (!['question', 'scoring', 'reveal'].includes(run.status)) return { ok: true };
+    const round = await db.runTransaction(async (tx) => {
+      const current = (await tx.get(ref)).data();
+      if (!current || !['question', 'scoring', 'reveal'].includes(current.status)) return null;
+      if (current.status === 'question') tx.update(ref, { status: 'scoring', scoringSlide: current.slide });
+      return { ...current, id: runId };
+    });
+    if (!round) return { ok: true };
     const [{ slides, key }, answersSnap, playersSnap] = await Promise.all([loadPrivate(ref), ref.collection('answers').where('slide', '==', run.slide).get(), ref.collection('players').get()]);
-    const slide = slides[run.slide];
+    const slide = slides[round.slide];
     const answers = answersSnap.docs.map((d) => d.data());
     const byPid = new Map(answers.map((a) => [a.pid, a]));
-    const players = {};
-    const scored = [];
-    for (const d of playersSnap.docs) {
-      const p = { ...d.data(), id: d.id };
-      if (p.kicked) continue;
-      const a = byPid.get(d.id);
-      const s = scoreAnswer(slide, key, p, a);
-      players[d.id] = { name: p.name, score: s.next.score };
-      scored.push({ ref: d.ref, p, a, s });
+    if (round.status !== 'reveal') {
+      for (const d of playersSnap.docs) {
+        const a = byPid.get(d.id);
+        await db.runTransaction(async (tx) => {
+          const current = (await tx.get(d.ref)).data();
+          if (!current || current.kicked || current.slides?.[round.slide]?.processed) return;
+          const s = scoreAnswer(slide, key, { ...current, id: d.id }, a);
+          tx.update(d.ref, { ...s.next, [`slides.${round.slide}`]: { pts: s.gained, frac: s.frac, answered: !!a, processed: true } });
+          const w = classWrite(db, round, runId, { ...current, id: d.id }, a?.responses || {}, s.next, now);
+          if (w) tx.set(w.ref, w.data, { merge: true });
+        });
+      }
     }
+    const fresh = await ref.collection('players').get();
+    const players = Object.fromEntries(fresh.docs.filter((d) => !d.data().kicked).map((d) => [d.id, { name: d.data().name, score: d.data().score }]));
     const places = new Map(ranked(players).map((p) => [p.id, p.place]));
     const pub = {};
-    const writes = [];
-    for (const { ref: pref, p, a, s } of scored) {
-      pub[p.id] = { n: p.name, s: s.next.score, k: s.next.streak, g: s.gained, r: places.get(p.id), a: a ? 1 : 0, d: run.slide + 1, ok: !s.scored ? null : s.frac === 1 ? 1 : s.frac > 0 ? 0.5 : 0, ...(p.uid ? { m: 1 } : {}) };
-      writes.push((b) => b.update(pref, { ...s.next, [`slides.${run.slide}`]: { pts: s.gained, frac: s.frac, answered: !!a } }));
-      const w = classWrite(db, run, runId, p, a?.responses || {}, s.next, now);
-      if (w) writes.push((b) => b.set(w.ref, w.data, { mergeFields: w.fields }));
-    }
-    // Firestore batches hold up to 500 writes.
-    for (let i = 0; i < writes.length; i += 450) {
-      const b = db.batch();
-      writes.slice(i, i + 450).forEach((w) => w(b));
-      await b.commit();
+    for (const d of fresh.docs) {
+      const p = d.data();
+      if (p.kicked) continue;
+      const result = p.slides?.[round.slide] || {};
+      pub[d.id] = { n: p.name, s: p.score, k: p.streak, g: result.pts || 0, r: places.get(d.id), a: result.answered ? 1 : 0, d: round.slide + 1, ok: result.frac == null ? null : result.frac === 1 ? 1 : result.frac > 0 ? 0.5 : 0, ...(p.uid ? { m: 1 } : {}) };
     }
     const reveal = revealFor(slide, key, answers);
-    await ref.update({ status: 'reveal', [`summary.${run.slide}`]: { right: reveal.right, partly: reveal.partly, wrong: reveal.wrong, answered: reveal.answered } });
+    await ref.update({ status: 'reveal', [`summary.${round.slide}`]: { right: reveal.right, partly: reveal.partly, wrong: reveal.wrong, answered: reveal.answered } });
     await live(runId).update({ phase: 'reveal', reveal: JSON.stringify(reveal), players: pub, at: now });
     return { ok: true };
   }

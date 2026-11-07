@@ -114,7 +114,7 @@ export async function loadKey(classId: string, itemId: string, taskId: string): 
 
 export type Mark = { score: number | null; max?: number; comment: string; crit?: Record<string, number | null> }; // crit: score per rubric criterion
 export type Correction = { status: 'open' | 'resubmitted' | 'approved'; before?: string; at: number };
-export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; checkedParts?: string[]; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction>; submittedAt?: number; late?: boolean; attempts?: number; updatedAt?: { toMillis: () => number } };
+export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; checkedParts?: string[]; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction>; submittedAt?: number; examSubmittedMs?: number; late?: boolean; attempts?: number; updatedAt?: { toMillis: () => number } };
 
 export async function setCorrection(classId: string, taskId: string, learnerUid: string, qid: string, c: Correction) {
   await updateDoc(answerRef(classId, taskId, learnerUid), { [`corrections.${qid}`]: c });

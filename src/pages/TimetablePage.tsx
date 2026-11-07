@@ -6,7 +6,7 @@ import { MainNav } from './ColleaguesPage';
 import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
-import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
+import { addSession, isNow, occurrences, removeSession, replaceOccurrence, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
 import { fromFields, localZone, shiftInZone, wallOf } from '../lib/tz';
 import { isSeries, repeatOf } from '../lib/repeat';
 import { useGcalSetting, useGcalSync } from '../lib/gcal';
@@ -16,7 +16,7 @@ import { joinClassVideo } from '../components/VideoCall';
 import { useDirectory } from '../lib/directory';
 import { tell } from '../lib/ask';
 import { IconBtn, UiIcon } from '../components/UiIcon';
-import type { ClassDoc } from '../lib/classes';
+import { updateItem, type ClassDoc } from '../lib/classes';
 import { addMonths, monthStart, niceStart, shortDay, span, spanTitle, startOfDay, step, VIEWS, type View } from './timetable/dates';
 import { TimeGrid, type GridEv } from './timetable/TimeGrid';
 import { MonthGrid } from './timetable/MonthGrid';
@@ -232,7 +232,10 @@ export function TimetablePage() {
     try {
       if (s.id.startsWith('i:')) {
         const id = await addSession({ owner: uid, ownerName: me.name, kind: 'class', title: s.title, classId: s.classId, itemId: s.itemId, start, mins, weeks: 1, online: s.online, live: null });
-        return say(done, () => removeSession({ id } as Session));
+        return say(done, async () => {
+          await removeSession({ id, classId: s.classId, itemId: s.itemId, start } as Session);
+          if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } });
+        });
       }
       let which: 'one' | 'all' = 'all';
       if (isSeries(s)) {
@@ -245,9 +248,9 @@ export function TimetablePage() {
         await saveSession({ ...s, start: shiftInZone(s.start, o.start, start, zoneOf(s)), mins, repeat: shiftDays(s, o.start, start) });
         say(isSeries(s) ? done + ', every time' : done, () => saveSession(s));
       } else {
-        await skipWeek(s, o.week);
-        const id = await addSession({ ...copyOf(s), start, mins, weeks: 1 });
-        say(done + ', this time only', async () => (await removeSession({ id } as Session), await saveSession(s)));
+        const replacement = { ...copyOf(s), start, mins, weeks: 1 };
+        const id = await replaceOccurrence(s, o.week, replacement);
+        say(done + ', this time only', async () => (await removeSession({ ...replacement, id }), await saveSession(s)));
       }
     } catch (e) {
       console.error(e);

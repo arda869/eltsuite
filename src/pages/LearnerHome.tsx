@@ -108,7 +108,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const firstName = name.split(' ')[0];
   // Progress: lessons worked on, average score, where to carry on.
   const lessons = visible.filter((i) => i.type === 'lesson');
-  const lessonsDone = lessons.filter((i) => answers.some((a) => a.itemId === i.id && (a.checked || Object.keys(a.responses ?? {}).length))).length;
+  const lessonsDone = lessons.filter((i) => answers.some((a) => a.itemId === i.id && (a.checked || a.examSubmittedMs || Object.keys(a.responses ?? {}).length))).length;
   const checked = answers.filter((a) => a.checked && (a.total ?? 0) > 0);
   const avg = checked.length ? Math.round((checked.reduce((s, a) => s + (a.score ?? 0), 0) / checked.reduce((s, a) => s + (a.total ?? 0), 0)) * 100) : null;
   const lastAnswer = [...answers].filter((a) => visible.some((i) => i.id === a.itemId)).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0))[0];
@@ -280,7 +280,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               <span className="hint">
                 {(() => {
                   const r = itemResult(carryOn, answers);
-                  return r.tasksTotal > 1 ? `${r.tasksDone} of ${r.tasksTotal} tasks checked` : STATUS_LABEL[r.status];
+                  return r.status === 'submitted' || r.status === 'marked' ? STATUS_LABEL[r.status] : r.tasksTotal > 1 ? `${r.tasksDone} of ${r.tasksTotal} tasks checked` : STATUS_LABEL[r.status];
                 })()}
               </span>
               <span className="lh-carry-go" aria-hidden="true">→</span>

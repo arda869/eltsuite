@@ -204,6 +204,7 @@ export function LearnerSurvey({ classId, surveyId, questions, anonymous, me, ite
   const [a, setA] = useState<Record<string, SurveyAnswer>>({});
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sendError, setSendError] = useState('');
   const shared = useSharedResults(classId, surveyId);
   useEffect(() => {
     if (mine) setA(mine);
@@ -211,10 +212,14 @@ export function LearnerSurvey({ classId, surveyId, questions, anonymous, me, ite
   const answered = questions.filter((q) => a[q.id] !== undefined && a[q.id] !== null && a[q.id] !== '').length;
   async function send() {
     setBusy(true);
+    setSendError('');
     try {
       await submitSurvey(classId, { surveyId, itemId, taskId, anonymous, uid: me.uid, learnerId: me.learnerId, name: me.name, answers: a });
       setEditing(false);
       onDone?.();
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+      setSendError(code.includes('permission-denied') ? 'You need to be in this class to send an answer.' : 'Your answers weren’t sent. Please check your connection and try again.');
     } finally {
       setBusy(false);
     }
@@ -253,6 +258,8 @@ export function LearnerSurvey({ classId, surveyId, questions, anonymous, me, ite
         </button>
         {anonymous && <span className="hint">Anonymous: your teacher sees the answers but not who wrote them.</span>}
       </span>
+      {sendError && <p role="alert" className="error">{sendError}</p>}
+      {!sendError && answered === 0 && <p className="hint">Answer at least one question to send this survey.</p>}
     </div>
   );
 }

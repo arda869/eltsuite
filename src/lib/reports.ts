@@ -43,16 +43,17 @@ export const STATUS_LABEL: Record<Status, string> = { 'not-started': 'Not starte
 export type ItemResult = { status: Status; score: number; total: number; pct: number | null; late: boolean; tasksDone: number; tasksTotal: number; submittedAt?: number };
 export function itemResult(item: Item, answers: AnswerDoc[]): ItemResult {
   const mine = answers.filter((a) => a.itemId === item.id);
-  const checked = mine.filter((a) => a.checked);
+  const examSubmittedAt = item.type === 'exam' ? mine.find((a) => a.taskId === '__exam__')?.examSubmittedMs : undefined;
+  const checked = mine.filter((a) => a.checked && a.taskId !== '__exam__');
   const score = checked.reduce((s, a) => s + (a.score ?? 0) + Object.values(a.marks ?? {}).reduce((m, x) => m + (x.score ?? 0), 0), 0);
   const total = checked.reduce((s, a) => s + (a.total ?? 0) + Object.values(a.marks ?? {}).reduce((m, x) => m + (x.score === null ? 0 : x.max ?? Math.max(5, x.score ?? 0)), 0), 0);
-  const tasksTotal = item.taskCount ?? Math.max(mine.length, 1);
+  const tasksTotal = item.taskCount ?? Math.max(mine.filter((a) => a.taskId !== '__exam__').length, 1);
   const started = mine.some((a) => a.checked || Object.keys(a.responses ?? {}).length > 0);
   const allIn = checked.length > 0 && checked.length >= tasksTotal;
   const marked = allIn && checked.some((a) => Object.values(a.marks ?? {}).some((m) => m.score !== null));
-  const status: Status = !started ? 'not-started' : allIn ? (marked ? 'marked' : 'submitted') : 'in-progress';
+  const status: Status = examSubmittedAt ? (marked ? 'marked' : 'submitted') : !started ? 'not-started' : allIn ? (marked ? 'marked' : 'submitted') : 'in-progress';
   const pct = total > 0 ? Math.round((score / total) * 100) : null;
-  return { status, score, total, pct, late: mine.some((a) => a.late), tasksDone: checked.length, tasksTotal, submittedAt: Math.max(0, ...checked.map((a) => a.submittedAt ?? 0)) || undefined };
+  return { status, score, total, pct, late: mine.some((a) => a.late), tasksDone: checked.length, tasksTotal, submittedAt: examSubmittedAt || Math.max(0, ...checked.map((a) => a.submittedAt ?? 0)) || undefined };
 }
 
 export const minutesOf = (a: Attendance) => (a.corrected ?? a.minutes) || 0;

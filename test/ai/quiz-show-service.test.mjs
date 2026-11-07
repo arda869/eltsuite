@@ -32,6 +32,7 @@ function apply(target, patch) {
 function firestore() {
   const data = new Map();
   let auto = 0;
+  let txLock = Promise.resolve();
   const snap = (path) => ({ exists: data.has(path), id: path.split('/').at(-1), ref: docRef(path), data: () => clone(data.get(path)) });
   const docRef = (path) => ({
     path,
@@ -70,6 +71,18 @@ function firestore() {
   const db = {
     doc: docRef,
     collection: colRef,
+    runTransaction: (fn) => {
+      const run = async () => {
+        const ops = [];
+        const tx = { get: (r) => r.get(), update: (r, v) => ops.push(() => r.update(v)), set: (r, v, o) => ops.push(() => setDoc(r.path, v, o)) };
+        const result = await fn(tx);
+        for (const op of ops) await op();
+        return result;
+      };
+      const next = txLock.then(run);
+      txLock = next.catch(() => {});
+      return next;
+    },
     batch: () => {
       const ops = [];
       return { set: (r, v, o) => ops.push(() => setDoc(r.path, v, o)), update: (r, v) => ops.push(() => r.update(v)), delete: (r) => ops.push(() => data.delete(r.path)), commit: async () => { for (const op of ops) await op(); } };
@@ -95,6 +108,11 @@ function realtime() {
     set: async (v) => write(path, v),
     update: async (v) => Object.entries(v).forEach(([k, x]) => write(path + '/' + k, x)),
     remove: async () => write(path, null),
+    transaction: async (change) => {
+      const next = change(clone(read(path)) ?? null);
+      if (next !== undefined) write(path, next);
+      return { committed: next !== undefined, snapshot: { val: () => clone(read(path)) ?? null } };
+    },
   });
   return { rtdb: { ref }, read };
 }
@@ -150,7 +168,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   await assert.rejects(call(null, { action: 'answer', runId, pid: guest.pid, token: guest.token, slide: 0, responses: { q1: 1 } }, 13600), /already answered/);
   await call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 23500);
   await call(null, { action: 'answer', runId, pid: twin.pid, token: twin.token, slide: 0, responses: { q1: 2 } }, 15000);
-  await assert.rejects(call(null, { action: 'answer', runId, pid: twin.pid, token: twin.token, slide: 0, responses: { q1: 2 } }, 40000), /Time ran out|already/);
+  await call(null, { action: 'answer', runId, pid: twin.pid, token: twin.token, slide: 0, responses: { q1: 2 } }, 40000);
   assert.equal(w.read(`quizLive/${runId}/answered/0`), 3);
   await call(auth('teacher'), { action: 'close', runId }, 34000);
   const players = w.read(`quizLive/${runId}/players`);
@@ -162,10 +180,9 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   assert.deepEqual(reveal.counts, [2, 0, 1]);
   assert.deepEqual(reveal.correct, [0]);
 
-  // The class record: the learner's answer, marked, like any other task.
-  const rec = w.data.get('classes/c1/answers/t1_learner');
+  // A game has its own class attempt; it cannot overwrite an ordinary task answer.
+  const rec = w.data.get(`classes/c1/gameAttempts/${runId}_learner`);
   assert.equal(rec.responses.q1, 0);
-  assert.equal(rec.checked, true);
   assert.equal(rec.score, 1);
   assert.equal(rec.itemId, 'i1');
   assert.equal(rec.learnerId, 'L1');
@@ -178,7 +195,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   const after = w.read(`quizLive/${runId}/players`);
   assert.equal(after[lina.pid].s, 750 + 2000 + 100, 'double points plus a streak bonus');
   assert.equal(after[lina.pid].r, 1);
-  const rec2 = w.data.get('classes/c1/answers/t1_learner');
+  const rec2 = w.data.get(`classes/c1/gameAttempts/${runId}_learner`);
   assert.deepEqual([rec2.responses.q1, rec2.responses.q2], [0, 'Goes'], 'answers from both questions are kept together');
   assert.deepEqual([rec2.score, rec2.total], [2, 2]);
 
@@ -198,6 +215,11 @@ test('class-only quizzes keep guests out; the host can lock the room and remove 
   const { runId, code } = await call(auth('teacher'), { action: 'host', source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, 1000);
   await assert.rejects(call(null, { action: 'join', code, name: 'Guest' }), /class account/);
   const lina = await call(auth('learner', 'l_L1@learners.lesson-lit.firebaseapp.com'), { action: 'join', code });
+  await call(auth('teacher'), { action: 'lock', runId, locked: true });
+  assert.equal((await call(auth('learner', 'l_L1@learners.lesson-lit.firebaseapp.com'), { action: 'join', code })).pid, lina.pid, 'existing players can rejoin');
+  w.data.set('users/other', { role: 'learner', displayName: 'Other' });
+  w.data.set('classes/c1/members/other', { learnerId: 'L2', displayName: 'Other' });
+  await assert.rejects(call(auth('other'), { action: 'join', code }), /closed.*new players/);
   await call(auth('teacher'), { action: 'kick', runId, pid: lina.pid });
   assert.equal(w.read(`quizLive/${runId}/players/${lina.pid}`), undefined);
   await call(auth('teacher'), { action: 'next', runId }, 5000);
@@ -266,9 +288,11 @@ test('a game block inside a task: learners play at their own pace, answers sit w
   const done = await call(null, { action: 'self-next', runId, pid: me.pid, token: me.token, advance: true }, 30000);
   assert.equal(done.done, true);
   const rec = w.data.get('classes/c1/answers/t2_learner');
-  assert.deepEqual([rec.responses.other, rec.responses.b1, rec.responses.b2], [1, 0, 'am'], 'game answers join the task’s own answers');
+  const game = w.data.get(`classes/c1/gameAttempts/${runId}_learner`);
+  assert.deepEqual([game.responses.b1, game.responses.b2], [0, 'am'], 'game answers stay in this run');
+  assert.deepEqual(rec.responses, { other: 1 }, 'ordinary task answers are untouched');
   assert.deepEqual([rec.checked, rec.score, rec.total], [true, 1, 1], 'the task’s own marking is untouched');
-  assert.equal(rec.games.g1.points, 875 + 850);
+  assert.equal(game.points, 875 + 850);
   assert.equal(w.read(`quizLive/${runId}/players/learner/f`), 1);
 });
 
@@ -283,4 +307,64 @@ test('own pace: a late answer scores nothing but the learner can carry on', asyn
   assert.equal(r.gained, 0);
   const next = await call(null, { action: 'self-next', runId, pid: g.pid, token: g.token, advance: true }, q.endsAt + 11000);
   assert.equal(next.q.index, 1);
+});
+
+test('two simultaneous closes and a retry after partial scoring award each player once', async () => {
+  const w = world();
+  const call = (who, d, now) => quizService(w.db, w.rtdb, who, d, now);
+  const { runId, code } = await call(auth('teacher'), { action: 'host', guests: true, source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, 1000);
+  const lina = await call(auth('learner'), { action: 'join', code }, 2000);
+  const sam = await call(null, { action: 'join', code, name: 'Sam' }, 2000);
+  await call(auth('teacher'), { action: 'next', runId }, 3000);
+  await call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 6500);
+  await call(null, { action: 'answer', runId, pid: sam.pid, token: sam.token, slide: 0, responses: { q1: 0 } }, 6500);
+  const original = w.db.runTransaction;
+  let count = 0;
+  w.db.runTransaction = (fn) => (++count === 3 ? Promise.reject(Error('interrupted scorer')) : original(fn));
+  await assert.rejects(call(auth('teacher'), { action: 'close', runId }, 7000), /interrupted scorer/);
+  assert.equal(w.data.get(`quizRuns/${runId}`).status, 'scoring');
+  w.db.runTransaction = original;
+  await Promise.all([call(auth('teacher'), { action: 'close', runId }, 7000), call(auth('teacher'), { action: 'close', runId }, 7000)]);
+  assert.equal(w.data.get(`quizRuns/${runId}`).status, 'reveal');
+  assert.equal(w.data.get(`quizRuns/${runId}/players/learner`).score, 1000);
+  assert.equal(w.data.get(`quizRuns/${runId}/players/${sam.pid}`).score, 1000);
+  assert.equal(w.data.get(`classes/c1/gameAttempts/${runId}_learner`).points, 1000);
+});
+
+test('own-pace answer retry completes a failed score write without awarding twice', async () => {
+  const w = world();
+  const call = (who, d, now) => quizService(w.db, w.rtdb, who, d, now);
+  const { runId, code } = await call(auth('teacher'), { action: 'host', mode: 'self', source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, 1000);
+  const lina = await call(auth('learner'), { action: 'join', code }, 2000);
+  const q = await call(null, { action: 'self-next', runId, pid: lina.pid, token: lina.token }, 3000);
+  const answer = { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } };
+  const original = w.db.runTransaction;
+  w.db.runTransaction = () => Promise.reject(Error('interrupted score'));
+  await assert.rejects(call(null, answer, q.startsAt + 1000), /interrupted score/);
+  assert.equal(w.data.get(`quizRuns/${runId}/answers/0_learner`).responses.q1, 0);
+  w.db.runTransaction = original;
+  const first = await call(null, answer, q.startsAt + 2000);
+  const retry = await call(null, answer, q.endsAt + 10000);
+  assert.equal(retry.score, first.score);
+  assert.equal(w.data.get(`quizRuns/${runId}/players/learner`).score, first.score);
+});
+
+test('a replay keeps ordinary answers and the previous game attempt', async () => {
+  const w = world();
+  const call = (who, d, now) => quizService(w.db, w.rtdb, who, d, now);
+  w.data.set('classes/c1/answers/t1_learner', { learnerUid: 'learner', taskId: 't1', responses: { q1: 2 }, checked: true, score: 0, total: 1 });
+  const play = async (at) => {
+    const { runId, code } = await call(auth('teacher'), { action: 'host', source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, at);
+    const lina = await call(auth('learner'), { action: 'join', code }, at + 1);
+    await call(auth('teacher'), { action: 'next', runId }, at + 2);
+    await call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, at + 4000);
+    await call(auth('teacher'), { action: 'close', runId }, at + 5000);
+    return runId;
+  };
+  const first = await play(1000);
+  const second = await play(10000);
+  assert.notEqual(first, second);
+  assert.equal(w.data.get('classes/c1/answers/t1_learner').responses.q1, 2);
+  assert.equal(w.data.get(`classes/c1/gameAttempts/${first}_learner`).responses.q1, 0);
+  assert.equal(w.data.get(`classes/c1/gameAttempts/${second}_learner`).responses.q1, 0);
 });
