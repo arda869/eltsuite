@@ -42,7 +42,8 @@ export type SharedDoc = {
   folder?: string; // a shared folder it is in
   ltype?: 'lesson' | 'homework' | 'exam' | 'practice'; // a lesson file: what kind of lesson it becomes in a class
   path?: string; // the folder in the owner's files
-  file?: { name: string; type: string; bytes: number; parts: number }; // any other file: what was uploaded
+  file?: { name: string; type: string; bytes: number; parts: number; sha256?: string }; // any other file: what was uploaded
+  uploadStatus?: 'uploading' | 'ready';
   start?: number; // a document made from a Word file: parts of the text it starts with
   createdBy?: string;
   createdAt?: Timestamp;
@@ -62,6 +63,7 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind:kind==='storyboard'?'design':kind,
+    ...(kind === 'file' ? { uploadStatus: 'uploading' } : {}),
     ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     docKey: 'f' + newId() + newId(),
     members: {},
@@ -91,7 +93,8 @@ export function useMyDocs(uid?: string, includeDeleted = false) {
     }, () => setWithMe([]));
     return () => (a(), b());
   }, [uid]);
-  return useMemo(() => ({ mine: includeDeleted ? mine : mine?.filter((d) => !d.deletedAt) ?? null, withMe: withMe?.filter((d) => !d.deletedAt) ?? null }), [mine, withMe, includeDeleted]);
+  const ready = (d: SharedDoc) => d.kind !== 'file' || d.uploadStatus !== 'uploading';
+  return useMemo(() => ({ mine: includeDeleted ? mine : mine?.filter((d) => !d.deletedAt && ready(d)) ?? null, withMe: withMe?.filter((d) => !d.deletedAt && ready(d)) ?? null }), [mine, withMe, includeDeleted]);
 }
 
 export function useSharedDoc(id?: string) {

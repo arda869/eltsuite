@@ -1,8 +1,9 @@
 import { quietNow } from './status';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, writeBatch, type DocumentData } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, writeBatch, type DocumentData } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { JSONContent } from '@tiptap/react';
-import { db, rtdb } from './firebase';
+import { app, db, rtdb } from './firebase';
 import { onDisconnect, onValue, ref, remove, set } from 'firebase/database';
 import type { AnswerKey } from './questions';
 
@@ -87,17 +88,20 @@ export function useUnread(me?: string) {
   return useMemo(() => (chats ?? []).filter((c) => me && unreadIn(c, me)).length, [chats, me]);
 }
 
-export function useMessages(chatId?: string) {
+export function useMessageHistory(chatId?: string) {
   const [list, setList] = useState<Msg[] | null>(null);
+  const [pageSize, setPageSize] = useState(200);
+  const [hasOlder, setHasOlder] = useState(false);
+  useEffect(() => { setList(null); setPageSize(200); setHasOlder(false); }, [chatId]);
   useEffect(() => {
     if (!chatId) return;
-    setList(null);
-    return onSnapshot(query(msgsCol(chatId), orderBy('at', 'desc'), limit(200)), { includeMetadataChanges: true }, (s) => {
+    return onSnapshot(query(msgsCol(chatId), orderBy('at', 'desc'), limit(pageSize)), { includeMetadataChanges: true }, (s) => {
       if (s.empty && s.metadata.fromCache) return;
+      setHasOlder(s.docs.length === pageSize);
       setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Msg, 'id'>) })).reverse());
-    }, () => setList([]));
-  }, [chatId]);
-  return list;
+    }, () => { setList([]); setHasOlder(false); });
+  }, [chatId, pageSize]);
+  return { msgs: list, hasOlder, loadOlder: () => setPageSize((size) => size + 200) };
 }
 
 // One to one chats have a fixed id, so the same two people always meet in the same chat.
@@ -143,7 +147,9 @@ export async function addToGroup(c: Chat, people: Person[]) {
 // Deleting a chat: the person who started it deletes it for everyone; anyone else deletes it from
 // their own list, with its messages so far (as in WhatsApp). A new message brings it back.
 export const deletesForAll = (c: Chat, me: string) => c.createdBy === me;
-export const deleteChat = (c: Chat, me: string) => (deletesForAll(c, me) ? deleteDoc(doc(col, c.id)) : updateDoc(doc(col, c.id), { [`hidden.${me}`]: Date.now() }));
+export const deleteChat = (c: Chat, me: string) => (deletesForAll(c, me)
+  ? httpsCallable(getFunctions(app, 'us-central1'), 'deleteConversation')({ chatId: c.id })
+  : updateDoc(doc(col, c.id), { [`hidden.${me}`]: Date.now() }));
 export const leaveGroup = (c: Chat, me: string) => updateDoc(doc(col, c.id), { members: arrayRemove(me) });
 export const renameGroup = (c: Chat, title: string) => updateDoc(doc(col, c.id), { title: title.trim() });
 // Opening a chat marks it read; with read receipts on, the others can see that too.
