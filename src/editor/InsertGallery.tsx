@@ -827,7 +827,7 @@ const Star = ({ on }: { on?: boolean }) => (
 
 function questionPosition(anchor: HTMLElement) {
   const rect = anchor.getBoundingClientRect();
-  const width = Math.min(640, window.innerWidth - 24);
+  const width = Math.min(500, window.innerWidth - 24);
   const left = Math.max(12, Math.min(rect.left - 10, window.innerWidth - width - 12));
   const below = window.innerHeight - rect.bottom - 12;
   const above = rect.top - 12;

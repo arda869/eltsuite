@@ -8528,7 +8528,7 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
 /* Add menus: search keeps the groups beside a full-width grid; Questions is a grid of picture cards. */
 .gallery-found { padding: 6px 10px 8px; font-weight: 700; }
 .gallery-nav .gallery-clear { margin-top: 8px; color: var(--accent-text); }
-.question-pop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 8px; margin-bottom: 6px; }
+.question-pop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 6px; }
 .question-pop-grid .question-pop-item { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-height: 0; margin: 0; padding: 7px; border: 1px solid var(--hair); background: var(--paper); text-align: left; }
 .question-pop-grid .question-pop-item:hover, .question-pop-grid .question-pop-item:focus-visible { border-color: var(--accent); background: var(--paper); box-shadow: 0 6px 16px rgba(51, 48, 44, .08); }
 .question-pop-grid .question-pop-item .gallery-pic { width: 100%; height: 84px; padding: 8px; }

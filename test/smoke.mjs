@@ -239,6 +239,8 @@ const J = {
     await questions.waitFor();
     mkdirSync('outputs',{recursive:true});await questions.screenshot({path:'outputs/questions-dropdown-preview.png'});
     if(await questions.locator('.dialog.gallery,.scrim').count()||await questions.evaluate(el=>el.getBoundingClientRect().width>500))throw Error('Questions opened as a window instead of a dropdown');
+    const columns=await questions.locator('.question-pop-grid').first().evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length);
+    if(columns!==2)throw Error(`Questions should show two columns of picture cards, found ${columns}`);
     if(await questions.getByText('Corpus Explorer').count()||await questions.getByText('Spin the wheel').count())throw Error('Non-question tools appear in Questions');
     const card=questions.locator('.question-pop-item').first();
     if(!await card.locator('.gallery-pic').count())throw Error('Question card has no visual preview');
