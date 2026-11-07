@@ -218,6 +218,9 @@ export function MediaArchive() {
   const [toOrg, setToOrg] = useState<SharedDoc | null>(null);
   const classLessons = useClassLessons(uid);
   const handIns = useHandIns(uid);
+  // These sources arrive separately. Until all have answered, a zero count is only
+  // a partial result and must not be presented as an empty library.
+  const libraryReady = items !== null && allDocs !== null && libTasks !== null && classLessons.list !== null && handIns !== null;
   const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson), ...(handIns ?? []).map(entryOfHandIn)], [all, ownDocs, classLessons.list, handIns]);
   const [sharingLesson, setSharingLesson] = useState<ClassLesson | null>(null);
   const [exporting, setExporting] = useState<ClassLesson | null>(null);
@@ -769,7 +772,7 @@ export function MediaArchive() {
         <span key={f} className="ma-folder" style={{ ['--d' as string]: depth }}>
           <button type="button" className={(folder === f ? 'on' : '') + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} onContextMenu={(e) => openMenu(e, folderMenu(f))} {...folderDrop(f)}>
             <FolderIcon size={15} open={folder === f || dropOn === f} locked={inClasses(f)} />
-            <span className="ma-fname">{leafOf(f) || 'Untitled folder'}</span> <b>{countIn(f)}</b>
+            <span className="ma-fname">{leafOf(f) || 'Untitled folder'}</span> <b>{libraryReady ? countIn(f) : '…'}</b>
           </button>
           {inTree(folder, f) && <Tree parent={f} depth={depth + 1} />}
         </span>
@@ -877,7 +880,7 @@ export function MediaArchive() {
                 <button type="button" className={section === x.k && (x.k !== 'media' || (folder === '' && !recent)) ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
                   <UiIcon name={x.icon} size={16} />
                   <span className="ma-fname">{x.label}</span>
-                  {x.k === 'media' && <b>{entries.length}</b>}
+                  {x.k === 'media' && <b>{libraryReady ? entries.length : '…'}</b>}
                 </button>
                 {x.k === 'media' && (
                   <button type="button" className={section === 'media' && recent ? 'on' : ''} aria-current={section === 'media' && recent ? 'page' : undefined} onClick={() => (pick('media'), setFolderRaw(''), setRecent(true))}>
@@ -910,7 +913,7 @@ export function MediaArchive() {
                 </span>
               </div>
             )}
-            <div className="ma-space small">
+            {!libraryReady ? <div className="ma-space small" role="status">Loading your space summary…</div> : <div className="ma-space small">
               <span className="ma-space-row">
                 <b>{formatBytes(total)}</b>
                 <span className="hint">used of {quota.gb} GB</span>
@@ -949,7 +952,7 @@ export function MediaArchive() {
               </span>
               <span className="ma-space-row"><span>Recycle bin</span><b>{binBytes ? formatBytes(binBytes) : '0 KB'}</b></span>
               <span className="hint small">{quota.org ? `${quota.org} gives you ${quota.gb} GB.` : `Your plan has ${quota.gb} GB for the whole app.`} Lessons, documents, flashcards, reading notes, pictures and recordings all count. Links take no space.</span>
-            </div>
+            </div>}
           </aside>
 
         {section === 'library' && uid && <main className="ma-main">{openLibrary ? <Suspense fallback={<Loader label="Opening the library" />}><FolderPane key={openLibrary.id} f={openLibrary} uid={uid} me={{ uid, name: user?.displayName || 'Teacher' }} /></Suspense> : <div className="ma-empty"><strong>No organisation library available</strong></div>}</main>}
@@ -1132,7 +1135,7 @@ export function MediaArchive() {
               </div>
             </div>
             <div ref={filesRef} className={'ma-files' + (box ? ' boxing' : '')} onPointerDown={marquee} onContextMenu={(e) => !(e.target as HTMLElement).closest('[data-sel]') && openMenu(e, emptyMenu)}>
-              {items === null || libTasks === null ? (
+              {!libraryReady && shown.length === 0 && subFolders.length === 0 ? (
                 <Loader label="Opening your resources library" />
               ) : shown.length === 0 && subFolders.length === 0 ? (
                 <div className="ma-empty">
