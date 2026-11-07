@@ -1,7 +1,7 @@
 import { NSelect } from '../components/Select';
 import { MediaBlockSchema, InlineMediaSchema } from './mediaSchema';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Grip } from './nodes';
 import { useEditorClass } from './context';
 import { archiveGet, archiveUpdate, setManifestScript, type ScriptLine } from '../lib/archive';
@@ -37,6 +37,25 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
   const inline = node.type.name === 'inlineMedia';
   const space = classId || a.space || (user ? `user:${user.uid}` : '');
   const [dialog, setDialog] = useState<MediaTab | null>(null);
+  const uploadTarget = useRef('');
+  useEffect(() => {
+    const channel = new BroadcastChannel('elt-recording-upload');
+    channel.onmessage = (event: MessageEvent) => {
+      const result = event.data;
+      if (result?.type !== 'saved' || result.target !== uploadTarget.current || result.classId !== space) return;
+      updateAttributes({ media: result.mediaId, archiveId: result.archiveId, kind: result.kind === 'video' ? 'video' : 'audio', title: result.title, space: classId ? '' : space });
+      channel.postMessage({ type: 'added', target: result.target });
+      uploadTarget.current = '';
+    };
+    return () => channel.close();
+  }, [classId, space, updateAttributes]);
+  const openUpload = () => {
+    const target = crypto.randomUUID();
+    const query = new URLSearchParams({ class: space, target });
+    const opened = window.open(`/studio/sound/new?${query}`, '_blank');
+    if (opened) uploadTarget.current = target;
+    else setDialog('upload');
+  };
   const label = a.kind === 'video' ? 'Video' : 'Recording';
   if (!editor.isEditable) return <NodeViewWrapper as={inline?'span':'div'} className={inline?'inline-media im-'+(a.size||'m'):'task-media'} contentEditable={false}><MediaPlayer inline={inline} classId={space} mediaId={a.media} title={a.title} scriptMode={a.scriptMode} plays={a.plays} teaching={profile?.role==='teacher'} mute={a.mute??[]}/></NodeViewWrapper>;
 
@@ -59,7 +78,7 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
               ['link', 'link', 'YouTube or link'],
             ] as const
           ).map(([k, icon, l]) => (
-            <button key={k} type="button" className="md-start-btn" onClick={() => setDialog(k)} disabled={!space}>
+            <button key={k} type="button" className="md-start-btn" onClick={() => k === 'upload' ? openUpload() : setDialog(k)} disabled={!space}>
               <UiIcon name={icon} size={20} />
               {l}
             </button>

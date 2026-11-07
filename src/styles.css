@@ -5368,6 +5368,11 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .studio-sound .daw-wave { height: 220px; }
 .studio-done { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; text-align: center; }
 .studio-done strong { font: 500 26px var(--serif); }
+.studio-upload { box-sizing: border-box; width: min(680px, calc(100% - 40px)); margin: clamp(32px, 8vh, 90px) auto; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--hair); border-radius: 20px; background: var(--paper); box-shadow: 0 12px 32px color-mix(in srgb, var(--shadow) 25%, transparent); }
+.studio-upload h1 { margin: 0 0 14px; font: 500 clamp(30px, 4vw, 42px)/1.1 var(--serif); }
+.studio-upload p { line-height: 1.55; }
+.studio-upload-pick { display: inline-flex; align-items: center; cursor: pointer; margin: 12px 0; }
+.sx-transcribing { display: inline-flex; align-items: center; gap: 8px; color: var(--studio-ink, #ece8e1); font: 600 12px var(--sans); white-space: nowrap; }
 /* Sound editing from Add media or a recording also gets the whole screen */
 .scrim:has(.md-dialog .daw) { padding: 0; }
 .md-dialog:has(.daw) { width: 100vw !important; max-width: none; height: 100dvh; max-height: none; border-radius: 0; overflow-y: auto; }
@@ -6130,7 +6135,7 @@ select.type-pick[data-type='practice'] { --tc: #a8701f; }
 }
 @media (max-width: 900px) { .sx-start { left: 168px; } .sx-start span { display: none; } .sx-start strong { font-size: 15px; } }
 .sx-bar { position: relative; }
-.sx-savepop { position: absolute; z-index: 40; top: calc(100% + 6px); right: 16px; width: 300px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #24221f; box-shadow: 0 0 0 1px #3a3733, 0 18px 40px rgba(0, 0, 0, .5); color: var(--studio-ink); }
+.sx-savepop { position: absolute; z-index: 100; top: calc(100% + 6px); right: 16px; width: 300px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #24221f; box-shadow: 0 0 0 1px #3a3733, 0 18px 40px rgba(0, 0, 0, .5); color: var(--studio-ink); }
 .sx-savepop strong { font: 600 13px var(--sans); }
 .sx-qs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .sx-qs button { height: 34px; border: 1px solid #3a3733; border-radius: 8px; background: #2a2825; color: var(--studio-ink); font: 500 13px var(--sans); cursor: pointer; }
