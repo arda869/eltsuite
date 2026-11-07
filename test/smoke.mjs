@@ -1103,7 +1103,7 @@ const J = {
       await p.getByLabel('Email',{exact:true}).fill('teacher@example.test');
       await p.getByRole('button',{name:flow[1],exact:true}).click();
       await p.getByRole('status').filter({hasText:flow[2]}).waitFor();
-      await p.getByRole('button',{name:'Back to sign-in',exact:true}).click();
+      await p.getByRole('button',{name:'Back to sign in',exact:true}).click();
     }
     await p.getByRole('button',{name:'I have an invitation',exact:true}).click();
     await p.getByPlaceholder('ABCD-EF23').fill('BAD');
