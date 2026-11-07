@@ -5,6 +5,7 @@ export { quizShow } from './quiz/index.js';
 export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
 export { checkSubTask } from './learning/check-subtask.js';
+export { submitAnonymousSurvey } from './learning/survey.js';
 export { assessTask, manageExam, resubmitCorrection } from './learning/assessment.js';
 export { claimLiveClass, classTeachingAccessChanged } from './learning/class-access.js';
 export { sharedDocumentAccessChanged, inlineDocumentAccessChanged, sharedClassMemberAccessChanged, sharedClassGroupsChanged } from './collab/access.js';

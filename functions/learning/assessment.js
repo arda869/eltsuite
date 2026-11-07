@@ -136,6 +136,14 @@ export async function runExamForLearner(db, auth, data, now = Date.now()) {
     if (!existing.exists) throw denied();
     if (existing.get('submittedMs')) return { submittedMs: existing.get('submittedMs'), alreadySubmitted: true };
     tx.update(runRef, { submittedMs: now, submittedAt: FieldValue.serverTimestamp() });
+    if (kind === 'i') {
+      // Progress screens read class answers. A server-only marker makes hand-in visible even
+      // when no question has been checked and without releasing the exam's answer key.
+      tx.create(root.collection('answers').doc(`__exam_${id}_${uid}`), {
+        learnerUid: uid, learnerId: member.get('learnerId'), itemId: id, taskId: '__exam__',
+        responses: {}, checked: false, examSubmittedMs: now, updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
     return { submittedMs: now };
   });
 }

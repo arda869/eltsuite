@@ -3,7 +3,10 @@ import {summariseEvidence} from './evidence.js';
 const plain=n=>typeof n==='string'?n:(n?.text??'')+(n?.content??[]).map(plain).join(' ');
 export async function collectLearningEvidence(db,classId,{itemId,taskId,sessionStart,sessionEnd}={}) {
  const cls=db.collection('classes').doc(classId);
- const [learners,answers]=await Promise.all([cls.collection('learners').get(),cls.collection('answers').orderBy('updatedAt','desc').limit(300).get()]);
+ // A lesson report must inspect that lesson's answers, however many newer answers other lessons
+ // have produced. The class-wide overview retains a bounded recent sample.
+ const answerQuery=itemId?cls.collection('answers').where('itemId','==',itemId):cls.collection('answers').orderBy('updatedAt','desc').limit(300);
+ const [learners,answers]=await Promise.all([cls.collection('learners').get(),answerQuery.get()]);
  const taskCache=new Map();
  const getTask=async(item,task)=>{const id=item+'/'+task;if(!taskCache.has(id))taskCache.set(id,(async()=>{const ref=cls.collection('items').doc(item).collection('tasks').doc(task);const [s,b,k]=await Promise.all([ref.get(),ref.collection('private').doc('body').get(),ref.collection('private').doc('key').get()]);return {title:s.get('title')??'Activity',instructions:s.get('instructions')??'',content:s.get('restricted')?b.get('content'):s.get('content'),key:k.data()??{}};})());return taskCache.get(id);};
  const records=[];
@@ -15,5 +18,5 @@ export async function collectLearningEvidence(db,classId,{itemId,taskId,sessionS
  }
  let targets=[];
  if(itemId&&!sessionStart){const tasks=await cls.collection('items').doc(itemId).collection('tasks').orderBy('order').get();for(const s of tasks.docs){if(s.get('kind')==='section'||(taskId&&s.id!==taskId)||(!taskId&&s.get('family')&&s.get('family')!==s.id))continue;const t=await getTask(itemId,s.id);targets.push({id:s.id,title:t.title,instructions:t.instructions,content:t.content});}}
- return {targets,learners:learners.docs.map((s,i)=>{const own=records.filter(r=>r.learnerUid===s.get('authUid'));return {id:s.id,code:'L'+(i+1),name:s.get('displayName')??'Learner',summary:summariseEvidence(own),records:own.slice(0,8)};}),sampleLimit:300};
+ return {targets,learners:learners.docs.map((s,i)=>{const own=records.filter(r=>r.learnerUid===s.get('authUid'));return {id:s.id,code:'L'+(i+1),name:s.get('displayName')??'Learner',summary:summariseEvidence(own),records:own.slice(0,8)};}),sampleLimit:itemId?null:300};
 }

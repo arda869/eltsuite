@@ -25,7 +25,7 @@ jobs:
       - name: Install backend test dependencies
         run: npm --prefix functions ci --no-audit --no-fund
       - name: Coaching and lesson AI checks
-        run: node --test test/ai/*.test.mjs test/coach/*.test.mjs
+        run: node --test test/ai/*.test.mjs test/coach/*.test.mjs test/survey-integrity.mjs
       - name: Recording and speaking checks
         run: node --test test/speech/*.test.mjs
       - name: Push registration and delivery regression checks
@@ -39,7 +39,7 @@ jobs:
           # Match PR checks: respect the app lockfile and keep the Firebase CLI in npx's tool cache.
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs && ANSWER_TEST_PROJECT=demo-feature-discovery node test/learner-answer-access.mjs && node test/invitation-requests-access.mjs && SONG_TEST_PROJECT=demo-feature-discovery node test/speech/song-jobs.mjs"
       - name: Assessment and messaging security boundaries
-        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security "node test/security-phase2-firestore.mjs"
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security "node test/security-phase2-firestore.mjs && node test/survey-access.mjs"
       - name: Live classroom security boundaries
         run: |
           node test/collab-access.mjs
@@ -161,7 +161,7 @@ jobs:
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
           node functions/games/check-connection.mjs

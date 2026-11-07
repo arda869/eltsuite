@@ -137,6 +137,9 @@ try {
   assert.equal(repeated.startMs, 1000);
   const submitted = await runExamForLearner(admin, { uid: 'learner' }, { classId: 'c1', scope: 'i_exam', action: 'submit' }, 3000);
   assert.equal(submitted.submittedMs, 3000);
+  const handIn = await admin.doc('classes/c1/answers/__exam_exam_learner').get();
+  assert.equal(handIn.get('examSubmittedMs'), 3000, 'an exam hand-in is visible to progress screens before marking');
+  assert.equal(handIn.get('checked'), false, 'hand-in does not release an answer key');
   console.log('Server assessment and exam ownership checks passed.');
   console.log('Phase 2 Firestore security rules passed.');
 } finally {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, db } from './firebase';
 import { newId } from './tasks';
 
 // Class surveys and live polls. No right answers and no scores.
@@ -75,7 +76,10 @@ const doneRef = (classId: string, surveyId: string, uid: string) => doc(db, 'cla
 
 export async function submitSurvey(classId: string, s: { surveyId: string; itemId?: string; taskId?: string; anonymous: boolean; uid: string; learnerId: string; name: string; answers: Record<string, SurveyAnswer> }) {
   const base = { surveyId: s.surveyId, itemId: s.itemId ?? '', taskId: s.taskId ?? '', answers: s.answers };
-  if (s.anonymous) await addDoc(respCol(classId), base);
+  if (s.anonymous) {
+    await httpsCallable(getFunctions(app, 'us-central1'), 'submitAnonymousSurvey')({ classId, ...base });
+    return;
+  }
   else await setDoc(doc(respCol(classId), `${s.surveyId}_${s.uid}`), { ...base, uid: s.uid, learnerId: s.learnerId, name: s.name, at: serverTimestamp() });
   await setDoc(doneRef(classId, s.surveyId, s.uid), { surveyId: s.surveyId, uid: s.uid, learnerId: s.learnerId });
 }

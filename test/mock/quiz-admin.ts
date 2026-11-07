@@ -49,6 +49,11 @@ const wrap = (s: unknown) => ({ docs: (s as { docs: { id: string; ref: { path: s
 export const adminDb = {
   doc: docRef,
   collection: colRef,
+  runTransaction: (fn: (tx: any) => Promise<unknown>) => fs.runTransaction({}, (raw: any) => fn({
+    get: (r: { path: string }) => snap(r.path),
+    update: (r: { path: string }, v: Data) => raw.update(fs.doc({}, r.path), v),
+    set: (r: { path: string }, v: Data, o?: { merge?: boolean }) => raw.set(fs.doc({}, r.path), v, o),
+  })),
   batch: () => {
     const ops: (() => Promise<unknown>)[] = [];
     return {
@@ -74,5 +79,6 @@ const rref = (path: string): any => ({
   },
   update: (v: Data) => rt.update(rt.ref({}, path), v),
   remove: () => rt.remove(rt.ref({}, path)),
+  transaction: (change: (current: unknown) => unknown) => rt.runTransaction(rt.ref({}, path), change),
 });
 export const adminRtdb = { ref: rref };

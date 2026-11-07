@@ -1,6 +1,6 @@
 import helpLibrary from '../../functions/help/library.json';
 import { AI_FEATURES } from '../../functions/ai/features.js';
-import { addDoc, collection, doc, setDoc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, getDoc, getDocs, updateDoc, runTransaction } from 'firebase/firestore';
 import { ref, set } from 'firebase/database';
 import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
@@ -26,6 +26,20 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if (name === 'requestInvitation') {
     await addDoc(collection(db, 'invitationRequests'), { ...d, at: Date.now() });
     return { data: { requested: true } };
+  }
+  if (name === 'submitAnonymousSurvey') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    if (!uid) throw Error('Sign in to answer this survey.');
+    const member = await getDoc(doc(db, `classes/${d.classId}/members/${uid}`));
+    if (!member.exists()) throw Error('Join this class before answering its survey.');
+    const done = doc(db, `classes/${d.classId}/surveyDone/${d.surveyId}_${uid}`);
+    return { data: await runTransaction(db, async (tx) => {
+      if ((await tx.get(done)).exists()) return { saved: true, alreadyDone: true };
+      tx.set(doc(db, `classes/${d.classId}/surveyResponses/mock-${crypto.randomUUID()}`), { surveyId: d.surveyId, itemId: d.itemId, taskId: d.taskId, answers: d.answers, at: Date.now() });
+      tx.set(done, { surveyId: d.surveyId, uid, learnerId: member.data()?.learnerId ?? '', at: Date.now() });
+      return { saved: true, alreadyDone: false };
+    }) };
   }
   if (name === 'resolveLearnerSignIn') {
     const record = (await getDoc(doc(db, 'classCodes', d.code))).data();
@@ -57,8 +71,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
       return { data: run };
     }
     if (!existing) throw Error('This exam is not available to you.');
-    await setDoc(doc(db, path), { submittedMs: Date.now() }, { merge: true });
-    return { data: { submittedMs: Date.now() } };
+    const submittedMs = Date.now();
+    await setDoc(doc(db, path), { submittedMs }, { merge: true });
+    if (d.scope.startsWith('i_')) await setDoc(doc(db, `classes/${d.classId}/answers/__exam_${d.scope.slice(2)}_${uid}`), { learnerUid: uid, learnerId: existing.learnerId, itemId: d.scope.slice(2), taskId: '__exam__', responses: {}, checked: false, examSubmittedMs: submittedMs });
+    return { data: { submittedMs } };
   }
   if (name === 'assessTask') {
     const { getAuth } = await import('./auth');

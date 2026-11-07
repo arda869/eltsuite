@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where, writeBatch, type Unsubscribe } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { noteFeature } from '../discovery/store';
@@ -61,8 +61,20 @@ export async function saveSession(s: Session) {
   await updateDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
 }
-// With guests, they are told first: the mail job sends them the cancellation, then deletes it.
-export const removeSession = (s: Session) => (s.guests?.length ? updateDoc(doc(col, s.id), { cancelled: Date.now() }) : deleteDoc(doc(col, s.id)));
+// Clear the legacy lesson date too, otherwise the timetable reconstructs a deleted session.
+// A moved occurrence does not own the series' original lesson date.
+export async function removeSession(s: Session) {
+  const batch = writeBatch(db);
+  const sessionRef = doc(col, s.id);
+  if (s.guests?.length) batch.update(sessionRef, { cancelled: Date.now() });
+  else batch.delete(sessionRef);
+  if (s.classId && s.itemId) {
+    const itemRef = doc(db, 'classes', s.classId, 'items', s.itemId);
+    const item = await getDoc(itemRef);
+    if (item.data()?.schedule?.at === s.start) batch.update(itemRef, { schedule: null });
+  }
+  await batch.commit();
+}
 // A session made before time zones were kept gets its owner's, once.
 export const setSessionZone = (s: Session, tz: string) => updateDoc(doc(col, s.id), { tz });
 // Undo for a session taken out: back, as it was, with the same id.
@@ -71,6 +83,17 @@ export function restoreSession(s: Session) {
   return setDoc(doc(col, id), JSON.parse(JSON.stringify({ ...rest, cancelled: null })));
 }
 export const skipWeek = (s: Session, week: number) => updateDoc(doc(col, s.id), { skip: [...new Set([...(s.skip ?? []), week])] });
+// One occurrence moves atomically with its replacement. If the new event cannot be saved,
+// the old week is still present in the original series.
+export async function replaceOccurrence(series: Session, week: number, replacement: Omit<Session, 'id'>) {
+  const ref = doc(col);
+  const batch = writeBatch(db);
+  batch.set(ref, JSON.parse(JSON.stringify({ tz: localZone(), ...replacement, at: Date.now() })));
+  batch.update(doc(col, series.id), { skip: [...new Set([...(series.skip ?? []), week])] });
+  await batch.commit();
+  noteFeature('timetable', ref.id);
+  return ref.id;
+}
 export const setSessionLive = (s: Session, live: Session['live']) => updateDoc(doc(col, s.id), { live });
 
 // Every time a session happens between two moments. Each week is at the same wall-clock time
@@ -103,6 +126,7 @@ export function useTeacherSessions(uid?: string, classIds: string[] = []) {
   const [parts, setParts] = useState<Record<string, Session[]>>({});
   const key = classIds.slice().sort().join(',');
   useEffect(() => {
+    setParts({});
     if (!uid) return;
     const offs: Unsubscribe[] = [];
     const on = (name: string, q: ReturnType<typeof query>) =>
@@ -115,10 +139,12 @@ export function useTeacherSessions(uid?: string, classIds: string[] = []) {
     return () => offs.forEach((o) => o());
   }, [uid, key]);
   return useMemo(() => {
+    if (!uid) return [];
+    const allowed = new Set(['own', 'invited', ...classIds.map((id) => 'c:' + id)]);
     const m = new Map<string, Session>();
-    Object.values(parts).flat().forEach((s) => m.set(s.id, s));
+    Object.entries(parts).filter(([name]) => allowed.has(name)).flatMap(([, list]) => list).forEach((s) => m.set(s.id, s));
     return [...m.values()].filter((s) => !s.cancelled);
-  }, [parts]);
+  }, [parts, uid, key]);
 }
 // A learner's: their class's sessions.
 export function useClassSessions(classId?: string) {

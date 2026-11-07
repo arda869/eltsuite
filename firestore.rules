@@ -356,6 +356,13 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Server-written game history is separate from ordinary task marking. A replay creates
+      // another attempt instead of replacing a learner's prior work.
+      match /gameAttempts/{attemptId} {
+        allow read: if teachesClass(classId)
+          || (memberOf(classId) && resource.data.learnerUid == request.auth.uid);
+      }
+
       // Group sets (breakout rooms): the teacher makes them; learners can see their room
       match /groupSets/{sid} {
         allow read: if viewsClass(classId) || memberOf(classId);
@@ -366,14 +373,15 @@ service cloud.firestore {
       // random id; named answers use surveyId_uid so the learner can change them.
       match /surveyResponses/{rid} {
         allow read: if viewsClass(classId) || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
-        allow create: if memberOf(classId) && (
-          (!('uid' in request.resource.data) && !('learnerId' in request.resource.data) && !('name' in request.resource.data))
-          || (request.resource.data.uid == request.auth.uid && rid == request.resource.data.surveyId + '_' + request.auth.uid));
+        allow create: if memberOf(classId) && request.resource.data.uid == request.auth.uid
+          && rid == request.resource.data.surveyId + '_' + request.auth.uid;
         allow update: if memberOf(classId) && resource.data.get('uid', '') == request.auth.uid && request.resource.data.uid == request.auth.uid;
         allow delete: if teachesClass(classId);
       }
       match /surveyDone/{did} {
-        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        // Completion receipts stay private, so a teacher cannot correlate an anonymous answer
+        // with a learner by comparing receipt and response timestamps.
+        allow read: if signedIn() && resource.data.uid == request.auth.uid;
         allow create, update: if memberOf(classId) && request.resource.data.uid == request.auth.uid && did == request.resource.data.surveyId + '_' + request.auth.uid;
         allow delete: if teachesClass(classId);
       }

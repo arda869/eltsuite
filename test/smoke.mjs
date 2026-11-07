@@ -2746,8 +2746,11 @@ const J = {
     await s.p.waitForFunction(({ classId, itemId }) => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
       return Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/examRuns/i_${itemId}_`) && value.submittedMs)
-        && Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/answers/exam-save_`) && value.responses?.['exam-gap'] === 'went');
+        && Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/answers/exam-save_`) && value.responses?.['exam-gap'] === 'went')
+        && Object.entries(fs).some(([path, value]) => path.startsWith(`classes/${classId}/answers/__exam_${itemId}_`) && value.examSubmittedMs && !value.checked);
     }, s.demo);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.todo-item .rp-status:has-text("Handed in")', 'submitted exam on learner home');
     return s;
   },
   'Learner signs in and opens the lesson': async (b) => {
