@@ -14,7 +14,7 @@ export function mediaRequests(activities){
  return requests;
 }
 // Conservative reservations retained even on uncertain provider failures. No automatic paid retries.
-// Verified 1 Nov 2026: image output $30/M, text $5/M; realtime mini audio output $20/M.
+// Verified 8 Nov 2026: image output $30/M, text $5/M; realtime mini audio output $20/M.
 export function mediaReservation(asset,balance,now=Date.now(),isAdmin=false){
  if(now>=PRICE_REVIEW_AFTER)throw Error('Media prices need review.');
  const amount=asset.kind==='image'?(asset.source==='commons'?3*RESERVATION_PER_CALL:asset.source==='editorial'?2*(100000+RESERVATION_PER_CALL):100000):asset.lines.length*60000;
