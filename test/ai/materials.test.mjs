@@ -17,5 +17,5 @@ test('rebuilt output has valid native tasks and private keys; validates review e
 });
 test('multimodal rebuild uses non-stored structured Responses input without changing text-only generation',async()=>{
  let body;const result=await generate({apiKey:'test',model:'gpt-6.1-sol',schema:rebuildSchema,name:'rebuild',input:{text:'Read the page'},sourceImages:['data:image/jpeg;base64,/9j/'],fetchImpl:async(_,o)=>{body=JSON.parse(o.body);return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(rebuilt)}]}]})};}});
- assert.equal(body.store,false);assert.equal(body.input[0].content[1].type,'input_image');assert.equal(body.input[0].content[0].type,'input_text');assert.equal(result.value.title,rebuilt.title);
+ assert.equal(body.store,false);assert.equal(body.max_output_tokens,24000);assert.equal(body.input[0].content[1].type,'input_image');assert.equal(body.input[0].content[0].type,'input_text');assert.equal(result.value.title,rebuilt.title);
 });
