@@ -72,7 +72,7 @@ export function EmailLinkFinish() {
           </>
         ) : (
           <button type="button" className="btn primary tall block" onClick={() => navigate('/')}>
-            Back to sign-in
+            Back to sign in
           </button>
         )}
       </form>
