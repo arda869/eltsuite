@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { ref, set } from 'firebase/database';
+import { get, ref, set } from 'firebase/database';
 
 if (!process.env.FIREBASE_DATABASE_EMULATOR_HOST) throw Error('A disposable Realtime Database emulator is required.');
 const [host, port] = process.env.FIREBASE_DATABASE_EMULATOR_HOST.split(':');
@@ -19,6 +19,8 @@ try {
     await set(ref(ctx.database(), 'classOwners/c1'), 'teacher');
     await set(ref(ctx.database(), 'classTeachers/c1/co'), true);
   });
+  await assertFails(get(ref(attacker, 'classOwners/c1')));
+  await assertFails(get(ref(attacker, 'classTeachers/c1')));
   await assertFails(set(ref(owner, 'classTeachers/c1/attacker'), true));
   await assertFails(set(ref(attacker, 'sessions/c1/pointer'), { taskId: 't1', x: 0, y: 0 }));
   await assertSucceeds(set(ref(owner, 'sessions/c1/pointer'), { taskId: 't1', x: 0, y: 0 }));

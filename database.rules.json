@@ -2,13 +2,13 @@
   "rules": {
     "classOwners": {
       "$classId": {
-        ".read": "auth != null",
+        ".read": false,
         ".write": false
       }
     },
     "classTeachers": {
       "$classId": {
-        ".read": "auth != null",
+        ".read": false,
         ".write": false
       }
     },
