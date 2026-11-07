@@ -132,6 +132,7 @@ export const pushCallRing = onDocumentWritten({ document: 'callRings/{key}', reg
 });
 
 export { videoStudio, refreshVideoJobs } from './video/index.js';
+export { maintainVideoRooms } from './video/rooms-schedule.js';
 
 export { adminAiUsage } from './ai/admin-usage.js';
 
