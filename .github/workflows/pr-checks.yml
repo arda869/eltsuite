@@ -45,6 +45,8 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/learner-answer-access.mjs && INVITATION_TEST_PROJECT=demo-ai-access node test/invitation-requests-access.mjs && node test/ai/create-integration.mjs && node test/ai/task-tools-integration.mjs && node test/ai/learning-integration.mjs && node test/ai/learning-access.mjs && node test/designer/integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
       - name: Assessment, roster, invitation and call security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security 'node test/security-phase2-firestore.mjs'
+      - name: Learner discussion timeline and access
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-learning-timeline 'node functions/test/learner-discussion-timeline.mjs'
       - name: Live classroom security boundaries
         run: |
           node test/collab-access.mjs
