@@ -1,6 +1,7 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getDatabase } from 'firebase-admin/database';
+import { isDeepStrictEqual } from 'node:util';
 
 const RTDB = 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app';
 const safeKey = key => typeof key === 'string' && /^[A-Za-z0-9_~-]{1,150}$/.test(key);
@@ -158,6 +159,8 @@ export async function refreshClassDocumentAccess(db, realtime, classId, changedA
 }
 
 export const sharedDocumentAccessChanged = onDocumentWritten({ document: 'sharedDocs/{docId}', region: 'us-central1', maxInstances: 10, retry: true }, async event => {
+  const before = event.data?.before.data(), after = event.data?.after.data();
+  if (before && after && ['docKey','owner','members','classes','deletedAt','purgingAt','purgeRequestedAt'].every(key => isDeepStrictEqual(before[key], after[key]))) return;
   const beforeKey = event.data?.before.get('docKey');
   const afterKey = event.data?.after.get('docKey');
   const db = getFirestore(), realtime = getDatabase(undefined, RTDB);

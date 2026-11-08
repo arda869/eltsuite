@@ -860,7 +860,13 @@ service cloud.firestore {
         && !('purgingAt' in request.resource.data)
         && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0)
         && (resource.data.owner == request.auth.uid
-        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType']))
+        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType', 'coachIndex'])
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coachIndex'])
+              || (request.resource.data.coachIndex is map
+                && request.resource.data.coachIndex.keys().hasOnly(['version', 'preview', 'forms'])
+                && request.resource.data.coachIndex.version == 1
+                && request.resource.data.coachIndex.preview is string && request.resource.data.coachIndex.preview.size() <= 1800
+                && request.resource.data.coachIndex.forms is string && request.resource.data.coachIndex.forms.size() <= 4200)))
         // in an organisation's shared drive, its admins decide who has the files
         || (resource.data.get('folder', null) is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberIds'])
             && get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.get('org', null) is string

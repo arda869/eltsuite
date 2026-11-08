@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as Y from 'yjs';
-import {formsFromState,formAccess,loadStudioForms} from '../../functions/ai/coach-forms.js';
+import {formsFromState,documentFromState,documentCandidateScore,relevantDocumentExcerpt,formAccess,loadStudioForms} from '../../functions/ai/coach-forms.js';
 const make=()=>{const d=new Y.Doc(),form=new Y.XmlElement('studioForm');form.setAttribute('id','form-1');form.setAttribute('kind','reflection');form.setAttribute('title','Quiet learners');form.setAttribute('fields',{notice:'Three learners spoke after preparation.',next:'Compare a second lesson.',injected:{secret:'ignored'}});d.getXmlFragment('default').insert(0,[form]);return {d,form};};
 const state=d=>({snap:{s:Buffer.from(Y.encodeStateAsUpdate(d)).toString('base64')}});
 test('forms read the current Yjs state; field edits and removal do not use a stale index',()=>{const {d,form}=make();const before=state(d);form.setAttribute('fields',{notice:'Five learners spoke.'});const updated={...before,u:{new:{u:Buffer.from(Y.encodeStateAsUpdate(d)).toString('base64')}}};assert.equal(formsFromState(updated)[0].fields.notice,'Five learners spoke.');d.getXmlFragment('default').delete(0);assert.deepEqual(formsFromState(state(d)),[]);d.destroy();});
@@ -11,3 +11,27 @@ test('document revocation and trash take effect before source content is read',a
 test('a selected accessible form returns its exact source and a removed form is actionable',async()=>{const {d}=make(),db={doc:()=>({get:async()=>({id:'doc1',data:()=>({kind:'doc',owner:'teacher',docKey:'key',title:'Notes'})})})};const selected={docId:'doc1',formId:'form-1'},read=async()=>state(d);const {forms:rows}=await loadStudioForms(db,'teacher','question',selected,{read});assert.equal(rows[0].docId,'doc1');assert.equal(rows[0].documentTitle,'Notes');assert.equal(rows[0].fields.notice,'Three learners spoke after preparation.');await assert.rejects(loadStudioForms(db,'teacher','question',{...selected,formId:'removed'},{read}),/removed/);d.destroy();});
 
 test('an unavailable unrelated document cannot disable the whole coach',async()=>{const {d}=make();const files=[{id:'good',data:()=>({kind:'doc',owner:'teacher',docKey:'good',title:'Good notes'})},{id:'unavailable',data:()=>({kind:'doc',owner:'teacher',docKey:'broken'})}];const db={collection:()=>({where:(_,op)=>({get:async()=>({docs:op==='=='?files:[]})})})};const r=await loadStudioForms(db,'teacher','learners',null,{read:async key=>{if(key==='broken')throw Error('Unavailable');return state(d);}});assert.equal(r.forms.length,1);assert.equal(r.skipped,1);d.destroy();});
+test('ordinary Collab text is extracted from the saved Yjs document',()=>{const d=new Y.Doc(),paragraph=new Y.XmlElement('paragraph'),text=new Y.XmlText();text.insert(0,'Learners compare two holiday choices.');paragraph.insert(0,[text]);d.getXmlFragment('default').insert(0,[paragraph]);assert.match(documentFromState(state(d)).text,/two holiday choices/);d.destroy();});
+test('search checks all accessible preview cards before opening a few original documents',async()=>{
+ const files=Array.from({length:18},(_,i)=>({id:'doc-'+i,data:()=>({kind:'doc',owner:'teacher',docKey:'key-'+i,title:'Notes '+i,coachIndex:{version:1,preview:i===17?'holiday vocabulary and travel choices':'unrelated classroom notes',forms:''}})}));
+ const reads=[],db={collection:()=>({where:(_,op)=>({get:async()=>({docs:op==='=='?files:[]})})}),doc:()=>({update:async()=>{}})};
+ const d=new Y.Doc(),paragraph=new Y.XmlElement('paragraph'),t=new Y.XmlText();t.insert(0,'Holiday vocabulary for a seaside trip.');paragraph.insert(0,[t]);d.getXmlFragment('default').insert(0,[paragraph]);
+ const result=await loadStudioForms(db,'teacher','holiday vocabulary',null,{read:async key=>{reads.push(key);return state(d);}});
+ assert.equal(reads.length,12);assert.ok(reads.includes('key-17'),'older matching source must outrank newer unrelated documents');assert.equal(result.documents.length,3);assert.match(result.scope,/18 accessible Collab documents/);d.destroy();
+});
+test('older documents are opened and indexed so future searches need fewer full reads',async()=>{
+ const d=new Y.Doc(),paragraph=new Y.XmlElement('paragraph'),t=new Y.XmlText();t.insert(0,'We practised listening with a short dialogue.');paragraph.insert(0,[t]);d.getXmlFragment('default').insert(0,[paragraph]);
+ const writes=[],files=[{id:'old',data:()=>({kind:'doc',owner:'teacher',docKey:'old-key',title:'Listening notes'})}];
+ const db={collection:()=>({where:(_,op)=>({get:async()=>({docs:op==='=='?files:[]})})}),doc:path=>({update:async patch=>writes.push({path,patch})})};
+ await loadStudioForms(db,'teacher','listening',null,{read:async()=>state(d)});
+ assert.equal(writes.length,1);assert.equal(writes[0].path,'sharedDocs/old');assert.equal(writes[0].patch.coachIndex.version,1);assert.match(writes[0].patch.coachIndex.preview,/short dialogue/);d.destroy();
+});
+test('title and form previews outrank incidental document text',()=>{const prompt='observing dialogue';assert.ok(documentCandidateScore(prompt,{title:'Observing dialogue'})>documentCandidateScore(prompt,{title:'Notes',coachIndex:{forms:'observing dialogue',preview:''}}));assert.ok(documentCandidateScore(prompt,{title:'Notes',coachIndex:{forms:'observing dialogue',preview:''}})>documentCandidateScore(prompt,{title:'Notes',coachIndex:{forms:'',preview:'observing dialogue'}}));});
+test('relevant evidence near the end of an opened document reaches the coach',()=>{const text=['Introduction',...Array.from({length:40},()=>('General notes about the class. '.repeat(10))),'The quiet learners responded when paired before whole-class feedback.'].join('\n');const excerpt=relevantDocumentExcerpt(text,'quiet learners feedback');assert.match(excerpt,/quiet learners responded/);assert.ok(excerpt.length<=3200);});
+test('an attached form remains primary while related documents can contribute',async()=>{
+ const {d}=make(),related=new Y.Doc(),p=new Y.XmlElement('paragraph'),t=new Y.XmlText();t.insert(0,'Quiet learners responded after the teacher gave preparation time.');p.insert(0,[t]);related.getXmlFragment('default').insert(0,[p]);
+ const files=[{id:'selected',data:()=>({kind:'doc',owner:'teacher',docKey:'selected-key',title:'Current plan',coachIndex:{version:1,preview:'',forms:'Quiet learners'}})},{id:'related',data:()=>({kind:'doc',owner:'teacher',docKey:'related-key',title:'Participation notes',coachIndex:{version:1,preview:'Quiet learners responded after preparation time',forms:''}})}];
+ const db={doc:path=>({get:async()=>files.find(f=>path.endsWith(f.id))}),collection:()=>({where:(_,op)=>({get:async()=>({docs:op==='=='?files:[]})})})};
+ const result=await loadStudioForms(db,'teacher','quiet learners participation',{docId:'selected',formId:'form-1'},{read:async key=>state(key==='selected-key'?d:related)});
+ assert.equal(result.forms[0].docId,'selected');assert.equal(result.documents[0].id,'related');assert.match(result.scope,/2 accessible Collab documents/);d.destroy();related.destroy();
+});
