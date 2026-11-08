@@ -29,4 +29,9 @@ try {
   await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();assert.equal(await input.inputValue(),'Monday');await l.reload();await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();await l.waitForFunction(()=>document.querySelector('[data-qid="email-gap"] input')?.value==='Monday');assert.equal(await input.inputValue(),'Monday');assert.deepEqual(await protectedData(),saved);
  }
  console.log('PASS Actual learner autosave, cross-tab class updates and reloads preserve nested answers and task/key JSON in both styles');assert.deepEqual(errors,[]);
+ await p.evaluate(async({classId,itemId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId),{locked:true});},demo);
+ await l.locator('.locked-lesson').waitFor();await l.locator('.frame-body').first().waitFor({state:'hidden'});
+ await p.evaluate(async({classId,itemId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId),{locked:false});},demo);
+ await l.locator('.locked-lesson').waitFor({state:'hidden'});await l.locator('.frame-body').first().waitFor();
+ console.log('PASS Locking a lesson clears learner content and unlocking restores the task');
 } catch(e) {console.log('DIAGNOSTIC',learnerPage?.url(),await learnerPage?.locator('body').innerText(),await learnerPage?.evaluate(()=>({uid:sessionStorage.getItem('mockuid')})));throw e;} finally {await b.close();}

@@ -23,7 +23,7 @@ import { PollCard } from '../components/Poll';
 import { examScope, fmt, startExam, submitExam, timeLeft, useMyRun } from '../lib/exam';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item } from '../lib/classes';
@@ -118,17 +118,27 @@ export function LearnerLesson() {
   useEffect(() => {
     if (!classId) return;
     const u1 = onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }));
-    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => s.exists() && setItem({ id: s.id, ...(s.data() as Omit<Item, 'id'>) }));
-    const u3 = onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
-      setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden && t.print?.show !== 'paper'));
-    });
-    return () => (u1(), u2(), u3());
+    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => setItem(s.exists() ? { id: s.id, ...(s.data() as Omit<Item, 'id'>) } : null));
+    return () => (u1(), u2());
   }, [classId, itemId]);
+
+  useEffect(() => {
+    if (!classId || !item || item.id !== itemId || item.hidden || item.locked) {
+      setTasks([]);
+      return;
+    }
+    // The database rules require the same visibility filter. Clear cached content if access
+    // changes while this page is open, rather than retaining the last readable snapshot.
+    return onSnapshot(query(tasksCol(classId, itemId), where('hidden', '==', false)), (s) => {
+      setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) }))
+        .filter((t) => t.print?.show !== 'paper').sort((a, b) => a.order - b.order));
+    }, () => setTasks([]));
+  }, [classId, itemId, item?.id, item?.hidden, item?.locked]);
 
   // Groups and versions: each learner sees one version of a task, in the main task's place.
   const myLevels = useMyLevels(classId, user?.uid);
   const canOpen = (t: Task) => !t.restricted || !!t.allowed?.includes(learnerId);
-  const withBodies = useTaskBodies(classId, itemId, rawTasks, canOpen);
+  const withBodies = useTaskBodies(classId, itemId, rawTasks, (t) => !t.locked && canOpen(t));
   const tasks = useMemo(() => {
     const out: (Task & { needsLevel?: boolean; levels?: Task[] })[] = [];
     for (const m of withBodies) {

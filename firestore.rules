@@ -30,6 +30,10 @@ service cloud.firestore {
     function editsItem(classId, itemId) {
       return signedIn() && request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('editors', {});
     }
+    function learnerMayOpenItem(classId, itemId) {
+      let item = get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data;
+      return item.get('hidden', false) == false && item.get('locked', false) == false;
+    }
     // A super admin: runs accounts, organisations, switches and support (see lib/admin.ts). The
     // app's owner always is one; other super admins are in superAdmins/{email}, by a verified email.
     function isOwner() {
@@ -284,7 +288,11 @@ service cloud.firestore {
         allow write: if teachesClass(classId) || (editsItem(classId, itemId) && request.resource.data.get('editors', {}) == resource.data.get('editors', {}));
 
         match /tasks/{taskId} {
-          allow read: if viewsClass(classId) || memberOf(classId) || editsItem(classId, itemId);
+          // A task hidden by its teacher, lesson or topic must not be readable through a direct
+          // database request. Learner collection queries include hidden == false.
+          allow read: if viewsClass(classId) || editsItem(classId, itemId)
+            || (memberOf(classId) && learnerMayOpenItem(classId, itemId)
+              && resource.data.hidden == false);
           allow write: if teachesClass(classId) || editsItem(classId, itemId);
 
           // Earlier versions of the task (with answers): teacher only
@@ -297,10 +305,14 @@ service cloud.firestore {
           // Body: the content of a task only some learners may open (groups and versions).
           match /private/{docId} {
             allow read: if viewsClass(classId) || editsItem(classId, itemId)
-              || (docId == 'body' && memberOf(classId)
+              || (docId == 'body' && memberOf(classId) && learnerMayOpenItem(classId, itemId)
+                  && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('hidden', false) == false
+                  && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('locked', false) == false
                   && get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
                      in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
-              || (docId == 'key' && memberOf(classId)
+              || (docId == 'key' && memberOf(classId) && learnerMayOpenItem(classId, itemId)
+                  && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('hidden', false) == false
+                  && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('locked', false) == false
                   && (get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('restricted', false) == false
                       || get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
                          in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
