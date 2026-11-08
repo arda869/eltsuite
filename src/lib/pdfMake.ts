@@ -28,10 +28,43 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' | 'A5' =
     if (!pages.length) throw new Error('The worksheet has no pages yet.');
     const size: [number, number] = paper === 'Letter' ? [215.9, 279.4] : paper === 'A5' ? [148, 210] : [210, 297];
     const pdf = new jsPDF({ unit: 'mm', format: paper.toLowerCase() });
+    const usableJpeg = async (src: string) => {
+      if (!src.startsWith('data:image/jpeg;base64,') || src.length < 1000) return false;
+      const img = new Image();
+      img.src = src;
+      try { await img.decode(); } catch { return false; }
+      if (!img.naturalWidth || !img.naturalHeight) return false;
+      // A failed browser capture can also return a perfectly valid, entirely white JPEG.
+      const sample = document.createElement('canvas');
+      sample.width = 96;
+      sample.height = 136;
+      const ctx = sample.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return false;
+      ctx.drawImage(img, 0, 0, sample.width, sample.height);
+      const rgba = ctx.getImageData(0, 0, sample.width, sample.height).data;
+      let marks = 0;
+      for (let p = 0; p < rgba.length; p += 4) if (rgba[p] < 230 || rgba[p + 1] < 230 || rgba[p + 2] < 230) marks++;
+      return marks > 12;
+    };
     for (let i = 0; i < pages.length; i++) {
       // The browser draws the page itself (through SVG), so every colour and font comes out as on screen.
       const r = pages[i].getBoundingClientRect();
-      const jpg = await h2i.toJpeg(pages[i], { pixelRatio: 2, quality: 0.92, backgroundColor: '#ffffff', cacheBust: false, width: Math.round(r.width), height: Math.round(r.height), style: { margin: '0', boxShadow: 'none', transform: 'none' } });
+      if (r.width < 100 || r.height < 100) throw new Error(`Worksheet page ${i + 1} has no printable size. Please try again.`);
+      const options = { quality: 0.92, backgroundColor: '#ffffff', cacheBust: false, width: Math.round(r.width), height: Math.round(r.height), style: { margin: '0', boxShadow: 'none', transform: 'none' } };
+      let jpg = '';
+      try { jpg = await h2i.toJpeg(pages[i], { ...options, pixelRatio: 2 }); } catch { /* retry below */ }
+      if (!(await usableJpeg(jpg))) {
+        try { jpg = await h2i.toJpeg(pages[i], { ...options, pixelRatio: 1 }); } catch { /* use the fallback below */ }
+      }
+      if (!(await usableJpeg(jpg))) {
+        // Some browsers exhaust the SVG foreignObject canvas on later pages. Use a separate
+        // renderer for those pages rather than putting a zero-size image into the PDF.
+        const { default: html2canvas } = await import('html2canvas');
+        plainColours(d);
+        const canvas = await html2canvas(pages[i], { scale: 1.5, backgroundColor: '#ffffff', useCORS: true, logging: false });
+        jpg = canvas.toDataURL('image/jpeg', 0.92);
+      }
+      if (!(await usableJpeg(jpg))) throw new Error(`Worksheet page ${i + 1} could not be drawn. No PDF was saved; please try again.`);
       if (i) pdf.addPage();
       pdf.addImage(jpg, 'JPEG', 0, 0, size[0], size[1]);
     }

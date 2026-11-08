@@ -162,6 +162,11 @@ export function LearnerLesson() {
     }
     return out;
   }, [withBodies, myLevels, learnerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const taskList = useMemo(() => [
+    ...tasks,
+    ...(item?.lockedTaskOutlines ?? []).filter((outline) => !tasks.some((t) => t.id === outline.id))
+      .map((outline) => ({ ...outline, locked: true })),
+  ].sort((a, b) => a.order - b.order), [tasks, item?.lockedTaskOutlines]);
   // The entry in the list for a task id (the teacher may be on another version of it).
   const entryFor = (id?: string) => {
     if (!id) return undefined;
@@ -219,7 +224,11 @@ export function LearnerLesson() {
   useEffect(() => {
     setRevealKey(null);
     if ((!revealN && !singles.length) || !classId || !current) return;
-    loadKey(classId, itemId, current).then(setRevealKey).catch(() => setRevealKey(null));
+    let active = true;
+    loadKey(classId, itemId, current)
+      .then((answerKey) => { if (active) setRevealKey(answerKey); })
+      .catch(() => { if (active) setRevealKey(null); });
+    return () => { active = false; };
   }, [revealN !== 0 || singles.length > 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load this learner's saved answers for the current task.
@@ -237,7 +246,11 @@ export function LearnerLesson() {
     const answerBase = { learnerUid: user.uid, learnerId, itemId, taskId: current };
     const localDraft = saves.draft(current, answerBase);
     if (localDraft) setResponses(localDraft);
-    return onSnapshot(answerRef(classId, current, user.uid), { includeMetadataChanges: true }, async (s) => {
+    let active = true;
+    let version = 0;
+    const unsubscribe = onSnapshot(answerRef(classId, current, user.uid), { includeMetadataChanges: true }, async (s) => {
+      if (!active) return;
+      const snapshotVersion = ++version;
       setPendingSave(s.metadata.hasPendingWrites);
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
@@ -248,12 +261,16 @@ export function LearnerLesson() {
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
       setCheckedParts(d?.checkedParts ?? []);
-      if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
+      if (d?.checked) {
+        const answerKey = await loadKey(classId, itemId, current).catch(() => null);
+        if (active && snapshotVersion === version) setKey(answerKey);
+      }
       else if (d?.checkedParts?.length) {
         const result = await checkSubTask(classId, itemId, current, '', 'read').catch(() => null);
-        if (result) setKey(result.key);
-      }
+        if (active && snapshotVersion === version) setKey(result?.key ?? null);
+      } else setKey(null);
     }, () => setCheckError('We couldn’t load your saved answers. Reload the lesson to try again.'));
+    return () => { active = false; unsubscribe(); };
   }, [classId, itemId, current, user, saves]);
 
   const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
@@ -284,7 +301,7 @@ export function LearnerLesson() {
   const subTasks = useMemo(() => subTasksOf(task?.content), [task]);
   const partIds = subTasks.map((node, i) => String(node.attrs?.id || `st${i}`));
   const partQuestionIds = subTasks.map((node) => questionIds(node, withShared).map((q) => q.id));
-  const groupedChecking = subTasks.length > 0 && qs.length > 0 && partQuestionIds.every((part) => part.length > 0) && qs.every((q) => partQuestionIds.some((part) => part.includes(q.id)));
+  const groupedChecking = subTasks.length > 0 && qs.length > 0 && qs.every((q) => partQuestionIds.some((part) => part.includes(q.id)));
   const checkedQuestionIds = groupedChecking ? checkedParts.flatMap((id) => partQuestionIds[partIds.indexOf(id)] ?? []) : undefined;
   const answerReady = readyAnswer === `${classId}:${current}:${user?.uid ?? ''}`;
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
@@ -529,7 +546,7 @@ export function LearnerLesson() {
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
           </span>
-          {tasks.map((t) =>
+          {taskList.map((t) =>
             t.kind === 'section' ? (
               <span key={t.id} className="section-label">
                 {t.title}
@@ -554,7 +571,7 @@ export function LearnerLesson() {
             </div>
             ),
           )}
-          {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks available yet.</span>}
+          {taskList.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks available yet.</span>}
         </nav>
 
         <div className="center-col">

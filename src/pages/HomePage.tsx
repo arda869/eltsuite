@@ -162,7 +162,7 @@ export function HomePage() {
                 <h2 id="hm-coming">Coming up</h2>
                 <Link to="/timetable" className="hm-more">Timetable</Link>
               </header>
-              {classes === null && !classesError ? <p className="hm-empty" role="status">Loading your schedule…</p> : coming.length || due.length || upcoming.length ? (
+              {lessonsLoading && !classesError ? <p className="hm-empty" role="status">Loading your schedule…</p> : coming.length || due.length || upcoming.length ? (
                 <ol className="hm-agenda">
                   {upcoming.map((o) => {
                     const c = active.find((x) => x.id === o.s.classId);
@@ -223,7 +223,7 @@ export function HomePage() {
                       <span className="hm-class-band" aria-hidden="true" />
                       <b>{c.name}</b>
                       <span className="hint">
-                        {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {(items[c.id] ?? []).length} {(items[c.id] ?? []).length === 1 ? 'lesson' : 'lessons'}
+                        {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {items[c.id] === undefined ? 'Loading lessons…' : `${items[c.id].length} ${items[c.id].length === 1 ? 'lesson' : 'lessons'}`}
                       </span>
                       {classDates(c) && <span className={'hm-dates ph-' + classPhase(c)}>{classPhase(c) === 'soon' ? 'Starts soon · ' : classPhase(c) === 'done' ? 'Finished · ' : ''}{classDates(c)}</span>}
                       {isLive(live[c.id] ?? null) && <span className="hm-live-pill">Live</span>}

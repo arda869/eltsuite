@@ -41,7 +41,7 @@ const id = v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v);
 const fail = message => { throw new HttpsError('invalid-argument', message); };
 const criteria = 'objectives and evidence; coherence; level and context; linguistic accuracy; meaningful communication; scaffolding and differentiation; timing and feasibility; instructions and interaction; assessment and feedback; accessibility and inclusion; teacher notes and keys';
 
-export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], maxInstances: 2, concurrency: 4, timeoutSeconds: 540 }, async req => {
+export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], memory: '1GiB', maxInstances: 2, concurrency: 4, timeoutSeconds: 540 }, async req => {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   if (req.data?.action === 'coach') return teachingCoach(req, { apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};

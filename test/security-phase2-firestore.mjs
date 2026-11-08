@@ -197,10 +197,13 @@ try {
     learnerUid: 'learner', learnerId: 'one', itemId: 'i1', taskId: 'tmixed',
     responses: { q1: 'one' }, checked: false,
   });
-  const mixed = await assessTaskForLearner(admin, { uid: 'learner' }, {
+  await assert.rejects(() => assessTaskForLearner(admin, { uid: 'learner' }, {
     classId: 'c1', itemId: 'i1', taskId: 'tmixed',
+  }), { code: 'failed-precondition' }, 'a discussion-only part must not expose answers through whole-task checking');
+  const mixed = await checkSubTaskForLearner(admin, { uid: 'learner' }, {
+    classId: 'c1', itemId: 'i1', taskId: 'tmixed', partId: 'part1', action: 'check',
   });
-  assert.equal(mixed.checked, true, 'a part without questions must allow whole-task checking');
+  assert.equal(mixed.complete, true, 'the answered part completes a task with a discussion-only part');
   assert.equal((await admin.doc('classes/c1/answers/tmixed_learner').get()).get('score'), 1);
   await admin.doc('classes/c1/items/exam').set({ type: 'exam', exam: { minutes: 5 }, hidden: false, locked: false });
   const started = await runExamForLearner(admin, { uid: 'learner' }, { classId: 'c1', scope: 'i_exam', action: 'start' }, 1000);

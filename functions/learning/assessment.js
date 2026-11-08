@@ -56,10 +56,9 @@ export async function assessTaskForLearner(db, auth, data, now = Date.now()) {
     if (!scope && parts.length && !answer.get('checked')) {
       const partQuestions = parts.map(part => questionIds(part, questionResponses));
       const covered = new Set(partQuestions.flatMap(part => part.map(q => q.id)));
-      // An empty part cannot be checked on its own. Keep whole-task checking available
-      // for those activities, just as the learner screen does.
-      if (questions.length && partQuestions.every(part => part.length > 0)
-          && questions.every(q => covered.has(q.id)))
+      // Content-only parts do not need checking. Assessable parts still have to be
+      // checked separately so one part cannot reveal another part's answers.
+      if (questions.length && questions.every(q => covered.has(q.id)))
         throw new HttpsError('failed-precondition', 'Check each part of this activity separately.');
     }
     if (action === 'reset') {
