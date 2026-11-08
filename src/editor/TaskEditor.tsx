@@ -842,7 +842,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                       aria-expanded={!!questionAnchor}
                       aria-label="Questions" data-tip="Questions: gaps, choices, matching and more"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => { const anchor = e.currentTarget; setQuestionAnchor(current => current === anchor ? null : anchor); }}
+                      onClick={(e) => { const anchor = e.currentTarget; setGallery(false); setQuestionAnchor(current => current === anchor ? null : anchor); }}
                     >
                       {TOOL_FACE.questions}
                     </button>,
@@ -852,7 +852,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['icons', <IconTool key="i" editor={editor} />],
             ['symbols', <SymbolTool key="s" editor={editor} />],
             ['pron', <ProsodyTool key="p" editor={editor} />],
-            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), TOOL_FACE.add)]] as [string, React.ReactNode][]) : []),
+            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => { setQuestionAnchor(null); setGallery(true); }, TOOL_FACE.add)]] as [string, React.ReactNode][]) : []),
           ];
           const shown = tools.filter(([k]) => toolPlace(k) === 'show');
           const more = tools.filter(([k]) => toolPlace(k) === 'more');
