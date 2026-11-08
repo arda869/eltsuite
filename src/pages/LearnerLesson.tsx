@@ -68,6 +68,16 @@ import { subTasksOf } from '../editor/SubTask';
 import { checkSubTask } from '../lib/subtaskCheck';
 import { assessTask, resubmitCorrection } from '../lib/assessment';
 import { ResponseSaveQueue } from '../lib/responseSaveQueue';
+import { readProxy } from '../lib/proxy';
+
+function feedbackFailure(error: unknown) {
+  const code = (error as { code?: string })?.code ?? '';
+  if (code.includes('permission-denied') && readProxy()?.token)
+    return 'Answer feedback is unavailable in the admin learner preview. Sign in as the learner to check answers.';
+  if (code.includes('failed-precondition') && String((error as Error)?.message ?? '').includes('Check each part'))
+    return 'Check each part of this activity separately.';
+  return 'Your answers are saved, but feedback could not load. Try loading feedback again.';
+}
 
 export function LearnerLesson() {
   const { itemId = '' } = useParams();
@@ -354,7 +364,7 @@ export function LearnerLesson() {
   async function retryFeedback() {
     setBusy(true);setCheckError('');
     try { await finishCheck(); }
-    catch { setCheckError('Your answers are saved, but feedback could not load. Try loading feedback again.'); }
+    catch (error) { setCheckError(feedbackFailure(error)); }
     finally { setBusy(false); }
   }
   async function check() {
@@ -370,8 +380,8 @@ export function LearnerLesson() {
     window.clearTimeout(timer.current);
     try {
       await finishCheck();
-    } catch {
-      setCheckError('Your answers are saved, but feedback could not load. Try loading feedback again.');
+    } catch (error) {
+      setCheckError(feedbackFailure(error));
     } finally {
       dirty.current = false;
       setBusy(false);
