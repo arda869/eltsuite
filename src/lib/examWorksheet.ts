@@ -18,6 +18,8 @@ export function examSheetCss() {
 .opts { font-style: normal; }
 .callout, .sortcol, .dgw-c, .k-cline .dgw-c { background: var(--tint); border: .7pt solid var(--tint-line); border-radius: 0; }
 .callout { border-left: 2pt solid var(--accent); }
+.unit .ws-box .tbox.s-paper { background: var(--tint); border: .8pt solid var(--tint-line); border-left: 2pt solid var(--accent); border-radius: 0; box-shadow: none; clip-path: none; transform: none; color: var(--ink); }
+.unit .ws-box .paper-wrap { filter: none; }
 .unit .tbox.s-sticky { background: var(--tint); border-left: 2pt solid var(--accent); box-shadow: none; }
 .callout .c-label, .dgw-t, .dgw-l { color: var(--accent-ink); }
 .wordbox span, .kw { border-color: var(--accent-ink); border-radius: 0; }
