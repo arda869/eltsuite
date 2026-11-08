@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 const dailyKey = defineSecret('DAILY_API_KEY');
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
+const roomName = (classId, secure = false) => (`c-${classId}${secure ? '-secure' : ''}`).slice(0, 60);
 
 // A class link alone does not admit anyone. Only the server can issue a short-lived
 // Daily token after checking the signed-in teacher or class member.
@@ -16,7 +17,9 @@ export async function issueClassVideoToken(db, uid, classId, key, request = fetc
   ]);
   const user = userSnap.data();
   const klass = classSnap.data();
-  if (!klass || klass.status !== 'active' || !validId(klass.video?.room) || !klass.video?.url || klass.video?.paused)
+  if (!klass || klass.status !== 'active' || klass.video?.private !== true ||
+      ![roomName(classId), roomName(classId, true)].includes(klass.video?.room) ||
+      !klass.video?.url || klass.video?.paused)
     throw new HttpsError('failed-precondition', 'This class video room is unavailable.');
   const teacher = user?.role === 'teacher' && (klass.teacherId === uid || klass.coTeachers?.[uid]?.role === 'co');
   const learner = user?.role === 'learner' && (await db.doc(`classes/${classId}/members/${uid}`).get()).exists;

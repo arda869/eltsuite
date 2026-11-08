@@ -6,7 +6,7 @@ function fixture(role = 'learner', member = true) {
   const reads = [];
   const docs = {
     'users/learner-one': { role, displayName: 'Mia' },
-    'classes/class-one': { status: 'active', teacherId: 'teacher-one', video: { room: 'c-class-one', url: 'https://rooms.example/c-class-one' } },
+    'classes/class-one': { status: 'active', teacherId: 'teacher-one', video: { room: 'c-class-one', url: 'https://rooms.example/c-class-one', private: true } },
     ...(member ? { 'classes/class-one/members/learner-one': { learnerId: 'mia' } } : {}),
   };
   const db = { doc: path => ({ get: async () => {
@@ -40,6 +40,18 @@ test('revoked learners and unrelated accounts cannot request admission', async (
     await assert.rejects(issueClassVideoToken(db, 'learner-one', 'class-one', 'provider-key', async () => { called = true; }), /unavailable to this account/);
     assert.equal(called, false);
   }
+});
+
+test('a class record cannot request a token for another room or an unmigrated public room', async () => {
+  const { db, docs } = fixture();
+  let requested = false;
+  const request = async () => { requested = true; };
+  docs['classes/class-one'].video.room = 'c-another-class';
+  await assert.rejects(issueClassVideoToken(db, 'learner-one', 'class-one', 'provider-key', request), /unavailable/);
+  docs['classes/class-one'].video.room = 'c-class-one';
+  docs['classes/class-one'].video.private = false;
+  await assert.rejects(issueClassVideoToken(db, 'learner-one', 'class-one', 'provider-key', request), /unavailable/);
+  assert.equal(requested, false);
 });
 
 test('class teacher receives host authority from the trusted server', async () => {
