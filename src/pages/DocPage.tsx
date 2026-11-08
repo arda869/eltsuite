@@ -201,7 +201,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
     return [...all.values()];
   }, [dir, teachersOnly]);
   const s = q.trim().toLowerCase();
-  const found = people.filter((p) => !members?.[p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
+  const found = people.filter((p) => !members?.[p.authUid || p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
   const go = async () => {
     if (!picked.length) return;
     setBusy(true);

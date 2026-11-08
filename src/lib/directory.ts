@@ -84,7 +84,7 @@ export function useDirectory(): Directory | null {
           if (!ls) { classError = true; return; }
           const group = groups.get(c.id);
           if (!group) return;
-          groups.set(c.id, { ...group, people: [...group.people.filter((p) => p.role === 'teacher'), ...ls.docs.map((d) => ({ key: d.id, name: String(d.data().displayName ?? 'Learner'), role: 'learner' as const, classId: c.id })).sort((a, b) => a.name.localeCompare(b.name))] });
+          groups.set(c.id, { ...group, people: [...group.people.filter((p) => p.role === 'teacher'), ...ls.docs.map((d) => ({ key: d.id, name: String(d.data().displayName ?? 'Learner'), role: 'learner' as const, classId: c.id, authUid: typeof d.data().authUid === 'string' ? d.data().authUid as string : undefined })).sort((a, b) => a.name.localeCompare(b.name))] });
           publish(true);
         }));
       } catch { classError = true; }
