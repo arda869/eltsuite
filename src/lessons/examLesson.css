@@ -99,6 +99,35 @@
 .task-frame[data-lesson-style='exam'] .tbox.s-info { border-left: 3px solid var(--exam-blue); }
 .task-frame[data-lesson-style='exam'] .gap-input { border-bottom: 1.5px dotted var(--exam-blue); }
 .task-frame[data-lesson-style='exam'] .frame-foot { border-top-color: var(--exam-line); background: #fff; }
+/* Keep the printed exam sheet white, while the on-screen task follows dark mode. */
+@media screen {
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] {
+    --exam-blue: var(--accent-text);
+    --exam-navy: var(--accent-text);
+    --exam-ink: #ece7df;
+    --exam-wash: color-mix(in srgb, var(--accent) 12%, #282724);
+    --exam-line: color-mix(in srgb, var(--accent) 32%, #595650);
+    --ink: #ece7df;
+    --muted: #b1aba2;
+    --paper: #22211e;
+    --card: #22211e;
+    --surface: #2b2926;
+    --hair: rgba(236, 231, 223, .14);
+    --hair-strong: var(--exam-line);
+    background: var(--paper);
+    border-color: var(--exam-line);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, .2);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] :is(.frame-head, .frame-body) {
+    background: var(--paper);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .frame-foot {
+    background: var(--surface);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .rich-answer-doc {
+    color: var(--pen);
+  }
+}
 @media (max-width: 640px) {
   .task-frame[data-lesson-style='exam'] .frame-head { padding: 16px 16px 14px; }
   .task-frame[data-lesson-style='exam'] .frame-body { padding: 16px; }
