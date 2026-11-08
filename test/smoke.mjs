@@ -2140,6 +2140,9 @@ const J = {
     const s = await session(b);
     await s.p.goto(`${BASE}/messages`);
     await see(s.p, 'main, .msg, [class*=msg]', 'Messages');
+    await s.p.getByRole('searchbox', { name: 'Search conversations and people' }).fill('Mia');
+    await s.p.getByRole('option', { name: /Mia Chan/ }).click();
+    await see(s.p, '[aria-label="Message history"]', 'a conversation started from the main search');
     await s.p.getByRole('option', { name: /Teacher’s Companion/ }).click();
     await see(s.p, '.coach-chat-tools', 'Companion actions in the message view');
     for(const name of ['History','New chat'])if(!(await s.p.getByRole('button',{name,exact:true}).count()))throw Error('Missing Companion action: '+name);
