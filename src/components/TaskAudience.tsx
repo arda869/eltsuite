@@ -14,6 +14,7 @@ export function TaskAudience({
   tasks,
   sets,
   roster,
+  choices,
   onMakeVersion,
   onOpen,
   onOpenGroups,
@@ -24,6 +25,7 @@ export function TaskAudience({
   tasks: Task[];
   sets: GroupSet[];
   roster: Person[];
+  choices: Record<string, string>;
   onMakeVersion: (label: string) => void;
   onOpen: (id: string) => void;
   onOpenGroups: () => void;
@@ -70,6 +72,11 @@ export function TaskAudience({
     );
   const set = sets.find((s) => s.id === (a.mode === 'groups' ? a.groupSetId : d.groupSetId));
   const dSet = sets.find((s) => s.id === d.groupSetId);
+  const audienceRoster = roster.filter((person) => {
+    if (a.mode === 'all') return true;
+    if (a.mode === 'learners') return (a.learnerIds ?? []).includes(person.id);
+    return (set?.groups ?? []).some((group) => (a.groupIds ?? []).includes(group.id) && group.members.includes(person.id));
+  });
 
   return (
     <div className="aud">
@@ -185,10 +192,26 @@ export function TaskAudience({
             </div>
           )}
           {d.mode === 'choose' && (
-            <label className="pop-check">
-              <input type="checkbox" checked={d.canChange !== false} onChange={() => setD({ canChange: d.canChange === false })} />
-              Learners can change after they start
-            </label>
+            <>
+              <label className="pop-check">
+                <input type="checkbox" checked={d.canChange !== false} onChange={() => setD({ canChange: d.canChange === false })} />
+                Learners can change after they start
+              </label>
+              {audienceRoster.length > 0 && (
+                <div className="aud-map" aria-label="Learner version choices">
+                  <span className="hint">Learner choices</span>
+                  {audienceRoster.map((person) => {
+                    const picked = fam.find((version) => version.id === choices[person.id]);
+                    return (
+                      <div className="aud-map-row" key={person.id}>
+                        <span>{person.name}</span>
+                        <span>{picked ? (levels || !/^[A-Z]$/.test(labelOf(picked)) ? labelOf(picked) : `Version ${labelOf(picked)}`) : 'Not chosen yet'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
           {(d.mode === 'room' || d.mode === 'role') && <span className="hint">Learners who aren’t in a group get {levels ? labelOf(main) : `Version ${labelOf(main)}`}.</span>}
         </>
