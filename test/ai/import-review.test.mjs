@@ -7,7 +7,7 @@ const lesson=()=>importLesson([{...importElements.gap,prompt:'The capital of Fra
 const verdict=(tasks,issues=[])=>({value:{tasks:tasks.map(t=>({stageId:t.stageId,summary:issues.length?'Incorrect key compared with source.':'Instructions, native gap interaction and key match the source.',issues}))}});
 test('each task is checked against the original including blank optional instructions',async()=>{
  const rebuilt=lesson();rebuilt.tasks.push({...structuredClone(rebuilt.tasks[0]),stageId:'second'});let calls=0;
- const r=await senseCheckImport({rebuilt,source,training:false,run:async o=>{calls++;assert.equal(o.name,'importSenseCheck');assert.equal(o.input.sourceText,source.text);assert.equal(o.input.teacherChanges,'');assert.equal(o.input.tasks.length,2);return verdict(o.input.tasks);}});
+ const r=await senseCheckImport({rebuilt,source,training:false,run:async o=>{calls++;assert.equal(o.name,'importSenseCheck');assert.equal(o.input.sourceText,source.text);assert.equal(o.input.teacherChanges,'');assert.equal(o.input.tasks.length,2);assert.deepEqual(o.input.rebuiltTaskOutline.map(t=>t.stageId),rebuilt.tasks.map(t=>t.stageId));return verdict(o.input.tasks);}});
  assert.equal(calls,1);assert.ok(r.checks.every(c=>c.status==='passed'));assert.equal(r.checks[0].hash,importTaskHash(r.rebuilt.tasks[0]));
 });
 test('wrong answers are repaired from source and independently rechecked before being marked repaired',async()=>{
