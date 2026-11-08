@@ -3,7 +3,7 @@
 export function examSheetCss() {
   return `
 :root { --ink: #17202b; --muted: #4b5563; }
-.page .cols, .page .cols * { font-family: Arial, sans-serif !important; }
+.unit, .unit * { font-family: Arial, sans-serif !important; }
 .page { color: var(--ink); }
 .section h2 { color: var(--accent-ink); letter-spacing: .12em; }
 .section h2::after { background: var(--accent); opacity: .42; }
