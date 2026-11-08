@@ -127,9 +127,9 @@ export function LearnerLesson() {
       setTasks([]);
       return;
     }
-    // The database rules require the same visibility filter. Clear cached content if access
-    // changes while this page is open, rather than retaining the last readable snapshot.
-    return onSnapshot(query(tasksCol(classId, itemId), where('hidden', '==', false)), (s) => {
+    // Task documents can contain full content, so the database returns only shown, unlocked
+    // tasks. Clear cached content if access changes while this page is open.
+    return onSnapshot(query(tasksCol(classId, itemId), where('hidden', '==', false), where('locked', '==', false)), (s) => {
       setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) }))
         .filter((t) => t.print?.show !== 'paper').sort((a, b) => a.order - b.order));
     }, () => setTasks([]));
@@ -544,7 +544,7 @@ export function LearnerLesson() {
             </div>
             ),
           )}
-          {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks yet.</span>}
+          {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks available yet.</span>}
         </nav>
 
         <div className="center-col">
