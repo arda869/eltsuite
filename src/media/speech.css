@@ -71,3 +71,14 @@
 :root[data-theme='dark'] .speech-audience-switch button[aria-checked='true'] { background: var(--paper); color: var(--ink); }
 :root[data-theme='dark'] .speech-dialog :is(.speech-preview-note, .speech-transcript, .speech-hint, .speech-feedback) { color: var(--muted); }
 :root[data-theme='dark'] .recording-transcript { background: var(--bg); color: var(--ink); border-color: var(--hair); }
+:root[data-theme='dark'] .recording-transcript>p { color: var(--muted); }
+:root[data-theme='dark'] .recording-transcript .speech-eyebrow { color: var(--accent-text); }
+:root[data-theme='dark'] .recording-script-rows>div { background: var(--paper); border-color: var(--hair-strong); color: var(--ink); }
+:root[data-theme='dark'] .recording-script-rows>div.effect { background: var(--surface); }
+:root[data-theme='dark'] .recording-script-rows label { color: var(--muted); }
+:root[data-theme='dark'] .recording-script-rows :is(textarea,input,select) { background: var(--surface); border-color: var(--hair-strong); color: var(--ink); }
+:root[data-theme='dark'] .recording-script-time { color: var(--accent-text); }
+:root[data-theme='dark'] .recording-script-rows small { color: var(--muted); }
+.speech-window-actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.speech-row-actions .ai-button { gap: 0; }
+:root[data-theme='dark'] .speech-hint kbd { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hair-strong); }
