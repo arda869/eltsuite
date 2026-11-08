@@ -13,24 +13,32 @@ export async function runRoomMaintenance(db, KEY, request = fetch) {
   for (const c of classes.docs) {
     let v = c.data().video ?? {};
     const host = await c.ref.collection('video').doc('host').get();
-    const fresh = host.exists && (host.data().exp ?? 0) * 1000 > Date.now() + 30 * DAY;
-    // Existing public rooms must be closed to link-only entry. The app now asks
-    // the server for a short-lived token for each authorised class participant.
+    // A legacy room has a host token valid for up to a year. Changing only its
+    // privacy would leave that old token usable after access is revoked. Make a
+    // replacement first, then retire the old room before publishing its URL.
     if (v.url && v.room && !v.private) {
-      const secured = await api('/rooms/' + v.room, { privacy: 'private', properties: { enable_chat: false, enable_knocking: false } });
-      if (!secured.ok) {
-        console.error('A class room could not be secured', c.id, secured.status);
+      const name = ('c-' + c.id + '-secure').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
+      const replacement = await api('/rooms', { name, privacy: 'private', properties: { enable_screenshare: true, enable_chat: false, enable_knocking: false, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
+      const room = replacement.ok ? replacement : await api('/rooms/' + name);
+      if (!room.ok || !room.j.url) {
+        console.error('A replacement class room could not be made', c.id, room.status);
         continue;
       }
-      v = { ...v, private: true, noChat: true };
+      const retired = await api('/rooms/' + v.room, undefined, 'DELETE');
+      if (!retired.ok && retired.status !== 404) {
+        console.error('A legacy class room could not be retired', c.id, retired.status);
+        continue;
+      }
+      v = { ...v, url: room.j.url, room: name, at: Date.now(), private: true, noChat: true };
       await c.ref.set({ video: v }, { merge: true });
+      if (host.exists) await c.ref.collection('video').doc('host').delete();
     }
     // Rooms made before chat was turned off in calls: turned off once.
     if (v.url && !v.noChat) {
       const u = await api('/rooms/' + v.room, { properties: { enable_chat: false } });
       if (u.ok) await c.ref.set({ video: { ...v, noChat: true } }, { merge: true });
     }
-    if (v.url && fresh) continue;
+    if (v.url) continue;
     const name = ('c-' + c.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
     let room = await api('/rooms', { name, privacy: 'private', properties: { enable_screenshare: true, enable_chat: false, enable_knocking: false, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
     if (!room.ok) room = await api('/rooms/' + name);
@@ -38,14 +46,7 @@ export async function runRoomMaintenance(db, KEY, request = fetch) {
       console.log('A room could not be made for', c.id, room.status);
       continue;
     }
-    const exp = Math.floor((Date.now() + 365 * DAY) / 1000);
-    const tok = await api('/meeting-tokens', { properties: { room_name: name, is_owner: true, exp } });
-    if (!tok.ok) {
-      console.log('No host key for', c.id, tok.status);
-      continue;
-    }
     await c.ref.set({ video: { url: room.j.url, room: name, at: Date.now(), noChat: true, private: true } }, { merge: true });
-    await c.ref.collection('video').doc('host').set({ token: tok.j.token, exp });
     made++;
   }
   console.log(`Video rooms: ${made} made or renewed.`);
