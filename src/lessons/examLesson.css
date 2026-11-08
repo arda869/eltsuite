@@ -79,10 +79,22 @@
   background: var(--exam-wash);
   border-bottom: 1px solid var(--exam-line);
 }
-.task-frame[data-lesson-style='exam'] :is(.tbox.s-box, .tbox.s-info, .callout, .sortcol, .dgw-c) {
+.task-frame[data-lesson-style='exam'] :is(.tbox.s-box, .tbox.s-info, .tbox.s-paper, .callout, .sortcol, .dgw-c) {
   border: 1px solid var(--exam-line);
   border-radius: 2px;
   background: var(--exam-wash);
+  color: var(--exam-ink);
+}
+.task-frame[data-lesson-style='exam'] .tbox.s-paper {
+  transform: none;
+  clip-path: none;
+  box-shadow: none;
+}
+:root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .tbox.s-paper {
+  background: var(--exam-wash);
+  border-color: var(--exam-line);
+  color: var(--exam-ink);
+  box-shadow: none;
 }
 .task-frame[data-lesson-style='exam'] .tbox.s-info { border-left: 3px solid var(--exam-blue); }
 .task-frame[data-lesson-style='exam'] .gap-input { border-bottom: 1.5px dotted var(--exam-blue); }
