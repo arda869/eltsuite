@@ -88,6 +88,8 @@ export function LearnerLesson() {
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null>(null);
   const [rawTasks, setTasks] = useState<Task[]>([]);
+  const [loadedTaskScope, setLoadedTaskScope] = useState('');
+  const [taskLoadError, setTaskLoadError] = useState(false);
   const [current, setCurrent] = useState('');
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState(false);
@@ -133,8 +135,11 @@ export function LearnerLesson() {
   }, [classId, itemId]);
 
   useEffect(() => {
+    setLoadedTaskScope('');
+    setTaskLoadError(false);
     if (!classId || !item || item.id !== itemId || item.hidden || item.locked) {
       setTasks([]);
+      if (item?.id === itemId && (item.hidden || item.locked)) setLoadedTaskScope(`${classId}:${itemId}`);
       return;
     }
     // Task documents can contain full content, so the database returns only shown, unlocked
@@ -142,8 +147,14 @@ export function LearnerLesson() {
     return onSnapshot(query(tasksCol(classId, itemId), where('hidden', '==', false), where('locked', '==', false)), (s) => {
       setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) }))
         .filter((t) => t.print?.show !== 'paper').sort((a, b) => a.order - b.order));
-    }, () => setTasks([]));
+      setLoadedTaskScope(`${classId}:${itemId}`);
+    }, () => {
+      setTasks([]);
+      setTaskLoadError(true);
+      setLoadedTaskScope(`${classId}:${itemId}`);
+    });
   }, [classId, itemId, item?.id, item?.hidden, item?.locked]);
+  const tasksLoading = !item || loadedTaskScope !== `${classId}:${itemId}`;
 
   // Groups and versions: each learner sees one version of a task, in the main task's place.
   const myLevels = useMyLevels(classId, user?.uid);
@@ -574,7 +585,7 @@ export function LearnerLesson() {
             </div>
             ),
           )}
-          {taskList.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks available yet.</span>}
+          {taskList.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>{tasksLoading ? 'Loading tasks…' : taskLoadError ? 'Tasks could not load. Try refreshing the page.' : 'No tasks available yet.'}</span>}
         </nav>
 
         <div className="center-col">
@@ -802,7 +813,11 @@ export function LearnerLesson() {
               </div>
             </div>
           ) : (
-            tasks.length === 0 ? (
+            tasksLoading ? (
+              <div className="frame-loading"><Loader label="Loading tasks" /></div>
+            ) : taskLoadError ? (
+              <p className="placeholder" style={{ padding: 24 }}>Tasks could not load. Try refreshing the page.</p>
+            ) : tasks.length === 0 ? (
               <p className="placeholder" style={{ padding: 24 }}>
                 Your teacher hasn’t added tasks to this lesson yet.
               </p>
