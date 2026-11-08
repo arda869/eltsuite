@@ -432,9 +432,9 @@ export function LessonEditor() {
   };
   const [sheetW, setSheetWState] = useState(() => {
     try {
-      return Number(localStorage.getItem('ll.sheetW')) || 45;
+      return Number(localStorage.getItem('ll.sheetW')) || 52;
     } catch {
-      return 45;
+      return 52;
     }
   });
   const setSheetW = (w: number) => {
@@ -1400,7 +1400,7 @@ export function LessonEditor() {
                         Whole page
                       </button>
                     </span>
-                    <span className="hint">{sheetEdit ? 'Click a task to edit it, or outside the tasks to close the editor' : 'Click a task to edit it'}</span>
+                    {sheetEdit ? <button type="button" className="btn small-btn" onClick={() => setSheetEdit(false)}>Expand page</button> : <span className="hint">Click a task to edit it</span>}
                   </div>
                   <SheetView
                     parts={sheetData.parts}
