@@ -288,11 +288,11 @@ service cloud.firestore {
         allow write: if teachesClass(classId) || (editsItem(classId, itemId) && request.resource.data.get('editors', {}) == resource.data.get('editors', {}));
 
         match /tasks/{taskId} {
-          // A task hidden by its teacher, lesson or topic must not be readable through a direct
-          // database request. Learner collection queries include hidden == false.
+          // A hidden or locked task can contain its full teaching material in this document.
+          // Learners may query only tasks that the teacher has both shown and unlocked.
           allow read: if viewsClass(classId) || editsItem(classId, itemId)
             || (memberOf(classId) && learnerMayOpenItem(classId, itemId)
-              && resource.data.hidden == false);
+              && resource.data.hidden == false && resource.data.locked == false);
           allow write: if teachesClass(classId) || editsItem(classId, itemId);
 
           // Earlier versions of the task (with answers): teacher only

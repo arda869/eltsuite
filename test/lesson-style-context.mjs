@@ -34,4 +34,11 @@ try {
  await p.evaluate(async({classId,itemId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId),{locked:false});},demo);
  await l.locator('.locked-lesson').waitFor({state:'hidden'});await l.locator('.frame-body').first().waitFor();
  console.log('PASS Locking a lesson clears learner content and unlocking restores the task');
+ await p.evaluate(async({classId,itemId,taskId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId,'tasks',taskId),{locked:true});},{...demo,taskId});
+ await l.locator('.task-frame .frame-inner').first().waitFor({state:'hidden'});
+ assert.equal(await l.getByText('Presentation context fixture').count(),0,'locked task title must disappear from the learner view');
+ await p.evaluate(async({classId,itemId,taskId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId,'tasks',taskId),{locked:false});},{...demo,taskId});
+ await l.locator('.task-frame').first().waitFor();await l.waitForFunction(()=>document.querySelector('[data-qid="email-gap"] input')?.value==='Monday');
+ assert.deepEqual(await protectedData(),saved);
+ console.log('PASS Locking a task clears learner content and unlocking restores saved work');
 } catch(e) {console.log('DIAGNOSTIC',learnerPage?.url(),await learnerPage?.locator('body').innerText(),await learnerPage?.evaluate(()=>({uid:sessionStorage.getItem('mockuid')})));throw e;} finally {await b.close();}
