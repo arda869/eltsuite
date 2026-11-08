@@ -76,7 +76,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   useEffect(() => {
     const unsubs = [
       onSnapshot(doc(db, 'classes', classId), (s) => setC(s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }) : null), () => setC(null)),
-      onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => {}),
+      onSnapshot(query(collection(db, 'classes', classId, 'topics'), where('hidden', '==', false)), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => {}),
       onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => setItems([])),
     ];
     unsubs.push(onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}));
@@ -84,7 +84,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   }, [classId]);
 
   const t = theme(c?.themeColor);
-  const visible = items.filter((i) => !i.hidden && !topics.find((tp) => tp.id === i.topicId)?.hidden);
+  const visible = items.filter((i) => !i.hidden && (!i.topicId || topics.some((tp) => tp.id === i.topicId)));
   const lockedItem = (i: Item) => i.locked || !!topics.find((tp) => tp.id === i.topicId)?.locked;
   const [section, setSection] = useState<Item['type']>('lesson');
   const answers = useMyAnswers(classId, user?.uid);
@@ -106,11 +106,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
     .filter(({ i, r }) => r.status !== 'marked' && !(r.status === 'submitted' && (!i.due || Date.now() - i.due > 7 * 86400000) && i.type !== 'exam'))
     .sort((a, b) => (a.i.due ?? Infinity) - (b.i.due ?? Infinity));
   const firstName = name.split(' ')[0];
-  // Progress: lessons worked on, average score, where to carry on.
+  // Progress: lessons worked on and where to carry on. Scores stay in teacher reports.
   const lessons = visible.filter((i) => i.type === 'lesson');
   const lessonsDone = lessons.filter((i) => answers.some((a) => a.itemId === i.id && (a.checked || a.examSubmittedMs || Object.keys(a.responses ?? {}).length))).length;
-  const checked = answers.filter((a) => a.checked && (a.total ?? 0) > 0);
-  const avg = checked.length ? Math.round((checked.reduce((s, a) => s + (a.score ?? 0), 0) / checked.reduce((s, a) => s + (a.total ?? 0), 0)) * 100) : null;
   const lastAnswer = [...answers].filter((a) => visible.some((i) => i.id === a.itemId)).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0))[0];
   const carryOn = lastAnswer ? visible.find((i) => i.id === lastAnswer.itemId) : undefined;
   const latestThreads = threads.filter((x) => x.approved && !x.hidden).slice(0, 3);
@@ -380,16 +378,6 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               <span className="hint">
                 {lessonsDone} of {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} worked on
               </span>
-              {avg === null ? (
-                <p className="hint lh-empty">Your score shows here after your first checked lesson.</p>
-              ) : (
-                <div className="lh-stats">
-                  <span>
-                    <b>{`${avg}%`}</b>
-                    <span className="hint">right answers</span>
-                  </span>
-                </div>
-              )}
             </section>
             {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
           {recaps.length > 0 && (

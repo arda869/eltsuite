@@ -2998,10 +2998,6 @@ html, body { background: var(--page); }
 .lh-card { background: var(--card); border: 1px solid var(--hair); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .lh-card h2 { font-size: 15px; margin: 0; }
 .lh-bar { height: 8px; border-radius: 999px; background: #ebe9e5; overflow: hidden; } .lh-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
-.lh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
-.lh-stats > * { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; background: var(--tint); text-decoration: none; color: inherit; }
-.lh-stats b { font: 600 20px var(--serif); color: var(--accent-text); }
-.lh-stats .hint { font-size: 11px; line-height: 1.3; }
 .lh-carry { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 14px 52px 14px 18px; border-radius: 14px; background: var(--card); border: 1px solid var(--hair); box-shadow: inset 3px 0 0 var(--accent); text-decoration: none; color: inherit; }
 .lh-carry:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 .lh-carry-title { font: 17px var(--serif); }
@@ -3014,9 +3010,10 @@ html, body { background: var(--page); }
 @media (max-width: 900px) { .lh-cols { grid-template-columns: 1fr; } .lh-side { position: static; } .lh-cover { height: 100px; } }
 .lh-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 46%); align-items: stretch; }
 .lh-hero .lh-hello { justify-content: center; padding: 22px 26px; }
-.lh-hero .lh-cover { height: auto; min-height: 150px; aspect-ratio: 3 / 1; }
+.lh-hero .lh-cover { width: 100%; min-width: 0; height: auto; min-height: 150px; aspect-ratio: auto; }
+.lh-hero .lh-cover svg { width: 100%; height: 100%; }
 .page-cover { aspect-ratio: auto; }
-@media (max-width: 900px) { .lh-hero { grid-template-columns: 1fr; } .lh-hero .lh-cover { order: -1; min-height: 0; } }
+@media (max-width: 900px) { .lh-hero { grid-template-columns: 1fr; } .lh-hero .lh-cover { order: -1; height: clamp(110px, 22vw, 180px); min-height: 0; } }
 .home { flex-wrap: nowrap; }
 .home main { flex: 1 1 auto; }
 .home .attention { flex: 0 0 320px; max-width: 320px; }

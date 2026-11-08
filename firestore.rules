@@ -280,7 +280,7 @@ service cloud.firestore {
 
       // Content learners can see
       match /topics/{topicId} {
-        allow read: if viewsClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || (memberOf(classId) && resource.data.hidden == false);
         allow write: if teachesClass(classId);
       }
       match /items/{itemId} {
@@ -343,6 +343,13 @@ service cloud.firestore {
             && d.learnerId == get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
             && answerId == d.taskId + '_' + request.auth.uid;
         }
+        function validEngagement(d) {
+          let e = d.get('engagement', {});
+          return e is map && e.keys().hasOnly(['version', 'activeMs', 'questions'])
+            && e.get('version', 0) == 1 && e.get('activeMs', -1) is int
+            && e.activeMs >= 0 && e.activeMs <= 604800000
+            && e.get('questions', {}) is map && e.questions.keys().size() <= 500;
+        }
         function examStillOpen(d) {
           let item = get(/databases/$(database)/documents/classes/$(classId)/items/$(d.itemId)).data;
           let task = get(/databases/$(database)/documents/classes/$(classId)/items/$(d.itemId)/tasks/$(d.taskId)).data;
@@ -361,11 +368,16 @@ service cloud.firestore {
           || (memberOf(classId) && (resource == null || resource.data.get('learnerUid', '') == request.auth.uid));
         allow create: if validAnswerOwner(request.resource.data) && examStillOpen(request.resource.data)
           && request.resource.data.get('checked', false) == false
-          && request.resource.data.keys().hasOnly(['learnerUid', 'learnerId', 'itemId', 'taskId', 'responses', 'checked', 'updatedAt', 'flags']);
+          && request.resource.data.keys().hasOnly(['learnerUid', 'learnerId', 'itemId', 'taskId', 'responses', 'checked', 'updatedAt', 'flags', 'engagement'])
+          && (!('engagement' in request.resource.data) || validEngagement(request.resource.data));
         allow update: if validAnswerOwner(request.resource.data) && examStillOpen(request.resource.data)
           && resource.data.get('checked', false) == false
           && request.resource.data.itemId == resource.data.itemId && request.resource.data.taskId == resource.data.taskId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responses', 'updatedAt', 'flags']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responses', 'updatedAt', 'flags', 'engagement'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['engagement'])
+            || (validEngagement(request.resource.data)
+              && request.resource.data.engagement.activeMs >= resource.data.get('engagement', {}).get('activeMs', 0)
+              && request.resource.data.engagement.activeMs <= resource.data.get('engagement', {}).get('activeMs', 0) + 3600000));
         // The teacher only adds marks and comments.
         allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'corrections']);
         allow delete: if teachesClass(classId);

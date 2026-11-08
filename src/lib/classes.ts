@@ -140,7 +140,7 @@ export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'sp
 
 export async function addTopic(classId: string, name: string, order: number) {
   const ref = doc(collection(db, 'classes', classId, 'topics'));
-  await setDoc(ref, { name, order, createdAt: serverTimestamp() });
+  await setDoc(ref, { name, order, hidden: false, createdAt: serverTimestamp() });
   return ref.id;
 }
 

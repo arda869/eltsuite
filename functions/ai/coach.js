@@ -1,6 +1,7 @@
 import {findTeacherLessons} from './coach-lessons.js';
 import {coachHistoryKey} from './coach-history.js';
 import {loadStudioForms} from './coach-forms.js';
+import {findTeacherPdfs} from './coach-pdfs.js';
 import { loadLessonSource, lessonSourceForPrompt } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
@@ -42,14 +43,16 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   if(input.formContext&&!permissions.forms)throw new HttpsError('failed-precondition','Collab form context is switched off. Enable it in Coach settings or remove the selected form.');
   if(input.lessonContext&&!permissions.lessons)throw new HttpsError('failed-precondition','Lesson context is switched off. Enable it in Coach settings or remove the selected lesson.');
   const lessonForQuestion=lessonSourceForPrompt(input.lessonContext,input.prompt);
-  const [studio,selectedLesson,foundLessons]=await Promise.all([
+  const [studio,selectedLesson,foundLessons,foundPdfs]=await Promise.all([
     permissions.forms?loadStudioForms(db,uid,input.prompt,input.formContext):null,
     lessonForQuestion?loadLessonSource(db,uid,lessonForQuestion,{games:permissions.games}):null,
     permissions.lessons?findTeacherLessons(db,uid,input.prompt,lessonForQuestion,{games:permissions.games}):null,
+    permissions.forms?findTeacherPdfs(db,uid,input.prompt):null,
   ]);
   if(studio){const {forms,documents,scope}=studio;context.formScope=scope;basis.push(scope);if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}if(documents.length){context.documents=documents;sources.push(...documents.map(d=>({title:d.title,url:'/doc/'+d.id})));basis.push(...documents.map(d=>'Collab document: '+d.title));}}
   if(selectedLesson){context.lesson=selectedLesson.context;sources.push(...selectedLesson.sources);basis.push(...selectedLesson.sources.map(s=>s.title));}
   if(foundLessons){context.lessonSearchScope=foundLessons.scope;if(foundLessons.lessons.length){context.relatedLessons=foundLessons.lessons.map(l=>({className:l.className,...l.context}));sources.push(...foundLessons.lessons.flatMap(l=>l.sources));basis.push(...foundLessons.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(foundLessons.scope);}
+  if(foundPdfs){context.pdfSearchScope=foundPdfs.scope;if(foundPdfs.pdfs.length){context.pdfs=foundPdfs.pdfs;sources.push(...foundPdfs.pdfs.map(p=>({title:p.title,url:'/doc/'+p.id})));basis.push(...foundPdfs.pdfs.map(p=>'PDF: '+p.title));}basis.push(foundPdfs.scope);}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
     basis.push('Your professional profile');
