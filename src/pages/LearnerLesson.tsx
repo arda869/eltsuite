@@ -426,8 +426,11 @@ export function LearnerLesson() {
       setChecked(result.complete);
       if (result.complete && (item?.type === 'practice' || item?.type === 'homework'))
         recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, result.key, responses).catch(() => {});
-    } catch {
-      setCheckError(saved ? 'Could not check this part. Your answers are saved; please try again.' : 'Could not save your answers. Check your connection and try again.');
+    } catch (error) {
+      const reason = feedbackFailure(error);
+      setCheckError(!saved ? 'Could not save your answers. Check your connection and try again.'
+        : reason.startsWith('Your answers are saved') ? 'Could not check this part. Your answers are saved; please try again.'
+          : reason);
     } finally {
       dirty.current = !saved;
       setCheckingPart('');

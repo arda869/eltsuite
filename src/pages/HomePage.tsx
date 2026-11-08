@@ -67,7 +67,7 @@ export function HomePage() {
 
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const unread = (chats ?? []).filter((c) => unreadIn(c, uid));
-  const lessons = Object.values(items).reduce((n, l) => n + l.length, 0);
+  const lessons = Object.values(items).reduce((n, list) => n + list.filter((item) => item.type === 'lesson').length, 0);
   const lessonsLoading = classes === null || active.some((c) => items[c.id] === undefined);
   const sessions = useTeacherSessions(uid, active.map((c) => c.id));
   const coming = useMemo(
@@ -223,7 +223,7 @@ export function HomePage() {
                       <span className="hm-class-band" aria-hidden="true" />
                       <b>{c.name}</b>
                       <span className="hint">
-                        {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {items[c.id] === undefined ? 'Loading lessons…' : `${items[c.id].length} ${items[c.id].length === 1 ? 'lesson' : 'lessons'}`}
+                        {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {items[c.id] === undefined ? 'Loading lessons…' : `${items[c.id].filter((item) => item.type === 'lesson').length} ${items[c.id].filter((item) => item.type === 'lesson').length === 1 ? 'lesson' : 'lessons'}`}
                       </span>
                       {classDates(c) && <span className={'hm-dates ph-' + classPhase(c)}>{classPhase(c) === 'soon' ? 'Starts soon · ' : classPhase(c) === 'done' ? 'Finished · ' : ''}{classDates(c)}</span>}
                       {isLive(live[c.id] ?? null) && <span className="hm-live-pill">Live</span>}
