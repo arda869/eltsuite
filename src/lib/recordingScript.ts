@@ -9,7 +9,7 @@ export function recordingScript(p: Project): ScriptLine[] {
   const solo = p.tracks.some(t => t.solo);
   const lines = p.lines.filter(l => l.text.trim()).map(l => {
     const track = p.tracks.find(t => t.id === l.track);
-    const who = track ? track.name.trim() : l.who || (voices.length > 1 ? voices[0]?.name : '');
+    const who = track?.songRole === 'vocals' ? '' : track ? track.name.trim() : l.who || (voices.length > 1 ? voices[0]?.name : '');
     return { text: l.text.trim(), t: +l.a.toFixed(2), e: +l.b.toFixed(2), ...(who && !/^\([^)]*\)$/.test(l.text.trim()) ? { who } : {}) };
   });
   for (const t of p.tracks.filter(t => t.kind === 'sfx' && !t.mute && (!solo || t.solo))) {

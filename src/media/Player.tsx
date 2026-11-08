@@ -3,6 +3,7 @@ import {app} from '../lib/firebase';
 import { tr } from '../lib/terms';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { loadManifest, soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
+import { expandSavedSongScript } from '../lib/songScript';
 import { UiIcon } from '../components/UiIcon';
 import { decodeSound, fmtTime, peaks as peaksOf, toMono } from '../lib/sound';
 import { broadcast, useLiveAudio } from '../lib/liveAudio';
@@ -581,7 +582,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
   const [open, setOpen] = useState<boolean|null>(null);
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
   useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
-  const lines = (e.m?.script ?? []).filter((l) => l.text.trim());
+  const lines = (e.m?.stems ? expandSavedSongScript(e.m.script ?? [], e.m.duration || e.duration || 0).map(line => ({ ...line, who: undefined })) : (e.m?.script ?? [])).filter((l) => l.text.trim());
   useEffect(()=>{
     let active=true;setScriptRecovery('');
     if(!teacher||!e.m?.aiGenerated||lines.length||!(editing||scriptMode!=='none'||open))return;
