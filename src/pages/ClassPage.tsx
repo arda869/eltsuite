@@ -28,17 +28,18 @@ import { useAuth } from '../lib/auth';
 type Tab = 'lessons' | 'learners' | 'notebook' | 'reports' | 'discussion' | 'portfolio';
 
 function useCollection<T>(path: string[], ready: boolean) {
-  const [rows, setRows] = useState<T[]>([]);
   const key = path.join('/');
+  const [state, setState] = useState<{ key: string; rows: T[]; loaded: boolean; error: boolean }>({ key, rows: [], loaded: false, error: false });
   useEffect(() => {
     if (!ready) return;
     return onSnapshot(
       collection(db, key),
-      (s) => setRows(s.docs.map((d) => ({ id: d.id, ...d.data() }) as T)),
-      (e) => console.error(key, e),
+      { includeMetadataChanges: true },
+      (s) => setState({ key, rows: s.docs.map((d) => ({ id: d.id, ...d.data() }) as T), loaded: !s.metadata.fromCache || !navigator.onLine, error: false }),
+      (e) => { console.error(key, e); setState((current) => ({ key, rows: current.key === key ? current.rows : [], loaded: false, error: true })); },
     );
   }, [key, ready]);
-  return rows;
+  return state.key === key ? state : { key, rows: [] as T[], loaded: false, error: false };
 }
 
 export function ClassPage() {
@@ -85,10 +86,13 @@ export function ClassPage() {
   }, [classId, why.attempt]);
 
   const ok = !!c;
-  const topics = useCollection<Topic>(['classes', classId, 'topics'], ok);
-  const items = useCollection<Item>(['classes', classId, 'items'], ok);
-  const learners = useCollection<Learner>(['classes', classId, 'learners'], ok);
-  const secrets = useCollection<{ id: string; pin?: string; own?: boolean; kind?: string }>(['classes', classId, 'secrets'], ok);
+  const topicState = useCollection<Topic>(['classes', classId, 'topics'], ok);
+  const itemState = useCollection<Item>(['classes', classId, 'items'], ok);
+  const learnerState = useCollection<Learner>(['classes', classId, 'learners'], ok);
+  const secretState = useCollection<{ id: string; pin?: string; own?: boolean; kind?: string }>(['classes', classId, 'secrets'], ok);
+  const topics = topicState.rows, items = itemState.rows, learners = learnerState.rows, secrets = secretState.rows;
+  const contentReady = topicState.loaded && itemState.loaded && learnerState.loaded && (tab !== 'learners' || secretState.loaded);
+  const contentError = topicState.error || itemState.error || learnerState.error || (tab === 'learners' && secretState.error);
   const pins = Object.fromEntries(secrets.filter((s) => !s.own).map((s) => [s.id, s.pin ?? '']));
   const ownSecret = Object.fromEntries(secrets.filter((s) => s.own).map((s) => [s.id, s.kind === 'password' ? 'password' : 'PIN']));
 
@@ -158,8 +162,10 @@ export function ClassPage() {
         </div>
       )}
       {c === undefined && <Loader full label="Opening the class" />}
+      {c && !contentReady && !contentError && <Loader full label="Loading class content" />}
+      {c && contentError && <div className="class-missing" role="alert"><h1 className="page-title">We couldn’t load the class content</h1><p>Check your connection and try again.</p><button type="button" className="btn" onClick={() => window.location.reload()}>Try again</button></div>}
 
-      {c && (
+      {c && contentReady && (
         <>
           <div className="class-hero">
           <div className="ch-text">
