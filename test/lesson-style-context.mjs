@@ -41,4 +41,11 @@ try {
  await l.locator('.task-frame').first().waitFor();await l.waitForFunction(()=>document.querySelector('[data-qid="email-gap"] input')?.value==='Monday');
  assert.deepEqual(await protectedData(),saved);
  console.log('PASS Locking a task clears learner content and unlocking restores saved work');
+ await p.evaluate(async({classId,itemId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId),{hidden:true});},demo);
+ await l.locator('.task-frame .frame-inner').first().waitFor({state:'hidden'});
+ await l.goto(`${BASE}/`);
+ assert.equal(await l.locator(`a[href="/learn/${demo.itemId}"]`).count(),0,'hidden lesson must leave the learner class list');
+ await p.evaluate(async({classId,itemId})=>{const{doc,updateDoc}=await import('/test/mock/firestore.ts');await updateDoc(doc({},'classes',classId,'items',itemId),{hidden:false});},demo);
+ await l.locator(`a[href="/learn/${demo.itemId}"]`).first().waitFor();
+ console.log('PASS Hiding a lesson clears its learner content and class-list entry, and restoring it returns the entry');
 } catch(e) {console.log('DIAGNOSTIC',learnerPage?.url(),await learnerPage?.locator('body').innerText(),await learnerPage?.evaluate(()=>({uid:sessionStorage.getItem('mockuid')})));throw e;} finally {await b.close();}

@@ -284,7 +284,10 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
       match /items/{itemId} {
-        allow read: if viewsClass(classId) || memberOf(classId) || (signedIn() && request.auth.uid in resource.data.get('editors', {}));
+        // Item documents can hold board pages. A hidden lesson must not be readable
+        // merely because the account belongs to the class.
+        allow read: if viewsClass(classId) || (memberOf(classId) && resource.data.hidden == false)
+          || (signedIn() && request.auth.uid in resource.data.get('editors', {}));
         allow write: if teachesClass(classId) || (editsItem(classId, itemId) && request.resource.data.get('editors', {}) == resource.data.get('editors', {}));
 
         match /tasks/{taskId} {

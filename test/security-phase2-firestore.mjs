@@ -49,8 +49,15 @@ try {
   await admin.doc('classes/c1/learners/one').set({ displayName: 'One', authUid: 'learner' });
   await admin.doc('classes/c1/learners/two').set({ displayName: 'Two', authUid: 'other' });
   await admin.doc('classes/c1/items/i1').set({ type: 'lesson', hidden: false, locked: false });
+  await admin.doc('classes/c1/items/iHidden').set({ type: 'lesson', hidden: true, locked: false,
+    boardPages: [{ text: 'Unreleased teacher material' }] });
   await admin.doc('classes/c1/items/i1/tasks/t1').set({ kind: 'task', hidden: false, locked: false, content: { type: 'doc', content: [] } });
   const learner = as('learner', true), other = as('other', true), teacher = as('teacher'), viewer = as('viewer'), outsider = as('outsider');
+  const visibleItems = await getDocs(query(collection(learner, 'classes/c1/items'), where('hidden', '==', false)));
+  assert.deepEqual(visibleItems.docs.map(d => d.id), ['i1']);
+  await denied('learner cannot read a hidden lesson and its board pages', () => getDoc(doc(learner, 'classes/c1/items/iHidden')));
+  await denied('learner item lists must filter hidden lessons', () => getDocs(collection(learner, 'classes/c1/items')));
+  await getDoc(doc(teacher, 'classes/c1/items/iHidden'));
   const taskPath = 'classes/c1/items/i1/tasks/t1';
   const bodyPath = `${taskPath}/private/body`;
   await admin.doc('classes/c1/items/i1/tasks/tHidden').set({ kind: 'task', hidden: true, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Not released' }] }] } });

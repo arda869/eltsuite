@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
@@ -24,7 +24,7 @@ export function LearnerNotebook() {
     const u = [
       onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }), () => {}),
       onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {}),
-      onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).filter((i) => !i.hidden).sort((a, b) => a.order - b.order)), () => {}),
+      onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).sort((a, b) => a.order - b.order)), () => setItems([])),
     ];
     return () => u.forEach((x) => x());
   }, [classId]);
