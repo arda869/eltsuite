@@ -325,7 +325,9 @@ function FolderView({ f, uid, onBack, folders }: { f: SharedFolder; uid: string;
       {sharing && (
         <SharePeople
           roles={rolesFor('folder')}
-          title={`Share the folder “${f.name}”`}
+          title="Share folder"
+          itemName={f.name}
+          ownerId={f.owner}
           ownerName={f.ownerName}
           members={f.members ?? {}}
           chatLabel="Send them a message about the folder"
