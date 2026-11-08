@@ -1,4 +1,5 @@
 import { writeNamedFile } from './fileNames';
+import { permissionUid } from './shareIdentity';
 import { noteFeature } from '../discovery/store';
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from 'firebase/firestore';
@@ -126,8 +127,12 @@ export const requestDocPurge = (id: string) => updateDoc(doc(col, id), { purgeRe
 
 export async function shareWith(d: SharedDoc, people: Person[], role: DocRole) {
   const patch: Record<string, any> = { updatedAt: serverTimestamp() }; // eslint-disable-line @typescript-eslint/no-explicit-any
-  for (const p of people) patch[`members.${p.key}`] = { role, name: p.name, kind: p.role };
-  patch.memberIds = [...new Set([...(d.memberIds ?? []), ...people.map((p) => p.key)])];
+  const uids = await Promise.all(people.map((p) => permissionUid(db, p)));
+  people.forEach((p, i) => {
+    patch[`members.${uids[i]}`] = { role, name: p.name, kind: p.role };
+    if (p.role === 'learner' && p.key !== uids[i] && d.members?.[p.key]) patch[`members.${p.key}`] = deleteField();
+  });
+  patch.memberIds = [...new Set([...(d.memberIds ?? []).filter((id) => !people.some((p, i) => p.role === 'learner' && p.key === id && id !== uids[i])), ...uids])];
   await updateDoc(doc(col, d.id), patch);
 }
 export const setMemberRole = (d: SharedDoc, uid: string, role: DocRole) => updateDoc(doc(col, d.id), { [`members.${uid}.role`]: role });
@@ -226,18 +231,24 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
 // Sharing a folder shares everything in it.
 export async function shareFolder(f: SharedFolder, people: Person[], role: DocRole, docs: SharedDoc[]) {
   const add: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner' }> = {};
-  for (const p of people) add[p.key] = { role, name: p.name, kind: p.role };
-  const memberIds = [...new Set([...(f.memberIds ?? []), ...people.map((p) => p.key)])];
-  await updateDoc(doc(fcol, f.id), { members: { ...(f.members ?? {}), ...add }, memberIds });
+  const uids = await Promise.all(people.map((p) => permissionUid(db, p)));
+  people.forEach((p, i) => { add[uids[i]] = { role, name: p.name, kind: p.role }; });
+  const staleIds = people.flatMap((p, i) => p.role === 'learner' && p.key !== uids[i] ? [p.key] : []);
+  const folderMembers = { ...(f.members ?? {}), ...add };
+  staleIds.forEach((id) => { delete folderMembers[id]; });
+  const memberIds = [...new Set([...(f.memberIds ?? []).filter((id) => !staleIds.includes(id)), ...uids])];
+  await updateDoc(doc(fcol, f.id), { members: folderMembers, memberIds });
   // Learners get documents and slides; everything else in the folder is for teachers.
   await Promise.all(
     docs
       .filter((d) => d.owner === f.owner)
       .map((d) => {
-        const who = people.filter((p) => p.role === 'teacher' || d.kind === 'doc' || d.kind === 'slides');
+        const who = people.map((p, i) => ({ p, uid: uids[i] })).filter(({ p }) => p.role === 'teacher' || d.kind === 'doc' || d.kind === 'slides');
         if (!who.length) return null;
-        const a = Object.fromEntries(who.map((p) => [p.key, add[p.key]]));
-        return updateDoc(doc(col, d.id), { members: { ...(d.members ?? {}), ...a }, memberIds: [...new Set([...(d.memberIds ?? []), ...who.map((p) => p.key)])] });
+        const a = Object.fromEntries(who.map(({ uid }) => [uid, add[uid]]));
+        const members = { ...(d.members ?? {}), ...a };
+        staleIds.forEach((id) => { delete members[id]; });
+        return updateDoc(doc(col, d.id), { members, memberIds: [...new Set([...(d.memberIds ?? []).filter((id) => !staleIds.includes(id)), ...who.map(({ uid }) => uid)])] });
       }),
   );
 }

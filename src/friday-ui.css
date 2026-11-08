@@ -204,7 +204,7 @@
 .chat .bub .bub-meta { color: color-mix(in srgb, var(--ink) 80%, var(--paper)); }
 
 .dp.k-doc .dp-main {padding-bottom:0;}
-.dp.k-doc .cd-page:not(.pg-on) {width:100%;max-width:none;padding-inline:var(--suite-gutter);}
+.dp.k-doc .cd-page:not(.pg-on) {width:100%;max-width:none;padding-inline:clamp(20px, 3vw, 40px);}
 .dp.k-doc:has(.pg-on) {background:var(--surface);}
 
 /* The document menus return on the first upward scroll. */

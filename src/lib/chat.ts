@@ -15,7 +15,7 @@ import type { AnswerKey } from './questions';
 //
 // Everyone has a key: a teacher's sign-in id, or a learner's learner id.
 
-export type Person = { key: string; name: string; role: 'teacher' | 'learner'; classId?: string };
+export type Person = { key: string; name: string; role: 'teacher' | 'learner'; classId?: string; authUid?: string };
 export type Chat = {
   id: string;
   members: string[];
