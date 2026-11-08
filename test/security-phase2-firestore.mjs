@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate, increment, serverTimestamp } from 'firebase/firestore';
 import { assessTaskForLearner, runExamForLearner } from '../functions/learning/assessment.js';
 import { checkSubTaskForLearner } from '../functions/learning/check-subtask.js';
 import { syncClassAccess } from '../functions/learning/class-access.js';
@@ -49,10 +49,17 @@ try {
   await admin.doc('classes/c1/learners/one').set({ displayName: 'One', authUid: 'learner' });
   await admin.doc('classes/c1/learners/two').set({ displayName: 'Two', authUid: 'other' });
   await admin.doc('classes/c1/items/i1').set({ type: 'lesson', hidden: false, locked: false });
+  await admin.doc('classes/c1/topics/shown').set({ name: 'Shown topic', order: 0, hidden: false });
+  await admin.doc('classes/c1/topics/secret').set({ name: 'Hidden topic', order: 1, hidden: true });
   await admin.doc('classes/c1/items/iHidden').set({ type: 'lesson', hidden: true, locked: false,
     boardPages: [{ text: 'Unreleased teacher material' }] });
   await admin.doc('classes/c1/items/i1/tasks/t1').set({ kind: 'task', hidden: false, locked: false, content: { type: 'doc', content: [] } });
   const learner = as('learner', true), other = as('other', true), teacher = as('teacher'), viewer = as('viewer'), outsider = as('outsider');
+  const shownTopics = await getDocs(query(collection(learner, 'classes/c1/topics'), where('hidden', '==', false)));
+  assert.deepEqual(shownTopics.docs.map(d => d.id), ['shown']);
+  await denied('learner cannot read hidden topic metadata', () => getDoc(doc(learner, 'classes/c1/topics/secret')));
+  await denied('learner topic lists must filter hidden metadata', () => getDocs(collection(learner, 'classes/c1/topics')));
+  await getDoc(doc(teacher, 'classes/c1/topics/secret'));
   const visibleItems = await getDocs(query(collection(learner, 'classes/c1/items'), where('hidden', '==', false)));
   assert.deepEqual(visibleItems.docs.map(d => d.id), ['i1']);
   await denied('learner cannot read a hidden lesson and its board pages', () => getDoc(doc(learner, 'classes/c1/items/iHidden')));
@@ -124,6 +131,15 @@ try {
   const answer = { learnerUid: 'learner', learnerId: 'one', itemId: 'i1', taskId: 't1', responses: {}, checked: false };
   await setDoc(doc(learner, 'classes/c1/answers/t1_learner'), answer);
   await updateDoc(doc(learner, 'classes/c1/answers/t1_learner'), { responses: { q1: 'answer' } });
+  await admin.doc('classes/c1/items/i1/tasks/t1-timed').set({ kind: 'task', hidden: false, locked: false, content: { type: 'doc', content: [] } });
+  const timedAnswer = doc(learner, 'classes/c1/answers/t1-timed_learner');
+  const timedBase = { learnerUid: 'learner', learnerId: 'one', itemId: 'i1', taskId: 't1-timed' };
+  await setDoc(timedAnswer, { ...timedBase, engagement: { version: 1, activeMs: increment(1200), questions: {} }, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(timedAnswer, { ...timedBase, responses: { q1: 'saved after timing' }, updatedAt: serverTimestamp() }, { merge: true });
+  assert.equal((await getDoc(timedAnswer)).data()?.responses?.q1, 'saved after timing');
+  await setDoc(timedAnswer, { ...timedBase, engagement: { version: 1, activeMs: increment(600), questions: {} }, updatedAt: serverTimestamp() }, { merge: true });
+  await denied('learner cannot forge a checked timed answer', () => updateDoc(timedAnswer, { checked: true }));
+  await denied('learner cannot forge a score on timed answer', () => updateDoc(timedAnswer, { score: 100, total: 100 }));
   await denied('learner cannot forge a score', () => updateDoc(doc(learner, 'classes/c1/answers/t1_learner'), { score: 100, total: 100 }));
   await denied('learner cannot submit without server grading', () => updateDoc(doc(learner, 'classes/c1/answers/t1_learner'), { checked: true }));
   await denied('learner cannot create a checked answer', () => setDoc(doc(learner, 'classes/c1/answers/t2_learner'), { ...answer, taskId: 't2', checked: true }));

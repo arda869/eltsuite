@@ -131,7 +131,9 @@ export const answerRef = (classId: string, taskId: string, uid: string) => doc(d
 export async function saveResponses(classId: string, base: Omit<AnswerDoc, 'checked' | 'responses'>, responses: Responses, checked = false, score?: { score: number; total: number }, extra: Partial<AnswerDoc> = {}) {
   await setDoc(
     answerRef(classId, base.taskId, base.learnerUid),
-    { ...base, responses, checked, ...(score ?? {}), ...extra, updatedAt: serverTimestamp() },
+    // A time-tracking record may already exist without a checked field. Only the
+    // assessment service can mark an answer checked; autosave must not add it.
+    { ...base, responses, ...(checked ? { checked } : {}), ...(score ?? {}), ...extra, updatedAt: serverTimestamp() },
     { merge: true },
   );
 }

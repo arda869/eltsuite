@@ -11,6 +11,7 @@
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.1.0",
     "onnxruntime-node": "^1.23.2",
+    "pdfjs-dist": "^4.10.38",
     "ws": "^8.18.3",
     "yjs": "^13.6.33"
   }

@@ -2,7 +2,7 @@ import { newImportElement } from '../../functions/ai/import-types.js';
 import { rebuilt } from './material-fixture.mjs';
 const data={
  picture:{ref:'source_illustration',sourceImage:1,x:10,y:10,width:80,height:60,alt:'A cat beside a car.',recreationPrompt:'Retain exactly one cat on the left and one car on the right.',asset:''},
- text:{text:'Read the source passage. Keep every instruction.'},gap:{answers:['went']},shortAnswer:{answers:['Saturday']},lettergap:{answers:['elephant'],firstLetter:false},wordform:{stem:'SUCCESS',answers:['successful']},
+ text:{text:'Read the source passage. Keep every instruction.'},boxedText:{style:'box',tone:'sky',label:'Writing task',text:'Write to a friend. Give two reasons for your choice.'},dialogue:{layout:'stacked',turns:[{speaker:'Student',text:'Where ___ we go?',answers:['should']},{speaker:'Friend',text:'Let us go camping.',answers:[]}]},gap:{answers:['went']},shortAnswer:{answers:['Saturday']},lettergap:{answers:['elephant'],firstLetter:false},wordform:{stem:'SUCCESS',answers:['successful']},
  radio:{options:['went','goes','gone'],answer:'went'},dropdown:{options:['went','goes','gone'],answer:'went'},multi:{options:['red','blue','dog'],answers:['red','blue']},truefalse:{answer:'True'},notgiven:{answer:'Not given'},
  match:{pairs:[{left:'cat',right:'an animal'},{left:'car',right:'a vehicle'}],extras:['a colour']},drop:{answer:'went'},bank:{extras:['going']},order:{sentence:'We went to school yesterday.'},
  writing:{model:'A model letter.',minWords:100,maxWords:140,genre:'letter',rubric:'none',criteria:[]},

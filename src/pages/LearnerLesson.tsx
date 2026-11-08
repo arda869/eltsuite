@@ -259,7 +259,7 @@ export function LearnerLesson() {
   useEffect(() => {
     if (!classId) return;
     const u1 = onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setNbItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).sort((a, b) => a.order - b.order)), () => setNbItems([]));
-    const u2 = onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setNbTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {});
+    const u2 = onSnapshot(query(collection(db, 'classes', classId, 'topics'), where('hidden', '==', false)), (s) => setNbTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {});
     return () => (u1(), u2());
   }, [classId]);
   const nbMe = user ? { uid: user.uid, name: profile?.role === 'learner' ? profile.displayName : '', learnerId, teacher: false } : null;
@@ -499,7 +499,7 @@ export function LearnerLesson() {
       <AnnouncementCards classId={classId} learnerId={learnerId} />
       {live?.liveQuiz && Date.now() - (live.liveQuiz.at || 0) < 4 * 3600 * 1000 && <LearnerQuizBanner quiz={live.liveQuiz} />}
       <LearnerLiveVideo c={c} live={live} myRoomId={myRoom?.id} itemId={itemId} />
-      {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
+      {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems.filter((i) => !i.topicId || nbTopics.some((t) => t.id === i.topicId))} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
       {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
       {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
       {liveHere && (

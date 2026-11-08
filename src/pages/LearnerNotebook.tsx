@@ -23,7 +23,7 @@ export function LearnerNotebook() {
     if (!classId) return;
     const u = [
       onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }), () => {}),
-      onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {}),
+      onSnapshot(query(collection(db, 'classes', classId, 'topics'), where('hidden', '==', false)), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {}),
       onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).sort((a, b) => a.order - b.order)), () => setItems([])),
     ];
     return () => u.forEach((x) => x());
@@ -49,7 +49,7 @@ export function LearnerNotebook() {
       <LearnerNav on="notebook" phoneOnly />
       <main className="nb-page">
         <h1 className="page-title">Notebook</h1>
-        <Notebook classId={classId} c={c} me={{ uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false }} items={items} topics={topics} focus={params.get('entry')} />
+        <Notebook classId={classId} c={c} me={{ uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false }} items={items.filter((i) => !i.topicId || topics.some((t) => t.id === i.topicId))} topics={topics} focus={params.get('entry')} />
       </main>
     </div>
   );
