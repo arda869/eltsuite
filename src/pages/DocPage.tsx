@@ -27,6 +27,7 @@ import { UiIcon } from '../components/UiIcon';
 import { FileComments } from '../components/FileComments';
 import { isImageFile } from '../design/files';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
+import { PersonFace } from '../components/avatars';
 import { AnyFile } from '../components/AnyFile';
 
 import { loadStart } from '../lib/fileStore';
@@ -168,7 +169,9 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
     <SharePeople
       roles={rolesFor(d.kind)}
       teachersOnly={!['doc', 'slides', 'pdf', 'file', 'design'].includes(d.kind)}
-      title={`Share “${d.title}”`}
+      title="Share document"
+      itemName={d.title}
+      ownerId={d.owner}
       ownerName={d.ownerName}
       members={d.members ?? {}}
       extra={Object.entries(d.classes ?? {}).map(([k, c]) => ({ k, name: c.name, about: `Whole class, in a lesson · ${ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}` }))}
@@ -186,7 +189,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   );
 }
 
-export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void | string>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+export function SharePeople({ title, itemName, ownerId, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; itemName?: string; ownerId?: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void | string>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -202,6 +205,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
   }, [dir, teachersOnly]);
   const s = q.trim().toLowerCase();
   const found = people.filter((p) => !members?.[p.authUid || p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
+  const faceId = (memberId: string) => people.find((p) => p.authUid === memberId || p.key === memberId)?.key ?? memberId;
   const go = async () => {
     if (!picked.length) return;
     setBusy(true);
@@ -219,13 +223,18 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
   const list = Object.entries(members ?? {});
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog dp-dialog" role="dialog" aria-label={title}>
-        <h2>{title}</h2>
+      <div className="dialog dp-dialog" role="dialog" aria-modal="true" aria-label={itemName ? `${title}: ${itemName}` : title} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+        <header className="dp-share-head">
+          <div className="dp-share-heading"><h2>{title}</h2>{itemName && <span className="dp-share-name" title={itemName}>{itemName}</span>}</div>
+          <button type="button" className="dp-share-close" aria-label="Close sharing" onClick={onClose}>×</button>
+        </header>
         {teachersOnly && <span className="hint">You can share this with other teachers. Documents, slides, designs, PDFs and uploaded files can also be shared with learners.</span>}
         <div className="dp-add">
           <span className="dp-chips">
+            <UiIcon name="search" size={18} />
             {picked.map((p) => (
               <span key={p.key} className="lang-chip">
+                <PersonFace id={p.key} name={p.name} size={22} />
                 {p.name}
                 <button type="button" aria-label={`Remove ${p.name}`} onClick={() => setPicked((x) => x.filter((y) => y.key !== p.key))}>
                   ×
@@ -238,8 +247,8 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
             <span className="dp-found">
               {found.map((p) => (
                 <button key={p.key} type="button" onClick={() => (setPicked((x) => [...x, p]), setQ(''))}>
-                  <b>{p.name}</b>
-                  <span className="hint">{p.role === 'teacher' ? 'Teacher' : 'Learner'} · {p.where}</span>
+                  <PersonFace id={p.key} name={p.name} size={36} />
+                  <span className="dp-person-copy"><b>{p.name}</b><span className="hint">{p.role === 'teacher' ? 'Teacher' : 'Learner'} · {p.where}</span></span>
                 </button>
               ))}
             </span>
@@ -273,14 +282,15 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
         )}
         {done && <span className="hint dp-done">{done}</span>}
         <div className="dp-members">
-          <span className="dp-mem">
-            <b>{ownerName || 'You'}</b>
-            <span className="hint">Owner</span>
+          <span className="dp-members-title">People with access</span>
+          <span className="dp-mem dp-mem-owner">
+            <PersonFace id={ownerId} name={ownerName || 'You'} size={36} />
+            <span className="dp-person-copy"><b>{ownerName || 'You'}</b><span className="hint">Owner</span></span>
           </span>
           {list.map(([k, m]) => (
             <span key={k} className="dp-mem">
-              <b>{m.name}</b>
-              <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
+              <PersonFace id={faceId(k)} name={m.name} size={36} />
+              <span className="dp-person-copy"><b>{m.name}</b><span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span></span>
               {noRoles ? <span className="hint">Can edit</span> : onRole ? (
                 <NSelect value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
                   {roles.map((r) => (
@@ -298,9 +308,9 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
             </span>
           ))}
           {extra.map((x) => (
-            <span key={x.k} className="dp-mem">
-              <b>{x.name}</b>
-              <span className="hint">{x.about}</span>
+            <span key={x.k} className="dp-mem dp-mem-extra">
+              <span className="dp-class-face"><UiIcon name="groups" size={18} /></span>
+              <span className="dp-person-copy"><b>{x.name}</b><span className="hint">{x.about}</span></span>
             </span>
           ))}
         </div>
