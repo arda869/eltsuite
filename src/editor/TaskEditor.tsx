@@ -726,6 +726,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     });
   const [gallery, setGallery] = useState(false);
   const [questionAnchor, setQuestionAnchor] = useState<HTMLElement | null>(null);
+  const questionButtonRef = useRef<HTMLButtonElement>(null);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -834,6 +835,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                     'questions',
                     <button
                       key="q"
+                      ref={questionButtonRef}
                       type="button"
                       className="tool tb-qs"
                       aria-haspopup="dialog"
@@ -901,6 +903,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         <InsertGallery
           commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
           onClose={() => setGallery(false)}
+          onQuestions={() => { setGallery(false); setQuestionAnchor(questionButtonRef.current); }}
           onPick={(key) => {
             setGallery(false);
             const c = [...COMMANDS, ...bankCmds].find((x) => x.key === key);

@@ -1,5 +1,5 @@
 import { STUDIO_FORMS } from '../coach/studioForms';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { favAdds, onFavs, toggleFav } from '../lib/slashUse';
 
@@ -887,7 +887,7 @@ export function QuestionDropdown({ anchor, commands, onPick, onClose }: { anchor
   );
 }
 
-export function InsertGallery({ commands, onPick, onClose, sections: secs = SECTIONS, title = 'Add to the task' }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void; sections?: Section[]; title?: string }) {
+export function InsertGallery({ commands, onPick, onClose, onQuestions, sections: secs = SECTIONS, title = 'Add to the task' }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void; onQuestions?: () => void; sections?: Section[]; title?: string }) {
   const [q, setQ] = useState('');
   const byKey = useMemo(() => Object.fromEntries(commands.map((c) => [c.key, c])), [commands]);
   const [favs, setFavs] = useState<string[]>(() => favAdds());
@@ -909,12 +909,27 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
     ? selectedTitle
     : sections.find((s) => s.title !== 'Favourites')?.title;
   const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === activeTitle);
+  const closeOrSwitch = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (onQuestions) {
+      // A click on the Questions toolbar button lands on the gallery scrim.
+      // Look through the scrim so that this one click opens the intended menu.
+      e.currentTarget.style.pointerEvents = 'none';
+      const underneath = document.elementFromPoint(e.clientX, e.clientY);
+      e.currentTarget.style.pointerEvents = '';
+      if (underneath?.closest('button[aria-label="Questions"]')) {
+        onQuestions();
+        return;
+      }
+    }
+    onClose();
+  };
   return (
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" onClick={closeOrSwitch}>
       <div className="dialog wide gallery" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="gallery-head">
           <h2 style={{ margin: 0 }}>{title}</h2>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, for example “match” or “listen”" aria-label="Search" autoFocus />
+          {onQuestions && <button type="button" className="btn small-btn" onClick={onQuestions}>Questions</button>}
           <button type="button" className="btn small-btn" onClick={onClose}>
             Close
           </button>
