@@ -2,6 +2,7 @@ import { AiMark } from '../components/AiMark';
 import { HelpMenu } from '../help/HelpMenu';
 import { RecordingTranscript } from './RecordingTranscript';
 import { effectCaption, recordingScript } from '../lib/recordingScript';
+import { expandSavedSongScript, songScriptLines } from '../lib/songScript';
 import { transcribeRecording } from '../lib/speech';
 import { transcriptTimeline } from '../lib/transcriptTimeline';
 import { SpeechComposer } from './SpeechComposer';
@@ -104,15 +105,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const scriptTracks: Track[] = [];
     if (source.timedScript) {
       const byName = new Map<string, string>();
-      lines = source.timedScript.map((l, i) => {
+      const timedScript = source.songStems ? expandSavedSongScript(source.timedScript, length0) : source.timedScript;
+      lines = timedScript.map((l, i) => {
         const name = l.who || voice.name;
         if (!byName.has(name)) {
           if (!byName.size) { voice.name = name; byName.set(name, voice.id); }
           else { const tr = newTrack(name); scriptTracks.push(tr); byName.set(name, tr.id); }
         }
-        const a = l.t ?? (length0 * i / Math.max(1, source.timedScript!.length));
-        const b = l.e ?? source.timedScript![i+1]?.t ?? length0;
-        return { id: newId(), text: l.text, who: l.who, track: byName.get(name), a, b: Math.max(a + .05, b) };
+        const a = l.t ?? (length0 * i / Math.max(1, timedScript.length));
+        const b = l.e ?? timedScript[i+1]?.t ?? length0;
+        return { id: newId(), text: l.text, who: source.songStems ? undefined : l.who, track: byName.get(name), a, b: Math.max(a + .05, b) };
       });
     }
     return { tracks: [voice, ...extras, ...scriptTracks, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
@@ -1212,8 +1214,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             if(b.sampleRate!==rate){const length=Math.round(data.length*rate/b.sampleRate),out=new Float32Array(length);for(let i=0;i<length;i++){const pos=i*b.sampleRate/rate,j=Math.floor(pos),a=pos-j;out[i]=(data[j]||0)*(1-a)+(data[j+1]||0)*a;}data=out;}
             addSource(id,data,name);roleTracks.push({...newTrack(name),songRole:role,clips:[{id:newId(),src:id,a:0,b:data.length/rate,at,gain:1,fx:'',fadeIn:0,fadeOut:0}]});
           }
-          edit(x=>({...x,tracks:[...x.tracks,...roleTracks],lines:[...x.lines,{id:newId(),text:lyrics,who:title,track:roleTracks[0].id,a:at,b:at+buffer.duration}]}));
-        }else insertSpeech([{speakerId:newId(),speaker:title,text:lyrics,gap:0,take:{samples:toMono(buffer),rate:buffer.sampleRate,transcript:lyrics}}]);
+          const script=songScriptLines(lyrics,at,buffer.duration).map(line=>({id:newId(),...line,track:roleTracks[0].id}));
+          edit(x=>({...x,tracks:[...x.tracks,...roleTracks],lines:[...x.lines,...script]}));
+        }else{
+          const id=newId(),name=title;let data=toMono(buffer);
+          if(buffer.sampleRate!==rate){const length=Math.round(data.length*rate/buffer.sampleRate),out=new Float32Array(length);for(let i=0;i<length;i++){const pos=i*buffer.sampleRate/rate,j=Math.floor(pos),a=pos-j;out[i]=(data[j]||0)*(1-a)+(data[j+1]||0)*a;}data=out;}
+          addSource(id,data,name);
+          const track:Track={...newTrack(name),clips:[{id:newId(),src:id,a:0,b:data.length/rate,at:head,gain:1,fx:'',fadeIn:0,fadeOut:0}]};
+          const script=songScriptLines(lyrics,head,data.length/rate).map(line=>({id:newId(),...line,track:track.id}));
+          edit(x=>({...x,tracks:[...x.tracks,track],lines:[...x.lines,...script]}));
+        }
         setSongOpen(false);
       }} />
       <div className="sx-bar">
