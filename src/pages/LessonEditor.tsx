@@ -1543,7 +1543,7 @@ export function LessonEditor() {
                 {questionIds(draft.content).map((q,i)=>questionAcceptsTypedAnswer(q.type)&&<label className="question-spelling-toggle" key={q.id}><input type="checkbox" aria-label={`Override class spelling for question ${i+1}`} checked={questionSpellingOverride(draft.content,q.id)} onChange={e=>{const content=withQuestionSpellingOverride(draft.content,q.id,e.target.checked);change({content});setEditorKey(task.id+':'+Date.now()+':spelling');}}/><span>Question {i+1} <small>{q.type.replace('pq:','')}</small></span></label>)}
               </Fold>}
               <Fold id="who" title="Who sees this" open={fold} setOpen={setFold}>
-              <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
+              <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} choices={choices} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               </Fold>
               <Fold id="layout" title="Layout" open={fold} setOpen={setFold}>
               {(() => {
