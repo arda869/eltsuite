@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {materialSource,checkRebuild,RIGHTS_VERSION,rebuildSchema} from '../../functions/ai/material-contract.js';
 import {nativeTask} from '../../functions/ai/activities.js';
 import {generate} from '../../functions/ai/provider.js';
+import {importKindSchema,importModelSchema} from '../../functions/ai/import-model.js';
+import {IMPORT_TYPES} from '../../functions/ai/import-types.js';
 import {rebuilt} from './material-fixture.mjs';
 const input={rightsAccepted:true,rightsVersion:RIGHTS_VERSION,creationType:'homework',scope:'item',source:{name:'Worksheet',text:'Which day?',images:[]}};
 test('source-only import accepts blank optional instructions but enforces consent, format, bounds and no remote images',()=>{
@@ -18,4 +20,14 @@ test('rebuilt output has valid native tasks and private keys; validates review e
 test('multimodal rebuild uses non-stored structured Responses input without changing text-only generation',async()=>{
  let body;const result=await generate({apiKey:'test',model:'gpt-6.1-sol',schema:rebuildSchema,name:'rebuild',input:{text:'Read the page'},sourceImages:['data:image/jpeg;base64,/9j/'],fetchImpl:async(_,o)=>{body=JSON.parse(o.body);return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(rebuilt)}]}]})};}});
  assert.equal(body.store,false);assert.equal(body.max_output_tokens,24000);assert.equal(body.input[0].content[1].type,'input_image');assert.equal(body.input[0].content[0].type,'input_text');assert.equal(result.value.title,rebuilt.title);
+});
+test('import type selection can choose every native kind and narrows the generation schema',async()=>{
+ const all=IMPORT_TYPES.filter(t=>!t.kind.startsWith('tt-')).map(t=>t.kind);
+ assert.deepEqual(importKindSchema(false).properties.kinds.items.enum,all);
+ const focused=importModelSchema(false,['dialogue','pq-highlight']);
+ assert.deepEqual(focused.$defs.importElement.anyOf.map(t=>t.properties.kind.enum[0]),['dialogue','pq-highlight']);
+ let body;
+ const result=await generate({apiKey:'test',model:'gpt-6.1-sol',schema:importKindSchema(false),name:'importKinds',input:{text:'STUDENT: Hello.'},fetchImpl:async(_,o)=>{body=JSON.parse(o.body);return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:10},output:[{content:[{type:'output_text',text:JSON.stringify({kinds:['dialogue']})}]}]})};}});
+ assert.equal(body.max_output_tokens,2000);
+ assert.deepEqual(result.value.kinds,['dialogue']);
 });
