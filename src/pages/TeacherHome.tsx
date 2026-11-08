@@ -267,8 +267,8 @@ export function TeacherHome() {
             <div className="classes">
               {active.map((c) => {
                 const t = theme(c.themeColor);
-                const list = items[c.id] ?? [];
-                const lessons = list.filter((i) => i.type === 'lesson').length;
+                const list = items[c.id];
+                const lessons = list?.filter((i) => i.type === 'lesson').length;
                 const teaching = isLive(live[c.id]);
                 return (
                   <Link key={c.id} to={`/class/${c.id}`} className="class-card has-cover" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
@@ -283,7 +283,7 @@ export function TeacherHome() {
                       {classDates(c) ? ` · ${classDates(c)}` : ''}
                     </span>
                     <span className="meta">
-                      {teaching ? <span style={{ color: t.text, fontWeight: 600 }}>Teaching now</span> : lessons ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : 'No lessons yet'}
+                      {teaching ? <span style={{ color: t.text, fontWeight: 600 }}>Teaching now</span> : lessons === undefined ? 'Loading lessons…' : lessons ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : 'No lessons yet'}
                     </span>
                     <span className="code">{c.teacherId !== user?.uid ? (c.coTeachers?.[user?.uid ?? '']?.role === 'viewer' ? 'Viewer · shared with you' : 'Co-teacher · shared with you') : `Class code ${c.classCode}`}</span>
                   </Link>

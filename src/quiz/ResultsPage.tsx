@@ -14,22 +14,24 @@ type Player = { id: string; name: string; score: number; got: number; max: numbe
 export function ResultsPage() {
   const { runId = '' } = useParams();
   const [run, setRun] = useState<Run | null | false>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
+  // An empty list is a real result only after the player query has completed. Rendering it
+  // while that query is in flight briefly tells the host that nobody played.
+  const [players, setPlayers] = useState<Player[] | null>(null);
   useEffect(() => {
     void (async () => {
       try {
         const r = await getDoc(doc(db, 'quizRuns', runId));
         if (!r.exists()) return setRun(false);
-        setRun(r.data() as Run);
         const p = await getDocs(collection(db, 'quizRuns', runId, 'players'));
         setPlayers(p.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Player, 'id'>) })).filter((x) => !x.kicked).sort((a, b) => (b.score || 0) - (a.score || 0)));
+        setRun(r.data() as Run);
       } catch {
         setRun(false);
       }
     })();
   }, [runId]);
-  if (run === null) return <main className="qr"><p role="status">One moment…</p></main>;
   if (run === false) return <main className="qr"><h1>We can’t find these results.</h1><p>They may belong to another teacher, or the game was removed.</p></main>;
+  if (run === null || players === null) return <main className="qr"><p role="status">Loading game results…</p></main>;
 
   const n = run.slides;
   const labels = Array.from({ length: n }, (_, i) => run.labels?.[i] || `Question ${i + 1}`);

@@ -808,31 +808,18 @@ const J = {
   },
 
 
-  'Classroom memories are opt-in and selected before generation': async (b) => {
+  'Full-lesson AI stays hidden while task-level AI remains available': async (b) => {
     const s=await session(b);
     await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};localStorage.setItem('mockfs',JSON.stringify(fs));});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    const toggle=s.p.getByLabel('Refer to learners’ previous responses');
-    await toggle.waitFor();
-    if(await toggle.isChecked()) throw Error('Memories must default off');
-    await toggle.check();
-    await s.p.getByRole('button',{name:'Read recent responses'}).click();
-    const selection=s.p.getByLabel(/Alex · Travel stories/);
-    await selection.waitFor();
-    if(await selection.isChecked()) throw Error('Responses must not be preselected');
-    await selection.check();
-    await s.p.getByLabel('Success criteria',{exact:true}).fill('Planning a trip');
-    await s.p.getByLabel('Success criteria',{exact:true}).fill('Make and compare plans.');
-    await s.p.getByLabel('Practice setup',{exact:true}).fill('Adult learners working in pairs.');
-    await s.p.getByRole('button',{name:'Suggest an outline'}).click();
-    await see(s.p,'text=2. Review the outline','memory outline');
-    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
-    if(request.useLearnerMemories!==true || request.memoryIds?.[0]!=='a:q') throw Error('Selection not sent');
-    s.p.on('dialog',d=>d.accept());
-    await s.p.reload();
-    await toggle.waitFor();
-    if(await toggle.isChecked()) throw Error('Memory permission persisted unexpectedly');
-    await axe(s.p,'Classroom memories',A11Y_FOUND);
+    await s.p.waitForURL(new RegExp(`/class/${s.demo.classId}$`));
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const insert=s.p.locator('.task-insert').first();
+    await insert.locator('summary').click();
+    const taskAi=insert.getByRole('button',{name:'Create with AI'});
+    await taskAi.waitFor();
+    if(await taskAi.isDisabled()) throw Error('Task-level AI was hidden with full-lesson creation.');
+    await axe(s.p,'Task-level AI entry',A11Y_FOUND);
     return s;
   },
   'New teacher signup, all starting points and save retry': async b => {
@@ -1150,25 +1137,17 @@ const J = {
     return s;
   },
 
-  'Trainer studio is class-specific and creates native completion forms': async (b) => {
+  'Training classes retain task AI while full-lesson generation stays hidden': async (b) => {
     const s=await session(b);
-    await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};fs['classes/'+classId].kind='training';fs['classes/'+classId].level='CELTA';fs['classes/'+classId].trainingProfile={programme:'CELTA',stage:'Pre-service',experience:'New to teaching',goals:'Prepare for teaching practice',context:'Teachers beginning their first course',focus:'Checking instructions',examDate:''};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
-    await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
-    await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).waitFor();
-    await s.p.getByLabel('Success criteria',{exact:true}).fill('Checking instructions');
-    await s.p.getByRole('button',{name:'Suggest an outline'}).click();
-    await s.p.getByRole('button',{name:'Approve outline and make the plan'}).click();
-    await s.p.getByRole('button',{name:'Prepare training activities'}).click();
-
-    await see(s.p,'text=Trainee completion form:','trainer form preview');
-    await s.p.getByRole('button',{name:'Create practice in Classes'}).click();
-    await s.p.getByRole('link',{name:'Open in Classes'}).click();
-    await see(s.p,'text=Teaching move and intended learner outcome','native rehearsal form');
-    await axe(s.p,'Trainer completion form',A11Y_FOUND);
-    await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['classes/'+classId].kind='language';fs['classes/'+classId].level='B1';localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
-    await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
-    await s.p.getByLabel('Success criteria',{exact:true}).waitFor();
-    if(await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).count()) throw Error('Trainer studio leaked into a language class');
+    await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};fs['classes/'+classId].kind='training';fs['classes/'+classId].level='CELTA';localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await s.p.waitForURL(new RegExp(`/class/${s.demo.classId}$`));
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const insert=s.p.locator('.task-insert').first();
+    await insert.locator('summary').click();
+    const taskAi=insert.getByRole('button',{name:'Create with AI'});
+    await taskAi.waitFor();
+    if(await taskAi.isDisabled())throw Error('Training-class task AI is unavailable.');
     return s;
   },
 
@@ -1238,7 +1217,8 @@ const J = {
     await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));if(request.name!=='recordingSong'||request.brief.lyrics!==words||request.approved!==true)throw Error('Approved lyrics changed');
     await d.getByRole('button',{name:'Add song to timeline',exact:true}).click();await d.waitFor({state:'hidden'});await s.p.getByRole('button',{name:'Script',exact:true}).click();await see(s.p,'.recording-script-rows textarea','song script');
-    if(await s.p.locator('.recording-script-rows textarea').inputValue()!==words)throw Error('Timeline lost exact lyrics');return s;
+    const scriptLines=await s.p.locator('.recording-script-rows textarea').evaluateAll(els=>els.map(el=>el.value));
+    if(scriptLines.join('\n')!==words.trim())throw Error('Timeline lost the lyric lines');return s;
   },
   'Songs: failures preserve words, completed previews recover and phone layout fits': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');await s.p.getByRole('button',{name:'Create song',exact:true}).click();let d=s.p.getByRole('dialog',{name:'Create a classroom song'});
@@ -1470,26 +1450,6 @@ const J = {
   },
 
 
-  'Super Admin controls AI access, off by default': async (b) => {
-    const s = await session(b, { owner: true });
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await see(s.p, 'text=The pilot is not enabled yet.', 'access off for the owner');
-    await s.p.goto(BASE + '/admin?tab=ai');
-    const toggle = s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true });
-    await toggle.waitFor();
-    if (await toggle.getAttribute('aria-checked') !== 'false') throw Error('AI access was not off by default');
-    await axe(s.p, 'Super Admin: AI access', A11Y_FOUND);
-    await toggle.click();
-    await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Success criteria', { exact: true }).waitFor();
-    await s.p.goto(BASE + '/admin?tab=ai');
-    await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
-    await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
-    return s;
-  },
   'AI native reading, lists and subtasks survive the lesson editor': async (b) => {
     const s=await session(b);
     const {nativeTask}=await import('../functions/ai/activities.js');
@@ -1517,130 +1477,6 @@ const J = {
     await axe(s.p,'AI native reading and subtasks',A11Y_FOUND);
     return s;
   },
-  'Lesson assistant approval, private save and reopen': async (b) => {
-    const s = await session(b);
-    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    const topicBox=s.p.getByLabel('Success criteria',{exact:true});
-    await topicBox.waitFor({state:'visible'}).catch(async e=>{throw Error(e.message+' '+s.errors.join('; ')+' '+(await s.p.locator('body').innerText()).slice(0,600));});
-    if(await s.p.getByRole('group',{name:'What would you like to create?'}).getByRole('button',{name:/^Lesson /}).count())throw Error('Full AI lesson creation is still visible');
-    await s.p.locator('.ai-context > summary').first().click();
-    await s.p.getByLabel('Course type',{exact:true}).selectOption('Academic English');
-    await s.p.getByLabel('Course goals',{exact:true}).fill('Compare academic arguments.');
-    if(await s.p.getByLabel('Success criteria',{exact:true}).inputValue()!=='Compare academic arguments.') throw Error('Shared goals did not update the default brief');
-    await s.p.getByLabel('Success criteria',{exact:true}).fill('Keep my lesson-specific objective.');
-    await s.p.getByLabel('Course goals',{exact:true}).fill('Evaluate evidence.');
-    if(await s.p.getByLabel('Success criteria',{exact:true}).inputValue()!=='Keep my lesson-specific objective.') throw Error('Shared goals overwrote a customized brief');
-    await s.p.getByRole('button',{name:'Save to class settings'}).click();
-    await see(s.p,'text=Class settings updated.','profile save');
-    await s.p.getByRole('button',{name:'Exam Assess clearly and fairly'}).click();
-    await s.p.getByLabel('Exam conditions',{exact:true}).waitFor();
-    await s.p.getByRole('button',{name:'Homework Extend learning beyond class'}).click();
-    await s.p.getByLabel('Independent-work instructions',{exact:true}).waitFor();
-    await s.p.getByRole('button',{name:'Practice Retrieve, repeat and improve'}).click();
-    await s.p.getByLabel('Practice setup',{exact:true}).waitFor();
-    await s.p.getByRole('button',{name:'Practice Retrieve, repeat and improve'}).click();
-    const shortHeight=await topicBox.evaluate(el=>el.getBoundingClientRect().height);
-    if(shortHeight>70) throw Error('Empty brief field is not compact');
-    await topicBox.fill('Travel\nFood\nWork\nStudy');
-    if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)<=shortHeight) throw Error('Brief field did not expand');
-    await topicBox.fill('Travel');
-    if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)>shortHeight+2) throw Error('Brief field did not shrink');
-    await s.p.getByLabel('Success criteria', { exact: true }).fill('Compare options and agree on a trip.');
-    await s.p.getByLabel('Practice setup', { exact: true }).fill('Adult B1 class working in pairs.');
-    await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
-    await see(s.p, 'text=2. Review the outline', 'outline approval');
-    await s.p.getByRole('table',{name:'Lesson stages'}).waitFor();
-    await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('Plan a trip together');
-    if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='Plan a trip together') throw Error('Stage table edit was lost');
-    if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
-    const revision=s.p.getByRole('region',{name:'Ask AI to make changes',exact:true});
-    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
-    await s.p.getByRole('alert').getByText('Describe what you would like AI to change in the box.').waitFor();
-    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change the title only. Keep my stage title.');
-    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
-    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
-    if(await s.p.getByRole('textbox',{name:'Title',exact:true}).inputValue()!=='Choose a trip')throw Error('Proposal silently replaced current outline');
-    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('I like that title. Keep it and refine the wording.');
-    await revision.getByRole('button',{name:'Refine proposal',exact:true}).click();
-    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
-    const refinement=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
-    if(refinement.revision.current.title!=='Revised travel choice')throw Error('Reply ignored the previous proposal');
-    await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('My newer manual edit');
-    if(await revision.getByRole('button',{name:'Apply changes',exact:true}).isEnabled())throw Error('Stale proposal can overwrite newer manual edits');
-    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
-    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
-    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
-    if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='My newer manual edit')throw Error('Applying revision lost a manual edit');
-
-    await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
-    await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).fill('Explain a choice with two reasons');
-    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Suggest a different title; keep my main aim.');
-    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
-    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
-    if(await s.p.getByRole('textbox',{name:'Main aim',exact:true}).inputValue()!=='Explain a choice with two reasons')throw Error('Rejecting plan revision lost manual edits');
-
-    await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
-    await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
-    await s.p.getByRole('button', { name: 'Save private draft' }).click();
-    await see(s.p, 'text=Saved privately.', 'private save confirmation');
-    await s.p.evaluate(()=>{const drafts=JSON.parse(localStorage.getItem('mockAiDrafts')||'{}');drafts['archived-lesson']={brief:{},plan:{title:'Archived AI lesson'},creationType:'lesson',version:1};localStorage.setItem('mockAiDrafts',JSON.stringify(drafts));});
-    await s.p.getByRole('button', { name: 'Start a new plan' }).click();
-    await s.p.getByRole('button', { name: 'Open saved plans' }).click();
-    if(await s.p.getByRole('button',{name:'Archived AI lesson',exact:true}).count())throw Error('Saved full AI lesson drafts are still listed');
-    await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
-    if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
-    await s.p.evaluate(()=>localStorage.setItem('mockAiPause','1'));
-    await s.p.getByRole('button',{name:'Prepare class activities'}).click();
-    await s.p.locator('.ai-generation').waitFor();
-    const checkStay = async (action) => {
-      const dialogPromise=s.p.waitForEvent('dialog');
-      const actionPromise=action().catch(()=>{});
-      const dialog=await dialogPromise;
-      if(dialog.type()!=='beforeunload' && !dialog.message().includes('still being created')) throw Error('Missing generation-specific leave warning');
-      await dialog.dismiss();
-      await actionPromise;
-      if(!s.p.url().includes('/assistant')) throw Error('Dismissing leave warning lost the planner');
-    };
-    await s.p.locator('.ai-generation').getByRole('link',{name:'Back to class',exact:true}).click();
-    const aiTray=s.p.getByRole('region',{name:'AI activity',exact:true});
-    await aiTray.getByRole('link',{name:'Open in a new tab',exact:true}).waitFor();
-    if(!s.p.url().includes('/assistant'))throw Error('AI navigation tray lost the active plan');
-    await aiTray.getByRole('button',{name:'Keep working here',exact:true}).click();
-    await checkStay(()=>s.p.goBack({timeout:1500}));
-    const reloadDialog=s.p.waitForEvent('dialog');
-    const reload=s.p.reload({timeout:3000}).catch(()=>{});
-    const unload=await reloadDialog;
-    if(unload.type()!=='beforeunload') throw Error('Missing reload protection during saved-plan generation');
-    await unload.dismiss();await reload;
-    await s.p.evaluate(()=>localStorage.removeItem('mockAiPause'));
-    await see(s.p,'text=04 · CLASS ACTIVITIES','activity review');
-
-    await s.p.getByRole('table',{name:'Travel options'}).waitFor();
-    await s.p.getByText('Supported · alternative task',{exact:true}).click();
-    await s.p.getByText('Choose a trip. Complete the sentence.',{exact:true}).waitFor();
-    await axe(s.p,'Visual and differentiated activity preview',A11Y_FOUND);
-    if(await s.p.getByRole('heading',{name:'3. Review and edit'}).count()) throw Error('Step 3 remains visible in step 4');
-    await s.p.getByRole('button',{name:'← Back to teaching plan'}).click();
-    if(await s.p.locator('.ai-ready').count()) throw Error('Step 4 remains visible in step 3');
-    await s.p.getByRole('textbox',{name:'Main aim',exact:true}).fill('Choose and justify a trip with clear reasons');
-    await s.p.getByRole('button',{name:'Prepare class activities'}).click();
-    await see(s.p,'text=04 · CLASS ACTIVITIES','rebuilt activity review');
-    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change only the lesson title; keep all activity content.');
-    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
-    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
-    await s.p.getByRole('heading',{name:'Revised travel choice',exact:true}).waitFor();
-    await s.p.getByRole('table',{name:'Travel options'}).waitFor();
-
-    await s.p.getByRole('button',{name:'Create practice in Classes'}).click();
-    await see(s.p,'text=Created in Classes, hidden','hidden creation');
-    await axe(s.p, 'Lesson assistant', A11Y_FOUND);
-    await s.p.setViewportSize({ width: 390, height: 844 });
-    if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
-    return s;
-  },
-
   'Sound chart themes, page gestures and compact title': async (b) => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');
@@ -1823,8 +1659,16 @@ const J = {
 
   'Super Admin controls AI access, off by default': async (b) => {
     const s = await session(b, { owner: true });
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await see(s.p, 'text=The pilot is not enabled yet.', 'access off for the owner');
+    const lessonUrl=`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`;
+    const taskAi=async()=>{
+      await s.p.goto(lessonUrl);
+      const insert=s.p.locator('.task-insert').first();
+      await insert.locator('summary').click();
+      const button=insert.getByRole('button',{name:'Create with AI'});
+      await button.waitFor();
+      return button;
+    };
+    if(!(await (await taskAi()).isDisabled()))throw Error('Task AI was enabled before the admin granted access');
     await s.p.goto(BASE + '/admin?tab=ai');
     const toggle = s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true });
     await toggle.waitFor();
@@ -1832,13 +1676,11 @@ const J = {
     await axe(s.p, 'Super Admin: AI access', A11Y_FOUND);
     await toggle.click();
     await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Success criteria', { exact: true }).waitFor();
+    if(await (await taskAi()).isDisabled())throw Error('Task AI stayed disabled after the admin granted access');
     await s.p.goto(BASE + '/admin?tab=ai');
     await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
+    if(!(await (await taskAi()).isDisabled()))throw Error('Task AI stayed available after access was revoked');
     return s;
   },
 
@@ -2099,6 +1941,34 @@ const J = {
     await s.p.getByLabel('PIN digit 1').fill(mia.pin);
     await s.p.getByRole('button', { name: 'Join class' }).click();
     await see(s.p, 'text=Demo class', 'the class after the learner joins');
+    return s;
+  },
+  'Locked task title stays visible without its content': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const root = `classes/${classId}/items/${itemId}`;
+      fs[`${root}/tasks/locked-activity`] = {
+        kind: 'task', title: 'Coming up next', instructions: 'Private teacher material',
+        content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Not yet released' }] }] },
+        order: 1, hidden: false, locked: false,
+      };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const row = s.p.locator('.task-list .task-row').filter({ hasText: 'Coming up next' });
+    await row.hover();
+    await row.locator('button[aria-label="Lock"]').click();
+    await s.p.waitForFunction(({ classId, itemId }) => JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}`]?.lockedTaskOutlines?.some(t => t.id === 'locked-activity'), s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}`);
+    await s.p.click('nav.tabs button:has-text("Learners")');
+    const [learnerTab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'View as Mia' }).click()]);
+    await see(learnerTab, 'text=Demo class', 'the learner session');
+    await learnerTab.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(learnerTab, 'nav[aria-label="Tasks"] .task-pick.is-locked:has-text("Coming up next")', 'the locked task title');
+    if (await learnerTab.getByText('Not yet released').count()) throw Error('Locked task content leaked into the learner lesson.');
+    if (!(await learnerTab.locator('nav[aria-label="Tasks"] .task-pick.is-locked').isDisabled())) throw Error('The locked task can be opened.');
+    await learnerTab.close();
     return s;
   },
   'Lesson: diagram with a gap stays': async (b) => {
@@ -2569,6 +2439,7 @@ const J = {
       fs[root + 'parts-check'] = { kind: 'task', title: 'Two-part practice', instructions: 'Do one part at a time.', order: 0, hidden: false, locked: false, content: { type: 'doc', content: [
         { type: 'subTask', attrs: { id: 'part-a', instr: 'First sentence' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'I ' }, { type: 'gap', attrs: { id: 'part-gap-a' } }, { type: 'text', text: ' home.' }] }] },
         { type: 'subTask', attrs: { id: 'part-b', instr: 'Second sentence' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'She ' }, { type: 'gap', attrs: { id: 'part-gap-b' } }, { type: 'text', text: ' school.' }] }] },
+        { type: 'subTask', attrs: { id: 'part-c', instr: 'Discuss with a partner' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Explain your choices.' }] }] },
       ] } };
       fs[root + 'parts-check/private/key'] = { 'part-gap-a': { kind: 'gap', answers: ['went'] }, 'part-gap-b': { kind: 'gap', answers: ['visited'] } };
       fs[root + 'later-task'] = { kind: 'task', title: 'Later task', instructions: '', order: 1, hidden: false, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Later' }] }] } };
@@ -2586,6 +2457,7 @@ const J = {
     await s.p.getByRole('textbox', { name: 'Question 1' }).fill('went');
     await s.p.getByRole('button', { name: 'Check part a' }).click();
     await see(s.p, 'text=Part a checked', 'first part feedback');
+    if (await s.p.getByText('Part b checked').count()) throw Error('Checking part a also revealed part b.');
     const savedFirst = await s.p.evaluate(({ classId }) => JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/answers/parts-check_${sessionStorage.getItem('mockuid')}`], s.demo);
     if (savedFirst?.checked || savedFirst?.checkedParts?.join() !== 'part-a') throw Error('Checking part a submitted the whole task.');
     const firstKey = await s.p.evaluate(() => JSON.parse(localStorage.getItem('lastSubtaskKey')));
@@ -2611,6 +2483,28 @@ const J = {
     await see(s.p,'text=Part a checked','legacy checked part feedback');
     await see(s.p,'text=Part b checked','legacy checked second part feedback');
     if(await s.p.getByRole('button',{name:'Check part a'}).count())throw Error('An already-checked task offered to check its first part again.');
+    return s;
+  },
+  'Opening a fresh task does not inherit delayed feedback from the last task': async b => {
+    const s = await session(b, { as: 'Mia' });
+    await s.p.evaluate(({ classId, itemId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const root = `classes/${classId}/items/${itemId}/tasks/`;
+      for (const k of Object.keys(fs)) if (k.startsWith(root)) delete fs[k];
+      fs[root + 'old-check'] = { kind: 'task', title: 'Checked activity', order: 0, hidden: false, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'gap', attrs: { id: 'old-gap' } }] }] } };
+      fs[root + 'old-check/private/key'] = { 'old-gap': { kind: 'gap', answers: ['old answer'] } };
+      fs[root + 'fresh-check'] = { kind: 'task', title: 'Fresh copy', order: 1, hidden: false, locked: false, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'gap', attrs: { id: 'fresh-gap' } }] }] } };
+      fs[`classes/${classId}/answers/old-check_${sessionStorage.getItem('mockuid')}`] = { learnerUid: sessionStorage.getItem('mockuid'), learnerId: 'l1', itemId, taskId: 'old-check', responses: { 'old-gap': 'old answer' }, checked: true };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: `${root}old-check/private/key`, count: 1, delay: 1500 }]));
+    }, s.demo);
+    await s.p.goto(BASE + '/learn/' + s.demo.itemId);
+    await s.p.waitForFunction(() => JSON.parse(sessionStorage.getItem('mockfs-faults') || '[]')[0]?.count === 0);
+    await s.p.getByRole('navigation', { name: 'Tasks' }).getByRole('button', { name: 'Fresh copy' }).click();
+    await s.p.getByRole('heading', { name: 'Fresh copy' }).waitFor();
+    await s.p.waitForTimeout(1800);
+    await s.p.getByRole('textbox', { name: 'Question 1' }).fill('new answer');
+    if (await s.p.getByText('old answer', { exact: true }).count()) throw Error('The previous task answer appeared in the fresh task.');
     return s;
   },
   'Learner creation and PIN reset undo partial failures': async b => {
@@ -2702,9 +2596,11 @@ const J = {
     await s.p.evaluate(() => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
       fs['quizRuns/audit-run'] = { owner: 'teacher1', title: 'Recovery game', code: '123456', status: 'podium', slide: 0, slides: 1, classId: null, mode: 'live', source: { kind: 'doc', id: 'fixture' } };
+      fs['quizRuns/audit-run/players/guest'] = { name: 'UAT guest', score: 0, got: 0, max: 1, kicked: false, slides: { 0: { pts: 0, frac: 0, answered: true } } };
       localStorage.setItem('mockfs', JSON.stringify(fs));
       localStorage.setItem('mockrtdb', JSON.stringify({ quizLive: { 'audit-run': { title: 'Recovery game', code: '123456', total: 1, mode: 'live', phase: 'podium', slide: 0, players: {} } } }));
       sessionStorage.setItem('mockQuizEndFailure', '1');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'query', path: 'quizRuns/audit-run/players', count: 1, delay: 1500 }]));
     });
     await s.p.goto(BASE + '/game-host/audit-run');
     await see(s.p, 'button:has-text("End and see results")', 'game end action');
@@ -2713,6 +2609,9 @@ const J = {
     if (!s.p.url().includes('/game-host/audit-run')) throw Error('Host navigated away after a failed end request');
     await s.p.getByRole('button', { name: 'End and see results' }).click();
     await s.p.waitForURL('**/game-results/audit-run');
+    if (await s.p.getByText('Nobody played this game.').count()) throw Error('Results reported zero players before the player list loaded');
+    await s.p.getByRole('cell', { name: /UAT guest/ }).waitFor();
+    if (await s.p.getByText('Nobody played this game.').count()) throw Error('Results lost the player after loading');
     return s;
   },
   'Exam hand-in waits for saved answers and restores a failed write': async b => {

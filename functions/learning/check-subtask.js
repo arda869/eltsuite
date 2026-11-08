@@ -61,7 +61,7 @@ export async function checkSubTaskForLearner(db, auth, data, now = Date.now()) {
     const partQuestions = parts.map(({ id, node }) => ({ id, questions: questionIds(node, questionResponses) }));
     const allQuestions = questionIds(content, questionResponses);
     const covered = new Set(partQuestions.flatMap((part) => part.questions.map((q) => q.id)));
-    if (!parts.length || partQuestions.some((part) => !part.questions.length) || allQuestions.some((q) => !covered.has(q.id))) throw new HttpsError('failed-precondition', 'This task uses whole-task checking.');
+    if (!parts.length || !allQuestions.length || allQuestions.some((q) => !covered.has(q.id))) throw new HttpsError('failed-precondition', 'This task uses whole-task checking.');
     const stored = Array.isArray(answer.get('checkedParts')) ? answer.get('checkedParts') : [];
     const target = partQuestions.find((part) => part.id === partId);
     if (action === 'check' && (!target || !target.questions.length || !target.questions.some((q) => isAnswered(responses[q.id]))))
@@ -73,7 +73,8 @@ export async function checkSubTaskForLearner(db, auth, data, now = Date.now()) {
     }
     const visibleIds = new Set(partQuestions.filter((part) => checkedParts.includes(part.id)).flatMap((part) => part.questions.map((q) => q.id)));
     const key = Object.fromEntries([...visibleIds].filter((id) => fullKey[id]).map((id) => [id, fullKey[id]]));
-    const complete = parts.every((part) => checkedParts.includes(part.id));
+    // A discussion-only part has no answers to check and must not prevent a finished task.
+    const complete = partQuestions.filter((part) => part.questions.length).every((part) => checkedParts.includes(part.id));
     if (action === 'check') {
       const update = { checkedParts, checkedResponses, updatedAt: FieldValue.serverTimestamp() };
       if (complete) {

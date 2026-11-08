@@ -144,7 +144,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     await Promise.all(sharedPicks.map(async (id) => { const pick = (await getDoc(doc(db, `classes/${d.classId}/picks/${d.taskId}_${id}`))).data(); if (pick) questionResponses[id] = { h: pick.h ?? [], b: pick.b ?? [] }; }));
     const groups = parts.map((node, i) => ({ id: String(node.attrs?.id || `st${i}`), qs: questionIds(node, questionResponses) }));
     const all = questionIds(content, questionResponses);
-    if (!groups.length || groups.some((g) => !g.qs.length) || all.some((q: any) => !groups.some((g) => g.qs.some((p: any) => p.id === q.id)))) throw Error('This task uses whole-task checking.');
+    if (!groups.length || !all.length || all.some((q: any) => !groups.some((g) => g.qs.some((p: any) => p.id === q.id)))) throw Error('This task uses whole-task checking.');
     const target = groups.find((g) => g.id === d.partId);
     if (d.action === 'check' && (!target || !target.qs.some((q: any) => isAnswered(answer.responses?.[q.id])))) throw Error('Answer at least one question in this part first.');
     const checkedParts = d.action === 'check' && !answer.checkedParts?.includes(d.partId) ? [...(answer.checkedParts ?? []), d.partId] : answer.checkedParts ?? [];
@@ -152,7 +152,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const visibleIds = new Set(groups.filter((g) => checkedParts.includes(g.id)).flatMap((g) => g.qs.map((q: any) => q.id)));
     const key = Object.fromEntries(Object.entries(fullKey).filter(([id]) => visibleIds.has(id)));
     localStorage.setItem('lastSubtaskKey', JSON.stringify(key));
-    const complete = groups.every((g) => checkedParts.includes(g.id));
+    const complete = groups.filter((g) => g.qs.length).every((g) => checkedParts.includes(g.id));
     if (d.action === 'check') await setDoc(doc(db, answerPath), { checkedParts, ...(complete ? { checked: true, ...scoreTask(all, fullKey, answer.responses ?? {}), submittedAt: Date.now(), attempts: (answer.attempts ?? 0) + 1 } : {}) }, { merge: true });
     return { data: { checkedParts, key, complete } };
   }

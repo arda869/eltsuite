@@ -72,7 +72,7 @@ export function shownName(name: string, id: string, c?: Pick<ClassDoc, 'profile'
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };
 export type BoardPage = { id: string; title?: string; from?: string }; // from: the lesson a borrowed page belongs to
-export type Item = { spelling?: import('../spelling/model').Spelling; id: string; topicId: string | null; type: 'lesson' | 'homework' | 'exam' | 'practice'; title: string; order: number; hidden: boolean; locked: boolean; boardPages?: BoardPage[]; exam?: { minutes: number | null } | null; examReleased?: boolean; due?: number | null; taskCount?: number; schedule?: { at: number; url?: string } | null; recapShared?: Record<string, boolean> };
+export type Item = { spelling?: import('../spelling/model').Spelling; id: string; topicId: string | null; type: 'lesson' | 'homework' | 'exam' | 'practice'; title: string; order: number; hidden: boolean; locked: boolean; boardPages?: BoardPage[]; exam?: { minutes: number | null } | null; examReleased?: boolean; due?: number | null; taskCount?: number; lockedTaskOutlines?: { id: string; title: string; order: number; kind: 'task' | 'section' }[]; schedule?: { at: number; url?: string } | null; recapShared?: Record<string, boolean> };
 
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Mixed'];
 

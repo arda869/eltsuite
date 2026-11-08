@@ -125,6 +125,7 @@ export function LessonEditor() {
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null | undefined>(undefined);
   const [rawTasks, setTasks] = useState<Task[]>([]);
+  const [loadedTaskScope, setLoadedTaskScope] = useState('');
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selected, setSelected] = useState<string>('');
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -188,6 +189,7 @@ export function LessonEditor() {
       onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
         const list = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) }));
         setTasks(list);
+        setLoadedTaskScope(`${classId}:${itemId}`);
         setSelected((cur) => (cur && list.some((t) => t.id === cur && t.kind !== 'section') ? cur : list.find((t) => t.kind !== 'section')?.id ?? ''));
       }),
     [classId, itemId],
@@ -207,6 +209,16 @@ export function LessonEditor() {
     const n = tasks.filter((t) => t.kind !== 'section' && !t.hidden && !isVariant(t)).length;
     if (item.taskCount !== n) updateItem(classId, itemId, { taskCount: n }).catch(() => {});
   }, [tasks, item?.taskCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A task document contains its answers and teaching material. Publish only the title of a
+  // locked task on the readable lesson document so learners can see it without opening it.
+  useEffect(() => {
+    if (!item || item.id !== itemId || loadedTaskScope !== `${classId}:${itemId}` || viewer) return;
+    const outlines = rawTasks.filter((t) => t.locked && !t.hidden && !isVariant(t) && t.print?.show !== 'paper')
+      .map((t) => ({ id: t.id, title: t.title, order: t.order, kind: t.kind ?? 'task' }));
+    if (JSON.stringify(item.lockedTaskOutlines ?? []) !== JSON.stringify(outlines)) {
+      updateItem(classId, itemId, { lockedTaskOutlines: outlines }).catch(() => {});
+    }
+  }, [rawTasks, item?.lockedTaskOutlines, loadedTaskScope, viewer, classId, itemId]); // eslint-disable-line react-hooks/exhaustive-deps
   const groupSets = useGroupSets(classId);
   const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);
