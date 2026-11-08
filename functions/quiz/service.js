@@ -144,7 +144,7 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
       batch.set(db.doc(`classes/${src.source.classId}/live/state`), { ...(mode === 'live' ? { liveQuiz: pointer } : {}), games: { [classSlot(src.source)]: pointer } }, { merge: true });
     }
     await batch.commit();
-    await live(ref.id).set({ title: src.title, code, total, mode, phase: mode === 'self' ? 'self' : 'lobby', slide: -1, guests, locked: false, music, host: run.ownerName, at: now });
+    await live(ref.id).set({ title: src.title, code, total, mode, phase: mode === 'self' ? 'self' : 'lobby', slide: -1, guests, locked: false, music, host: run.ownerName, classId: run.classId, at: now });
     return { runId: ref.id, code };
   }
 
