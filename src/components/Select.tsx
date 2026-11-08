@@ -27,7 +27,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
     const r = btn.current.getBoundingClientRect();
     const h = list.current?.offsetHeight ?? 200;
     const up = r.bottom + 6 + h > window.innerHeight - 8 && r.top > h + 14;
-    const width = Math.max(r.width, 200);
+    const width = Math.min(Math.max(r.width, 200), window.innerWidth - 16);
     // Opening upwards, the list keeps its bottom by the button, so typing to find does not leave it floating.
     setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: up ? r.top - 6 - h : r.bottom + 6, width, up, bottom: window.innerHeight - r.top + 6 });
   }, [open]);
@@ -39,7 +39,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       if(e&&list.current?.contains(e.target as Node))return;
       const r=btn.current?.getBoundingClientRect();if(!r)return;
       if(r.bottom<0||r.top>window.innerHeight)return setOpen(false);
-      const h=list.current?.offsetHeight??200,width=Math.max(r.width,200);
+      const h=list.current?.offsetHeight??200,width=Math.min(Math.max(r.width,200),window.innerWidth-16);
       const up=r.bottom+6+h>window.innerHeight-8&&r.top>h+14;
       setAt({left:Math.max(8,Math.min(r.left,window.innerWidth-width-8)),top:up?r.top-6-h:r.bottom+6,width,up,bottom:window.innerHeight-r.top+6});
     };
@@ -111,7 +111,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={e=>{if(!e.defaultPrevented)key(e);}} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
+          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={e=>{if(!e.defaultPrevented)key(e);}} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', width: at.width } : { left: at.left, top: at.top, width: at.width }}>
             {typing && (
               <input className="sel-q" type="search" role="combobox" aria-expanded="true" aria-controls={uid + '-list'} aria-autocomplete="list" aria-activedescendant={options[hi] ? `${uid}-o${hi}` : undefined} autoFocus={!touch} autoComplete="off" enterKeyHint="done" value={q} placeholder="Type to find…" aria-label={`Find in ${label}`} onChange={(e) => (setQ(e.target.value), setHi(0))} onKeyDown={key} />
             )}
@@ -165,7 +165,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
     const h = list.current?.offsetHeight ?? 200;
-    const width = Math.max(r.width, 220);
+    const width = Math.min(Math.max(r.width, 220), window.innerWidth - 16);
     const up = r.bottom + 6 + h > window.innerHeight - 8 && r.top > h + 14;
     setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: up ? r.top - 6 - h : r.bottom + 6, width, up, bottom: window.innerHeight - r.top + 6 });
   }, [open]);
@@ -223,7 +223,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={listKey} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
+          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={listKey} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', width: at.width } : { left: at.left, top: at.top, width: at.width }}>
             {options.length > 7 && <input className="sel-q" type="search" role="searchbox" aria-label={`Find in ${label}`} aria-controls={uid + '-list'} autoComplete="off" value={query} placeholder="Type to find…" onChange={e=>setQuery(e.target.value)} />}
             {shownOptions.length === 0 && <span className="sel-none">Nothing matches.</span>}
             <div id={uid + '-list'} role="listbox" aria-multiselectable="true" aria-label={label}>

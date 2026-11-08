@@ -11,7 +11,7 @@ import { startOutsideClose } from './lib/outsideClose';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
 import { ComputerOnly } from './components/ComputerOnly';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -87,8 +87,12 @@ const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ defaul
 
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const DevelopmentStudio = lazy(() => import('./coach/DevelopmentStudio').then(m => ({ default: m.DevelopmentStudio })));
-const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
+
+function ClassAssistantRedirect() {
+  const { classId } = useParams();
+  return <Navigate to={`/class/${classId}`} replace />;
+}
 
 function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -240,7 +244,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/invite/:id" element={<InvitePage />} />
           <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
           <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
-          <Route path="/class/:classId/assistant" element={<TeacherOnly><LessonAssistant /></TeacherOnly>} />
+          <Route path="/class/:classId/assistant" element={<TeacherOnly><ClassAssistantRedirect /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
