@@ -9,7 +9,16 @@ export async function generateSong(apiKey, brief, fetchImpl = trackedFetch) {
   });
   if (!response.ok) {
     // Never forward provider bodies: they can contain prompt content or credentials.
-    throw new SongCreationError(response.status === 429 ? 'Song creation is busy or its allowance has been reached. Try later.' : [401,403,404].includes(response.status) ? 'Song creation needs an administrator to check the service connection and billing.' : 'The music service could not create this song. Your lyrics are kept.');
+    const details = await response.json().catch(() => ({}));
+    const providerCode = details?.error?.code;
+    const blocked = providerCode === 'content_blocked';
+    throw new SongCreationError(blocked
+      ? 'The music service blocked these lyrics. Try different original wording, then review the lyrics again. Your lyrics are kept.'
+      : response.status === 429
+        ? 'Song creation is busy or its allowance has been reached. Try later.'
+        : [401,403,404].includes(response.status)
+          ? 'Song creation needs an administrator to check the service connection and billing.'
+          : 'The music service could not create this song. Your lyrics are kept.');
   }
   const data = await response.json();
   const blocks = (data.steps ?? []).filter(s => s.type === 'model_output').flatMap(s => s.content ?? []);

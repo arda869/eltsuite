@@ -21,6 +21,14 @@ test('30-second songs use clip model, provider errors do not expose sensitive bo
  await assert.rejects(generateSong('secret',{...brief,duration:30},async(_u,o)=>{model=JSON.parse(o.body).model;return {ok:false,status:403,json:async()=>({error:{message:'secret-provider-payload'}})};}),e=>/administrator/.test(e.message)&&!e.message.includes('secret-provider-payload'));
  assert.equal(model,'lyria-3-clip-preview');await assert.rejects(generateSong('',brief),/not configured/);
 });
+test('blocked lyrics have useful guidance without revealing provider details',async()=>{
+ await assert.rejects(generateSong('private-test-key',brief,async()=>({ok:false,status:400,json:async()=>({error:{code:'content_blocked',message:'private-provider-payload'}})})),error=>{
+  assert.match(error.message,/blocked these lyrics/);
+  assert.match(error.message,/Your lyrics are kept/);
+  assert.doesNotMatch(error.message,/private-provider-payload|private-test-key/);
+  return true;
+ });
+});
 test('partial, unsupported or ambiguous provider output is never inserted as a song',async()=>{
  for(const content of [[],[{type:'audio',data:'AA=='}],[{type:'audio',data:Buffer.alloc(1000).toString('base64'),mime_type:'text/html'}],[1,2].map(()=>({type:'audio',data:Buffer.alloc(1000).toString('base64')}))])await assert.rejects(generateSong('test',brief,async()=>({ok:true,json:async()=>({steps:[{type:'model_output',content}]})})));
 });
