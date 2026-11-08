@@ -1,6 +1,7 @@
 import { NSelect } from './Select';
 import { useState } from 'react';
 import { familyOf, LEVELS, ROLE_NAMES, type Audience, type Dist, type GroupSet } from '../lib/groups';
+import { definedFields } from '../lib/definedFields';
 import { setTaskFlags, type Task } from '../lib/tasks';
 
 type Person = { id: string; name: string };
@@ -31,8 +32,8 @@ export function TaskAudience({
   const main = fam[0];
   const a: Audience = main.audience ?? { mode: 'all' };
   const d: Dist = main.dist ?? { mode: 'same', sameId: main.id };
-  const setA = (next: Audience) => setTaskFlags(classId, itemId, main.id, { audience: next });
-  const setD = (next: Partial<Dist>) => setTaskFlags(classId, itemId, main.id, { dist: { ...d, ...next } });
+  const setA = (next: Audience) => setTaskFlags(classId, itemId, main.id, { audience: definedFields(next) });
+  const setD = (next: Partial<Dist>) => setTaskFlags(classId, itemId, main.id, { dist: definedFields({ ...d, ...next }) });
   const levels = fam.some((f) => f.variant && LEVELS.includes(f.variant));
   const [learnerOpen, setLearnerOpen] = useState(false);
   const firstSet = sets[0]?.id;
