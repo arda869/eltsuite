@@ -2767,6 +2767,7 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 /* ---- Add to the task: gallery ---- */
 .dialog.gallery { max-width: 1040px; width: min(1040px, 96vw); max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
 .gallery-head { display: flex; align-items: center; gap: 12px; } .gallery-head input { flex: 1; min-width: 0; }
+@media (max-width: 640px) { .gallery-head { flex-wrap: wrap; } .gallery-head input { flex: 1 0 100%; order: 2; } }
 .gallery-body { display: grid; grid-template-columns: 210px 1fr; gap: 18px; min-height: 0; flex: 1; }
 .gallery-nav { display: flex; flex-direction: column; gap: 2px; }
 .gallery-nav button { display: flex; justify-content: space-between; gap: 8px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; font: 14px var(--sans); color: inherit; cursor: pointer; }
