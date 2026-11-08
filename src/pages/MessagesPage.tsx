@@ -70,6 +70,8 @@ export function MessagesPage() {
   const open = params.get('c') ?? '';
   const [creating, setCreating] = useState<false | 'chat' | 'group'>(false);
   const [q, setQ] = useState('');
+  const [startingPerson, setStartingPerson] = useState('');
+  const [personError, setPersonError] = useState('');
   const teacher = profile?.role === 'teacher';
   // A teacher looking at the app as a learner does not see that learner's messages.
   if (isProxyTab()) return <PrivateMessages />;
@@ -117,7 +119,25 @@ export function MessagesPage() {
     onTouchEnd: () => window.clearTimeout(timer.current),
   });
   const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
+  const contactResults = q.trim() && dir ? [...new Map(dir.groups.flatMap((g) => g.people)
+    .filter((p) => p.key !== me?.key && p.name.toLowerCase().includes(q.trim().toLowerCase()))
+    .map((p) => [p.key, p] as const)).values()]
+    .filter((p) => !(chats ?? []).some((c) => c.kind === 'dm' && c.members.includes(p.key))) : [];
   const pick = (id: string) => setParams(id ? { c: id } : {});
+  const startPerson = async (person: Person) => {
+    if (!me || startingPerson) return;
+    setStartingPerson(person.key);
+    setPersonError('');
+    try {
+      const id = await openChat(me, [person]);
+      setQ('');
+      pick(id);
+    } catch {
+      setPersonError('We couldn’t open this conversation. Try again.');
+    } finally {
+      setStartingPerson('');
+    }
+  };
 
   return (
     <div className="shell">
@@ -153,10 +173,10 @@ export function MessagesPage() {
                 </button>
               </span>
             </div>
-            <input aria-label="Search people and groups" className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
-            <div className="msg-list" role={shown.length||teacher ? 'listbox' : undefined} aria-label="Chats">
+            <input aria-label="Search conversations and people" className="ma-search" type="search" value={q} placeholder="Search conversations and people" onChange={(e) => { setQ(e.target.value); setPersonError(''); }} />
+            <div className="msg-list" role={shown.length||contactResults.length||teacher ? 'listbox' : undefined} aria-label="Conversations and people">
               {teacher&&(!q||/companion|teacher|coach/i.test(q))&&<button type="button" role="option" aria-selected={coachOpen} className={'msg-row'+(coachOpen?' on':'')} onClick={()=>pick('teaching-coach')}><span className="msg-av"><AiMark/></span><span className="msg-row-t"><span className="msg-row-top"><b>Teacher’s Companion</b><span className="hint">Pinned</span></span><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
-              {shown.length === 0 && <span className="hint msg-none" role={chats === null ? 'status' : undefined}>{chats === null ? 'Loading conversations…' : chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
+              {shown.length === 0 && contactResults.length === 0 && <span className="hint msg-none" role={chats === null || dir?.loading ? 'status' : undefined}>{chats === null ? 'Loading conversations…' : dir?.loading && q.trim() ? 'Finding people…' : q.trim() ? 'No conversations or people match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);
                 const tagged = un && c.last?.mentions?.includes(me.key);
@@ -178,6 +198,12 @@ export function MessagesPage() {
                   </button>
                 );
               })}
+              {contactResults.length > 0 && <span className="eyebrow msg-none">People</span>}
+              {contactResults.map((person) => <button key={person.key} type="button" role="option" aria-selected={false} className="msg-row" disabled={!!startingPerson} onClick={() => void startPerson(person)}>
+                <span className="msg-av">{initial(person.name)}</span>
+                <span className="msg-row-t"><span className="msg-row-top"><b>{person.name}</b></span><span className="msg-row-last">{startingPerson === person.key ? 'Opening conversation…' : person.role === 'teacher' ? 'Colleague · start a conversation' : 'Learner · start a conversation'}</span></span>
+              </button>)}
+              {personError && <span className="error msg-none" role="alert">{personError}</span>}
             </div>
           </aside>
           <main className="msg-main">
