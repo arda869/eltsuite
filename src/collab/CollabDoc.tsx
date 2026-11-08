@@ -9,7 +9,7 @@ import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
-import { doc as fsDoc, getDoc } from 'firebase/firestore';
+import { doc as fsDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
@@ -55,6 +55,7 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { PdfPreview } from '../components/PdfPreview';
 import { splitKey, type Responses } from '../lib/questions';
+import { documentSearchCard } from '../coach/documentIndex';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
 // suggesting (changes others accept or reject) and comments, as in Google Docs.
@@ -227,6 +228,25 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     },
     [session],
   );
+  useEffect(() => {
+    if (!editor || !synced || !mediaSpace?.startsWith('doc:') || eff !== 'edit') return;
+    const docId = mediaSpace.slice(4);
+    let timer = 0;
+    let last = '';
+    const saveCard = () => {
+      if (session.provider.saveStatus !== 'saved') return;
+      const card = documentSearchCard(editor.getJSON());
+      const serialized = JSON.stringify(card);
+      if (serialized === last) return;
+      last = serialized;
+      void updateDoc(fsDoc(db, 'sharedDocs', docId), { coachIndex: card }).catch(() => { last = ''; });
+    };
+    const schedule = () => { window.clearTimeout(timer); timer = window.setTimeout(saveCard, 1800); };
+    editor.on('update', schedule);
+    const stop = session.provider.watchSave(status => { if (status === 'saved') schedule(); });
+    schedule();
+    return () => { window.clearTimeout(timer); editor.off('update', schedule); stop(); };
+  }, [editor, synced, mediaSpace, eff, session.provider]);
   const formAnchor=useRef('');
   useEffect(()=>{if(!editor||!synced)return;let frame=0;const go=()=>{const hash=location.hash;if(!/^#studio-form-[\w-]+$/.test(hash)||formAnchor.current===hash)return;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const target=document.getElementById(hash.slice(1));if(target){target.scrollIntoView({block:'start'});formAnchor.current=hash;}});};const changed=()=>{formAnchor.current='';go();};editor.on('update',go);window.addEventListener('hashchange',changed);go();return()=>{cancelAnimationFrame(frame);editor.off('update',go);window.removeEventListener('hashchange',changed);};},[editor,synced,docKey]);
   const edRef = useRef(editor);
