@@ -902,7 +902,13 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
   const query = q.trim().toLowerCase();
   const favSec: Section = { title: 'Favourites', blurb: 'The elements you starred. Star any element to keep it here.', keys: favs };
   const sections = [favSec, ...secs].map((s) => ({ ...s, items: s.keys.map((k) => byKey[k]).filter(Boolean).filter((c) => !query || `${c.label} ${c.hint} ${ABOUT[c.key] ?? ''}`.toLowerCase().includes(query)) })).filter((s) => s.items.length);
-  const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === (section === -1 ? 'Favourites' : secs[section]?.title));
+  // Some editors expose only a subset of the gallery. If the first group has no
+  // available commands, open the first populated group instead of an empty panel.
+  const selectedTitle = section === -1 ? 'Favourites' : secs[section]?.title;
+  const activeTitle = section === -1 || sections.some((s) => s.title === selectedTitle)
+    ? selectedTitle
+    : sections.find((s) => s.title !== 'Favourites')?.title;
+  const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === activeTitle);
   return (
     <div className="scrim" onClick={onClose}>
       <div className="dialog wide gallery" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
@@ -929,13 +935,13 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
             </nav>
           ) : (
             <nav className="gallery-nav" aria-label="Groups">
-              <button type="button" className={'gallery-fav-nav' + (section === -1 ? ' on' : '')} onClick={() => setSection(-1)}>
+              <button type="button" className={'gallery-fav-nav' + (activeTitle === 'Favourites' ? ' on' : '')} onClick={() => setSection(-1)}>
                 <Star on />
                 Favourites
                 <span className="hint">{favs.filter((k) => byKey[k]).length}</span>
               </button>
               {secs.map((s, i) => !s.keys.some((k) => byKey[k]) ? null : (
-                <button key={s.title} type="button" className={section === i ? 'on' : ''} onClick={() => setSection(i)}>
+                <button key={s.title} type="button" className={activeTitle === s.title ? 'on' : ''} onClick={() => setSection(i)}>
                   {s.title}
                   <span className="hint">{s.keys.filter((k) => byKey[k]).length}</span>
                 </button>
