@@ -11,9 +11,20 @@ export async function runRoomMaintenance(db, KEY, request = fetch) {
   const classes = await db.collection('classes').where('status', '==', 'active').get();
   let made = 0;
   for (const c of classes.docs) {
-    const v = c.data().video ?? {};
+    let v = c.data().video ?? {};
     const host = await c.ref.collection('video').doc('host').get();
     const fresh = host.exists && (host.data().exp ?? 0) * 1000 > Date.now() + 30 * DAY;
+    // Existing public rooms must be closed to link-only entry. The app now asks
+    // the server for a short-lived token for each authorised class participant.
+    if (v.url && v.room && !v.private) {
+      const secured = await api('/rooms/' + v.room, { privacy: 'private', properties: { enable_chat: false, enable_knocking: false } });
+      if (!secured.ok) {
+        console.error('A class room could not be secured', c.id, secured.status);
+        continue;
+      }
+      v = { ...v, private: true, noChat: true };
+      await c.ref.set({ video: v }, { merge: true });
+    }
     // Rooms made before chat was turned off in calls: turned off once.
     if (v.url && !v.noChat) {
       const u = await api('/rooms/' + v.room, { properties: { enable_chat: false } });
@@ -21,7 +32,7 @@ export async function runRoomMaintenance(db, KEY, request = fetch) {
     }
     if (v.url && fresh) continue;
     const name = ('c-' + c.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
-    let room = await api('/rooms', { name, privacy: 'public', properties: { enable_screenshare: true, enable_chat: false, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
+    let room = await api('/rooms', { name, privacy: 'private', properties: { enable_screenshare: true, enable_chat: false, enable_knocking: false, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
     if (!room.ok) room = await api('/rooms/' + name);
     if (!room.ok) {
       console.log('A room could not be made for', c.id, room.status);
@@ -33,7 +44,7 @@ export async function runRoomMaintenance(db, KEY, request = fetch) {
       console.log('No host key for', c.id, tok.status);
       continue;
     }
-    await c.ref.set({ video: { url: room.j.url, room: name, at: Date.now(), noChat: true } }, { merge: true });
+    await c.ref.set({ video: { url: room.j.url, room: name, at: Date.now(), noChat: true, private: true } }, { merge: true });
     await c.ref.collection('video').doc('host').set({ token: tok.j.token, exp });
     made++;
   }

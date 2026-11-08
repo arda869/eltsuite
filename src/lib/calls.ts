@@ -69,7 +69,7 @@ export const ringing = (c: Chat, me: string) => {
 
 // The call this person has open, anywhere in the app: one at a time, in one tab at a time.
 // code: the call's own link, eltsuite.com/call/<code>, when it can be shared.
-export type OpenCall = { url: string; title: string; kind: CallKind; chatId?: string; classId?: string; sessionId?: string; token?: string; sub?: string; code?: string; camOff?: boolean; micOff?: boolean };
+export type OpenCall = { url: string; title: string; kind: CallKind; chatId?: string; classId?: string; classMain?: boolean; tokenIssuedAt?: number; sessionId?: string; token?: string; sub?: string; code?: string; camOff?: boolean; micOff?: boolean };
 let current: OpenCall | null = null;
 const subs = new Set<(c: OpenCall | null) => void>();
 const tab = Math.random().toString(36).slice(2);

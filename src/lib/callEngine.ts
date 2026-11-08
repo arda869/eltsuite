@@ -4,6 +4,7 @@ import type { OpenCall } from './calls';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { currentOrg } from './admin';
+import { getClassVideoToken } from './classVideo';
 
 async function hostKeyFor(url: string): Promise<string | undefined> {
   const room = url.split('/').filter(Boolean).pop() ?? '';
@@ -208,7 +209,11 @@ export function startEngine(call: OpenCall) {
       });
       // A call room you took yourself comes with its host key: Daily then turns microphones and
       // cameras off for you, and you can remove someone.
-      const token = call.token ?? (await hostKeyFor(call.url));
+      // A moved class call may have held its admission token longer than the
+      // short join window. Ask the server again before joining another tab.
+      const token = call.classMain && call.classId && (!call.token || !call.tokenIssuedAt || Date.now() - call.tokenIssuedAt > 5 * 60_000)
+        ? await getClassVideoToken(call.classId)
+        : call.token ?? (await hostKeyFor(call.url));
       await co.join({ url: call.url, userName: me.name, userData: { key: me.key, role: me.role, avatar: me.avatar, photo: me.photo }, ...(token ? { token } : {}), startVideoOff: call.kind === 'audio' || !!call.camOff, startAudioOff: !!call.micOff });
       emit({ status: 'joined', startedAt: Date.now() });
       refresh();

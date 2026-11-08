@@ -163,7 +163,7 @@ jobs:
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:classVideoToken,functions:maintainVideoRooms,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
           node functions/games/check-connection.mjs
@@ -172,6 +172,11 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: node functions/video/check-connection.mjs
+
+      - name: Verify class video secret binding and provider authentication
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/video/check-daily-connection.mjs
 
       - name: Verify corpus connection or explicit unavailable state
         env:

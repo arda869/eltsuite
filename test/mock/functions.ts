@@ -6,6 +6,15 @@ import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'classVideoToken') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const klass = (await getDoc(doc(db, 'classes', d.classId))).data();
+    const member = uid ? await getDoc(doc(db, 'classes', d.classId, 'members', uid)) : null;
+    if (!uid || !klass || (klass.teacherId !== uid && klass.coTeachers?.[uid]?.role !== 'co' && !member?.exists()))
+      throw Error('This class video room is unavailable to this account.');
+    return { data: { token: 'mock-class-video-token', room: klass.video?.room } };
+  }
   if (name === 'startCallRoom') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;

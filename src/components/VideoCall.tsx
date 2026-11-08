@@ -1,15 +1,19 @@
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { UiIcon } from './UiIcon';
 import type { ClassDoc } from '../lib/classes';
 import { openCall, useOpenCall } from '../lib/calls';
+import { getClassVideoToken } from '../lib/classVideo';
+import { tell } from '../lib/ask';
 
 // The class's own video room (made by scripts/video.mjs). Teachers join as hosts: mute, remove,
 // share the screen. It opens in the Rooms call window, beside the lesson or the whole screen.
-export async function joinClassVideo(c: Pick<ClassDoc, 'id' | 'name' | 'video'>, teacher?: boolean, room?: { url: string; title: string }) {
+export async function joinClassVideo(c: Pick<ClassDoc, 'id' | 'name' | 'video'>, _teacher?: boolean, room?: { url: string; title: string }) {
   if (!room && !c.video?.url) return;
-  const token = teacher && !room ? ((await getDoc(doc(db, 'classes', c.id, 'video', 'host')).catch(() => null))?.data()?.token as string | undefined) : undefined;
-  openCall({ url: room?.url ?? c.video!.url, title: room?.title ?? c.name, sub: room ? c.name : 'Class video room', kind: 'video', token, classId: c.id });
+  try {
+    const token = room ? undefined : await getClassVideoToken(c.id);
+    openCall({ url: room?.url ?? c.video!.url, title: room?.title ?? c.name, sub: room ? c.name : 'Class video room', kind: 'video', token, classId: c.id, classMain: !room, tokenIssuedAt: token ? Date.now() : undefined });
+  } catch {
+    void tell('We couldn’t open this class video room. Please try again.');
+  }
 }
 
 // The button that opens it: shown once the class has its room.
