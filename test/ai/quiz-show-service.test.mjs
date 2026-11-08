@@ -143,6 +143,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   const { runId, code } = await call(auth('teacher'), { action: 'host', guests: true, source: { kind: 'class', classId: 'c1', itemId: 'i1', taskId: 't1' } }, 1000);
   assert.match(code, /^\d{6}$/);
   assert.equal(w.read(`quizLive/${runId}/phase`), 'lobby');
+  assert.equal(w.read(`quizLive/${runId}/classId`), 'c1', 'game screens need the class media location');
   assert.equal(w.data.get('classes/c1/live/state').liveQuiz.code, code);
 
   const guest = await call(null, { action: 'join', code, name: 'Sam' }, 2000);

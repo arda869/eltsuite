@@ -11,7 +11,7 @@ export const kicker = (q: Pick<LiveSlide, 'index' | 'total' | 'poll' | 'points'>
   `Question ${q.index + 1} of ${q.total}${q.poll ? ' · Poll' : q.points === 2 ? ' · Double points' : q.points === 0 ? ' · No points' : ''}`;
 
 /** The question as the big screen shows it, sized for a phone or a lesson page. */
-export function QuestionCard({ q, children, results, responses }: { q: LiveSlide; children?: ReactNode; results?: AnswerKey | null; responses?: Responses }) {
+export function QuestionCard({ q, children, results, responses, classId }: { q: LiveSlide; children?: ReactNode; results?: AnswerKey | null; responses?: Responses; classId?: string }) {
   return (
     <section className="qz-qcard" aria-label={kicker(q)}>
       <p className="qz-kicker">{kicker(q)}</p>
@@ -19,7 +19,7 @@ export function QuestionCard({ q, children, results, responses }: { q: LiveSlide
         <>
           {q.lead && (
             <div className="qz-qcard-lead">
-              <TaskRenderer content={q.lead} responses={{}} disabled />
+              <TaskRenderer content={q.lead} responses={{}} classId={classId} disabled />
             </div>
           )}
           <h2 className="qz-qcard-prompt">{q.prompt}</h2>
@@ -28,7 +28,7 @@ export function QuestionCard({ q, children, results, responses }: { q: LiveSlide
       ) : (
         !children && (
           <div className="qz-qcard-task">
-            <TaskRenderer content={q.content || null} responses={responses || {}} results={results || undefined} disabled />
+            <TaskRenderer content={q.content || null} responses={responses || {}} results={results || undefined} classId={classId} disabled />
           </div>
         )
       )}

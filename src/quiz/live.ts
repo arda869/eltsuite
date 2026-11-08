@@ -38,6 +38,7 @@ export type Phase = 'lobby' | 'self' | 'question' | 'reveal' | 'board' | 'podium
 export type LiveState = {
   title: string;
   code: string;
+  classId?: string | null;
   total: number;
   mode?: 'live' | 'self';
   phase: Phase;

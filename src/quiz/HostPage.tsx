@@ -191,7 +191,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
         {live.mode === 'self' && <SelfHost live={live} count={count} act={async (action, extra) => { await act(action, extra); }} />}
         {phase === 'lobby' && <Lobby live={live} count={count} act={async (action, extra) => { await act(action, extra); }} />}
         {counting && <Countdown n={beat} index={live.slide} total={live.total} poll={!!q?.poll} points={q?.points ?? 1} />}
-        {open && q && <Question q={q} left={left} answered={answered} count={count} />}
+        {open && q && <Question q={q} left={left} answered={answered} count={count} classId={live.classId || ''} />}
         {phase === 'reveal' && q && live.reveal && <Reveal q={q} live={live} />}
         {phase === 'board' && <Board players={players} index={live.slide} total={live.total} />}
         {phase === 'podium' && <Podium players={players} />}
@@ -295,7 +295,7 @@ function Countdown({ n, index, total, poll, points }: { n: number; index: number
   );
 }
 
-function Question({ q, left, answered, count }: { q: NonNullable<LiveState['q']>; left: number; answered: number; count: number }) {
+function Question({ q, left, answered, count, classId }: { q: NonNullable<LiveState['q']>; left: number; answered: number; count: number; classId: string }) {
   const prompt = q.kind === 'choice' ? q.prompt : '';
   return (
     <div className="qz-question">
@@ -304,8 +304,8 @@ function Question({ q, left, answered, count }: { q: NonNullable<LiveState['q']>
           Question {q.index + 1} of {q.total}
           {q.poll ? ' · Poll' : q.points === 2 ? ' · Double points' : q.points === 0 ? ' · No points' : ''}
         </p>
-        {q.kind === 'choice' && q.lead && <div className="qz-lead"><TaskRenderer content={q.lead} responses={{}} disabled /></div>}
-        {prompt ? <h1 className={'qz-prompt ' + size(prompt)}>{prompt}</h1> : <div className="qz-task"><TaskRenderer content={q.content || null} responses={{}} disabled /></div>}
+        {q.kind === 'choice' && q.lead && <div className="qz-lead"><TaskRenderer content={q.lead} responses={{}} classId={classId} disabled /></div>}
+        {prompt ? <h1 className={'qz-prompt ' + size(prompt)}>{prompt}</h1> : <div className="qz-task"><TaskRenderer content={q.content || null} responses={{}} classId={classId} disabled /></div>}
         {q.multi && <p className="qz-sub">Choose every right answer.</p>}
       </div>
       <div className="qz-mid">
@@ -341,7 +341,7 @@ function Reveal({ q, live }: { q: NonNullable<LiveState['q']>; live: LiveState }
         <p className="qz-kicker">
           Question {q.index + 1} of {q.total}
         </p>
-        {q.kind === 'choice' ? <h1 className={'qz-prompt ' + size(q.prompt || '')}>{q.prompt}</h1> : <div className="qz-task"><TaskRenderer content={q.content || null} responses={{}} revealed={r.key} disabled /></div>}
+        {q.kind === 'choice' ? <h1 className={'qz-prompt ' + size(q.prompt || '')}>{q.prompt}</h1> : <div className="qz-task"><TaskRenderer content={q.content || null} responses={{}} classId={live.classId || ''} revealed={r.key} disabled /></div>}
         {note && <p className="qz-note">{note}</p>}
       </div>
       {q.kind === 'choice' && q.options ? (

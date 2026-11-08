@@ -198,7 +198,7 @@ function LivePlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
       body = (
         <>
           <TimeBar left={left} total={q.seconds} />
-          <QuestionCard q={q}>{q.kind === 'task' && !mine && left > 0 && <TaskAnswer q={q} draft={draft} setDraft={setDraft} busy={busy} />}</QuestionCard>
+          <QuestionCard q={q} classId={live.classId || ''}>{q.kind === 'task' && !mine && left > 0 && <TaskAnswer q={q} draft={draft} setDraft={setDraft} busy={busy} classId={live.classId || ''} />}</QuestionCard>
           <p className="qz-answered-line">
             {answered} of {count} answered
           </p>
@@ -228,7 +228,7 @@ function LivePlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
       <>
         {tone === 'right' && <Confetti n={36} />}
         <ResultBanner tone={tone} title={title} gained={me.g} streak={me.k} line={placeLine(place, me.s, players)} />
-        <QuestionCard q={q} results={q.kind === 'task' ? r?.key : undefined} responses={sent[slide]?.responses}>
+        <QuestionCard q={q} classId={live.classId || ''} results={q.kind === 'task' ? r?.key : undefined} responses={sent[slide]?.responses}>
           {q.kind === 'choice' && <RevealOptions q={q} correct={r?.correct} counts={r?.counts} mine={sent[slide]?.picked} />}
         </QuestionCard>
         {q.kind === 'task' && r && <p className="qz-answered-line">{r.right} right · {r.partly} partly right · {r.wrong} not right</p>}
@@ -278,10 +278,10 @@ function ChoiceAnswer({ q, picked, setPicked, busy, onSend }: { q: LiveSlide; pi
   return <AnswerPad key={q.index} skin={(q.skin as Skin) || 'cards'} options={q.options || []} disabled={busy} onPick={(i) => onSend({ [qid]: i }, [i])} />;
 }
 
-function TaskAnswer({ q, draft, setDraft, busy }: { q: LiveSlide; draft: Responses; setDraft: (f: (d: Responses) => Responses) => void; busy: boolean }) {
+function TaskAnswer({ q, draft, setDraft, busy, classId }: { q: LiveSlide; draft: Responses; setDraft: (f: (d: Responses) => Responses) => void; busy: boolean; classId: string }) {
   return (
     <div className="qz-qcard-task">
-      <TaskRenderer content={q.content || null} responses={draft} onChange={(id, v) => setDraft((d) => ({ ...d, [id]: v }))} disabled={busy} />
+      <TaskRenderer content={q.content || null} responses={draft} onChange={(id, v) => setDraft((d) => ({ ...d, [id]: v }))} classId={classId} disabled={busy} />
     </div>
   );
 }
@@ -384,7 +384,7 @@ function SelfPlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
       <>
         {tone === 'right' && <Confetti n={30} />}
         <ResultBanner tone={tone} title={title} gained={result.gained} streak={result.streak} line={place > 0 ? placeLine(place, result.score, players) : ''} />
-        <QuestionCard q={q} results={q.kind === 'task' ? result.reveal.key : undefined} responses={mine.responses}>
+        <QuestionCard q={q} classId={live.classId || ''} results={q.kind === 'task' ? result.reveal.key : undefined} responses={mine.responses}>
           {q.kind === 'choice' && <RevealOptions q={q} correct={result.reveal.correct} mine={mine.picked} />}
         </QuestionCard>
         <Explanation keyed={result.reveal.key} />
@@ -398,7 +398,7 @@ function SelfPlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
     body = (
       <>
         <TimeBar left={left} total={q.seconds} />
-        <QuestionCard q={q}>{q.kind === 'task' && <TaskAnswer q={q} draft={draft} setDraft={setDraft} busy={busy} />}</QuestionCard>
+        <QuestionCard q={q} classId={live.classId || ''}>{q.kind === 'task' && <TaskAnswer q={q} draft={draft} setDraft={setDraft} busy={busy} classId={live.classId || ''} />}</QuestionCard>
         {q.kind === 'choice' ? (
           <ChoiceAnswer q={q} picked={picked} setPicked={setPicked} busy={busy} onSend={(r, p) => void send(r, p)} />
         ) : (
