@@ -6,9 +6,14 @@ const obj=properties=>({type:'object',additionalProperties:false,properties,requ
 const array=(items,minItems=0,maxItems=60)=>({type:'array',items,minItems,maxItems});
 const text=(minLength=0,maxLength=5000)=>({type:'string',minLength,maxLength});
 const ref=name=>({$ref:'#/$defs/'+name});
-export function importModelSchema(training){
+export function importKindSchema(training){
+ const kinds=IMPORT_TYPES.filter(t=>training||!t.kind.startsWith('tt-')).map(t=>t.kind);
+ return obj({kinds:array({type:'string',enum:kinds},1,20)});
+}
+export function importModelSchema(training,selectedKinds){
  const original=activitySchema.properties.tasks.items.properties;
- const elements={anyOf:IMPORT_TYPES.filter(t=>training||!t.kind.startsWith('tt-')).map(t=>{
+ const allowed=selectedKinds?.length?new Set(selectedKinds):null;
+ const elements={anyOf:IMPORT_TYPES.filter(t=>(training||!t.kind.startsWith('tt-'))&&(!allowed||allowed.has(t.kind))).map(t=>{
   const details=Object.fromEntries(Object.entries(t.dataSchema.properties).map(([key,s])=>[key==='prompt'?'oralPrompt':key,t.kind==='picture'&&key==='asset'?{type:'string',enum:['']}:s]));
   return obj({kind:{type:'string',enum:[t.kind]},prompt:ref('text'),selectionReason:ref('reason'),feedback:ref('short'),example:{type:'boolean'},needs:ref('needs'),...details});
  })};
