@@ -18,6 +18,7 @@ import { ConnectionBanner } from './components/ConnectionBanner';
 import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
 import { ProxyGate } from './components/ProxyGate';
+import { isProxyTab } from './lib/proxy';
 import { TooltipLayer } from './components/Tooltip';
 import { EscapeToClose } from './components/EscapeToClose';
 import { PopupGuard } from './components/PopupGuard';
@@ -117,7 +118,10 @@ function Home() {
   if (!ready) return <Boot />;
   // learn.eltsuite.com: the learners' home page, to join a class.
   if (!user) return onLearnSite() ? <LearnerJoin home /> : new URLSearchParams(window.location.search).has('code') ? <SignIn /> : <PublicHome />;
-  if (!onLearnSite() && isLearnerEmail(user.email) && live()) return <SignIn />;
+  // Teachers preview learners in a separate tab on eltsuite.com. Keep that tab in
+  // the learner home after the preview signs in; ordinary learner sessions still
+  // use learn.eltsuite.com.
+  if (!onLearnSite() && isLearnerEmail(user.email) && live() && !isProxyTab()) return <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
   }
