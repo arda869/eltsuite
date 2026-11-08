@@ -23,6 +23,7 @@ export class RtdbProvider {
   private saveListeners = new Set<(status: 'saved' | 'pending' | 'error') => void>();
   private key: string;
   private uid: string;
+  private writable: boolean;
   private offs: (() => void)[] = [];
   private seen = new Set<string>();
   private pending: Uint8Array[] = [];
@@ -34,20 +35,25 @@ export class RtdbProvider {
   private awRef: DatabaseReference;
   private dead = false;
 
-  constructor(key: string, doc: Y.Doc, uid: string) {
+  constructor(key: string, doc: Y.Doc, uid: string, writable = true) {
     this.key = key;
     this.doc = doc;
     this.uid = uid;
+    this.writable = writable;
     this.awareness = new Awareness(doc);
     this.awRef = collabRef(key, `aw/${doc.clientID}`);
-    try {
-      const stored = localStorage.getItem(this.draftKey());
-      if (stored) this.pending = [unb64(stored)];
-    } catch { /* Keep edits in memory if device storage is unavailable. */ }
+    if (this.writable) {
+      try {
+        const stored = localStorage.getItem(this.draftKey());
+        if (stored) this.pending = [unb64(stored)];
+      } catch { /* Keep edits in memory if device storage is unavailable. */ }
+    }
     if (this.pending.length) this.saveStatus = 'pending';
     doc.on('update', this.onUpdate);
-    window.addEventListener('pagehide', this.flush);
-    window.addEventListener('online', this.flush);
+    if (this.writable) {
+      window.addEventListener('pagehide', this.flush);
+      window.addEventListener('online', this.flush);
+    }
     this.awareness.on('update', this.onAwareness);
     this.connect();
   }
@@ -62,7 +68,7 @@ export class RtdbProvider {
     this.saveStatus = status;
     this.saveListeners.forEach(listener => listener(status));
   }
-  retrySave() { this.flush(); }
+  retrySave() { if (this.writable) this.flush(); }
   private persist() {
     try {
       const unsaved = [...(this.inFlight ? [this.inFlight] : []), ...this.pending];
@@ -112,7 +118,7 @@ export class RtdbProvider {
       }),
     );
     // Fold a long list into one snapshot, keeping only what was read.
-    if (this.seen.size > 250) void this.compact();
+    if (this.writable && this.seen.size > 250) void this.compact();
     // Who is here.
     const aw = collabRef(this.key, 'aw');
     const apply = (c: { key: string | null; val: () => unknown }) => {
@@ -125,7 +131,7 @@ export class RtdbProvider {
   }
 
   private onUpdate = (u: Uint8Array, origin: unknown) => {
-    if (origin === this || this.dead) return;
+    if (origin === this || this.dead || !this.writable) return;
     this.pending.push(u);
     this.persist();
     this.setSaveStatus('pending');
@@ -134,7 +140,7 @@ export class RtdbProvider {
   };
 
   private flush = () => {
-    if (!this.pending.length || this.writing) return;
+    if (!this.writable || !this.pending.length || this.writing) return;
     this.writing = true;
     const u = this.pending.length === 1 ? this.pending[0] : Y.mergeUpdates(this.pending);
     this.pending = [];
@@ -167,6 +173,7 @@ export class RtdbProvider {
   };
 
   async compact() {
+    if (!this.writable) return;
     const keys = [...this.seen];
     const patch: Record<string, unknown> = { snap: { s: b64(Y.encodeStateAsUpdate(this.doc)), at: serverTimestamp(), by: this.uid } };
     keys.forEach((k) => (patch['u/' + k] = null));
@@ -174,7 +181,7 @@ export class RtdbProvider {
   }
 
   destroy() {
-    this.flush();
+    if (this.writable) this.flush();
     window.removeEventListener('pagehide', this.flush);
     window.removeEventListener('online', this.flush);
     this.dead = true;

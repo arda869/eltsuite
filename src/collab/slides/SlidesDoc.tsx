@@ -76,7 +76,7 @@ function paraOf(text: string) {
 }
 
 export function SlidesDoc(props: SlidesProps) {
-  const session = useCollabSession(props.docKey, props.me.uid);
+  const session = useCollabSession(props.docKey, props.me.uid, !!props.teacher || props.modes.includes('edit') || props.modes.includes('suggest'));
   if (!session) return <div className="cd cd-wait" />;
   return <SlidesInner {...props} session={session} />;
 }

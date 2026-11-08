@@ -2072,6 +2072,37 @@ const J = {
     s.errors.length = 0; // The injected write failure is expected.
     return s;
   },
+  'Collab view-only access never attempts a document save': async b => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.ProseMirror', 'the document');
+    await d.locator('.ProseMirror').click();
+    await d.keyboard.type('A sentence the owner saved.');
+    await d.locator('.cd-save-status').waitFor({ state: 'hidden' });
+    const baseline = await d.evaluate(() => {
+      const id = location.pathname.split('/').at(-1);
+      const files = JSON.parse(localStorage.getItem('mockfs') || '{}');
+      const file = files[`sharedDocs/${id}`];
+      const key = file.docKey;
+      file.owner = 'another-teacher';
+      file.members = { teacher1: { role: 'view', name: 'Arda', kind: 'teacher' } };
+      file.memberIds = ['teacher1'];
+      localStorage.setItem('mockfs', JSON.stringify(files));
+      sessionStorage.setItem('mockrtdb-faults', JSON.stringify([{ path: `collab/${key}/u/`, count: 10, code: 'permission_denied' }]));
+      return { key, updates: Object.keys(JSON.parse(localStorage.getItem('mockrtdb') || '{}').collab?.[key]?.u || {}).length };
+    });
+    await d.reload();
+    await see(d, 'text=can view', 'view-only access');
+    await see(d, 'text=A sentence the owner saved.', 'saved content in view-only mode');
+    await d.waitForTimeout(800);
+    const after = await d.evaluate(key => ({
+      updates: Object.keys(JSON.parse(localStorage.getItem('mockrtdb') || '{}').collab?.[key]?.u || {}).length,
+      faults: JSON.parse(sessionStorage.getItem('mockrtdb-faults') || '[]')[0]?.count,
+    }), baseline.key);
+    if (await d.locator('.cd-save-status').count()) throw Error(`A viewer was shown a document save warning (${JSON.stringify({baseline, after})})`);
+    if (after.updates !== baseline.updates || after.faults !== 10) throw Error(`A viewer attempted to write a document update (${JSON.stringify({baseline, after})})`);
+    return s;
+  },
   'Collab document keeps a diagram': async (b) => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');

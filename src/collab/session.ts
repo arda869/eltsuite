@@ -12,11 +12,11 @@ export function useCollabSaveStatus(provider: RtdbProvider) {
 
 // A shared document and its live connection, made in an effect (React may mount twice in
 // development) and closed when the component goes or opens another document.
-export function useCollabSession(docKey: string, uid: string) {
+export function useCollabSession(docKey: string, uid: string, writable = true) {
   const [session, setSession] = useState<CollabSession | null>(null);
   useEffect(() => {
     const doc = new Y.Doc();
-    const provider = new RtdbProvider(docKey, doc, uid);
+    const provider = new RtdbProvider(docKey, doc, uid, writable);
     const pud = new Y.PermanentUserData(doc);
     pud.setUserMapping(doc, doc.clientID, uid);
     setSession({ doc, provider, pud });
@@ -24,6 +24,6 @@ export function useCollabSession(docKey: string, uid: string) {
       provider.destroy();
       doc.destroy();
     };
-  }, [docKey, uid]);
+  }, [docKey, uid, writable]);
   return session;
 }

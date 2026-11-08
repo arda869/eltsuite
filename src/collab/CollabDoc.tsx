@@ -131,7 +131,7 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
 }
 
 export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, mediaSpace, display = 'inline', canDownload, head, page, heading, onCitationStyle, toolSlot }: CollabProps) {
-  const session = useCollabSession(docKey, me.uid);
+  const session = useCollabSession(docKey, me.uid, !!teacher || modes.includes('edit') || modes.includes('suggest'));
   if (!session) return <div className="cd cd-wait" />;
   return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, mediaSpace, display, canDownload, head, page, heading, onCitationStyle, toolSlot }} session={session} />;
 }
