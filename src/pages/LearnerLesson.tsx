@@ -118,7 +118,7 @@ export function LearnerLesson() {
   useEffect(() => {
     if (!classId) return;
     const u1 = onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }));
-    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => setItem(s.exists() ? { id: s.id, ...(s.data() as Omit<Item, 'id'>) } : null));
+    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => setItem(s.exists() ? { id: s.id, ...(s.data() as Omit<Item, 'id'>) } : null), () => setItem(null));
     return () => (u1(), u2());
   }, [classId, itemId]);
 
@@ -258,7 +258,7 @@ export function LearnerLesson() {
   const [nbTopics, setNbTopics] = useState<Topic[]>([]);
   useEffect(() => {
     if (!classId) return;
-    const u1 = onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setNbItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).filter((i) => !i.hidden).sort((a, b) => a.order - b.order)), () => {});
+    const u1 = onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setNbItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).sort((a, b) => a.order - b.order)), () => setNbItems([]));
     const u2 = onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setNbTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {});
     return () => (u1(), u2());
   }, [classId]);

@@ -7,7 +7,7 @@ import { ThemeChoice } from '../lib/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
@@ -77,7 +77,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
     const unsubs = [
       onSnapshot(doc(db, 'classes', classId), (s) => setC(s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }) : null), () => setC(null)),
       onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => {}),
-      onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => {}),
+      onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => setItems([])),
     ];
     unsubs.push(onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}));
     return () => unsubs.forEach((u) => u());
