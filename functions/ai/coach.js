@@ -40,11 +40,16 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
     basis.push('Teacher-confirmed selected evidence: '+selected.packet.title);
   }
   if(input.formContext&&!permissions.forms)throw new HttpsError('failed-precondition','Collab form context is switched off. Enable it in Coach settings or remove the selected form.');
-  if(permissions.forms){const {forms,documents,scope}=await loadStudioForms(db,uid,input.prompt,input.formContext);context.formScope=scope;basis.push(scope);if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}if(documents.length){context.documents=documents;sources.push(...documents.map(d=>({title:d.title,url:'/doc/'+d.id})));basis.push(...documents.map(d=>'Collab document: '+d.title));}}
   if(input.lessonContext&&!permissions.lessons)throw new HttpsError('failed-precondition','Lesson context is switched off. Enable it in Coach settings or remove the selected lesson.');
   const lessonForQuestion=lessonSourceForPrompt(input.lessonContext,input.prompt);
-  if(lessonForQuestion){const selected=await loadLessonSource(db,uid,lessonForQuestion,{games:permissions.games});context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
-  if(permissions.lessons){const found=await findTeacherLessons(db,uid,input.prompt,lessonForQuestion,{games:permissions.games});context.lessonSearchScope=found.scope;if(found.lessons.length){context.relatedLessons=found.lessons.map(l=>({className:l.className,...l.context}));sources.push(...found.lessons.flatMap(l=>l.sources));basis.push(...found.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(found.scope);}
+  const [studio,selectedLesson,foundLessons]=await Promise.all([
+    permissions.forms?loadStudioForms(db,uid,input.prompt,input.formContext):null,
+    lessonForQuestion?loadLessonSource(db,uid,lessonForQuestion,{games:permissions.games}):null,
+    permissions.lessons?findTeacherLessons(db,uid,input.prompt,lessonForQuestion,{games:permissions.games}):null,
+  ]);
+  if(studio){const {forms,documents,scope}=studio;context.formScope=scope;basis.push(scope);if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}if(documents.length){context.documents=documents;sources.push(...documents.map(d=>({title:d.title,url:'/doc/'+d.id})));basis.push(...documents.map(d=>'Collab document: '+d.title));}}
+  if(selectedLesson){context.lesson=selectedLesson.context;sources.push(...selectedLesson.sources);basis.push(...selectedLesson.sources.map(s=>s.title));}
+  if(foundLessons){context.lessonSearchScope=foundLessons.scope;if(foundLessons.lessons.length){context.relatedLessons=foundLessons.lessons.map(l=>({className:l.className,...l.context}));sources.push(...foundLessons.lessons.flatMap(l=>l.sources));basis.push(...foundLessons.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(foundLessons.scope);}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
     basis.push('Your professional profile');
