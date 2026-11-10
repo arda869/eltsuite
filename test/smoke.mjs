@@ -60,7 +60,16 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   await p.waitForLoadState('networkidle');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
-  if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
+  if (as !== 'teacher') {
+    await p.goto(`${BASE}/dev.html?as=${as}`);
+    // The switch is asynchronous. Tests that seed answers immediately need the
+    // learner's uid, otherwise they may save those answers under the teacher.
+    await p.waitForFunction(async () => {
+      if (!window.__mockReady) return false;
+      await window.__mockReady;
+      return sessionStorage.getItem('mockuid') !== 'teacher1';
+    }, null, { timeout: 30000 });
+  }
   const demo = await p.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
   activeSession={ctx,p,errors,demo};return activeSession;
 }
@@ -2512,8 +2521,13 @@ const J = {
       sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: `${root}old-check/private/key`, count: 1, delay: 1500 }]));
     }, s.demo);
     await s.p.goto(BASE + '/learn/' + s.demo.itemId);
+    const taskNav = s.p.getByRole('navigation', { name: 'Tasks' });
+    // Pick the checked activity explicitly. A learner's previous task choice can
+    // otherwise leave the fresh activity selected, so no old feedback request starts.
+    await taskNav.getByRole('button', { name: 'Checked activity' }).click();
+    await s.p.getByRole('heading', { name: 'Checked activity' }).waitFor();
     await s.p.waitForFunction(() => JSON.parse(sessionStorage.getItem('mockfs-faults') || '[]')[0]?.count === 0);
-    await s.p.getByRole('navigation', { name: 'Tasks' }).getByRole('button', { name: 'Fresh copy' }).click();
+    await taskNav.getByRole('button', { name: 'Fresh copy' }).click();
     await s.p.getByRole('heading', { name: 'Fresh copy' }).waitFor();
     await s.p.waitForTimeout(1800);
     await s.p.getByRole('textbox', { name: 'Question 1' }).fill('new answer');
