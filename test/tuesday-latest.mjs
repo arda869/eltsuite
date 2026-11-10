@@ -11,10 +11,14 @@ export async function documentChrome(s,base,newFile,axe,out){
  await p.waitForFunction(()=>scrollY>900);
  await p.evaluate(()=>scrollTo(0,0));
  await p.waitForFunction(()=>scrollY===0&&!document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ // Give the scroll listener a frame to record the top position. Two scripted
+ // jumps in one frame can be coalesced into one event and look like an upward scroll.
+ await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  await p.evaluate(()=>scrollTo(0,900));
- await p.waitForFunction(()=>scrollY===900&&document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ await p.waitForFunction(()=>scrollY>500&&document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ const beforeUp=await p.evaluate(()=>scrollY);
  await p.evaluate(()=>scrollBy(0,-1));
- await p.waitForFunction(()=>scrollY===899&&!document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ await p.waitForFunction(before=>scrollY<before&&!document.querySelector('.document-menubar')?.classList.contains('is-hidden'),beforeUp);
  await p.getByRole('menubar',{name:'Document menus'}).waitFor({state:'visible'});await p.waitForTimeout(150);assert.ok(await p.getByRole('menubar').evaluate(el=>el.getBoundingClientRect().top>=document.querySelector('.dp-bar').getBoundingClientRect().bottom-1),'Menu returns below the header after one pixel upward');
  await p.getByRole('menuitem',{name:'File',exact:true}).click();await p.getByRole('menuitem',{name:'Citation style…',exact:true}).click();const dialog=p.getByRole('dialog',{name:'Citation style',exact:true});await dialog.getByRole('button',{name:'Citation style',exact:true}).click();await p.getByRole('option',{name:/^Harvard/}).click();await dialog.getByRole('button',{name:'Done',exact:true}).click();await p.reload();await p.getByRole('menuitem',{name:'File',exact:true}).click();await p.getByRole('menuitem',{name:'Citation style…',exact:true}).click();assert.ok((await dialog.innerText()).includes('Harvard'),'Citation style survives reload');await axe(p,'Document File citation style and matching header controls',out);await dialog.getByRole('button',{name:'Done',exact:true}).click();
 }

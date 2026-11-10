@@ -60,7 +60,16 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   await p.waitForLoadState('networkidle');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
-  if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
+  if (as !== 'teacher') {
+    await p.goto(`${BASE}/dev.html?as=${as}`);
+    // The switch is asynchronous. Tests that seed answers immediately need the
+    // learner's uid, otherwise they may save those answers under the teacher.
+    await p.waitForFunction(async () => {
+      if (!window.__mockReady) return false;
+      await window.__mockReady;
+      return sessionStorage.getItem('mockuid') !== 'teacher1';
+    }, null, { timeout: 30000 });
+  }
   const demo = await p.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
   activeSession={ctx,p,errors,demo};return activeSession;
 }
