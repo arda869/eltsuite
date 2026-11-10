@@ -2,7 +2,7 @@ import { activityMainInstruction } from './activities.js';
 import {warn} from 'firebase-functions/logger';
 import {GenerationError} from './errors.js';
 import {pictureRecipe} from './import-picture-job.js';
-import {importPicturePlans,resolveImportPictures,taskPictureIds} from './import-pictures.js';
+import {importPicturePlans,resolveImportPictures} from './import-pictures.js';
 import {senseCheckImport,importTaskHash} from './import-review.js';
 import {meteredImportReview,readImportSource} from './import-review-job.js';
 import {importKindSchema,importModelSchema,fromImportModel} from './import-model.js';
@@ -12,7 +12,6 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { materialSource,checkRebuild,nativeImportInstructions,RIGHTS_VERSION } from './material-contract.js';
 import { nativeTask } from './activities.js';
-import { importRequirements } from './import-elements.js';
 import { generate } from './provider.js';
 import { reserveBudget,settleBudget,checkModel } from './budget.js';
 import { dailyGlobalUsage } from './allowance.js';
@@ -67,7 +66,7 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
       if(d.scope==='task'&&!old.exists)bad('That lesson no longer exists.');
       if(d.scope!=='task')tx.create(item,{type:j.get('creationType'),title:rebuilt.title,topicId:null,order:(last.docs[0]?.get('order')??-1)+1,hidden:true,locked:false,taskCount:rebuilt.tasks.length,createdAt:Timestamp.now(),...(j.get('creationType')==='exam'?{examReleased:false}:{})});
       for(const id of pictureIds){const mediaId=mediaByAsset[id].slice(6),jpeg=pictureData[id].jpeg;tx.create(cls.ref.collection('media').doc(mediaId),{data:jpeg,type:'image/jpeg',size:Buffer.from(jpeg.split(',')[1],'base64').length,public:false,aiGenerated:true});}
-      rebuilt.tasks.forEach((task,i)=>{const native=nativeTask(task,i,taskId),ref=item.collection('tasks').doc(taskId+'_'+i);tx.create(ref,{kind:'task',title:task.title,instructions:activityMainInstruction(task),content:resolveImportPictures(native.content,plans,mediaByAsset),layout:task.layout==='columns'?'two':'single',order:d.scope==='task'?(last.docs[0]?.get('order')??-1)+1+i:i,hidden:taskPictureIds(task,plans).some(id=>!pictureData[id]?.qualityPassed)||trusted.checks.find(c=>c.stageId===task.stageId)?.status==='needsReview'||[task,...task.subTasks].some(b=>importRequirements(b.inlineElements??[]).length>0),locked:false,afterCheck:j.get('creationType')==='exam'?'reveal':'retry',createdAt:Timestamp.now()});tx.create(ref.collection('private').doc('key'),native.key);tx.create(ref.collection('private').doc('notes'),{text:[`Imported from: ${j.get('sourceName')}`,native.notes,'Automatic source check: '+trusted.checks.find(c=>c.stageId===task.stageId)?.summary,...(trusted.checks.find(c=>c.stageId===task.stageId)?.issues??[]).map(issue=>issue.problem+' — '+issue.improvement),'Import review notes:',...rebuilt.warnings].join('\n\n'),updatedAt:Timestamp.now()});});
+      rebuilt.tasks.forEach((task,i)=>{const native=nativeTask(task,i,taskId),ref=item.collection('tasks').doc(taskId+'_'+i);tx.create(ref,{kind:'task',title:task.title,instructions:activityMainInstruction(task),content:resolveImportPictures(native.content,plans,mediaByAsset),layout:task.layout==='columns'?'two':'single',order:d.scope==='task'?(last.docs[0]?.get('order')??-1)+1+i:i,hidden:true,locked:false,afterCheck:j.get('creationType')==='exam'?'reveal':'retry',createdAt:Timestamp.now()});tx.create(ref.collection('private').doc('key'),native.key);tx.create(ref.collection('private').doc('notes'),{text:[`Imported from: ${j.get('sourceName')}`,native.notes,'Automatic source check: '+trusted.checks.find(c=>c.stageId===task.stageId)?.summary,...(trusted.checks.find(c=>c.stageId===task.stageId)?.issues??[]).map(issue=>issue.problem+' — '+issue.improvement),'Import review notes:',...rebuilt.warnings].join('\n\n'),updatedAt:Timestamp.now()});});
       if(d.scope==='task')tx.update(item,{taskCount:(old.get('taskCount')??0)+rebuilt.tasks.length});
       tx.update(job,{createdItemId:targetId,taskId:taskId+'_0',reviewedAt:Timestamp.now()});
     });return {createdItemId:targetId,taskId:taskId+'_0'};
