@@ -1075,10 +1075,10 @@ const J = {
     const errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
-    await see(p, '.pub-hero', 'public homepage');
-    await see(p, '.pub-hero .pub-hero-shot img.pub-screen', 'lesson editor screenshot');
+    await see(p, '.pub-design-home', 'public homepage');
+    await see(p, '.pub-design-home img[src="/landing/editor.webp"]', 'lesson editor screenshot');
     await p.reload();
-    await see(p, '.pub-hero', 'public homepage after reload');
+    await see(p, '.pub-design-home', 'public homepage after reload');
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in',exact:true}).click();
     await see(p, '#teacher-sign-in', 'separate sign-in page');
     if (new URL(p.url()).pathname !== '/signin') throw Error('Sign-in route incorrect');
@@ -1107,10 +1107,10 @@ const J = {
     await s.p.goto(BASE + '/classes');
     await s.p.getByRole('button', { name: 'Account', exact: true }).click();
     await s.p.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
-    await see(s.p, '.pub-hero', 'public homepage after logout');
+    await see(s.p, '.pub-design-home', 'public homepage after logout');
     if (new URL(s.p.url()).pathname !== '/') throw Error('Logout did not return home');
     await s.p.reload();
-    await see(s.p, '.pub-hero', 'logout persisted after reload');
+    await see(s.p, '.pub-design-home', 'logout persisted after reload');
     if (await count(s.p, '.app-err')) throw Error('Logout rendered an error');
     if (s.errors.length) throw Error(s.errors.join('; '));
     return s;
