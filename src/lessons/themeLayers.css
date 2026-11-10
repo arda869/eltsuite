@@ -442,3 +442,48 @@
 .task-frame:is([data-lesson-style='young'], [data-lesson-style='exam'], [data-lesson-style='teen']) .frame-body .task-body .rf-star.on { color: var(--pen); }
 [data-lesson-style='teen'] .speak-start { color: #fff !important; }
 [data-lesson-style='young'] .pq-gslot { min-height: 34px; min-width: 40px; padding: 0 8px; vertical-align: middle; }
+
+/* Exam Prep is a dark sheet in dark mode. Keep these overrides after the paper
+   rules above so the on-screen task never combines black print ink with dark paper. */
+@media screen {
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] {
+    --x-ink: #eeeae2;
+    --x-muted: #bcb5ab;
+    --x-rule: #eeeae2;
+    --x-cell: #4b4944;
+    --x-soft: #353430;
+    --x-accent: var(--accent-text);
+    --x-wash: color-mix(in srgb, var(--accent) 20%, #292824);
+    --exam-blue: var(--x-accent);
+    --exam-navy: var(--x-accent);
+    --exam-ink: var(--x-ink);
+    --exam-wash: var(--x-wash);
+    --exam-line: #68645d;
+    --ink: var(--x-ink);
+    --muted: var(--x-muted);
+    --pen: #a8c5ff;
+    --hair: #68645d;
+    --hair-strong: var(--x-ink);
+    color: var(--x-ink);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] :is(.lg-slot, .lg-given, .match-slot, .drop-slot, .pq-gslot, .pq-mm-opt, .pq-col, .pq-pin, .tbox.s-info, .tbox.s-box, .tbox.s-paper, .tbox.s-email, .tbox.s-browser, .tbox.s-sticky, .tbox .bubble, .dg .dg-cell, .mp) {
+    background: var(--paper) !important;
+    color: var(--x-ink);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] :is(.lg-given, .pq-gslot-n, .pq-sent-n, .pq-col-head, .tbox-chrome, .dg .dg-cell.main, .subtask .st-band) {
+    background: var(--x-soft) !important;
+    color: var(--x-ink);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .pr-gl::before,
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .nav-arrow {
+    background: var(--paper) !important;
+    color: var(--x-ink) !important;
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] .writing-q textarea {
+    background: var(--paper) repeating-linear-gradient(var(--paper) 0 31px, #55514b 31px 32px);
+    color: var(--x-ink);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='exam'] :is(.btn.primary, .opt.right .letter, .pq-mm-opt.on) {
+    color: var(--paper) !important;
+  }
+}

@@ -94,12 +94,19 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
       // Classification is an optimisation; a failed shortlist must not block an import.
       warn('Material import type selection failed',{reason:e instanceof GenerationError?e.reason:'content'});
     }
+    const generationSchema=importModelSchema(training,selectedKinds);
+    // A task import is one activity, even when its worksheet contains several parts.
+    // Bounding the schema and output prevents a small worksheet from spending the
+    // entire callable window expanding a 12-activity response.
+    if(source.scope==='task')generationSchema.properties.tasks.maxItems=1;
     let r;
-    try {r=await generate({apiKey,model,schema:importModelSchema(training,selectedKinds),name:'rebuild',input,sourceImages:images,instructions:nativeImportInstructions});}
+    try {r=await generate({apiKey,model,schema:generationSchema,name:'rebuild',input,sourceImages:images,instructions:nativeImportInstructions,timeoutMs:Math.min(250000,Math.max(1000,deadline-Date.now()-85000)),maxOutputTokens:source.scope==='task'?14000:undefined});}
     catch(e){
       if(!(e instanceof GenerationError)||e.reason!=='output_limit')throw e;
       const retryKinds=selectedKinds?.length?selectedKinds:undefined;
-      r=await metered({name:'rebuild',schema:importModelSchema(training,retryKinds),instructions:nativeImportInstructions+'\nKeep the output proportional to the supplied source. Include all source questions, but do not invent extra tasks, repeat passages in multiple fields or expand teacher notes beyond what is necessary.',input,sourceImages:images,timeoutMs:Math.min(180000,Math.max(1000,deadline-Date.now()-5000))});
+      const retrySchema=importModelSchema(training,retryKinds);
+      if(source.scope==='task')retrySchema.properties.tasks.maxItems=1;
+      r=await metered({name:'rebuild',schema:retrySchema,instructions:nativeImportInstructions+'\nKeep the output proportional to the supplied source. Include all source questions, but do not invent extra tasks, repeat passages in multiple fields or expand teacher notes beyond what is necessary.',input,sourceImages:images,timeoutMs:Math.min(180000,Math.max(1000,deadline-Date.now()-5000))});
     }
     phase='structure';
     try{r.value=checkRebuild(fromImportModel(r.value),source.scope,{training:cls.get('kind')==='training'});}catch(validationError){

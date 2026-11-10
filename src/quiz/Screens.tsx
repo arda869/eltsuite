@@ -124,11 +124,12 @@ export function LeaderList({ players, me, top = 5 }: { players: Record<string, L
 /** The top three with their medals. */
 export function Winners({ players }: { players: Record<string, LivePlayer> }) {
   const top = leaders(players).slice(0, 3);
+  const hasScore = (top[0]?.s || 0) > 0;
   return (
     <div className="qz-winners">
       {top.map((p, i) => (
         <div key={p.id} className={'qz-winner w' + (i + 1)}>
-          <Medal place={(i + 1) as 1 | 2 | 3} size={i === 0 ? 70 : 56} />
+          {hasScore && <Medal place={(i + 1) as 1 | 2 | 3} size={i === 0 ? 70 : 56} />}
           <b>{p.n}</b>
           <span>{fmt(p.s || 0)}</span>
         </div>
