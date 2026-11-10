@@ -47,10 +47,11 @@ export function ResultsPage() {
     players.forEach((p) => c[cell(p, i) as keyof typeof c]++);
     return c;
   });
-  const asked = labels.map((_, i) => i).filter((i) => !polls.has(i) && players.some((p) => p.slides?.[i]));
+  const asked = labels.map((_, i) => i).filter((i) => !polls.has(i) && players.some((p) => p.slides?.[i]?.answered));
   const hardest = [...asked].sort((a, b) => perQ[a].r / Math.max(1, players.length) - perQ[b].r / Math.max(1, players.length)).slice(0, 3);
   const totalRight = players.reduce((s, p) => s + (p.got || 0), 0);
   const totalMax = players.reduce((s, p) => s + (p.max || 0), 0);
+  const answeredCount = perQ.reduce((sum, q) => sum + q.r + q.p + q.w + q.x, 0);
   const word = { r: 'Right', p: 'Partly right', w: 'Not right', n: 'No answer', x: 'Answered' };
 
   const csv = () => {
@@ -83,13 +84,13 @@ export function ResultsPage() {
           <span>{n === 1 ? 'question' : 'questions'}</span>
         </div>
         <div className="qr-fact">
-          <b>{totalMax ? Math.round((totalRight / totalMax) * 100) + '%' : '–'}</b>
-          <span>of answers right</span>
+          <b>{answeredCount && totalMax ? Math.round((totalRight / totalMax) * 100) + '%' : '–'}</b>
+          <span>{answeredCount ? 'of answers right' : 'no answers submitted'}</span>
         </div>
         {players[0] && (
           <div className="qr-fact">
             <b>{players[0].name}</b>
-            <span>won with {fmt(players[0].score || 0)} points</span>
+            <span>{(players[0].score || 0) > 0 ? `top score: ${fmt(players[0].score || 0)} points` : 'no points this round'}</span>
           </div>
         )}
       </div>

@@ -442,6 +442,7 @@ function Board({ players, index, total }: { players: Record<string, LivePlayer>;
 
 function Podium({ players }: { players: Record<string, LivePlayer> }) {
   const top = leaders(players).slice(0, 3);
+  const hasScore = (top[0]?.s || 0) > 0;
   const [step, setStep] = useState(0); // 0 nothing, 1 third, 2 second, 3 winner
   useEffect(() => {
     const at = [1800, 3600, 5600];
@@ -472,13 +473,19 @@ function Podium({ players }: { players: Record<string, LivePlayer> }) {
   };
   return (
     <div className="qz-podium">
-      {step >= 3 && <Confetti n={110} />}
-      <h1 className="qz-title">{step >= 3 && top[0] ? `${top[0].n} wins` : 'And the winners are…'}</h1>
-      <div className="qz-podium-row">
-        {spot(2)}
-        {spot(1)}
-        {spot(3)}
-      </div>
+      {step >= 3 && hasScore && <Confetti n={110} />}
+      <h1 className="qz-title">{step >= 3 ? (hasScore ? `${top[0].n} wins` : 'No points this round') : 'Final scores…'}</h1>
+      {hasScore ? (
+        <div className="qz-podium-row">
+          {spot(2)}
+          {spot(1)}
+          {spot(3)}
+        </div>
+      ) : (
+        <ul className="qz-zero-scores">
+          {top.map((p) => <li key={p.id}><b>{p.n}</b><span>0 points</span></li>)}
+        </ul>
+      )}
       {top.length === 0 && <p className="qz-waiting">Nobody played this time.</p>}
     </div>
   );

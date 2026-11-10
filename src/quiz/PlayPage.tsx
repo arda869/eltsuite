@@ -246,9 +246,9 @@ function LivePlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
   } else if (live.phase === 'podium' || live.phase === 'ended') {
     body = (
       <>
-        {me && place > 0 && place <= 3 && <Confetti n={60} />}
+        {me && (leaders(players)[0]?.s || 0) > 0 && place > 0 && place <= 3 && <Confetti n={60} />}
         <Winners players={players} />
-        <Message kicker={live.phase === 'ended' ? 'The game has finished' : 'The winners'} title={me ? `You came ${ordinal(place)}` : 'Thanks for playing.'} text={me ? `${fmt(me.s || 0)} points` : ''} action={live.phase === 'ended' ? <button className="qz-btn" onClick={onLeave}>Join another game</button> : undefined} />
+        <Message kicker={live.phase === 'ended' ? 'The game has finished' : 'Final scores'} title={me ? ((leaders(players)[0]?.s || 0) > 0 ? `You came ${ordinal(place)}` : 'No points this round') : 'Thanks for playing.'} text={me ? `${fmt(me.s || 0)} points` : ''} action={live.phase === 'ended' ? <button className="qz-btn" onClick={onLeave}>Join another game</button> : undefined} />
       </>
     );
   } else body = <Message title="One moment…" />;
@@ -355,7 +355,7 @@ function SelfPlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
   else if (cur.done)
     body = (
       <>
-        {place > 0 && place <= 3 && <Confetti n={50} />}
+        {(leaders(players)[0]?.s || 0) > 0 && place > 0 && place <= 3 && <Confetti n={50} />}
         <Message kicker="You’ve finished" title={me ? `${fmt(me.s || 0)} points` : 'Well done.'} text={me ? `You’re ${ordinal(place)} so far. ${finished} of ${Object.keys(players).length} players have finished.` : ''} />
         <LeaderList players={players} me={seat.pid} />
         <button className="qz-btn" onClick={onLeave}>

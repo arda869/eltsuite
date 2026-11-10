@@ -224,6 +224,8 @@ button.qz-card:active:not(:disabled) { transform: translateY(2px); box-shadow: i
 .qz-up { font: 800 13px var(--sans); padding: 3px 8px; border-radius: 999px; background: var(--qz-right); color: #fff; }
 
 .qz-podium { position: relative; flex: 1; display: grid; grid-template-rows: auto 1fr; gap: 20px; justify-items: center; padding-top: 10px; }
+.qz-zero-scores { list-style: none; margin: 0; padding: 0; width: min(640px, 100%); display: grid; align-content: center; gap: 16px; }
+.qz-zero-scores li { display: flex; justify-content: space-between; gap: 24px; padding: 18px 24px; border: 1px solid rgba(246, 239, 226, .2); border-radius: 14px; background: rgba(246, 239, 226, .08); font-size: clamp(20px, 2vw, 28px); }
 .qz-podium-row { display: flex; align-items: flex-end; gap: 40px; height: 100%; min-height: 340px; }
 .qz-podium-spot { width: clamp(170px, 18vw, 260px); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 10px; height: 100%; }
 .qz-podium-spot.p1 { padding-bottom: 60px; }
