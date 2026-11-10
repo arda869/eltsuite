@@ -8,7 +8,7 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { learnOrigin } from '../lib/site';
 import { Backdrop, Confetti, Flame, Medal, Shape, TimerRing, answerStyle, fmt } from './Stage';
 import { AnswerPad, type Skin } from './Skins';
-import { joinPath, leaders, quizApi, useClock, useLive, type LivePlayer, type LiveState } from './live';
+import { answeredCount, joinPath, leaders, quizApi, useClock, useLive, type LivePlayer, type LiveState } from './live';
 import { musicState, playMusic, preloadMusic, setMusicMuted, stopMusic, unlockMusic } from './music';
 import { playSfx, setSfxOn, warmSfx } from './sfx';
 import './quiz.css';
@@ -32,7 +32,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
   const q = live.q;
   const players = live.players || {};
   const count = Object.keys(players).length;
-  const answered = live.answered?.[String(live.slide)] || 0;
+  const answered = answeredCount(live, live.slide);
   const counting = phase === 'question' && !!live.startsAt && now < live.startsAt;
   const open = phase === 'question' && !counting;
   const left = open && live.endsAt ? Math.max(0, (live.endsAt - now) / 1000) : 0;

@@ -170,7 +170,7 @@ test('a class quiz: guests and learners join, answer, and the learner’s answer
   await call(null, { action: 'answer', runId, pid: lina.pid, token: lina.token, slide: 0, responses: { q1: 0 } }, 23500);
   await call(null, { action: 'answer', runId, pid: twin.pid, token: twin.token, slide: 0, responses: { q1: 2 } }, 15000);
   await call(null, { action: 'answer', runId, pid: twin.pid, token: twin.token, slide: 0, responses: { q1: 2 } }, 40000);
-  assert.equal(w.read(`quizLive/${runId}/answered/0`), 3);
+  assert.equal(Object.keys(w.read(`quizLive/${runId}/answeredBy/0`)).length, 3);
   await call(auth('teacher'), { action: 'close', runId }, 34000);
   const players = w.read(`quizLive/${runId}/players`);
   assert.equal(players[guest.pid].s, 1000, 'instant right answer');
