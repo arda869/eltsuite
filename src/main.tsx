@@ -31,13 +31,20 @@ import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainO
 import './styles.css';
 import './friday-ui.css';
 import './cohesion.css';
+import './visual-system.css';
 import { AiActivityDock } from './components/AiActivity';
 
-const PublicHome=lazy(()=>import('./public/Home').then(m=>({default:m.PublicHome})));
+const PublicHome=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignHome})));
 const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
-const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
-const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.PricingPage})));
-const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
+const ContactPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignContact})));
+const PricingPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignPricing})));
+const AboutPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignAbout})));
+const ExplorePage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignExplore})));
+const LearningPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignLearning})));
+const SchoolsPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignSchools})));
+const HelpPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignHelp})));
+const AiPublicPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignAi})));
+const AccessibilityPage=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignAccessibility})));
 
 // Pages load when they are first opened, so the first screen comes up quickly.
 const QuizPlayPage = lazy(() => import('./quiz/PlayPage').then((m) => ({ default: m.QuizPlayPage })));
@@ -230,10 +237,15 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<Navigate to="/#plan" replace />} />
-          <Route path="/explore" element={<Navigate to="/#plan" replace />} />
+          <Route path="/tour" element={<Navigate to="/explore" replace />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/professional-learning" element={<LearningPage />} />
+          <Route path="/schools" element={<SchoolsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/ai-and-your-teaching" element={<AiPublicPage />} />
+          <Route path="/accessibility" element={<AccessibilityPage />} />
           <Route path="/signin" element={<PublicSignIn />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
@@ -287,6 +299,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
+          <Route path="/cookies" element={<Legal kind="cookies" />} />
           <Route path="*" element={<PublicError />} />
         </Routes>
         </Suspense>

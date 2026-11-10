@@ -1,0 +1,47 @@
+/* Shared spacing scale from the ELT Suite spacing guide. */
+:root {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --page-gutter: var(--space-6);
+}
+
+/* A page edge is shared by the header and its content. Editors keep their
+   tighter canvas spacing; the task content and its insertion rail are untouched. */
+.shell:not(.wide) { padding-inline: var(--page-gutter); }
+.shell.wide { padding-inline: var(--space-5); }
+.shell > .topbar { min-height: 60px; }
+.shell.wide > .topbar { min-height: 52px; }
+.suite-mark { gap: 10px; }
+:root .suite-mark .suite-k { font: 800 9.5px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+:root .suite-mark b,
+:root .suite-mark b[style] { font: 500 20px/1 var(--serif); letter-spacing: -.01em; color: color-mix(in srgb, var(--app) 80%, #000); }
+:root[data-theme='dark'] .suite-mark b,
+:root[data-theme='dark'] .suite-mark b[style] { color: var(--ink); }
+:root .suite-mark.dark .suite-k { color: var(--studio-dim, #a6a19b); }
+.app-logo { background: linear-gradient(150deg, color-mix(in srgb, var(--app) 82%, #fff), var(--app)); }
+.fk-game { --fk: #996525; }
+.shell:not(.wide) .btn:not(.small-btn):not(.link):not(.icon-only) { min-height: 36px; }
+.shell:not(.wide) .field { gap: var(--space-2); }
+.learner-entry { max-width: 1200px; margin-inline: auto; padding-inline: var(--page-gutter); }
+.learner-entry .intro { max-width: 520px; }
+.learner-entry .card { max-width: 480px; border-radius: 16px; }
+.learner-entry .card h1 { font-size: 32px; }
+
+@media (max-width: 1024px) { :root { --page-gutter: 20px; } }
+@media (max-width: 600px) {
+  :root { --page-gutter: 16px; }
+  .shell.wide { padding-inline: var(--space-3); }
+  .shell > .topbar { min-height: 52px; }
+  .suite-mark { gap: var(--space-3); }
+  :root .suite-mark b, :root .suite-mark b[style] { font-size: 17px; }
+  :root .suite-mark .suite-k { font-size: 8.5px; }
+  .suite-mark .app-logo { width: 26px !important; height: 26px !important; }
+  .shell:not(.wide) .btn:not(.small-btn):not(.link):not(.icon-only) { min-height: 44px; }
+}

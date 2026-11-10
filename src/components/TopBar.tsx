@@ -183,7 +183,9 @@ function AppMark() {
                 : { name: 'Classes', color: '#c8764a' });
   return (
     <Link to="/" className="suite-mark" style={{ ['--app' as string]: app.color }} aria-label={`ELT Suite ${app.name}: Home`} data-tip="Home">
-      {own2 ? <AppLogo k={own2.k} size={28} /> : <Mark size={26} />}
+      {own2 || pathname.startsWith('/doc') || pathname.startsWith('/library')
+        ? <AppLogo k={own2?.k ?? 'files'} size={28} />
+        : <Mark size={28} />}
       <span>
         <span className="suite-k">ELT Suite</span>
         <b>{app.name}</b>

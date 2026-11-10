@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { PublicLayout } from '../public/PublicSite';
 
 // Placeholder privacy policy and terms, to be replaced with reviewed text before opening to other teachers.
-export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
+export function Legal({ kind }: { kind: 'privacy' | 'terms' | 'cookies' }) {
   return (
     <PublicLayout>
       <main id="public-main" className="pub-section pub-legal" style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -27,7 +27,7 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
             <h2>Contact</h2>
             <p>Questions about privacy: contact the teacher who runs your class.</p>
           </>
-        ) : (
+        ) : kind === 'terms' ? (
           <>
             <h1 className="page-title">Terms of use</h1>
             <p>These are placeholder terms. We’ll replace them before ELT Suite opens to every teacher.</p>
@@ -38,9 +38,19 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
               <li>The app is provided as it is, while we build it.</li>
             </ul>
           </>
+        ) : (
+          <>
+            <h1 className="page-title">Cookies and storage</h1>
+            <p>This page is being reviewed while we complete a feature by feature browser storage audit.</p>
+            <h2>What your browser remembers</h2>
+            <p>ELT Suite uses browser storage for sign-in, preferences, and drafts that may need to be recovered after a connection problem. The information used depends on the features you open.</p>
+            <p>Clearing this site’s browser data may sign you out and remove work that has not yet reached the server. Check that a draft is saved before clearing it.</p>
+            <h2>Questions</h2>
+            <p>For questions about browser storage, <Link to="/contact">contact us</Link>.</p>
+          </>
         )}
         <p className="hint">
-          <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link> · <Link to="/cookies">Cookies and storage</Link>
         </p>
       </main>
     </PublicLayout>

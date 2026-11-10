@@ -2,12 +2,17 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Wordmark } from '../components/Wordmark';
 import './public.css';
+import './public-v2.css';
 
 export const publicLaunch = { mode: 'invitation-only', registration: false, checkout: false } as const;
 
-const TITLES: Record<string, string> = { '/': 'Lesson planning and live teaching for English teachers', '/pricing': 'Plans and pricing', '/about': 'About', '/signin': 'Sign in', '/contact': 'Contact', '/privacy': 'Privacy', '/terms': 'Terms' };
+const TITLES: Record<string, string> = { '/': 'Everything you need to teach', '/explore': 'Explore ELT Suite', '/professional-learning': 'Professional learning', '/schools': 'For schools and teaching teams', '/pricing': 'Pricing', '/about': 'About', '/signin': 'Teacher sign in', '/contact': 'Contact', '/help': 'Help', '/ai-and-your-teaching': 'AI and your teaching', '/accessibility': 'Accessibility', '/cookies': 'Cookies and storage', '/privacy': 'Privacy', '/terms': 'Terms' };
 const DESCRIPTION = 'ELT Suite is a teaching space for ELT professionals. Plan lessons, teach them live, see every learner’s answer and grow as a teacher. Open by invitation.';
-const FOOTER: [string, string][] = [['/pricing', 'Plans and pricing'], ['/about', 'About'], ['/contact', 'Contact'], ['/privacy', 'Privacy'], ['/terms', 'Terms']];
+const FOOTER: { heading: string; links: [string, string][] }[] = [
+  { heading: 'Explore', links: [['/explore', 'The platform'], ['/professional-learning', 'Professional learning'], ['/schools', 'For schools and teaching teams']] },
+  { heading: 'ELT Suite', links: [['/pricing', 'Pricing'], ['/about', 'About'], ['/help', 'Help'], ['/contact', 'Contact']] },
+  { heading: 'Trust', links: [['/ai-and-your-teaching', 'AI and your teaching'], ['/privacy', 'Privacy'], ['/terms', 'Terms'], ['/cookies', 'Cookies and storage'], ['/accessibility', 'Accessibility']] },
+];
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState(false);
@@ -33,26 +38,26 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     return () => { canonical?.remove(); document.head.querySelector('meta[name="robots"]')?.remove(); };
   }, [location.pathname]);
   return (
-    <div className="pub">
+    <div className="pub pub-v2">
       <a className="pub-skip" href="#public-main">Skip to content</a>
       <header className="pub-header" onKeyDown={(e) => { if (e.key === 'Escape' && menu) { setMenu(false); toggle.current?.focus(); } }}>
         <Link to="/" className="pub-home-link" aria-label="ELT Suite home"><Wordmark /></Link>
-        <button ref={toggle} className="pub-menu" aria-expanded={menu} aria-controls="public-nav" onClick={() => setMenu(!menu)}>{menu ? 'Close menu −' : 'Menu +'}</button>
+        <button ref={toggle} className="pub-menu" aria-expanded={menu} aria-controls="public-nav" onClick={() => setMenu(!menu)}>{menu ? 'Close menu' : 'Menu'}</button>
         <nav id="public-nav" className={menu ? 'is-open' : ''} aria-label="Main navigation">
-          <Link to="/#plan">What it does</Link><NavLink to="/pricing">Plans and pricing</NavLink>
+          <NavLink to="/">Home</NavLink><NavLink to="/explore">Explore</NavLink><NavLink to="/pricing">Pricing</NavLink>
           <NavLink to="/about">About</NavLink>
           <Link className="pub-signin" to="/signin">Sign in</Link>
-          <Link className="pub-ask" to="/#invite">Ask for an invitation</Link>
         </nav>
       </header>
       {children}
       <footer className="pub-footer">
         <div className="pub-footer-brand">
           <Link to="/" aria-label="ELT Suite home"><Wordmark /></Link>
-          <p>A teaching space for ELT professionals. Made for teachers. Better together.</p>
+          <p>Made for teachers. Built for teaching. Better together.</p>
+          <small>ELT Suite is currently open to invited teachers.</small>
         </div>
-        <nav aria-label="Footer">{FOOTER.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</nav>
-        <small>ELT Suite is open to invited teachers for now. <Link to="/#invite">Ask for an invitation</Link></small>
+        <nav aria-label="Footer">{FOOTER.map(({ heading, links }) => <div className="pub-footer-group" key={heading}><strong>{heading}</strong>{links.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>)}</nav>
+        <div className="pub-footer-bottom"><span>© {new Date().getFullYear()} ELT Suite</span><span>Learners: join your class at <a href="https://learn.eltsuite.com/">learn.eltsuite.com</a></span></div>
       </footer>
     </div>
   );
