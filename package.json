@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/spelling-assets.mjs && node scripts/build-offline.mjs && tsc -p tsconfig.json && vite build",
+    "build:information-gap": "tsc -p information-gap/tsconfig.json && vite build --config information-gap/vite.config.ts",
     "preview": "vite preview",
     "start": "node server.js",
     "smoke": "node test/smoke.mjs",
