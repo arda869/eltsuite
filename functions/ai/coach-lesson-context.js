@@ -13,7 +13,9 @@ export function lessonSourceForPrompt(source,prompt){
  const question=String(prompt||'');
  const whole=/\b(?:whole|entire|full|overall)\s+(?:\w+\s+){0,2}lessons?\b|\blessons?\s+(?:as\s+a\s+whole|overall|in\s+general)\b|\b(?:rest|flow|sequence|structure)\s+of\s+(?:the\s+|this\s+|my\s+)?lesson\b/i.test(question);
  const lesson=/\b(?:this|the|my|our|that)\s+(?:\w+\s+){0,2}lessons?\b|\blesson\s+(?:plan|sequence|flow|structure)\b/i.test(question);
- const activity=/\b(?:this|the|current|selected)\s+(?:activity|task|exercise|question|stage)\b/i.test(question);
+ // Teachers often name the selected activity before asking how it suits a lesson.
+ // Keep that activity attached unless they explicitly ask for the whole sequence.
+ const activity=/\b(?:this|the|current|selected)\s+(?:(?:[\w'-]+|the|a)\s+){0,6}(?:activity|task|exercise|question|stage)\b/i.test(question);
  return whole||(lesson&&!activity)?{...source,taskId:''}:source;
 }
 export function teachingExcerpt(node,limit=7000) {
