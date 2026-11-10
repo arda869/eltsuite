@@ -87,8 +87,14 @@ jobs:
       - name: Verify app route and asset cache headers
         run: npx --yes firebase-tools@14 emulators:exec --only hosting --project demo-hosting-cache "node test/hosting-cache.mjs"
 
+      - name: Build The Information Gap
+        run: npm run build:information-gap
+
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
+
+      - name: The Information Gap publication and access journeys (Firebase simulated)
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.information-gap.emulators.json --project demo-information-gap "node test/information-gap-rules.mjs && node scripts/test-information-gap.mjs"
 
       - name: AI cost dashboard journey (Firebase simulated)
         run: node test/ai-costs-ui.mjs
@@ -206,6 +212,11 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund google-auth-library@9
           node scripts/deploy-rules.mjs
+
+      - name: Deploy The Information Gap
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@14 deploy --only hosting --config firebase.information-gap.json --project lesson-lit --non-interactive
 
       - name: Deploy server functions
         env:

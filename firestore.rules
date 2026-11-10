@@ -1303,6 +1303,88 @@ service cloud.firestore {
       allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.key == chatKey();
     }
 
+    // The Information Gap is a public teacher publication. Drafts and editorial
+    // decisions stay private; visitors can only read published/visible material.
+    function tigContributor() {
+      return signedIn() && !learnerAccount()
+        && request.auth.token.get('proxyBy', null) == null;
+    }
+    function tigEditor() {
+      return isOwner() || (tigContributor()
+        && exists(/databases/$(database)/documents/tigEditors/$(request.auth.uid)));
+    }
+    match /tigArticles/{id} {
+      allow read: if resource.data.status == 'published'
+        || (tigContributor() && resource.data.authorUid == request.auth.uid)
+        || tigEditor();
+      allow create: if tigContributor()
+        && request.resource.data.keys().hasOnly(['title','standfirst','body','section','topic','authorUid','authorName','status','createdAt','updatedAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status in ['draft','submitted']
+        && request.resource.data.section in ['Essays','Practice']
+        && request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 180
+        && request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 100000
+        && request.resource.data.standfirst is string && request.resource.data.standfirst.size() <= 500
+        && request.resource.data.topic is string && request.resource.data.topic.size() <= 80
+        && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 100;
+      allow update: if tigEditor()
+        || (tigContributor() && resource.data.authorUid == request.auth.uid
+          && resource.data.status in ['draft','changes']
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.authorName == resource.data.authorName
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.status in ['draft','submitted']
+          && request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 180
+          && request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 100000);
+    }
+    match /tigThreads/{id} {
+      allow read: if resource.data.status == 'visible' || tigEditor();
+      allow create: if tigContributor()
+        && request.resource.data.keys().hasOnly(['title','body','topic','authorUid','authorName','status','createdAt','updatedAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'visible'
+        && request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 180
+        && request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 10000
+        && request.resource.data.topic is string && request.resource.data.topic.size() <= 80;
+      allow update: if tigEditor();
+      match /replies/{replyId} {
+        allow read: if (get(/databases/$(database)/documents/tigThreads/$(id)).data.status == 'visible'
+            && resource.data.status == 'visible') || tigEditor();
+        allow create: if tigContributor()
+          && get(/databases/$(database)/documents/tigThreads/$(id)).data.status == 'visible'
+          && request.resource.data.keys().hasOnly(['body','authorUid','authorName','status','createdAt'])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.status == 'visible'
+          && request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 8000;
+        allow update: if tigEditor();
+      }
+    }
+    match /tigLessons/{id} {
+      allow read: if true;
+      allow create, update, delete: if tigEditor();
+    }
+    match /tigPitches/{id} {
+      allow read: if tigEditor() || (tigContributor() && resource.data.authorUid == request.auth.uid);
+      allow create: if tigContributor()
+        && request.resource.data.keys().hasOnly(['title','summary','authorUid','authorName','status','createdAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 180
+        && request.resource.data.summary is string && request.resource.data.summary.size() >= 1 && request.resource.data.summary.size() <= 5000;
+      allow update: if tigEditor();
+    }
+    match /tigProfiles/{uid} {
+      allow read: if true;
+      allow create, update: if tigContributor() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['displayName','bio','createdAt'])
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() >= 1 && request.resource.data.displayName.size() <= 100
+        && request.resource.data.bio is string && request.resource.data.bio.size() <= 1200;
+    }
+    match /tigEditors/{uid} {
+      allow get: if isSelf(uid) || isOwner();
+      allow list, create, update, delete: if isOwner();
+    }
+
     // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
       allow get: if signedIn() && (teachesClass(resource.data.classId) || memberOf(resource.data.classId) || runsClass(resource.data.classId));
