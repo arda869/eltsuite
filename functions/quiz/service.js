@@ -249,18 +249,10 @@ export async function quizService(db, rtdb, auth, data, now = Date.now()) {
       }
     }
     if (!self) {
-      // Keep the public count and the per-player receipt in one Realtime Database transaction.
-      // A function retry after answer creation can safely finish this step.
-      await live(run.id).transaction((state) => {
-        if (!state) return;
-        const bySlide = state.answeredBy?.[data.slide] || {};
-        if (bySlide[player.id]) return;
-        return {
-          ...state,
-          answeredBy: { ...(state.answeredBy || {}), [data.slide]: { ...bySlide, [player.id]: true } },
-          answered: { ...(state.answered || {}), [data.slide]: (state.answered?.[data.slide] || 0) + 1 },
-        };
-      });
+      // A receipt per player gives both screens an accurate count and survives retries.
+      // A transaction on the whole live state can see an uncached null first and abort,
+      // even though the game exists; that left the counter at zero for saved answers.
+      await live(run.id).child(`answeredBy/${data.slide}/${player.id}`).set(true);
       return { ok: true };
     }
     // At their own pace, the answer is marked straight away.

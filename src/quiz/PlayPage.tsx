@@ -10,7 +10,7 @@ import type { AnswerKey, Responses } from '../lib/questions';
 import { Backdrop, Confetti, TimeBar, fmt, ordinal } from './Stage';
 import { AnswerPad, Cards, type Skin } from './Skins';
 import { Explanation, LeaderList, QuestionCard, RevealOptions, ResultBanner, Winners, kicker, placeLine } from './Screens';
-import { leaders, loadSeat, quizApi, saveSeat, useClock, useLive, type LiveSlide, type LiveState, type Seat } from './live';
+import { answeredCount, leaders, loadSeat, quizApi, saveSeat, useClock, useLive, type LiveSlide, type LiveState, type Seat } from './live';
 import { playSfx, warmSfx } from './sfx';
 import './quiz.css';
 
@@ -186,7 +186,7 @@ function LivePlay({ seat, live, onLeave }: { seat: Seat; live: LiveState; onLeav
   };
   const players = live.players || {};
   const count = Object.keys(players).length;
-  const answered = live.answered?.[String(slide)] || 0;
+  const answered = answeredCount(live, slide);
   const place = me?.r || leaders(players).findIndex((p) => p.id === seat.pid) + 1;
 
   let body: JSX.Element;

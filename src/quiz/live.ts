@@ -49,6 +49,7 @@ export type LiveState = {
   reveal?: LiveReveal | null;
   players: Record<string, LivePlayer>;
   answered?: Record<string, number>;
+  answeredBy?: Record<string, Record<string, boolean>>;
   kicked?: Record<string, boolean>;
   guests: boolean;
   locked?: boolean;
@@ -56,6 +57,12 @@ export type LiveState = {
   host?: string;
   at?: number;
 };
+
+/** Count durable answer receipts; fall back to the counter on older active games. */
+export function answeredCount(live: LiveState, slide: number) {
+  const receipts = live.answeredBy?.[String(slide)];
+  return receipts ? Object.values(receipts).filter(Boolean).length : live.answered?.[String(slide)] || 0;
+}
 
 const parse = <T,>(v: unknown): T | undefined => {
   if (typeof v !== 'string') return (v as T) ?? undefined;
