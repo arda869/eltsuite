@@ -26,7 +26,10 @@ export function teachingExcerpt(node,limit=7000) {
 // shorten long dialogue text before a later picture in the same activity.
 export function pictureEvidence(node) {
  const pictures=[];
- const visit=n=>{if(!n||pictures.length>=8)return;if(n.type==='picture'||n.type==='image')pictures.push({description:text(n.attrs?.alt||n.attrs?.description,200)||'Picture present; no written description available.'});for(const child of n.content??[])visit(child);};
+ const visit=n=>{if(!n||pictures.length>=8)return;if(n.type==='picture'||n.type==='image'){
+  const labels=Array.isArray(n.attrs?.tags)?n.attrs.tags.map(tag=>text(tag?.text,100).trim()).filter(Boolean).slice(0,8):[];
+  pictures.push({description:text(n.attrs?.alt||n.attrs?.description,200)||'Picture present; no written description available.',...(labels.length?{labels}:{})});
+ }for(const child of n.content??[])visit(child);};
  visit(node);return pictures;
 }
 export function reportExcerpt(report) {
