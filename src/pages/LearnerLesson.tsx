@@ -600,8 +600,10 @@ export function LearnerLesson() {
           </div>
         )}
         <main data-lesson-style={lessonStyleOf(c)} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
-          {checkError && <div role="alert"><p>{checkError}</p>{checked && <button className="btn" disabled={busy} onClick={()=>void retryFeedback()}>Load feedback again</button>}</div>}
-          {task ? (
+          {answerReady && checkError && <div role="alert"><p>{checkError}</p>{checked && <button className="btn" disabled={busy} onClick={()=>void retryFeedback()}>Load feedback again</button>}</div>}
+          {task && !answerReady ? (
+            <div className="frame-inner"><p className="hint" role={checkError ? 'alert' : 'status'}>{checkError || 'Loading your answers…'}</p></div>
+          ) : task ? (
             <div className="frame-inner">
               <div className="frame-head">
                 {!task.levels && (task.variant || task.family || (task.variants?.length ?? 0) > 0) && (
