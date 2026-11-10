@@ -9,6 +9,7 @@ import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
 import '../lessons/examLesson.css';
+import '../lessons/themeLayers.css';
 import { YoungIconPicker, YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
 import { isAnswered, scoreTask } from '../lib/questions';
 import { NSelect } from '../components/Select';
@@ -1253,7 +1254,7 @@ export function LessonEditor() {
               )}
             </div>
           )}
-          <main data-lesson-style={!boardView ? lessonStyleOf(c) : undefined} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
+          <main data-lesson-style={lessonStyleOf(c)} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
             {opening && !(sheet && mode === 'edit') && (
               <div className="frame-veil" role="status">
                 <Loader label="Opening the task" />

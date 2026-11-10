@@ -29,10 +29,10 @@ try {
  await allowed('Class settings returns to Adult',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'adult'}));
  await allowed('Co-teacher changes presentation',()=>updateDoc(doc(co,'classes/style'),{lessonStyle:'young'}));
  for(const [name,db] of [['Viewer',viewer],['Learner',learner],['Unrelated teacher',other]]) await denied(`${name} cannot change presentation`,()=>updateDoc(doc(db,'classes/style'),{lessonStyle:'adult'}));
- for(const invalid of ['teen','',null,1,{}]) await denied(`Invalid style ${JSON.stringify(invalid)} rejected on update`,()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:invalid}));
- for(const style of ['adult','young','exam']) await allowed(`Create ${style} class`,()=>setDoc(doc(owner,`classes/new-${style}`),{teacherId:'teacher1',classCode:`NEW-${style}`,name:'New class',lessonStyle:style}));
+ await allowed('Owner changes Adult → Teenagers',()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:'teen'}));
+ for(const invalid of ['',null,1,{}]) await denied(`Invalid style ${JSON.stringify(invalid)} rejected on update`,()=>updateDoc(doc(owner,'classes/style'),{lessonStyle:invalid}));
+ for(const style of ['adult','young','exam','teen']) await allowed(`Create ${style} class`,()=>setDoc(doc(owner,`classes/new-${style}`),{teacherId:'teacher1',classCode:`NEW-${style}`,name:'New class',lessonStyle:style}));
  await allowed('Legacy create without style accepted',()=>setDoc(doc(owner,'classes/new-legacy'),{teacherId:'teacher1',classCode:'NEW-legacy',name:'Legacy'}));
- await denied('Teen style rejected on create',()=>setDoc(doc(owner,'classes/new-teen'),{teacherId:'teacher1',classCode:'NEW-teen',name:'New class',lessonStyle:'teen'}));
- await allowed('Learner can read class preference',async()=>assert.equal((await getDoc(doc(learner,'classes/style'))).data().lessonStyle,'young'));
+ await allowed('Learner can read class preference',async()=>assert.equal((await getDoc(doc(learner,'classes/style'))).data().lessonStyle,'teen'));
  console.log(`${passes} rule checks passed`);
 } finally {for(const {app,db} of clients){await terminate(db);await deleteApp(app);}}
