@@ -82,11 +82,11 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
   }
 
   return (
-    <div className="signin">
+    <div className="signin learner-entry">
       <div className="intro lj-intro">
         <Wordmark big />
         {home && <span className="lj-kicker">For learners</span>}
-        <p>Your English class, in one place. Join with the code and PIN your teacher gave you.</p>
+        <p>Enter the class code your teacher gave you, then follow the steps to join.</p>
         {home && (
           <ul className="lj-points">
             <li>

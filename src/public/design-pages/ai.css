@@ -1,0 +1,15 @@
+
+.pub-design{margin:0;background:#ffffff}
+.pub-design a{color:#33302c;text-decoration:none}
+.pub-design a:hover{text-decoration:underline}
+.es-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;box-sizing:border-box;font-family:Karla,Arial,sans-serif;font-size:15px;font-weight:700;border-radius:10px;padding:0 20px;cursor:pointer;text-decoration:none !important;white-space:nowrap}
+.es-p{background:#33302c;color:#ffffff !important;border:1px solid #33302c}
+.es-s{background:#ffffff;color:#33302c !important;border:1px solid #c9c6c1}
+.es-k{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#975f40}
+.es-h2{margin:0;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3vw,34px);line-height:1.15}
+.es-body{margin:0;font-family:Fraunces,Georgia,serif;font-size:18px;line-height:1.7;color:#4a4642}
+.es-sec{display:flex;flex-direction:column;gap:14px;padding:40px 0;border-top:1px solid #e4e2df}
+.es-chip{padding:7px 13px;background:#f4f4f3;border:1px solid #e4e2df;border-radius:999px;font-size:14px;font-weight:700}
+.es-ph{background:#f1e7df;color:#6f4730;border-radius:4px;padding:1px 5px;font-family:Karla,Arial,sans-serif;font-size:.85em;font-weight:700}
+.es-menu{display:none}
+@media (max-width:760px){.es-nav{display:none !important}.es-menu{display:inline-flex !important}}

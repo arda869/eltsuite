@@ -16,28 +16,28 @@ export function AppGlyph({ glyph, size = 26, strokeWidth = 1.75 }: { glyph: stri
 
 const I = (glyph: string) => <AppGlyph glyph={glyph} size={26} />;
 
-// Proposal A marks. Collab = live dots; Development Studio = journal + sprout.
+// Shared app symbols from the app icon design reference.
 export const APP_MARKS = {
-  home: '<path d="M4 11 12 4l8 7v8.5a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>',
-  classes: '<rect x="3.5" y="4.5" width="17" height="12" rx="1.6"/><path d="M8 20.5 12 17l4 3.5M7 14.5h10"/>',
-  timetable: '<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8 3.5v4M16 3.5v4"/><rect x="8" y="13" width="3.2" height="3.2" rx=".6"/>',
-  rooms: '<rect x="3" y="6.5" width="12.5" height="11" rx="2"/><path d="M15.5 10.2 21 7v10l-5.5-3.2z"/>',
-  collab: '<rect x="4.5" y="3.8" width="15" height="16.4" rx="2"/><path d="M7.5 8h9M7.5 11.5h6"/><path d="M13.5 14.5v3.5"/><circle cx="8.2" cy="16.2" r="1.3" fill="currentColor"/><circle cx="11.2" cy="16.2" r="1.3" fill="currentColor"/>',
-  design: '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2.1a3.9 3.9 0 0 0 3.9-3.9c0-4.3-3.9-7.9-8.6-7.9z"/><circle cx="7.6" cy="11.4" r="1.15"/><circle cx="10.2" cy="7.6" r="1.15"/><circle cx="14.8" cy="7.6" r="1.15"/>',
-  pdf: '<rect x="7" y="4" width="12" height="15" rx="1.6"/><rect x="4.5" y="6.5" width="12" height="15" rx="1.6"/><path d="M7.5 12.5h6M7.5 16h4"/>',
-  recordings: '<rect x="9.2" y="3.5" width="5.6" height="10" rx="2.8"/><path d="M6 12a6 6 0 0 0 12 0M12 18v2.5"/><path d="M18.5 7.5v4M20.5 8.5v2"/>',
-  video: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="M10 9.2v5.6l5.2-2.8z"/>',
-  games: '<rect x="4.5" y="4.5" width="15" height="15" rx="3"/><circle cx="9" cy="9" r="1.15" fill="currentColor"/><circle cx="15" cy="15" r="1.15" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="currentColor"/>',
-  files: '<path d="M3.5 8A1.5 1.5 0 0 1 5 6.5h4l1.8 1.8H19A1.5 1.5 0 0 1 20.5 9.8v8.2A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18z"/><rect x="8" y="11" width="8" height="5.5" rx="1"/>',
-  messages: '<path d="M4 6.2A2.2 2.2 0 0 1 6.2 4h11.6A2.2 2.2 0 0 1 20 6.2v7.1A2.2 2.2 0 0 1 17.8 15.5H10L5.5 19v-3.5A2.2 2.2 0 0 1 4 13.3z"/><path d="M8 8.6h8M8 11.6h5"/>',
-  colleagues: '<circle cx="9" cy="8" r="3.1"/><circle cx="16.4" cy="9" r="2.4"/><path d="M3.4 20a5.6 5.6 0 0 1 11.2 0M14.2 14.4a4.6 4.6 0 0 1 6.4 5.6"/>',
-  development: '<path d="M6 4.2h9.5A1.8 1.8 0 0 1 17.3 6v12.8H7.8A1.8 1.8 0 0 1 6 17z"/><path d="M6 17a1.8 1.8 0 0 1 1.8-1.8H17.3"/><path d="M9 8.2h5"/><path d="M18.2 12.5c0-2.4 1.5-3.8 3.3-4.2-.2 2.6-1.4 4.2-3.3 4.8"/><path d="M18.2 13.1v4.2"/>',
-  linguistics: '<path d="M4 5.2h11.5A1.8 1.8 0 0 1 17.3 7v7.2a1.8 1.8 0 0 1-1.8 1.8H10L6 19.2v-3.8H5.8A1.8 1.8 0 0 1 4 13.6z"/><path d="M8.2 9.6c0-1.6 1.3-2.4 2.7-2.4 1.5 0 2.6.9 2.6 2.1 0 1.4-1.5 1.8-2.5 2.3-.4.2-.6.5-.6.9"/>',
-  guide: '<path d="M12 6.4C10.3 5.2 8 4.4 4.6 4.4v13c3.4 0 5.7.8 7.4 2 1.7-1.2 4-2 7.4-2v-13c-3.4 0-5.7.8-7.4 2zM12 6.4v13"/>',
-  superadmin: '<path d="M12 3.2 19 6v5.4c0 4.3-3 7.6-7 8.8-4-1.2-7-4.5-7-8.8V6z"/><path d="M8.8 12.2 11 14.4l4.4-4.6"/>',
-  orgadmin: '<path d="M4 20.5V8.2L12 4l8 4.2v12.3M9 20.5v-5h6v5M4 20.5h16"/><path d="M8.5 10.5h1.8M13.7 10.5h1.8M8.5 13.4h1.8M13.7 13.4h1.8"/>',
-  reading: '<path d="M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5zM5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5"/>',
-  money: '<path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>',
+  home: "<path d=\"M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z\"></path><path d=\"M12 17.3c-2.1-1.3-3.1-2.4-3.1-3.6a1.55 1.55 0 0 1 3.1-.5 1.55 1.55 0 0 1 3.1.5c0 1.2-1 2.3-3.1 3.6z\"></path>",
+  classes: "<rect x=\"3.5\" y=\"4\" width=\"17\" height=\"11.5\" rx=\"1.5\"></rect><path d=\"M8.5 15.5 6.8 20.5M15.5 15.5l1.7 5M12 2.5V4\"></path><path d=\"M7 10.3c1.1-1.6 2.3-1.6 3.4 0s2.3 1.6 3.4 0 2.3-1.6 3.2 0\"></path>",
+  timetable: "<path d=\"M12.5 19.5h-7A1.5 1.5 0 0 1 4 18V7a1.5 1.5 0 0 1 1.5-1.5h12A1.5 1.5 0 0 1 19 7v3.5\"></path><path d=\"M4 9.5h15M8 3.5V7M15 3.5V7\"></path><circle cx=\"17\" cy=\"17\" r=\"4\"></circle><path d=\"M17 15v2l1.3 1.1\"></path>",
+  rooms: "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"15\" rx=\"2.2\"></rect><circle cx=\"8.8\" cy=\"10.6\" r=\"2\"></circle><circle cx=\"15.2\" cy=\"10.6\" r=\"2\"></circle><path d=\"M5.6 16.6a3.2 3.2 0 0 1 6.4 0M12 16.6a3.2 3.2 0 0 1 6.4 0\"></path><circle cx=\"18\" cy=\"7.3\" r=\".9\" fill=\"currentColor\" stroke=\"none\"></circle>",
+  collab: "<rect x=\"4.5\" y=\"3.5\" width=\"15\" height=\"17\" rx=\"2\"></rect><path d=\"M8 8h8M8 11.5h4M8 15.5h2.5\"></path><path d=\"M14.5 10v3.2M12.8 14v3.2\"></path><circle cx=\"14.5\" cy=\"9.4\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"12.8\" cy=\"13.4\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle>",
+  design: "<rect x=\"3.5\" y=\"7\" width=\"13\" height=\"13\" rx=\"2\"></rect><circle cx=\"8\" cy=\"11.3\" r=\"1.4\"></circle><path d=\"M4 18l3.8-3.4 2.8 2.4 1.8-1.5 3.6 3.2\"></path><path d=\"M19 2.6c.3 1.6 1 2.3 2.4 2.5-1.4.2-2.1.9-2.4 2.5-.3-1.6-1-2.3-2.4-2.5 1.4-.2 2.1-.9 2.4-2.5z\"></path>",
+  pdf: "<path d=\"M6.5 3.5h8L19 8v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z\"></path><path d=\"M14.5 3.5V8H19\"></path><path d=\"M8.5 11.5h5\"></path><rect x=\"7.8\" y=\"14\" width=\"8.4\" height=\"3\" rx=\".8\" fill=\"currentColor\" fill-opacity=\".35\"></rect>",
+  recordings: "<path d=\"M4 10.5v3M8 7.5v9M12 4v16M16 8.5v7M20 10.5v3\"></path>",
+  video: "<path d=\"M3.5 10h17v8.5A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5z\"></path><path d=\"M3.5 10V7.5A1.5 1.5 0 0 1 5 6h14a1.5 1.5 0 0 1 1.5 1.5V10\"></path><path d=\"M8.5 6 6.5 10M13.5 6l-2 4M18.5 6l-2 4\"></path><path d=\"M10.6 12.8v4.4l3.6-2.2z\"></path>",
+  games: "<path d=\"M7.5 7.5h9a4.5 4.5 0 0 1 4.4 5.5l-.8 3.9a2.3 2.3 0 0 1-3.9 1.1l-1.7-1.8h-5l-1.7 1.8a2.3 2.3 0 0 1-3.9-1.1L3.1 13A4.5 4.5 0 0 1 7.5 7.5z\"></path><path d=\"M8 10.8v3.4M6.3 12.5h3.4\"></path><circle cx=\"15.6\" cy=\"11.4\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"17.4\" cy=\"13.6\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle>",
+  files: "<rect x=\"4\" y=\"4.5\" width=\"3.6\" height=\"15\" rx=\".8\"></rect><rect x=\"7.6\" y=\"7\" width=\"3.6\" height=\"12.5\" rx=\".8\"></rect><path d=\"M13.2 7.6l3.1-.8 3.3 12.3-3.1.8z\"></path><path d=\"M3 19.5h18\"></path><path d=\"M4 8.2h3.6M7.6 10.6h3.6\"></path>",
+  messages: "<path d=\"M12 4.5c4.7 0 8.5 3 8.5 6.8s-3.8 6.8-8.5 6.8c-1 0-2-.1-2.9-.4L5 19.5l1.2-3.4c-1.6-1.3-2.7-3-2.7-4.8 0-3.8 3.8-6.8 8.5-6.8z\"></path><circle cx=\"8.3\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"12\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"15.7\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle>",
+  colleagues: "<circle cx=\"8.8\" cy=\"8.5\" r=\"3\"></circle><path d=\"M3.3 19.5a5.5 5.5 0 0 1 11 0\"></path><circle cx=\"16.6\" cy=\"7.6\" r=\"2.4\"></circle><path d=\"M15.4 12.4a4.8 4.8 0 0 1 5.4 5.6\"></path><path d=\"M16.8 20.3c-1.5-.9-2.2-1.7-2.2-2.5a1.1 1.1 0 0 1 2.2-.3 1.1 1.1 0 0 1 2.2.3c0 .8-.7 1.6-2.2 2.5z\" fill=\"currentColor\" stroke=\"none\"></path>",
+  development: "<path d=\"M12 20.5v-8\"></path><path d=\"M12 14c0-3.6-2.4-6-6.5-6 0 3.7 2.6 6 6.5 6z\"></path><path d=\"M12 11.5c0-3.4 2.3-5.7 6.5-5.7 0 3.5-2.5 5.7-6.5 5.7z\"></path><path d=\"M7.5 20.5h9\"></path>",
+  linguistics: "<path d=\"M4 5.2h11.5A1.8 1.8 0 0 1 17.3 7v7.2a1.8 1.8 0 0 1-1.8 1.8H10L6 19.2v-3.8H5.8A1.8 1.8 0 0 1 4 13.6z\"/><path d=\"M8.2 9.6c0-1.6 1.3-2.4 2.7-2.4 1.5 0 2.6.9 2.6 2.1 0 1.4-1.5 1.8-2.5 2.3-.4.2-.6.5-.6.9\"/>",
+  guide: "<circle cx=\"12\" cy=\"12\" r=\"8.5\"></circle><path d=\"M15.2 8.8 13.2 13.2 8.8 15.2 10.8 10.8z\"></path><path d=\"M12 3.5v1.5M12 19v1.5M3.5 12H5M19 12h1.5\"></path>",
+  superadmin: "<path d=\"M12 3.2 19 6v5.4c0 4.3-3 7.6-7 8.8-4-1.2-7-4.5-7-8.8V6z\"></path><circle cx=\"12\" cy=\"10.6\" r=\"1.7\"></circle><path d=\"M12 12.3v3.2\"></path>",
+  orgadmin: "<path d=\"M5 20.5v-9.3L12 7.5l7 3.7v9.3M3.5 20.5h17M10 20.5v-4h4v4\"></path><path d=\"M12 7.5V3\"></path><path d=\"M12 3.2h3.8l-1 1.3 1 1.3H12\"></path><path d=\"M7.8 13.5h1.4M14.8 13.5h1.4\"></path>",
+  reading: "<path d=\"M12 6.5C10 5.2 7.5 4.5 4 4.5v13c3.5 0 6 .7 8 2 2-1.3 4.5-2 8-2v-13c-3.5 0-6 .7-8 2zM12 6.5v13\"></path><path d=\"M15 5.4v5.1l1.4-1.1 1.4 1.1V4.8\"></path>",
+  money: "<path d=\"M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z\"/>",
 } as const;
 
 export function appMark(k: string) {
@@ -76,7 +76,7 @@ export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
   if (!a) return null;
   return (
     <span className="app-logo" style={{ width: size, height: size, ['--app' as string]: a.color }} aria-hidden="true">
-      <AppGlyph glyph={a.glyph} size={size * 0.62} strokeWidth={1.9} />
+      <AppGlyph glyph={a.glyph} size={size * 0.5} strokeWidth={size <= 22 ? 2.3 : size <= 30 ? 2 : 1.75} />
     </span>
   );
 }
@@ -134,7 +134,7 @@ export function setAppFavicon(a: { color: string; glyph: string } | null) {
   if (!link) return;
   if (!firstIcon) firstIcon = link.href;
   if (!a) return void (link.href = firstIcon);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${a.color}"/><g transform="translate(4 4)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${a.glyph}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${a.color}"/><g transform="translate(8 8) scale(.666667)" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${a.glyph}</g></svg>`;
   link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
 }
 
