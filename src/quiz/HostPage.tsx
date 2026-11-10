@@ -445,6 +445,10 @@ function Podium({ players }: { players: Record<string, LivePlayer> }) {
   const hasScore = (top[0]?.s || 0) > 0;
   const [step, setStep] = useState(0); // 0 nothing, 1 third, 2 second, 3 winner
   useEffect(() => {
+    if (!hasScore) {
+      setStep(3);
+      return;
+    }
     const at = [1800, 3600, 5600];
     const ts = at.map((ms, i) =>
       setTimeout(() => {
@@ -453,7 +457,7 @@ function Podium({ players }: { players: Record<string, LivePlayer> }) {
       }, ms),
     );
     return () => ts.forEach(clearTimeout);
-  }, []);
+  }, [hasScore]);
   const spot = (place: number) => {
     const p = top[place - 1];
     const shown = step >= 4 - place;
