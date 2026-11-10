@@ -15,13 +15,14 @@ import { playSfx, warmSfx } from './sfx';
 import './quiz.css';
 
 export function QuizPlayPage() {
+  const nav = useNavigate();
   const { code: codeParam = '' } = useParams();
   const [params] = useSearchParams();
   const runParam = params.get('run') || '';
   const { user, ready } = useAuth();
   const [seat, setSeat] = useState<Seat | null>(() => loadSeat());
   const live = useLive(seat?.runId);
-  const leave = () => (saveSeat(null), setSeat(null));
+  const leave = () => { saveSeat(null); setSeat(null); nav('/game', { replace: true }); };
   const code = /^\d{6}$/.test(codeParam) ? codeParam : '';
   const differentGame = seat && ((code && live && live.code !== code) || (runParam && seat.runId !== runParam));
   if (seat && !differentGame && live !== false) {
