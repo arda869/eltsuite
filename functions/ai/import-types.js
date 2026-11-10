@@ -27,7 +27,7 @@ const entries=[
  ['drop','Drag-and-drop gap','Complete a ___ from the shared word bank.',{answer:word}],
  ['bank','Word bank','One shared bank for drag-and-drop gaps; extras are distractors.',{extras}],
  ['order','Word order','Rearrange all words into a complete sentence.',{sentence:required}],
- ['writing','Long answer','Genuinely extended writing; preserve word count, genre and marking criteria.',{model:str,minWords:integer(0,5000),maxWords:integer(0,10000),genre:short,rubric:choice('none','cambridge','custom'),criteria:list(obj({name:word,max:integer(1,100)}),0,12)}],
+ ['writing','Written response','Teacher-reviewed open writing or extended composition. Preserve word count, genre and marking criteria when supplied; use zero limits when none are stated.',{model:str,minWords:integer(0,5000),maxWords:integer(0,10000),genre:short,rubric:choice('none','cambridge','custom'),criteria:list(obj({name:word,max:integer(1,100)}),0,12)}],
  ['reflect','Self-reflection','Learners rate or reflect on their own performance.',{title:short,items:list(obj({type:choice('stars','scale','faces','choice','checklist','text'),prompt:required,options:extras,points:integer(2,10),low:short,high:short}),1,20)}],
  ['peer','Peer feedback','Learners choose a classmate and give feedback.',{title:short,items:list(obj({type:choice('stars','scale','faces','choice','checklist','text'),prompt:required,options:extras,points:integer(2,10),low:short,high:short}),1,20)}],
  ['upload','File upload','Submit a document, picture, sound or video; do not create an upload for an ordinary short answer.',{kinds:list(choice('documents','pictures','audio','video'),1,4),maxFiles:integer(1,10),maxMB:integer(1,20),note:short}],

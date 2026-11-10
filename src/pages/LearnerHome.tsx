@@ -31,7 +31,7 @@ import { AnnouncementCards } from '../components/LiveExtras';
 import { Avatar } from '../components/avatars';
 import { LiveWho } from '../components/LiveWho';
 import { AvatarPicker } from '../components/AvatarPicker';
-import { itemResult, STATUS_LABEL, useMyAnswers } from '../lib/reports';
+import { itemResult, STATUS_LABEL, useMyAnswersState } from '../lib/reports';
 
 const SECTION_LABEL: Record<Item['type'], string> = { lesson: 'Lessons', homework: 'Homework', exam: 'Exams', practice: 'Practice' };
 function dueText(ms: number) {
@@ -61,8 +61,11 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   useClassTerms(classId);
   usePresenceBeat(classId, user?.uid, { name, learnerId: profile?.role === 'learner' ? profile.learnerId : '', itemId: '', taskId: '', avatar: profile?.avatar });
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
+  const [topicsData, setTopics] = useState<Topic[] | null>(null);
+  const [itemsData, setItems] = useState<Item[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const topics = topicsData ?? [];
+  const items = itemsData ?? [];
   const [menu, setMenu] = useState(false);
   const menuRef = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const [picking, setPicking] = useState(false);
@@ -74,10 +77,14 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [live, setLiveState] = useState<LiveState | null>(null);
 
   useEffect(() => {
+    setC(undefined);
+    setTopics(null);
+    setItems(null);
+    setLoadError(false);
     const unsubs = [
-      onSnapshot(doc(db, 'classes', classId), (s) => setC(s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }) : null), () => setC(null)),
-      onSnapshot(query(collection(db, 'classes', classId, 'topics'), where('hidden', '==', false)), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => {}),
-      onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => setItems([])),
+      onSnapshot(doc(db, 'classes', classId), (s) => setC(s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }) : null), () => setLoadError(true)),
+      onSnapshot(query(collection(db, 'classes', classId, 'topics'), where('hidden', '==', false)), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => setLoadError(true)),
+      onSnapshot(query(collection(db, 'classes', classId, 'items'), where('hidden', '==', false)), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => setLoadError(true)),
     ];
     unsubs.push(onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}));
     return () => unsubs.forEach((u) => u());
@@ -87,7 +94,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const visible = items.filter((i) => !i.hidden && (!i.topicId || topics.some((tp) => tp.id === i.topicId)));
   const lockedItem = (i: Item) => i.locked || !!topics.find((tp) => tp.id === i.topicId)?.locked;
   const [section, setSection] = useState<Item['type']>('lesson');
-  const answers = useMyAnswers(classId, user?.uid);
+  const { list: answers, loaded: answersLoaded, error: answersError } = useMyAnswersState(classId, user?.uid);
   const recaps = useMyRecaps(classId, user?.uid);
   const threads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
   const unreadThreads = useMemo(() => {
@@ -126,6 +133,13 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const nextSession = occurrences(sessions, Date.now() - 3 * 3600e3, Date.now() + 21 * 864e5).find((o) => o.end > Date.now());
   const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow || (c.meeting.visibility === 'before15' && soon));
   const nextLink = nextLesson?.schedule?.url || (c?.meeting?.url && (c.meeting.visibility === 'always' || soon) ? c.meeting.url : '');
+
+  if (loadError || answersError || c === null) {
+    return <main className="shell" role="alert" style={{ padding: '40px' }}>We couldn’t load your class. Check your connection and refresh this page.</main>;
+  }
+  if (c === undefined || topicsData === null || itemsData === null || !answersLoaded) {
+    return <main className="shell" role="status" style={{ padding: '40px' }}>Loading your class…</main>;
+  }
 
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>

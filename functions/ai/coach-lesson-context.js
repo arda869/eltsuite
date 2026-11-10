@@ -22,6 +22,13 @@ export function teachingExcerpt(node,limit=7000) {
  const visit=n=>{if(!n||remaining<=0)return;if(n.text)add(n.text);if(n.type==='gap')add('[gap]');if(n.attrs){for(const key of ['prompt','title','instructions','text','input','alt'])add(n.attrs[key]);if(Array.isArray(n.attrs.options))add(n.attrs.options.filter(x=>typeof x==='string').join(' / '));if(n.type==='tt')add(JSON.stringify(n.attrs.data??{}));}for(const c of n.content??[])visit(c);if(n.type==='paragraph')add('\n');};
  visit(node);return parts.join(' ');
 }
+// Keep image evidence separate from the prose excerpt. The coach's context budget may
+// shorten long dialogue text before a later picture in the same activity.
+export function pictureEvidence(node) {
+ const pictures=[];
+ const visit=n=>{if(!n||pictures.length>=8)return;if(n.type==='picture'||n.type==='image')pictures.push({description:text(n.attrs?.alt||n.attrs?.description,200)||'Picture present; no written description available.'});for(const child of n.content??[])visit(child);};
+ visit(node);return pictures;
+}
 export function reportExcerpt(report) {
  let rows;try{rows=JSON.parse(report.reportsJson??'[]');}catch{rows=[];}
  return (Array.isArray(rows)?rows:[]).slice(0,8).map((r,i)=>{
@@ -37,7 +44,7 @@ export async function loadLessonSource(db,uid,source,{games=true}={}) {
  if(!i.exists)throw new HttpsError('not-found','This lesson is no longer available.');
  const snaps=source.taskId?[await item.collection('tasks').doc(source.taskId).get()]:(await item.collection('tasks').orderBy('order').limit(12).get()).docs;
  if(source.taskId&&!snaps[0].exists)throw new HttpsError('not-found','This activity is no longer available.');
- const gameIds=[];const tasks=[];for(const s of snaps){if(s.get('kind')==='section'||(!source.taskId&&s.get('family')&&s.get('family')!==s.id))continue;const body=s.get('restricted')?(await s.ref.collection('private').doc('body').get()).get('content'):s.get('content');if(games)gameIds.push(...gameReferences(body));tasks.push({title:text(s.get('title'),160),instructions:text(s.get('instructions')),material:teachingExcerpt(body,source.taskId?7000:900)});}
+ const gameIds=[];const tasks=[];for(const s of snaps){if(s.get('kind')==='section'||(!source.taskId&&s.get('family')&&s.get('family')!==s.id))continue;const body=s.get('restricted')?(await s.ref.collection('private').doc('body').get()).get('content'):s.get('content');if(games)gameIds.push(...gameReferences(body));tasks.push({title:text(s.get('title'),160),instructions:text(s.get('instructions')),material:teachingExcerpt(body,source.taskId?7000:900),pictures:pictureEvidence(body)});}
  const title=text(i.get('title'),160),url='/class/'+source.classId+'/lesson/'+source.itemId+(source.taskId?'?task='+source.taskId:'');
  const context={title,kind:c.get('kind')??'language',level:c.get('level')??'',profile:c.get('kind')==='training'?c.get('trainingProfile')??{}:c.get('learningProfile')??{},tasks,scope:source.taskId?'Selected activity only':'Up to twelve activity excerpts; the full course has not been read'};
  const sources=[{title:(source.taskId?tasks[0]?.title:title)||'Selected lesson',url}];

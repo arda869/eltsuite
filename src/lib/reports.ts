@@ -17,12 +17,26 @@ export function useClassAnswers(classId: string, on = true) {
   return list;
 }
 export function useMyAnswers(classId: string, uid?: string) {
+  return useMyAnswersState(classId, uid).list;
+}
+export function useMyAnswersState(classId: string, uid?: string) {
   const [list, setList] = useState<AnswerDoc[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   useEffect(() => {
+    setList([]);
+    setLoaded(false);
+    setError(false);
     if (!classId || !uid) return;
-    return onSnapshot(query(collection(db, 'classes', classId, 'answers'), where('learnerUid', '==', uid)), (s) => setList(s.docs.map((d) => d.data() as AnswerDoc)), () => {});
+    return onSnapshot(query(collection(db, 'classes', classId, 'answers'), where('learnerUid', '==', uid)), (s) => {
+      setList(s.docs.map((d) => d.data() as AnswerDoc));
+      setLoaded(true);
+    }, () => {
+      setError(true);
+      setLoaded(true);
+    });
   }, [classId, uid]);
-  return list;
+  return { list, loaded, error };
 }
 export function useAttendance(classId: string, on = true) {
   const [list, setList] = useState<Attendance[]>([]);

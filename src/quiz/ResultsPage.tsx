@@ -157,7 +157,7 @@ export function ResultsPage() {
               <tbody>
                 {players.map((p, k) => (
                   <tr key={p.id}>
-                    <td>{ordinal(k + 1)}</td>
+                    <td>{(p.score || 0) > 0 ? ordinal(k + 1) : '—'}</td>
                     <td>
                       {p.name}
                       {p.uid ? '' : <span className="qe-hint"> · guest</span>}
