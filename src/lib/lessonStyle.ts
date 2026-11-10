@@ -1,7 +1,7 @@
 // Presentation only. Missing or unrecognised values keep the existing Adult view.
-export type LessonStyle = 'adult' | 'young' | 'exam';
+export type LessonStyle = 'adult' | 'young' | 'exam' | 'teen';
 export const lessonStyleOf = (c?: { lessonStyle?: unknown } | null): LessonStyle =>
-  c?.lessonStyle === 'young' || c?.lessonStyle === 'exam' ? c.lessonStyle : 'adult';
+  c?.lessonStyle === 'young' || c?.lessonStyle === 'exam' || c?.lessonStyle === 'teen' ? c.lessonStyle : 'adult';
 
 // Local files also work inside print windows and the PDF capture frame.
 export function lessonFonts(origin = '') {

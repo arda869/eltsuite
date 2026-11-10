@@ -1,7 +1,7 @@
 .lesson-style-picker { border: 0; padding: 0; margin: 0; min-width: 0; }
 .lesson-style-picker legend { padding: 0 0 10px; font-weight: 600; }
 .lesson-style-picker > .hint { display: block; margin-top: 10px; }
-.lesson-style-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.lesson-style-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .lesson-style-option { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 9px; padding: 8px; border: 1px solid var(--hair-strong); border-radius: 13px; cursor: pointer; background: var(--surface); transition: border-color .15s, box-shadow .15s, transform .15s; }
 .lesson-style-option:hover { border-color: var(--accent); transform: translateY(-1px); }
 .lesson-style-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
@@ -28,4 +28,9 @@
 .lesson-style-preview__pictures i { font-style: normal; flex: 1; display: grid; place-items: center; height: 36px; border: 1px solid #e5d9b9; border-radius: 8px; background: #e6f4ec; color: #4f9b80; font-size: 17px; }
 .lesson-style-preview__pictures i:nth-child(2) { background: #e9edfb; color: #6486bc; }
 .lesson-style-preview__pictures i:nth-child(3) { background: #fce8e5; color: #bc7771; }
+.lesson-style-preview--teen { font-family: Karla, sans-serif; background: #fff; box-shadow: inset 0 0 0 2px #1d1b19, 3px 3px 0 #1d1b19; }
+.lesson-style-preview--teen .lesson-style-preview__heading { font-size: 13px; font-weight: 800; }
+.lesson-style-preview--teen .lesson-style-preview__rule { width: 48px; height: 6px; background: #ffe26a; transform: skewX(-12deg); }
+.lesson-style-preview--teen .lesson-style-preview__choices i { border: 1px solid #1d1b19; border-radius: 3px; box-shadow: 1px 1px 0 #1d1b19; font-weight: 800; }
+@media (max-width: 800px) and (min-width: 561px) { .lesson-style-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .lesson-style-options { grid-template-columns: 1fr; } .lesson-style-option { flex-direction: row; align-items: center; } .lesson-style-preview { width: 115px; height: 92px; flex: none; padding: 10px; } .lesson-style-preview__pictures i { height: 23px; } .lesson-style-option__label { flex: 1; } }

@@ -5,6 +5,7 @@ const styles: { value: LessonStyle; label: string }[] = [
   { value: 'adult', label: 'Adult' },
   { value: 'exam', label: 'Exam Prep' },
   { value: 'young', label: 'Young learner' },
+  { value: 'teen', label: 'Teenagers' },
 ];
 
 function StylePreview({ style }: { style: LessonStyle }) {
@@ -27,6 +28,12 @@ function StylePreview({ style }: { style: LessonStyle }) {
       <span className="lesson-style-preview__pictures"><i>★</i><i>●</i><i>◆</i></span>
       <span className="lesson-style-preview__body">Which one is right?</span>
     </>}
+    {style === 'teen' && <>
+      <span className="lesson-style-preview__heading">What would you do?</span>
+      <span className="lesson-style-preview__rule" />
+      <span className="lesson-style-preview__body">1&nbsp; Talk it through. Then choose.</span>
+      <span className="lesson-style-preview__choices"><i>A</i><i>B</i><i>C</i></span>
+    </>}
   </span>;
 }
 
@@ -35,7 +42,7 @@ export function LessonStylePicker({ value, onChange }: { value: LessonStyle; onC
     <legend>Lesson style</legend>
     <div className="lesson-style-options">
       {styles.map(style => <label className={`lesson-style-option${value === style.value ? ' selected' : ''}`} key={style.value}>
-        <input type="radio" name="lesson-style" value={style.value} checked={value === style.value} onChange={() => onChange(style.value)} />
+        <input type="radio" name="lesson-style" value={style.value} aria-label={style.label} checked={value === style.value} onChange={() => onChange(style.value)} />
         <StylePreview style={style.value} />
         <span className="lesson-style-option__label">{style.label}</span>
       </label>)}

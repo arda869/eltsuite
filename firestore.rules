@@ -241,7 +241,7 @@ service cloud.firestore {
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if ((isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId))
         && canStartTraining(request.resource.data)
-        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young', 'exam']
+        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young', 'exam', 'teen']
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80
@@ -249,7 +249,7 @@ service cloud.firestore {
         && countedIn(request.resource.data.get('org', null), 'classes');
       allow update: if signedIn()
         && (resource.data.get('kind', 'language') == 'training' || canStartTraining(request.resource.data))
-        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young', 'exam']
+        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young', 'exam', 'teen']
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.classCode == resource.data.classCode
         && (
