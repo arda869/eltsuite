@@ -141,6 +141,7 @@ export function Winners({ players }: { players: Record<string, LivePlayer> }) {
 export function placeLine(place: number, score = 0, players: Record<string, LivePlayer>) {
   const all = leaders(players);
   if (place <= 0) return '';
+  if ((all[0]?.s || 0) <= 0) return 'No points yet.';
   if (place === 1) return 'You’re in the lead.';
   const ahead = all[place - 2];
   if (!ahead) return `You’re ${ordinal(place)}.`;

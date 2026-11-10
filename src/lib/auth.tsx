@@ -87,7 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     h.style.setProperty('--rd-letter', ['0', '0.04em', '0.09em'][r.letter ?? 0]);
     h.style.setProperty('--rd-line', ['1', '1.25', '1.5'][r.line ?? 0]);
   }, [profile?.reading]);
-  if (user && profileError) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">Let’s finish setting up your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry account setup</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
+  // Joining a game only needs Firebase sign-in. The game service checks class
+  // membership itself, so a slow profile read must not block a live round.
+  const gameJoinRoute = /^\/game(?:\/|$)/.test(window.location.pathname);
+  if (user && profileError && !gameJoinRoute) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">Let’s finish setting up your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry account setup</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
   return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
