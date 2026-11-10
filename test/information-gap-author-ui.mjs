@@ -14,7 +14,9 @@ try {
   await page.getByRole('button', { name: 'Create account' }).click();
   await page.getByRole('link', { name: 'My writing' }).last().waitFor();
   await page.getByRole('link', { name: 'My writing' }).last().click();
-  await page.getByRole('link', { name: 'New article' }).click();
+  await page.getByRole('link', { name: 'New article' }).click({ timeout: 15000 }).catch(async error => {
+    throw new Error(`${error.message}\nCurrent page: ${page.url()}\nVisible text: ${(await page.locator('body').innerText()).slice(0, 1200)}\nBrowser errors: ${errors.join(' | ')}`);
+  });
   await page.getByLabel('Title').fill('Testing a classroom idea');
   await page.getByLabel('Short introduction').fill('A practical account from the classroom.');
   await page.getByLabel('Topic').fill('Methodology');
