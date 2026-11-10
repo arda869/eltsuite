@@ -2512,8 +2512,13 @@ const J = {
       sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: `${root}old-check/private/key`, count: 1, delay: 1500 }]));
     }, s.demo);
     await s.p.goto(BASE + '/learn/' + s.demo.itemId);
+    const taskNav = s.p.getByRole('navigation', { name: 'Tasks' });
+    // Pick the checked activity explicitly. A learner's previous task choice can
+    // otherwise leave the fresh activity selected, so no old feedback request starts.
+    await taskNav.getByRole('button', { name: 'Checked activity' }).click();
+    await s.p.getByRole('heading', { name: 'Checked activity' }).waitFor();
     await s.p.waitForFunction(() => JSON.parse(sessionStorage.getItem('mockfs-faults') || '[]')[0]?.count === 0);
-    await s.p.getByRole('navigation', { name: 'Tasks' }).getByRole('button', { name: 'Fresh copy' }).click();
+    await taskNav.getByRole('button', { name: 'Fresh copy' }).click();
     await s.p.getByRole('heading', { name: 'Fresh copy' }).waitFor();
     await s.p.waitForTimeout(1800);
     await s.p.getByRole('textbox', { name: 'Question 1' }).fill('new answer');
