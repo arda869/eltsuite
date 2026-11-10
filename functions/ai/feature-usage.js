@@ -24,7 +24,7 @@ export async function usageContext(db,auth) {
 // A rejected budget/job reservation rolls this count back with the same transaction.
 export async function chargeFeature(tx,db,context,feature) {
  const policy=db.doc('aiAllowances/'+context.uid),usage=db.doc('aiFeatureUsage/'+context.uid+'/days/'+context.day);
- const [p,u,r]=await Promise.all([tx.get(policy),tx.get(usage),tx.get(db.doc('aiFeatureReleases/settings'))]);
+ const p=await tx.get(policy),u=await tx.get(usage),r=await tx.get(db.doc('aiFeatureReleases/settings'));
  checkFeatureRelease(feature,r.get('states')??{},p.get('testingAccess')??[],context.isAdmin);
  const limit=effectiveLimit(feature,p.get('limits')??{},context.isAdmin),used=u.get('counts.'+feature)??0;
  if(!Number.isSafeInteger(used)||used<0)throw new HttpsError('internal','AI usage could not be checked. Please contact support.');

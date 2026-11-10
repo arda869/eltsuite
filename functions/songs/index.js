@@ -23,7 +23,10 @@ async function reserve(uid, kind, jobId, brief, auth) {
     const prior=await tx.get(ref);
     if(prior.exists) return {ref,created:false};
     const own=db.doc(`songUsage/${day}/teachers/${uid}`),all=db.doc(`songUsage/${day}`),lock=db.doc(`songPrivate/${uid}`);
-    const [a,b,c]=await Promise.all([tx.get(own),tx.get(all),tx.get(lock)]);
+    // Firestore transaction reads must complete on the same transaction before
+    // its writes. Concurrent reads can invalidate a contended reservation in
+    // the emulator, especially when two requests reuse the same job ID.
+    const a=await tx.get(own),b=await tx.get(all),c=await tx.get(lock);
     if(c.get('busyUntil')>Date.now())throw new HttpsError('resource-exhausted','A song or lyric draft is already being created. Recover it before starting another.');
     await chargeFeature(tx,db,context,kind);
     tx.set(own,{[kind]:(a.get(kind)??0)+1},{merge:true});tx.set(all,{[kind]:(b.get(kind)??0)+1},{merge:true});
