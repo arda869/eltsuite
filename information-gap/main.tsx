@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile, type User } from 'firebase/auth';
 import { auth, publishedArticles, visibleThreads, sharedLessons, getArticle, getThread, threadReplies, myArticles, myPitches, saveArticle, createThread, addReply, createPitch, getProfile, saveProfile, isEditor, editorialArticles, editorialThreads, editorialPitches, setArticleStatus, moderateThread, setPitchStatus, type Article, type Thread, type Reply, type Lesson, type Pitch } from './data';
 import './style.css';
+import './responsive-theme.css';
 
 const parts = location.pathname.split('/').filter(Boolean);
 const page = parts[0] || 'home';
