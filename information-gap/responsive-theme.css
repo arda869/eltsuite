@@ -1,0 +1,137 @@
+/* The publication follows the reader's device appearance. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: #ede8e3;
+    background: #17191a;
+  }
+
+  .site-head,
+  .topics,
+  .join-band {
+    background: #252628;
+  }
+
+  .head-nav,
+  .topics,
+  .feature,
+  .feature > div:first-child,
+  .feature-grid .card.lead,
+  .content-section,
+  .page-intro,
+  .card,
+  .meta,
+  .replies,
+  .replies article,
+  .editor-row,
+  footer {
+    border-color: #45494b;
+  }
+
+  .head-top a,
+  .head-nav a {
+    border-color: #45494b;
+  }
+
+  .feature > div:first-child h2,
+  .eyebrow,
+  .byline,
+  .meta,
+  .section-title > a,
+  .text-link {
+    color: #e2a582;
+  }
+
+  .feature > div:first-child p,
+  .card p,
+  .byline span,
+  .page-intro p,
+  .reading .standfirst,
+  .empty p,
+  .editor-row p,
+  .replies article small,
+  .loading,
+  footer p {
+    color: #c6c0ba;
+  }
+
+  .empty {
+    background: #222527;
+    border-color: #45494b;
+  }
+
+  .empty > span {
+    color: #e2a582;
+  }
+
+  .button {
+    border-color: #e2a582;
+    background: #e2a582;
+    color: #221c18;
+  }
+
+  .button:hover {
+    background: #f0b694;
+    color: #221c18;
+  }
+
+  .button.secondary {
+    color: #e2a582;
+  }
+
+  .button.secondary:hover {
+    background: #39302b;
+  }
+
+  .form input,
+  .form select,
+  .form textarea,
+  .search-form input {
+    background: #242728;
+    color: #ede8e3;
+    border-color: #626668;
+  }
+
+  .form input::placeholder,
+  .form textarea::placeholder,
+  .search-form input::placeholder {
+    color: #b2aba5;
+  }
+
+  .error {
+    color: #ffb3a9;
+    background: #3a2424;
+    border-color: #e8978d;
+  }
+
+  footer {
+    background: #222426;
+  }
+
+  :focus-visible {
+    outline: 3px solid #e2a582;
+    outline-offset: 3px;
+  }
+}
+
+/* Keep all sections discoverable on a narrow phone without a hidden side scroll. */
+@media (max-width: 640px) {
+  .head-nav > .container,
+  .topics > .container {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .head-nav a {
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+
+  .topics > .container {
+    gap: 0 18px;
+  }
+
+  .topics a {
+    padding-block: 5px;
+  }
+}
