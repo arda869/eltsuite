@@ -14,6 +14,7 @@ export { sharedDocumentAccessChanged, inlineDocumentAccessChanged, sharedClassMe
 export { resolveLearnerSignIn } from './learning/join.js';
 export { requestInvitation } from './accounts/invitations.js';
 export { startCallRoom, endCallRoom } from './learning/call-rooms.js';
+export { classVideoToken } from './video/class-admission.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a
 // learner, to see ELT Suite exactly as they do. Only super admins (the owner, or someone in
@@ -132,6 +133,7 @@ export const pushCallRing = onDocumentWritten({ document: 'callRings/{key}', reg
 });
 
 export { videoStudio, refreshVideoJobs } from './video/index.js';
+export { maintainVideoRooms } from './video/rooms-schedule.js';
 
 export { adminAiUsage } from './ai/admin-usage.js';
 

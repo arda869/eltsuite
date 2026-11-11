@@ -69,6 +69,8 @@ jobs:
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
       - name: Video access rules and service checks
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-video-editor "node test/video-access.mjs"
+      - name: Class video admission and room privacy checks
+        run: node --test test/video-class-admission.mjs test/video-rooms-maintenance.mjs
       - name: Google and password sign-in retain the same identity
         run: npx --yes firebase-tools@14 emulators:exec --config test/firebase-auth.json --only auth --project demo-ai-access "node test/password-link-integration.mjs"
       - name: File retention regression checks
