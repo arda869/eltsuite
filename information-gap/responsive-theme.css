@@ -1,4 +1,8 @@
 /* The publication follows the reader's device appearance. */
+footer p {
+  color: #626262;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
@@ -31,6 +35,19 @@
   .head-top a,
   .head-nav a {
     border-color: #45494b;
+  }
+
+  .auth-tabs {
+    border-color: #45494b;
+  }
+
+  .auth-tabs button,
+  .auth-divider {
+    color: #c6c0ba;
+  }
+
+  .auth-tabs button.active {
+    color: #e2a582;
   }
 
   .feature > div:first-child h2,
