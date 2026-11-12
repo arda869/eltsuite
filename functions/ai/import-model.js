@@ -17,7 +17,7 @@ export function importModelSchema(training,selectedKinds){
   const details=Object.fromEntries(Object.entries(t.dataSchema.properties).map(([key,s])=>[key==='prompt'?'oralPrompt':key,t.kind==='picture'&&key==='asset'?{type:'string',enum:['']}:s]));
   return obj({kind:{type:'string',enum:[t.kind]},prompt:ref('text'),selectionReason:ref('reason'),feedback:ref('short'),example:{type:'boolean'},needs:ref('needs'),...details});
  })};
- const body={instructions:text(1),input:text(),blocks:original.blocks,definitions:original.definitions,visuals:original.visuals,inlineElements:array(ref('importElement'))};
+ const body={instructions:text(1),input:text(),blocks:original.blocks,definitions:original.definitions,visuals:original.visuals,structures:original.structures,inlineElements:array(ref('importElement'))};
  return {...obj({title:text(1),rationale:text(1),differentiation:text(1),recycling:text(1),warnings:array(text(1,1000),0,30),tasks:array(obj({stageId:text(1),title:text(1),minutes:{type:'integer',minimum:1,maximum:180},layout:{type:'string',enum:['stacked','columns']},...body,subTasks:array(obj(body),0,6),teacherOnlyInput:text(0,2500),teacherNotes:text(1),support:text(0,2500),challenge:text(0,2500)}),1,12)}),$defs:{text:text(),short:text(0,1000),reason:text(1,600),needs:array({type:'string',enum:['picture','recording','transcript','classroomSetup']},0,4),importElement:elements}};
 }
 export function fromImportModel(value){

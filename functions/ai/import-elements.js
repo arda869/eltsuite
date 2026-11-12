@@ -11,6 +11,7 @@ export function importRequirements(elements=[]){
   if(e.kind==='picture'&&!e.data.asset)return [...explicit,'Recreate and review the source illustration before making this task visible.'];
   if(e.kind==='pq-label'&&e.data.image.startsWith('picture:'))return [...explicit,'Check label positions on the recreated illustration in the task editor before making it visible.'];
   if(e.kind==='pq-label'&&!e.data.image)return [...explicit,'Label the image: attach the source picture and check label positions before making this task visible.'];
+  if(e.kind==='investigation')return [...explicit,'Language investigation: open the task and choose or make the investigation before making this task visible.'];
   if(e.kind==='speaking')return [...explicit,'AI conversation: open the editor and save its Classroom speaking setup before making this task visible.'];
   if(e.kind==='collab'&&e.data.scope==='group')return [...explicit,'Shared document: create the class groups or choose whole-class collaboration before making this task visible.'];
   return explicit;
@@ -57,6 +58,24 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
     return {type:'dialogueLine',attrs:{who:speakers.indexOf(turn.speaker.trim())},content};
    })}];
   }
+  else if(e.kind==='heading')nodes=[{type:'heading',attrs:{level:3},content:textNodes(d.text)}];
+  else if(e.kind==='list')nodes=[...paragraphs(e.prompt),{type:d.ordered?'orderedList':'bulletList',...(d.ordered?{attrs:{start:d.start||1}}:{}),content:d.items.map(item=>({type:'listItem',content:[p(item)]}))}];
+  else if(e.kind==='quote')nodes=[...paragraphs(e.prompt),{type:'blockquote',content:paragraphs(d.text).length?paragraphs(d.text):[p('')]}];
+  else if(e.kind==='reveal')nodes=[...paragraphs(e.prompt),{type:'reveal',attrs:{label:d.label},content:paragraphs(d.text).length?paragraphs(d.text):[p('')]}];
+  else if(e.kind==='table'){
+   // Gaps in cells, numbered in reading order with the answers given.
+   let g=0;const cell=(text,header)=>{const pieces=String(text).split('___');const content=pieces.flatMap((part,k)=>k?[{type:'gap',attrs:{id:id+'_cell'+(g++),answers:[d.answers[g-1]??''],feedback:e.feedback||''}},...textNodes(part)]:textNodes(part));return {type:header?'tableHeader':'tableCell',content:[{type:'paragraph',content}]};};
+   const width=Math.max(d.headers.length,...d.rows.map(r=>r.length));const pad=r=>[...r,...Array(width-r.length).fill('')];
+   nodes=[...paragraphs(e.prompt),{type:'table',content:[{type:'tableRow',content:pad(d.headers).map(h=>cell(h,true))},...d.rows.map(r=>({type:'tableRow',content:pad(r).map(c=>cell(c,false))}))]}];
+  }
+  else if(e.kind==='ipa')nodes=[...paragraphs(e.prompt),{type:'paragraph',content:[...(d.word?[{type:'text',text:d.word+' '}]:[]),{type:'ipa',attrs:{text:d.transcription.replace(/^\/|\/$/g,''),accent:d.accent,showAccent:false}}]}];
+  else if(e.kind==='stress')nodes=[...paragraphs(e.prompt),{type:'paragraph',content:[{type:'stress',attrs:{syllables:d.syllables,stressed:Math.min(d.stressed,d.syllables.length-1),style:'box'}}]}];
+  else if(e.kind==='subst')nodes=[gapLine(e.prompt,{type:'subst',attrs:{options:d.options,lines:'both'}})];
+  else if(e.kind==='phonchart')nodes=[...paragraphs(e.prompt),{type:'paragraph',content:[{type:'phonChart',attrs:{accent:d.accent,part:d.part,by:''}}]}];
+  else if(e.kind==='phoncard')nodes=[...paragraphs(e.prompt),{type:'paragraph',content:[{type:'phonCard',attrs:{sound:d.sound.replace(/^\/|\/$/g,''),accent:d.accent,kind:d.show,by:''}}]}];
+  else if(e.kind==='dictcut')nodes=[...paragraphs(e.prompt),{type:'dictCut',attrs:{word:d.word,data:Object.fromEntries(Object.entries({pos:d.pos,meaning:d.meaning,example:d.example,ipa:d.ipa}).filter(([,v])=>v))}}];
+  else if(e.kind==='linkcard')nodes=[...paragraphs(e.prompt),{type:'linkCard',attrs:{url:d.url,title:d.title,note:d.note}}];
+  else if(e.kind==='investigation')nodes=[...paragraphs(e.prompt),{type:'investigation',attrs:{id,family:d.family,embedId:'',schemaVersion:1}}];
   else throw Error('Unsupported imported inline type: '+e.kind);
   content.push(...nodes);
  }

@@ -53,6 +53,19 @@ const entries=[
  ...['drawcard','wheel','boxes'].map((kind,i)=>[kind,['Draw a card','Spin the wheel','Open a box'][i],'Randomly reveal supplied discussion prompts or role cards. Do not replace scored questions with plain cards.',{repeat:bool,cards:list(obj({title:short,text:required}),2,30)}]),
  ['speaking','AI conversation','A roleplay with a defined learner role, partner role and speaking focus; teacher setup is required before learners can start.',{title:text(1,120),scenario:text(1,1500),focus:text(1,1000),learnerRole:text(1,200),partnerRole:text(1,200),level:choice('Pre-A1','A1','A2','B1','B2','C1','C2'),seconds:{...integer(60,300),enum:[60,120,180,240,300]}}],
  ...['analysis','plan','observe','loop','rehearsal','exam','reflection'].map((kind,i)=>['tt-'+kind,['Language analysis','Lesson plan','Observation form','Loop input','Microteaching rehearsal','Exam practice debrief','Reflective inquiry'][i],'Teacher-training form only, not a language learner writing box. Preserve source prompts and use known native field names.',{title:required,mode:choice('model','complete'),fields:records}]),
+ ['heading','Heading','A short heading inside the task, where the source has one between parts.',{text:text(1,200)}],
+ ['list','List','A bulleted or numbered list that is not a set of questions. Keep the source order and numbering start.',{ordered:bool,start:integer(1,100),items:list(required,1,40)}],
+ ['quote','Quote','A quotation or passage set apart from the main text.',{text:required}],
+ ['reveal','Reveal box','Content hidden until the learner opens it: a hint, a model answer, a tip.',{label:text(1,80),text:required}],
+ ['table','Table','A table with a header row. Put ___ in a cell for each answer gap and list the answers in reading order, left to right, top to bottom. Use an empty answers list when there are no gaps.',{headers:list(text(0,300),1,8),rows:list(list(text(0,500),1,8),1,30),answers:list(word,0,60)}],
+ ['ipa','Phonemic transcription','A word or phrase with its phonemic transcription between slashes in the source.',{word:text(0,200),transcription:text(1,200),accent:choice('RP','GA')}],
+ ['stress','Word stress','A word divided into syllables with its stressed syllable marked (index from 0).',{syllables:list(text(1,30),1,8),stressed:integer(0,7)}],
+ ['subst','Substitution slot','Words that can each fill one place in a model sentence, shown stacked at ___ in the prompt.',{options:list(word,2,12)}],
+ ['phonchart','Phonemic chart','The interactive phonemic chart, or one part of it.',{accent:choice('RP','GA'),part:choice('all','vowels','diphs','cons')}],
+ ['phoncard','Sound card','One sound in IPA, with examples (sound) or how it is made (how).',{sound:text(1,8),accent:choice('RP','GA'),show:choice('sound','how')}],
+ ['dictcut','Definition card','A word or phrase with a learner-level meaning, part of speech, example and pronunciation.',{word,pos:short,meaning:required,example:short,ipa:short}],
+ ['linkcard','Link card','A YouTube video, audio file or web page whose full HTTPS address is printed in the source. Never invent an address.',{url:text(1,1000),title:text(1,200),note:short}],
+ ['investigation','Language investigation','A language investigation block (corpus, discourse, language awareness, pragmatics, learner development or research). The teacher chooses or makes the investigation in the editor.',{family:choice('corpus','discourse','language-awareness','pragmatics','learner-development','research')}],
  ['tt-custom','Custom training form','Preserve an uploaded teacher-training form with its actual labelled fields.',{title:required,fields:list(obj({label:required,kind:choice('short','long','rating','check'),hint:short,value:str}),1,30)}]
 ];
 export const IMPORT_TYPES=entries.map(([kind,label,hint,fields])=>({kind,label,hint,dataSchema:obj(fields)}));
