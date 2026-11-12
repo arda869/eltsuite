@@ -213,11 +213,6 @@ jobs:
           npm install --no-save --no-audit --no-fund google-auth-library@9
           node scripts/deploy-rules.mjs
 
-      - name: Deploy Firestore indexes and expiry policies
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx --yes firebase-tools@14 deploy --only firestore:indexes --config firebase.indexes-only.json --project lesson-lit --non-interactive
-
       - name: Deploy The Information Gap
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
@@ -239,6 +234,11 @@ jobs:
           fi
 
           grep -q 'Deploy complete!' "$RUNNER_TEMP/fn.log" || { echo '::error::Firebase did not confirm the server function deployment completed.'; exit 1; }
+
+      - name: Deploy Firestore indexes and expiry policies
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@14 deploy --only firestore:indexes --config firebase.indexes-only.json --project lesson-lit --non-interactive
 
       - name: Verify AI costs with live lyrics and a playable song
         if: contains(github.event.head_commit.message, '[verify-ai-costs]')

@@ -7727,8 +7727,10 @@ html { touch-action: manipulation; }
 .pdf-keybtn.on { border-color: #c0392b; background: #c0392b; color: #fff; }
 @media (max-width: 700px) { .pdff-rail { display: none; } }
 
-/* PDF pages: the words over each page, to tap for a meaning */
-.pdf-pagewrap { position: relative; display: block; }
+/* The page dimensions come from the PDF metadata, not the canvas's pixel buffer.
+   This keeps worksheet layout steady while pdf.js redraws at new resolutions. */
+.pdf-pagewrap { position: relative; display: block; width: 100%; min-width: 0; }
+.pdf-pagewrap > .pdf-page { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pdf-pagewrap + .pdf-pagewrap, .pdf-pagewrap + .pdf-page, .pdf-page + .pdf-pagewrap { border-top: 6px solid #e9e6e1; }
 .pdf-pagewrap > .pdf-page { border-top: 0 !important; }
 .textLayer { position: absolute; inset: 0; overflow: hidden; line-height: 1; text-align: initial; transform-origin: 0 0; forced-color-adjust: none; z-index: 0; }
@@ -7736,13 +7738,6 @@ html { touch-action: manipulation; }
 .textLayer span.markedContent { top: 0; height: 0; }
 .textLayer ::selection { background: rgba(60, 120, 230, .28); }
 .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
-.pdf-wordpop { position: fixed; z-index: 90; width: 290px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -14px rgba(0, 0, 0, .35); font: 14px/1.5 var(--sans); }
-.pdf-wp-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.pdf-wp-h b { font: 600 18px var(--serif); }
-.pdf-wp-ipa { color: #7a4fa3; font-family: 'Doulos SIL', 'Charis SIL', 'Noto Sans', var(--sans); }
-.pdf-wp-h .btn { margin-left: auto; }
-.pdf-wordpop ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
-.pdf-wordpop i { color: var(--muted); }
 .pdf-sw.mine { outline: 2px solid var(--paper); box-shadow: 0 0 0 3px currentColor; }
 /* PDF: units, and choosing pages for a lesson */
 .pdff-rail-i { display: flex; flex-direction: column; gap: 4px; }
@@ -7842,6 +7837,19 @@ html { touch-action: manipulation; }
 .sh-fit { margin: 0 auto; }
 .sh-paper { position: relative; transform-origin: 0 0; }
 .sh-sheet { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; justify-content: space-between; background: #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .14); }
+.sh-sheet::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 14px;
+  pointer-events: none;
+  background: linear-gradient(#fff 45%, #f5f3ef);
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 97% 70%, 94% 43%, 90% 78%, 87% 52%, 84% 73%, 80% 45%, 77% 84%, 74% 57%, 70% 80%, 66% 48%, 62% 70%, 58% 44%, 54% 72%, 50% 49%, 46% 77%, 42% 55%, 39% 82%, 35% 50%, 31% 75%, 27% 43%, 23% 69%, 19% 52%, 15% 78%, 11% 48%, 7% 71%, 3% 45%, 0 64%);
+  filter: drop-shadow(0 3px 2px rgba(42, 38, 34, .18));
+}
+@media print { .sh-sheet::after { display: none; } }
 .sh-flow { position: absolute; top: 0; display: flex; flex-direction: column; }
 .sh-block { position: relative; border-radius: 1.5mm; }
 .sh-block.pick { cursor: pointer; transition: box-shadow .15s; }
@@ -8510,6 +8518,16 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .shell.classes-shell{padding-inline:12px}
 .classes-shell .task-frame>.frame-inner>.frame-head,.classes-shell .task-frame>.frame-inner>.frame-body{padding-inline:16px}
 @media(max-width:760px){.shell.classes-shell{padding-inline:8px}.classes-shell .task-frame>.frame-inner>.frame-head,.classes-shell .task-frame>.frame-inner>.frame-body{padding-inline:12px}}
+
+/* In teaching view, the reading and question columns own their scrolling. */
+@media(min-width:901px){
+  .classes-shell .lesson-layout:has(.teach-bar){overflow:hidden;min-height:0}
+  .classes-shell .lesson-layout:has(.teach-bar)>.center-col{min-width:0;min-height:0;overflow:hidden}
+  .classes-shell .lesson-layout:has(.teach-bar) .task-frame{min-height:0}
+  .classes-shell .lesson-layout:has(.teach-bar) .frame-body:has(.task-columns.separate){display:flex;flex-direction:column;overflow:hidden;min-height:0}
+  .classes-shell .lesson-layout:has(.teach-bar) .task-columns.separate{flex:1;min-height:0;height:auto;align-items:stretch;overflow:hidden}
+  .classes-shell .lesson-layout:has(.teach-bar) .task-columns.separate>.col{min-width:0;min-height:0;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
+}
 
 /* Resources uses the available canvas while retaining room for focus rings. */
 .lib-shell > .ma{padding-inline:12px}

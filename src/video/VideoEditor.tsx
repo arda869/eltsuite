@@ -3,8 +3,6 @@ import { UiIcon } from "../components/UiIcon";
 import { VideoDialog } from "./VideoDialog";
 import { VideoButton, VIDEO_SHORTCUTS } from "./VideoButton";
 import { detachAudio, insertPause, rippleDelete } from "./operations";
-import { decodeSound, toMono } from "../lib/sound";
-import { transcribeRecording } from "../lib/speech";
 import {
   useEffect,
   useRef,
@@ -60,7 +58,7 @@ import {
   videoCall,
 } from "./library";
 import { VideoEngine } from "./engine";
-import { AssetPreview, CharacterLibrary } from "./CharacterLibrary";
+import { AssetPreview } from "./CharacterLibrary";
 import "./video.css";
 type Props = {
   initialFile?: File;
@@ -99,7 +97,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
   const [p, setP] = useState<VideoProject>(blankProject),
     [ready, setReady] = useState(false),
     [dirty, setDirty] = useState(false),
-    [tab, setTab] = useState("media"),
     [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
     [head, setHead] = useState(0),
@@ -107,7 +104,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
     [selected, setSelected] = useState(""),
     [selectedTrack, setSelectedTrack] = useState(""),
     [zoom, setZoom] = useState(36),
-    [enabled, setEnabled] = useState(false),
     [exportProgress, setExportProgress] = useState<number | null>(null),
     [projects, setProjects] = useState<{ id: string; title: string }[]>([]),
     [sharing, setSharing] = useState<VideoAsset | null>(null),
@@ -150,11 +146,9 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
         if (!gone) setReady(true);
         setProjects(await listProjects(uid));
         const status = await videoCall<{
-          enabled: boolean;
           simulated?: boolean;
         }>({ action: "status" });
         if (!gone) {
-          setEnabled(status.enabled);
           setSimulated(!!status.simulated);
         }
       } catch (e) {
@@ -555,71 +549,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
       setBusy("");
     }
   };
-  const captionSource = async () => {
-    engine.current?.pause();
-    if (!picked?.asset) return;
-    const sourceClip = picked;
-    setBusy("Making captions…");
-    try {
-      const buffer = await decodeSound(await assetBlob(sourceClip.asset));
-      const samples = toMono(buffer).slice(
-        Math.floor(sourceClip.in * buffer.sampleRate),
-        Math.floor(sourceClip.out * buffer.sampleRate),
-      );
-      const segments = (
-        await transcribeRecording(samples, buffer.sampleRate)
-      ).map((s) => ({
-        ...s,
-        start: s.start + sourceClip.in,
-        end: s.end + sourceClip.in,
-      }));
-      const target = track("caption", "Auto captions");
-      target.clips = segments
-        .filter((s) => s.end > sourceClip.in && s.start < sourceClip.out)
-        .map((s) => ({
-          ...clipFor(
-            {
-              id: "",
-              duration:
-                (Math.min(s.end, sourceClip.out) -
-                  Math.max(s.start, sourceClip.in)) /
-                (sourceClip.speed || 1),
-            } as VideoAsset,
-            sourceClip.at +
-              (Math.max(s.start, sourceClip.in) - sourceClip.in) /
-                (sourceClip.speed || 1),
-          ),
-          text: s.text,
-          y: 0.85,
-        }));
-      if (
-        !projectRef.current.tracks.some((t) =>
-          t.clips.some(
-            (c) =>
-              c.id === sourceClip.id &&
-              c.in === sourceClip.in &&
-              c.out === sourceClip.out &&
-              c.at === sourceClip.at &&
-              c.speed === sourceClip.speed,
-          ),
-        )
-      )
-        throw Error(
-          "The source changed while captions were being made. Select it and try again.",
-        );
-      edit({
-        ...projectRef.current,
-        tracks: [target, ...projectRef.current.tracks],
-      });
-      say(
-        "Captions added. Check the wording and timing before using the video.",
-      );
-    } catch (e) {
-      say((e as Error).message);
-    } finally {
-      setBusy("");
-    }
-  };
   const freezeFrame = async () => {
     engine.current?.pause();
     if (!canvas.current) return;
@@ -810,9 +739,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
               t.id === target.id ? { ...t, mute: !t.mute } : t,
             ),
           });
-      } else if (!mod && k === "v") setTab("media");
-      else if (!mod && k === "g") setTab("characters");
-      else if (e.key === "+" || e.key === "=")
+      } else if (e.key === "+" || e.key === "=")
         setZoom((z) => Math.min(160, z + 8));
       else if (e.key === "-") setZoom((z) => Math.max(8, z - 8));
       else if (e.key === "?") setShowShortcuts(true);
@@ -934,24 +861,8 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
       )}
       <div className={"vx-workspace" + (picked ? "" : " no-selection")}>
         <aside className="vx-left">
-          <div role="tablist" aria-label="Video tools" className="vx-tabs">
-            {[
-              ["media", "Media"],
-              ["characters", "Characters"],
-            ].map(([k, label]) => (
-              <VideoButton
-                key={k}
-                role="tab"
-                aria-selected={tab === k}
-                onClick={() => setTab(k)}
-              >
-                {label}
-              </VideoButton>
-            ))}
-          </div>
+          <div className="vx-tabs"><strong>Media</strong></div>
           <div className="vx-side-body">
-            {tab === "media" && (
-              <>
                 <div className="vx-actions">
                   <VideoButton
                     disabled={locked}
@@ -1031,20 +942,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                       </article>
                     ))}
                 </div>
-              </>
-            )}
-            {tab === "characters" && (
-              <CharacterLibrary
-                uid={uid}
-                ownerName={ownerName}
-                assets={assets}
-                colleagues={colleagues || []}
-                org={org}
-                enabled={enabled}
-                onError={say}
-                onReady={() => say("")}
-              />
-            )}
           </div>
         </aside>
         <StudioDivider
@@ -1169,17 +1066,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                   e.currentTarget.parentElement?.removeAttribute("open")
                 }
               >
-                <VideoButton
-                  disabled={
-                    locked ||
-                    !picked?.asset ||
-                    pickedTrack?.kind === "caption" ||
-                    p.tracks.length >= 30
-                  }
-                  onClick={() => void captionSource()}
-                >
-                  Auto captions
-                </VideoButton>
                 <VideoButton
                   disabled={locked || !picked}
                   onClick={() => edit(rippleDelete(p, selected))}

@@ -8,6 +8,13 @@ function letterPattern(answer,firstLetter){let start=true;return Array.from(answ
 export function importRequirements(elements=[]){
  return [...new Set(elements.flatMap(e=>{
   const explicit=(e.needs??[]).map(kind=>({picture:'Attach the source picture before making this task visible.',recording:'Attach the original recording before making this task visible.',transcript:'Add the missing source transcript before making this task visible.',classroomSetup:'Complete the Classroom setup before making this task visible.'})[kind]).filter(Boolean);
+  const d=e.data??{};
+  const missingKey=['gap','shortAnswer','lettergap','wordform'].includes(e.kind)&&!d.answers?.some(a=>a.trim())
+   ||['radio','dropdown','truefalse','notgiven','drop'].includes(e.kind)&&!String(d.answer??'').trim()
+   ||e.kind==='multi'&&!d.answers?.length
+   ||e.kind==='dialogue'&&d.turns?.some(turn=>turn.answers.some(a=>!a.trim()))
+   ||e.kind==='table'&&[d.headers,...d.rows].flat().join('\n').includes('___')&&d.answers?.some(a=>!a.trim());
+  if(missingKey)explicit.push('Add the missing answer key before making this task visible.');
   if(e.kind==='picture'&&!e.data.asset)return [...explicit,'Recreate and review the source illustration before making this task visible.'];
   if(e.kind==='pq-label'&&e.data.image.startsWith('picture:'))return [...explicit,'Check label positions on the recreated illustration in the task editor before making it visible.'];
   if(e.kind==='pq-label'&&!e.data.image)return [...explicit,'Label the image: attach the source picture and check label positions before making this task visible.'];
@@ -24,7 +31,7 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
   notes.push(`${IMPORT_TYPE_BY_KIND.get(e.kind)?.label||e.kind}: ${e.reason}${e.feedback?'\nFeedback: '+e.feedback:''}`);
   let nodes=[];
   if(['gap','shortAnswer','lettergap','wordform','drop'].includes(e.kind)){
-   const node=e.kind==='drop'?{type:'dropgap',attrs:{...attrs,answer:d.answer}}:{type:'gap',attrs:{...attrs,answers:d.answers,stem:e.kind==='wordform'?d.stem:'',letters:e.kind==='lettergap',firstLetter:d.firstLetter===true,pattern:e.kind==='lettergap'?letterPattern(d.answers[0],d.firstLetter):''}};
+   const node=e.kind==='drop'?{type:'dropgap',attrs:{...attrs,answer:d.answer}}:{type:'gap',attrs:{...attrs,answers:d.answers,stem:e.kind==='wordform'?d.stem:'',letters:e.kind==='lettergap',firstLetter:d.firstLetter===true,pattern:e.kind==='lettergap'&&d.answers[0]?letterPattern(d.answers[0],d.firstLetter):''}};
    nodes=[gapLine(e.prompt,node)];
   }else if(['radio','dropdown','multi','truefalse','notgiven'].includes(e.kind)){
    const options=e.kind==='truefalse'?['True','False']:e.kind==='notgiven'?['True','False','Not given']:d.options;
