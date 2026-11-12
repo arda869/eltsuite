@@ -25,7 +25,7 @@ type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
-  games: { name: 'Games', kinds: ['game'], color: '#1f6b62', empty: 'No games yet. Make a game, then play it live, share it with a code, or put it in a lesson.' },
+  games: { name: 'Games', kinds: ['game'], color: '#1f6b62', empty: 'Make a game, then play it live, share it with a code, or put it in a lesson.' },
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
@@ -227,7 +227,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             <span className="af-empty-ico">
               <FileIcon kind={app === 'recordings' ? 'audio' : (a.kinds[0] as FileKind)} size={44} label={false} />
             </span>
-            <strong>{s ? 'Nothing matches' : tab === 'starred' ? 'Nothing starred yet' : tab === 'shared' ? 'Nothing shared with you yet' : tab === 'library' ? 'Nothing in the library yet' : `No ${a.name} files yet`}</strong>
+            <strong>{s ? 'Nothing matches' : tab === 'starred' ? 'Nothing starred yet' : tab === 'shared' ? 'Nothing shared with you yet' : tab === 'library' ? 'Nothing in the library yet' : app === 'games' ? 'No games yet' : `No ${a.name} files yet`}</strong>
             <span className="hint">{s ? 'Try other words.' : tab === 'starred' ? 'Star a file to find it here quickly.' : tab === 'library' && app === 'recordings' ? 'Recordings aren’t kept in the library yet.' : a.empty}</span>
           </div>
         )}
