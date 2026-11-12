@@ -710,6 +710,8 @@ service cloud.firestore {
         allow read: if isTeacher() && get(/databases/$(database)/documents/callRooms/$(id)).data.get('by', '') == request.auth.uid;
       }
     }
+    // Copies of AI requests for the side-by-side model test: server only (functions/ai/capture.js).
+    match /aiCaptures/{id=**} { allow read, write: if false; }
     match /callReservationLimits/{id} { allow read, write: if false; }
     match /callActiveReservations/{id} { allow read, write: if false; }
     // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list

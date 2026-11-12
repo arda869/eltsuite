@@ -22,6 +22,10 @@ export function checkImportElements(elements,training){
   if(e.kind==='writing'&&d.maxWords&&d.minWords>d.maxWords)throw Error('Writing word limits are reversed.');
   if(e.kind==='writing'&&d.rubric==='custom'&&!d.criteria.length)throw Error('Custom marking needs criteria.');
   if(e.kind==='pq-highlight'&&!/\{\{[^{}]+\}\}/.test(d.text))throw Error('Highlight targets must be marked with {{double braces}}.');
+  if(e.kind==='table'){const gaps=[d.headers,...d.rows].flat().join('\n').split('___').length-1;if(gaps!==d.answers.length)throw Error('A table needs one answer for each ___ gap in its cells.');}
+  if(e.kind==='stress'&&d.stressed>=d.syllables.length)throw Error('The stressed syllable is outside the word.');
+  if(e.kind==='subst'&&e.prompt.split('___').length!==2)throw Error('A substitution slot needs exactly one ___ in its prompt.');
+  if(e.kind==='linkcard'&&(!/^https:\/\//.test(d.url)||!validImage(d.url)))throw Error('A link card needs the full HTTPS address from the source.');
   if(e.kind==='pq-label'&&!validImage(d.image))throw Error('Use a public HTTPS picture URL or attach the picture in the editor.');
   if(e.kind==='pq-odd'&&d.odd>=d.words.length)throw Error('The odd-one-out answer is outside its options.');
   if(e.kind==='pq-gapped'){

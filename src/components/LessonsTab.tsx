@@ -1,10 +1,8 @@
 import { NSelect } from './Select';
-import { useAiPilot } from '../ai/pilot';
 import { ask } from '../lib/ask';
 import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
+import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
 import { RecapDialog } from './Recap';
 import { copyLesson } from '../lib/copy';
@@ -368,9 +366,6 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
 const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
 
 export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
-  const aiPilot = useAiPilot();
-  const [materialImport,setMaterialImport]=useState(false);
-  const navigate=useNavigate();
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -403,8 +398,6 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
 
   return (
     <div className="lessons">
-      {aiPilot && <section style={{padding:'24px',marginBottom:'24px',border:'1px solid var(--hair-strong)',borderRadius:'18px'}} aria-label="Import existing materials"><h2 style={{marginTop:0}}>Import existing materials</h2><p>Turn a worksheet or other material into editable activities, then review it before adding it to a lesson.</p><ImportMaterialsButton onClick={()=>setMaterialImport(true)}/></section>}
-      {materialImport&&<MaterialImport classId={c.id} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);navigate(`/class/${c.id}/lesson/${id}`);}}/>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">

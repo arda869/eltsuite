@@ -7,6 +7,8 @@ export const SOURCES = {
 };
 export const RATE_CARD = {
  'gpt-6.1-sol': {provider:'openai',textInput:2,textCached:0.1,textOutput:10},
+ // Cached-input price not yet confirmed: priced as full input until checked on the pricing page.
+ 'gpt-6.1-terra': {provider:'openai',textInput:1,textCached:1,textOutput:5},
  'gpt-image-2.5-flare': {provider:'openai',textInput:5,textCached:1.25,imageInput:8,imageCached:2,imageOutput:30},
  'gpt-image-2.5-sunburst': {provider:'openai',textInput:5,textCached:1.25,imageInput:8,imageCached:2,imageOutput:30},
  'gpt-realtime-2.1-mini': {provider:'openai',textInput:0.6,textCached:0.06,textOutput:2.4,audioInput:10,audioCached:0.3,audioOutput:20,imageInput:0.8,imageCached:0.08},
@@ -42,7 +44,7 @@ export function normaliseUsage(model, body) {
   if(d&&number(d.audio_tokens)&&number(d.text_tokens)&&number(u.output_tokens))return {audioInput:d.audio_tokens,textInput:d.text_tokens,textOutput:u.output_tokens};
   return {};
  }
- if(model==='gpt-6.1-sol') {
+ if(model==='gpt-6.1-sol'||model==='gpt-6.1-terra') {
   if(!number(u.input_tokens)||!number(u.output_tokens))return {};
   const cached=u.input_tokens_details?.cached_tokens??0;
   if(!number(cached)||cached>u.input_tokens)return {};
