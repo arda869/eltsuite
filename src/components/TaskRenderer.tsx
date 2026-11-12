@@ -257,10 +257,16 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const inPen = (id: string) => !!penKey?.[id] && penKey[id].kind !== 'writing';
   const pf = (id: string) => (inPen(id) ? ' pen-fill' : '');
 
-  // Numbering: (1), (2)… in reading order; matching uses one number per row.
+  // Numbering: 1, 2… in reading order; matching uses one number per row. It is decided the same way
+  // as on paper (src/lib/worksheet.ts): a question alone in a numbered line takes the line's number,
+  // two or more in one numbered line are its a, b, c, and a task with one question needs no number.
   let n = 0;
   const numbers: Record<string, number> = {};
   const listed = new Set<string>();
+  const subOf: Record<string, string> = {};
+  // Questions whose number is drawn at the start of their sentence (see 'paragraph').
+  const leadNum = new Set<string>();
+  let hasExample = false;
   // A pick played together uses the class pile; otherwise this person's own draws.
   const sharedOn = (node: JSONContent) => node.attrs?.play === 'class' && !!shared;
   const pickOf = (node: JSONContent): PickState => {
@@ -268,21 +274,33 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     if (sharedOn(node)) return { h: shared?.[id]?.h ?? [], b: shared?.[id]?.b ?? [] };
     return pickState(responses[id]);
   };
-  const walk = (node: JSONContent, inOl: boolean) => {
-    const ol = inOl || node.type === 'orderedList';
-    if (node.type === 'randomPick') {
-      // Only drawn cards are numbered, in the order they were drawn.
-      for (const i of drawnCards(pickOf(node) as unknown as Response)) if (node.content?.[i]) walk(node.content[i], ol);
+  // line: the questions of the numbered line being read, if any.
+  const walk = (node: JSONContent, inOl: boolean, line?: string[]) => {
+    if (node.type === 'listItem' && inOl) {
+      const ids: string[] = [];
+      node.content?.forEach((c) => walk(c, false, ids));
+      if (ids.length === 1) listed.add(ids[0]);
+      else if (ids.length > 1) ids.forEach((qid, k) => (subOf[qid] = LETTERS[k % LETTERS.length]));
       return;
     }
+    const childOl = node.type === 'orderedList' ? true : node.type === 'bulletList' ? false : inOl;
+    if (node.type === 'randomPick') {
+      // Only drawn cards are numbered, in the order they were drawn.
+      for (const i of drawnCards(pickOf(node) as unknown as Response)) if (node.content?.[i]) walk(node.content[i], childOl, line);
+      return;
+    }
+    if (node.attrs?.example && QTYPES.includes(node.type ?? '')) hasExample = true;
     if (node.attrs?.id && !node.attrs.example && QTYPES.includes(node.type ?? '') && !(node.type === 'pq' && node.attrs.kind === 'speaking')) {
       numbers[node.attrs.id] = asExample ? 0 : n + 1;
-      if (!asExample) n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
-      if (ol) listed.add(node.attrs.id);
+      if (!asExample) n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? node.attrs.pairs ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
+      line?.push(node.attrs.id);
     }
-    node.content?.forEach((c) => walk(c, ol));
+    node.content?.forEach((c) => walk(c, childOl, line));
   };
   if (content) walk(content, false);
+  // One question in the whole task: nothing to tell apart, so no number.
+  const numbered = Object.keys(numbers);
+  if (!asExample && !hasExample && numbered.length === 1 && n === 1 && !subOf[numbered[0]]) listed.add(numbered[0]);
 
   // Words already placed in drag-and-drop gaps.
   const placedWords: string[] = [];
@@ -309,13 +327,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           aria-pressed={flagged}
           onClick={() => onToggleFlag(id)}
         >
-          {!listed.has(id) && numbers[id]}
+          {!listed.has(id) && (subOf[id] ?? numbers[id])}
           <span className="flag-icon">{FLAG}</span>
         </button>
       );
     return listed.has(id) && offset === 0 ? null : (
-      <sup className="q-num" aria-hidden="true">
-        {numbers[id] + offset}
+      <sup className={'q-num' + (subOf[id] && offset === 0 ? ' q-sub' : '')} aria-hidden="true">
+        {subOf[id] && offset === 0 ? subOf[id] : numbers[id] + offset}
       </sup>
     );
   };
@@ -522,7 +540,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     if (display === 'radio')
       return (
         <span key={key} className="stacked-choice" data-qid={id} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
-          <span className="stack-num">{num(id)}</span>
+          {!leadNum.has(id) && <span className="stack-num">{num(id)}</span>}
           <span className="stack">
             {choiceOptions(id, options, multi, display)}
             {revealChip(node)}
@@ -896,13 +914,19 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <div key={key} className="reflist"><h2 className="reflist-h">{refsTitle(citationStyle)}</h2>{citationSources.map((source, i) => <p className="reflist-item" key={source.id || i}>{reference(source, citationStyle, i + 1).map((piece, j) => piece.i ? <i key={j}>{piece.t}</i> : <span key={j}>{piece.t}</span>)}</p>)}</div>;
       case 'doc':
         return <>{kids()}</>;
-      case 'paragraph':
+      case 'paragraph': {
+        // A question whose options are listed under it (multiple choice as a list, true or false…):
+        // its number goes at the start of the question, as on paper, not beside the options.
+        const qs = (node.content ?? []).filter((c) => c.attrs?.id && QTYPES.includes(c.type ?? '') && !c.attrs.example);
+        const lead = qs.length === 1 && qs[0].type === 'choice' && (qs[0].attrs?.display ?? 'dropdown') === 'radio' ? String(qs[0].attrs!.id) : '';
+        if (lead) leadNum.add(lead);
         return (
-          <div key={key} className="para" data-bk={key}>
-            <p style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>{kids()}</p>
+          <div key={key} className={'para' + (lead ? ' q-lead' : '')} data-bk={key}>
+            <p style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>{lead && num(lead)}{kids()}</p>
             {notesFor(node)}
           </div>
         );
+      }
       case 'heading':
         return (
           <h3 key={key} data-bk={key} data-level={node.attrs?.level ?? 1} style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>

@@ -3332,7 +3332,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .lg-word { display: inline-flex; align-items: flex-end; gap: 3px; margin-right: 0.7em; white-space: nowrap; vertical-align: -0.15em; }
 .lg-slot { width: 1.05em; height: 1.35em; padding: 0; border: 0; border-bottom: 1.6px solid var(--ink); border-radius: 0; background: transparent; text-align: center; font: inherit; font-family: 'Kalam', cursive; color: #2f5fa8; outline: none; }
 .lg-slot:focus { border-bottom-color: var(--accent); background: var(--tint); border-radius: 3px 3px 0 0; }
-.lg-given { line-height: 1.35; }
+.lg-given { display: inline-grid; place-items: center; box-sizing: border-box; min-width: 1.05em; height: 1.35em; border-bottom: 1.6px solid transparent; font-size: 1.14em; font-weight: 600; line-height: 1; color: var(--ink); }
 .lg-preview { display: inline-flex; align-items: flex-end; gap: 2px; }
 .lg-preview i { display: inline-block; width: 7px; height: 1em; border-bottom: 1.4px solid currentColor; }
 .lg-preview b { font-weight: 400; }
@@ -7409,7 +7409,7 @@ input.dg-cell-label:focus { outline: none; }
 @media (max-width: 700px) { .pd-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* The text toolbar: room at its left edge and between it and the writing */
-.task-editor > .toolbar { padding-left: 6px; margin-bottom: 10px; }
+.task-editor > .toolbar { padding-left: 10px; padding-right: 10px; margin-bottom: 10px; }
 .pd-note .task-editor .toolbar { padding: 8px 14px 10px; margin-bottom: 8px; }
 .chat-editor .task-editor > .toolbar { padding-left: 6px; margin-bottom: 4px; }
 .tool .ti-h { font-weight: 700; }
@@ -7848,7 +7848,7 @@ html { touch-action: manipulation; }
 .sh-block.pick:hover { box-shadow: 0 0 0 1.5mm color-mix(in srgb, var(--accent) 10%, transparent), 0 0 0 calc(1.5mm + 1px) color-mix(in srgb, var(--accent) 40%, transparent); }
 .sh-block.pick:focus-visible, .sh-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1.5mm; border-radius: 1.5mm; }
 .sh-block.on { margin-bottom: 5mm; }
-.sh-edit { position: relative; padding: 4mm 3mm 3mm; margin: 5mm -3mm 0; border-radius: 2mm; box-shadow: 0 0 0 1.5px var(--accent); background: #fff; }
+.sh-edit { position: relative; padding: 5mm 5mm 4mm; margin: 5mm -5mm 0; border-radius: 2mm; box-shadow: 0 0 0 1.5px var(--accent); background: #fff; }
 .sh-edit-tag { position: absolute; top: -9px; left: 10px; padding: 0 8px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10.5px/18px var(--sans); letter-spacing: .02em; }
 .sh-edit .frame-inner { border: 0; box-shadow: none; background: none; padding: 0; min-height: 0; }
 .sh-edit .frame-head { padding: 2mm 0 1mm; gap: 4px; }
@@ -7871,7 +7871,7 @@ html { touch-action: manipulation; }
 .sh-pb-online { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 .sh-measure { position: absolute; left: 0; right: 0; top: 0; visibility: hidden; pointer-events: none; }
 .sh-sheet.stretched { box-shadow: 0 8px 26px rgba(0, 0, 0, .14), inset 0 -3px 0 color-mix(in srgb, var(--accent) 30%, transparent); }
-.sh-edit .frame-body .task-editor > .toolbar { position: static; top: auto; z-index: auto; margin: 0 0 6px; padding: 6px 4px; border-radius: 8px; box-shadow: 0 1px 0 var(--hair); }
+.sh-edit .frame-body .task-editor > .toolbar { position: static; top: auto; z-index: auto; margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 0 var(--hair); }
 .sh-edit .frame-head { position: static; background: none !important; box-shadow: none; }
 .sh-edit .frame-head::before, .sh-edit .frame-head::after { display: none; }
 
@@ -8583,3 +8583,32 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
 .gl-game-cards i { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 3px; background: #f6efe2; border-left: 3px solid var(--c); font: normal 600 8.5px var(--sans); color: #2a2116; }
 .gl-game-cards i.on { box-shadow: 0 0 0 1.5px #6fcf97; }
 .gl-game-cards u { display: grid; place-items: center; width: 11px; height: 11px; border-radius: 2px; background: var(--c); color: #fff; text-decoration: none; font: 700 7px var(--serif); }
+
+/* Statement matching: the option buttons sit beside the statements, lined up in one column, rather
+   than at the far edge of the task. */
+.pq-mm-list { display: grid; grid-template-columns: minmax(0, max-content) auto; column-gap: 24px; row-gap: 10px; width: fit-content; max-width: 100%; }
+.pq-mm-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+.pq-mm-text { min-width: 0; }
+@media (max-width: 640px) {
+  .pq-mm-list { display: flex; width: auto; }
+  .pq-mm-row { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+}
+.para.q-lead .stacked-choice { margin-left: 1.1em; }
+
+/* Question pictures: upload, choose from your resources, and choose the size */
+.pq-pic-wrap { display: flex; flex-direction: column; gap: 6px; }
+.pq-pic .btn.on { border-color: var(--accent); color: var(--accent-text); }
+.pq-pic-size { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pq-pic-size .pq-lab { width: 60px; flex-shrink: 0; }
+.pq-pic-size button { height: 28px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); font: 600 12px var(--sans); color: var(--muted); cursor: pointer; }
+.pq-pic-size button.on { border-color: var(--accent); background: var(--tint); color: var(--accent-text); }
+.pq-pic-library { display: block; max-height: 320px; overflow: auto; padding: 8px; border: 1px solid var(--hair); border-radius: 10px; background: var(--paper); }
+.pq-label-stage.size-s { max-width: 220px; } .pq-label-stage.size-m { max-width: 360px; } .pq-label-stage.size-l { max-width: 640px; } .pq-label-stage.size-full { max-width: none; }
+.pq-photos.size-s { max-width: 360px; } .pq-photos.size-m { max-width: 560px; } .pq-photos.size-l { max-width: 760px; }
+
+/* Sub-task: its own instruction for paper */
+.st-paper-btn { flex: none; height: 26px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 7px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
+.st-paper-btn:hover, .st-paper-btn.on { color: var(--accent-text); border-color: var(--accent); }
+.st-paper-row { display: flex; align-items: center; gap: 8px; margin: -2px 0 6px 32px; }
+.st-paper-k { flex: none; font: 700 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
+.st-paper-input { font-size: 14px; font-weight: 500; }

@@ -322,7 +322,7 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
         used.add(i);
         return i;
       });
-      return { pub: { image: d.image ?? '', points: pts.map((p) => ({ x: p.x, y: p.y })), labels }, key: { map } };
+      return { pub: { image: d.image ?? '', ...(d.imageSize ? { imageSize: d.imageSize } : {}), points: pts.map((p) => ({ x: p.x, y: p.y })), labels }, key: { map } };
     }
     case 'odd': {
       const ws: string[] = (d.words ?? []).map((w: string) => String(w ?? "").trim());

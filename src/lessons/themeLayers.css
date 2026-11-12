@@ -487,3 +487,48 @@
     color: var(--paper) !important;
   }
 }
+
+/* ------------------------------------------------------------------ QUESTION NUMBERING
+   One number style per lesson style, the same for every question type: gaps, letter gaps, word
+   formation, choices in the line and in a list, true or false, matching rows, drag-and-drop gaps
+   and question packs. A question with options listed under it has its number at the start of its
+   sentence (TaskRenderer). Hierarchy: task number, then question number, then option letters. */
+
+/* Exam: a bold number on the line, before the question. No brackets, no grey cells. */
+.task-frame[data-lesson-style='exam'] .q-num,
+.task-frame[data-lesson-style='exam'] .match-left > li > .q-num,
+.task-frame[data-lesson-style='exam'] .gap-wrap:has(.drop-slot) > .q-num {
+  display: inline-block !important; width: auto !important; min-width: 0 !important; height: auto !important; padding: 0 !important;
+  background: none !important; border: 0 !important; border-radius: 0 !important; font: 700 1em/inherit Arial, sans-serif !important;
+  color: var(--x-ink) !important; margin: 0 6px 0 2px !important; vertical-align: baseline !important; position: static !important; top: auto !important;
+}
+.task-frame[data-lesson-style='exam'] .q-num::before, .task-frame[data-lesson-style='exam'] .q-num::after { content: none !important; }
+.task-frame[data-lesson-style='exam'] .match-left > li > .q-num { min-width: 1.6em !important; margin: 0 4px 0 0 !important; }
+/* Word formation: the word to change stays beside its gap */
+.task-frame[data-lesson-style='exam'] .para:has(.wf-stem) p { display: block; }
+.task-frame[data-lesson-style='exam'] .wf-stem { margin-left: 10px !important; min-width: 0; text-align: left; }
+
+/* Teenagers: a bold number in a small highlighter tag with a dark outline, the same size and on the
+   same line everywhere. */
+.task-frame[data-lesson-style='teen'] .q-num,
+.task-frame[data-lesson-style='teen'] .stack-num .q-num,
+.task-frame[data-lesson-style='teen'] .match-left > li > .q-num {
+  display: inline-flex !important; align-items: center; justify-content: center; box-sizing: border-box;
+  min-width: 1.55em; height: 1.55em; padding: 0 .3em !important; margin: 0 .5em 0 .1em !important;
+  border: 1.5px solid var(--t-ink); border-radius: .45em; background: var(--t-hl) !important; color: var(--t-ink) !important;
+  font: 800 .7em/1 Karla, sans-serif !important; vertical-align: .18em !important; position: static !important; top: auto !important;
+}
+.task-frame[data-lesson-style='teen'] .match-left > li { display: flex; align-items: center; }
+.task-frame[data-lesson-style='teen'] .match-left > li > .q-num { flex: none; vertical-align: middle !important; }
+.task-frame[data-lesson-style='teen'] .gap-wrap:has(.drop-slot) > .q-num { vertical-align: middle !important; }
+
+/* Young learners: the given letter in a letter gap is as big and as dark as the letters to write. */
+[data-lesson-style='young'] .task-body .lg-given { color: var(--yl-ink); font-size: 1.08em; }
+[data-lesson-style='teen'] .lg-given { font-size: 1.08em; }
+
+/* Statement matching: the A B C D buttons sit beside the statements, in one column, not at the far edge. */
+.task-frame[data-lesson-style='exam'] .pq-mm-row { grid-template-columns: subgrid; }
+@media (max-width: 640px) { .task-frame[data-lesson-style='exam'] .pq-mm-row { display: flex; flex-wrap: wrap; } }
+/* The options of a question numbered at the start of its sentence sit under the sentence, not under the number. */
+.task-frame:is([data-lesson-style='exam'], [data-lesson-style='teen']) .para.q-lead .stacked-choice { margin-left: 1.75em; }
+[data-lesson-style='young'] .task-body .para.q-lead .stacked-choice { grid-template-columns: minmax(0, 1fr); margin-left: 0; }

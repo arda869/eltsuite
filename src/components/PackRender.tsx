@@ -305,7 +305,7 @@ function LabelQ({ id, data, value, onChange, result, locked, num, classId = '', 
         {num(id)}
         <span className="hint">Put each label on the right point.</span>
       </span>
-      <div className="pq-label-stage">
+      <div className={'pq-label-stage size-' + (data.imageSize ?? 'l')}>
         {url ? <img src={url} alt="" draggable={false} /> : <div className="pq-noimg">Picture</div>}
         {pts.map((p, i) => {
           const st = result ? (a[i] === result.k.map[i] ? ' right' : ' wrong') : '';
@@ -498,7 +498,7 @@ function Speaking({ data, classId = '' }: Props) {
       <span className="eyebrow">Speaking</span>
       {data.prompt && <p className="pq-speak-prompt">{data.prompt}</p>}
       {imgs.length > 0 && (
-        <div className={'pq-photos n' + imgs.length}>
+        <div className={'pq-photos n' + imgs.length + ' size-' + (data.imageSize ?? 'full')}>
           {imgs.map((src, i) => (
             <Photo key={i} classId={classId} src={src} />
           ))}

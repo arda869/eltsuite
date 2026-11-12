@@ -1,7 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import type { JSONContent } from '@tiptap/react';
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Grip } from './nodes';
 
 // Sub-tasks inside a task: a, b, c. Each has its own instruction line and its own content. On screen,
@@ -24,6 +24,8 @@ function letterAt(doc: NodeViewProps['editor']['state']['doc'], pos: number) {
 function SubTaskView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
   const pos = typeof getPos === 'function' ? getPos() : 0;
   const letter = letterAt(editor.state.doc, pos ?? 0);
+  // An instruction for paper: "Circle the right word" where the screen says "Tap the right word".
+  const [paperOpen, setPaperOpen] = useState(!!node.attrs.paperInstr);
   return (
     <NodeViewWrapper className={'subtask-node' + (selected ? ' is-selected' : '')}>
       <div className="st-ed-head" contentEditable={false}>
@@ -32,10 +34,22 @@ function SubTaskView({ node, updateAttributes, deleteNode, editor, getPos, selec
           {letter}
         </b>
         <input aria-label={`Instruction for sub-task ${letter}`} className="st-instr-input" value={node.attrs.instr ?? ''} placeholder="The instruction for this part" onChange={(e) => updateAttributes({ instr: e.target.value })} />
+        <button type="button" className={'st-paper-btn' + (paperOpen ? ' on' : '')} aria-expanded={paperOpen} data-tip="A different instruction for this part on paper" onClick={() => {
+          if (paperOpen) updateAttributes({ paperInstr: '' });
+          setPaperOpen(!paperOpen);
+        }}>
+          On paper
+        </button>
         <button type="button" className="remove" onClick={deleteNode}>
           Remove
         </button>
       </div>
+      {paperOpen && (
+        <div className="st-paper-row" contentEditable={false}>
+          <span className="st-paper-k">On paper</span>
+          <input aria-label={`Instruction on paper for sub-task ${letter}`} className="st-instr-input st-paper-input" value={node.attrs.paperInstr ?? ''} placeholder="For example: Circle the right word." onChange={(e) => updateAttributes({ paperInstr: e.target.value })} />
+        </div>
+      )}
       <NodeViewContent className="st-ed-body" />
     </NodeViewWrapper>
   );
@@ -51,6 +65,7 @@ export const SubTask = Node.create({
   addAttributes: () => ({
     id: { default: '' },
     instr: { default: '' },
+    paperInstr: { default: '' },
   }),
   parseHTML: () => [{ tag: 'section[data-subtask]' }],
   renderHTML: ({ HTMLAttributes }) => ['section', mergeAttributes(HTMLAttributes, { 'data-subtask': '' }), 0],

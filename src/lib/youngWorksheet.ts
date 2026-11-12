@@ -26,7 +26,8 @@ export function youngSheetCss(origin = '') {
 .tbox.s-speech .bubble { position: relative; background: var(--tint); border: .8pt solid var(--accent); border-radius: 4mm; overflow-wrap: anywhere; }
 .tbox.s-speech .bubble::after { content: ''; position: absolute; left: 6mm; bottom: -1.6mm; width: 3mm; height: 3mm; border: 0; border-right: .8pt solid var(--accent); border-bottom: .8pt solid var(--accent); background: var(--tint); transform: rotate(45deg); }
 .tbox.s-speech.side-right .bubble::after { left: auto; right: 6mm; }
-.wordbox { border-radius: 1mm; background: var(--tint); border-color: var(--accent); }
+.wordbox { gap: 1.6mm 2mm; padding: 2.2mm 3.4mm; border: .7pt solid var(--accent); border-radius: 2.4mm; background: var(--tint); }
+.wordbox span { padding: .4mm 3mm .5mm; }
 .wordbox span { border-radius: .5mm; }
 .pn { border-radius: 2mm 0 0 0; }
 .kicker { border-bottom: 1pt solid var(--accent); padding-bottom: 1mm; }

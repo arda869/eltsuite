@@ -1,6 +1,6 @@
 import { youngSheetCss } from './youngWorksheet';
 import { examSheetCss } from './examWorksheet';
-import { themeWorksheetCss } from './themeWorksheet';
+import { numberingCss, themeWorksheetCss } from './themeWorksheet';
 import { YoungArt, youngIconLabel } from '../lessons/young';
 import { credit } from './brand';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
@@ -47,7 +47,8 @@ function runs(rs: Run[]): string {
   let stack = '';
   const inline = rs
     .map((r) => {
-      if (r.num !== undefined) return `<b class="qn">${r.num}</b>`;
+      if (r.num !== undefined) return `<b class="qn">${esc(String(r.ql ?? r.num))}</b>`;
+      if (r.ol) return `<b class="ml">${esc(r.ol)}</b>`;
       if (r.letters) return `<span class="lgp">${r.letters.split(' ').map((w) => `<span class="lgp-w">${Array.from(w).map((c) => (c === '_' ? '<i></i>' : `<b>${esc(c)}</b>`)).join('')}</span>`).join('')}</span>`;
       if (r.blank) return `<span class="blank" style="width:${Math.min(8, Math.max(2.6, r.blank * 0.2)).toFixed(1)}em"></span>`;
       if (r.options) return `<span class="opts">${r.options.map(esc).join(' / ')}</span>`;
@@ -183,7 +184,7 @@ function block(b: Block): string {
       return `<div class="lines">${b.prompt ? `<span class="lines-hint">${esc(b.prompt)}</span>` : ''}${'<span class="line"></span>'.repeat(b.count)}</div>`;
     case 'match': {
       const n = Math.max(b.left.length, b.right.length);
-      return `<div class="match">${Array.from({ length: n }, (_, i) => `<span class="m-l">${b.left[i] ? `<b class="qn">${i + 1}</b>${esc(b.left[i])}<span class="m-ans"></span>` : ''}</span><span class="m-r">${b.right[i] ? `<b class="ml">${LET[i]}</b>${esc(b.right[i])}` : ''}</span>`).join('')}</div>`;
+      return `<div class="match">${Array.from({ length: n }, (_, i) => `<span class="m-l">${b.left[i] ? `<b class="qn">${b.n ? b.n + i : i + 1}</b><span class="m-t">${esc(b.left[i])}</span><span class="m-ans"></span>` : ''}</span><span class="m-r">${b.right[i] ? `<b class="ml">${LET[i]}</b>${esc(b.right[i])}` : ''}</span>`).join('')}</div>`;
     }
     case 'table': {
       // Sorting into columns: labelled columns with room to write, as on screen.
@@ -470,6 +471,7 @@ h1 { color: var(--ink); }
 ${opts.lessonStyle === 'young' ? youngSheetCss(opts.origin) : ''}
 ${opts.lessonStyle === 'exam' ? examSheetCss() : ''}
 ${themeWorksheetCss(opts.lessonStyle)}
+${numberingCss(opts.lessonStyle)}
 `;
 }
 

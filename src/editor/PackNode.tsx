@@ -8,7 +8,8 @@ import { layoutCrossword, newPackData, PACK_LABELS, tokenise, type PackKind } fr
 import { audioUrl as mediaUrl, saveImage, speak } from '../lib/media';
 import { useAuth } from '../lib/auth';
 import { auth } from '../lib/firebase';
-import { archiveAdd, resourceFolderForClass } from '../lib/archive';
+import { archiveAdd, mediaIn, resourceFolderForClass, type ArchiveItem } from '../lib/archive';
+import { ArchivePicker, PIC_SIZES, type PicSize } from './Picture';
 import { isLearnerEmail } from '../lib/learners';
 import { useNotebook } from '../lib/notebook';
 import { useEditorClass } from './context';
@@ -102,21 +103,59 @@ export async function uploadPicture(classId: string, file: File | Blob, quality:
   return r.src;
 }
 
-function PictureField({ value, onChange, label = 'Picture' }: { value: string; onChange: (v: string) => void; label?: string }) {
+// A picture for a question: uploaded, chosen from the teacher's resources, or a web address. With
+// size, the teacher also chooses how big it shows (on screen and on paper).
+function PictureField({ value, onChange, label = 'Picture', size, onSize }: { value: string; onChange: (v: string) => void; label?: string; size?: PicSize; onSize?: (s: PicSize) => void }) {
   const { classId } = useEditorClass();
+  const { user } = useAuth();
   const file = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [library, setLibrary] = useState(false);
+  const fromLibrary = async (items: ArchiveItem[]) => {
+    const it = items[0];
+    if (!it || !user) return;
+    setBusy('Adding…');
+    try {
+      if (it.link) onChange(it.link);
+      else if (classId) onChange('media:' + (await mediaIn(user.uid, it, classId)));
+      setLibrary(false);
+    } catch {
+      void tell('We couldn’t add that picture. Try another one, or upload it again.');
+    } finally {
+      setBusy('');
+    }
+  };
   return (
-    <span className="pq-pic">
-      <span className="pq-lab">{label}</span>
-      <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={value.startsWith('media:') ? 'Uploaded picture' : value} readOnly={value.startsWith('media:')} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
-      <button type="button" className="btn small-btn" disabled={busy || !classId} onClick={() => file.current?.click()}>
-        {busy ? 'Uploading…' : 'Upload'}
-      </button>
-      {value && (
-        <button type="button" className="icon-btn" aria-label="Remove picture" onClick={() => onChange('')}>
-          ×
+    <span className="pq-pic-wrap">
+      <span className="pq-pic">
+        <span className="pq-lab">{label}</span>
+        <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={value.startsWith('media:') ? 'Uploaded picture' : value} readOnly={value.startsWith('media:')} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
+        <button type="button" className="btn small-btn" disabled={!!busy || !classId} onClick={() => file.current?.click()}>
+          {busy === 'Uploading…' ? busy : 'Upload'}
         </button>
+        <button type="button" className={'btn small-btn' + (library ? ' on' : '')} disabled={!!busy || !classId || !user} aria-expanded={library} onClick={() => setLibrary((v) => !v)}>
+          {busy === 'Adding…' ? busy : 'From my resources'}
+        </button>
+        {value && (
+          <button type="button" className="icon-btn" aria-label="Remove picture" onClick={() => onChange('')}>
+            ×
+          </button>
+        )}
+      </span>
+      {onSize && (
+        <span className="pq-pic-size" role="radiogroup" aria-label={`${label} size`}>
+          <span className="pq-lab">Size</span>
+          {PIC_SIZES.map((o) => (
+            <button key={o.k} type="button" role="radio" aria-checked={(size ?? 'l') === o.k} className={(size ?? 'l') === o.k ? 'on' : ''} onClick={() => onSize(o.k)}>
+              {o.label}
+            </button>
+          ))}
+        </span>
+      )}
+      {library && (
+        <span className="pq-pic-library">
+          <ArchivePicker uid={user?.uid} kind="image" onPick={(items) => void fromLibrary(items)} busy={!!busy} />
+        </span>
       )}
       <input
         ref={file}
@@ -127,13 +166,13 @@ function PictureField({ value, onChange, label = 'Picture' }: { value: string; o
           const f = e.target.files?.[0];
           e.target.value = '';
           if (!f) return;
-          setBusy(true);
+          setBusy('Uploading…');
           try {
             onChange(await uploadPicture(classId, f));
           } catch {
             void tell('We couldn’t add the picture. Try a smaller one.');
           } finally {
-            setBusy(false);
+            setBusy('');
           }
         }}
       />
@@ -189,7 +228,7 @@ function LabelPoints({ d, set }: { d: Data; set: (p: Data) => void }) {
   const pts: { x: number; y: number; label: string }[] = d.points ?? [];
   return (
     <>
-      <PictureField value={d.image ?? ''} onChange={(v) => set({ image: v })} />
+      <PictureField value={d.image ?? ''} onChange={(v) => set({ image: v })} size={d.imageSize} onSize={(k) => set({ imageSize: k })} />
       {url ? (
         <div
           className="pq-label-img"
@@ -415,6 +454,14 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           {[0, 1].map((i) => (
             <PictureField key={i} label={`Photo ${i + 1}`} value={imgs[i] ?? ''} onChange={(v) => set({ images: [0, 1].map((k) => (k === i ? v : imgs[k] ?? '')).filter((x, k) => x || k < 1) })} />
           ))}
+          <span className="pq-pic-size" role="radiogroup" aria-label="Photo size">
+            <span className="pq-lab">Size</span>
+            {PIC_SIZES.map((o) => (
+              <button key={o.k} type="button" role="radio" aria-checked={(d.imageSize ?? 'full') === o.k} className={(d.imageSize ?? 'full') === o.k ? 'on' : ''} onClick={() => set({ imageSize: o.k })}>
+                {o.label}
+              </button>
+            ))}
+          </span>
           <span className="pq-lab">Questions on the card</span>
           <Lines items={d.questions?.length ? d.questions : ['']} onChange={(v) => set({ questions: v })} placeholder="Which holiday would you prefer? Why?" min={0} />
           <div className="pq-row">
