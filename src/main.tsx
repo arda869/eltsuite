@@ -32,6 +32,7 @@ import './styles.css';
 import './friday-ui.css';
 import './cohesion.css';
 import './visual-system.css';
+import './ui-polish.css';
 import { AiActivityDock } from './components/AiActivity';
 
 const PublicHome=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignHome})));

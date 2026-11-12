@@ -1,0 +1,96 @@
+/* ui-polish.css — loaded last. Two jobs:
+   1. Pages don't repeat the app name that the top bar already shows. The heading stays for screen
+      readers (.sr-only); what's left lines up on its own.
+   2. Dialogs, pop-ups and forms: centred, never taller than the screen, the action buttons always in
+      reach, a bottom sheet on phones, and fields that are easy to hit and easy to read.
+   Rules start with :root so they win over page stylesheets that load later. */
+
+/* 1. No repeated app names ------------------------------------------------------------------- */
+:root :is(.msg-side-top, .clg-side-top, .set-titlebar) > h1.sr-only + * { margin-left: auto; }
+:root .rm-head-t .rm-date { font: 500 clamp(22px, 2.4vw, 28px)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+:root .af-head .af-sub { font: 400 clamp(17px, 1.6vw, 20px)/1.35 var(--serif); color: var(--ink); max-width: 640px; }
+:root .development-shell .coach-hero p.coach-lead,
+:root .coach-hero p.coach-lead { display: block; margin: 0; max-width: 620px; font: 500 clamp(22px, 2.6vw, 30px)/1.18 var(--serif); letter-spacing: -0.015em; color: var(--ink); }
+:root .coach-hero .coach-kicker { margin-bottom: 8px; }
+@media (max-width: 760px) {
+  :root .development-shell .coach-hero p.coach-lead { font-size: 20px; }
+  :root .af-head .af-sub { display: block; font-size: 16px; }
+}
+
+/* 2. Dialogs and pop-ups -------------------------------------------------------------------- */
+@keyframes ui-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-dialog-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes ui-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+
+/* The scrim scrolls when a dialog is taller than the screen; margin:auto centres a short dialog
+   and lets a tall one start at the top instead of being cut off. */
+:root .scrim {
+  align-items: flex-start; padding: 26px 16px; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(38, 36, 32, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: ui-scrim-in .16s ease-out;
+}
+:root .scrim > .dialog { margin: auto 0; }
+:root .dialog {
+  padding: 26px 28px; border-radius: 20px; gap: 16px; font-size: 14px;
+  box-shadow: 0 0 0 1px var(--hair), 0 2px 6px rgba(38, 36, 32, .06), 0 28px 64px -12px rgba(38, 36, 32, .34);
+  animation: ui-dialog-in .18s cubic-bezier(.2, .9, .3, 1.1);
+}
+:root .dialog > h2:first-child, :root .dialog > header:first-child h2 { font: 600 21px/1.25 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
+:root .dialog > h2:first-child + .hint, :root .dialog > h2:first-child + p { margin-top: -8px; color: var(--muted); }
+
+/* Action buttons stay in view at the bottom of a long dialog. */
+:root .dialog > .row-between:last-child,
+:root .dialog > .dialog-actions:last-child {
+  position: sticky; bottom: -26px; z-index: 3;
+  margin: 4px -28px -26px; padding: 14px 28px 18px;
+  background: var(--paper); border-top: 1px solid var(--hair); border-radius: 0 0 20px 20px;
+}
+:root .dialog > .row-between:last-child:not(:has(> :nth-child(2))) { justify-content: flex-end; }
+:root .dialog > .row-between:last-child .btn { height: 40px; padding: 0 18px; border-radius: 11px; }
+:root .dialog > .row-between:last-child .btn.primary { min-width: 104px; }
+:root .dialog > .row-between:last-child > span:has(> .btn) { display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Fields inside dialogs: a little larger, a calm focus ring rather than a hard black edge. */
+:root .dialog :is(.field input, .field select, .field textarea, input[type='text'], input[type='email'], input[type='url'], input[type='search'], input[type='number'], input[type='date'], input[type='time'], select, textarea):not([type='checkbox']):not([type='radio']) { border-radius: 11px; }
+:root .dialog .field :is(input, select) { height: 42px; font-size: 14.5px; }
+:root .dialog .field textarea { padding: 10px 12px; border: 1px solid var(--hair-strong); border-radius: 11px; background: var(--paper); line-height: 1.55; font-weight: 400; resize: vertical; }
+:root :is(.dialog, .field, .card) :is(input, select, textarea):not([type='checkbox']):not([type='radio']):focus-visible,
+:root .field :is(input, select, textarea):focus {
+  outline: none; border-color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+:root .field { gap: 7px; }
+:root .field > .hint, :root .field > span.hint { margin-top: -2px; }
+:root .dialog details { border: 1px solid var(--hair); border-radius: 14px; padding: 12px 14px; background: var(--paper-soft); }
+:root .dialog details > summary { cursor: pointer; font-weight: 600; list-style-position: inside; }
+:root .dialog details[open] > summary { margin-bottom: 10px; }
+:root .dialog .error { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--wrong) 9%, var(--paper)); }
+
+/* Phones: dialogs become bottom sheets with full-width buttons within thumb reach. */
+@media (max-width: 600px) {
+  :root .scrim { align-items: flex-end; padding: 12px 0 0; }
+  :root .scrim > .dialog {
+    margin: auto 0 0; width: 100% !important; max-width: 100% !important; max-height: calc(100dvh - 12px);
+    overflow-y: auto; border-radius: 22px 22px 0 0; padding: 14px 20px calc(20px + env(safe-area-inset-bottom));
+    animation: ui-sheet-in .24s cubic-bezier(.2, .9, .3, 1);
+  }
+  :root .scrim > .dialog::before { content: ""; align-self: center; flex: none; width: 40px; height: 4px; border-radius: 4px; background: var(--hair-strong); margin-bottom: 4px; }
+  :root .dialog > .row-between:last-child {
+    bottom: calc(-20px - env(safe-area-inset-bottom)); margin: 4px -20px calc(-20px - env(safe-area-inset-bottom));
+    padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); border-radius: 0;
+  }
+  :root .dialog > .row-between:last-child > .btn,
+  :root .dialog > .row-between:last-child > span:has(> .btn) { flex: 1 1 auto; }
+  :root .dialog > .row-between:last-child .btn { flex: 1 1 0; height: 46px; }
+  :root .dialog .field :is(input, select) { height: 46px; font-size: 16px; } /* 16px stops iOS zooming in */
+  :root .dialog .field textarea, :root .dialog input, :root .dialog textarea { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root .scrim, :root .dialog, :root .scrim > .dialog { animation: none !important; }
+}
+
+/* Side-by-side fields never push a dialog wider than the screen. */
+:root .dialog .two { flex-wrap: wrap; }
+:root .dialog .two > * { flex: 1 1 150px; min-width: 0; }
+:root .dialog .field :is(input, select, textarea) { width: 100%; min-width: 0; }

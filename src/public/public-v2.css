@@ -60,6 +60,39 @@
 .pub-design .pub-design-vis { align-self: center; }
 .pub-design figure.es-shot:has(img) { padding: 0; background: none; border: 0; }
 .pub-design figure.es-shot img { object-fit: cover; }
+
+/* Screenshots: a focused crop of the real app in a quiet app window, sitting on a warm panel and
+   running off its bottom edge. They never shrink with zoom, so the text stays readable on phones. */
+.pub-design :is(.pub-design-vis, figure.es-shot):has(> img.pub-design-shot) {
+  --pad: clamp(18px, 3.4vw, 46px);
+  position: relative; zoom: 1 !important; isolation: isolate; overflow: hidden;
+  padding: calc(var(--pad) + 30px) var(--pad) 0; border-radius: 24px;
+  background:
+    radial-gradient(110% 80% at 0% 0%, rgba(217, 143, 99, .26) 0, rgba(217, 143, 99, 0) 60%),
+    radial-gradient(90% 70% at 100% 100%, rgba(151, 95, 64, .14) 0, rgba(151, 95, 64, 0) 65%),
+    linear-gradient(160deg, #fbf3ee 0%, #f2ebe5 100%);
+  box-shadow: inset 0 0 0 1px rgba(151, 95, 64, .10);
+}
+.pub-design :is(.pub-design-vis, figure.es-shot):has(> img.pub-design-shot)::before {
+  content: ""; position: absolute; z-index: 1; top: var(--pad); left: var(--pad); right: var(--pad); height: 30px;
+  border: 1px solid rgba(51, 48, 44, .10); border-bottom-color: #ecebe8; border-radius: 12px 12px 0 0;
+  background: #fbfaf9 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='10'%3E%3Ccircle cx='5' cy='5' r='4.5' fill='%23e7c3ac'/%3E%3Ccircle cx='23' cy='5' r='4.5' fill='%23e4e0db'/%3E%3Ccircle cx='41' cy='5' r='4.5' fill='%23e4e0db'/%3E%3C/svg%3E") 14px 50% no-repeat;
+}
+.pub-design :is(.pub-design-vis, figure.es-shot) > img.pub-design-shot {
+  position: relative; z-index: 1; width: 100%; height: auto; max-height: none; object-fit: cover; object-position: top left;
+  border: 1px solid rgba(51, 48, 44, .10); border-top: 0; border-bottom: 0; border-radius: 0;
+  box-shadow: 0 40px 70px -34px rgba(51, 48, 44, .45), 0 10px 22px -16px rgba(51, 48, 44, .22);
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+}
+.pub-design :is(.pub-design-vis, figure.es-shot):hover > img.pub-design-shot { transform: translateY(-4px); }
+@media (prefers-reduced-motion: reduce) { .pub-design :is(.pub-design-vis, figure.es-shot):hover > img.pub-design-shot { transform: none; } }
+@media (max-width: 600px) {
+  .pub-design :is(.pub-design-vis, figure.es-shot):has(> img.pub-design-shot) { border-radius: 18px; margin-inline: -4px !important; }
+  /* On a phone, show the middle of the screen larger rather than the whole screen too small to read. */
+  .pub-design :is(.pub-design-vis, figure.es-shot):has(> img.pub-design-shot) { padding-inline: 0; }
+  .pub-design :is(.pub-design-vis, figure.es-shot):has(> img.pub-design-shot)::before { left: 0; right: 0; border-radius: 0; border-inline: 0; }
+  .pub-design :is(.pub-design-vis, figure.es-shot) > img.pub-design-shot { width: 165%; max-width: none !important; margin-left: -16%; border-inline: 0; }
+}
 .pub-design :is(.es-row,.es-sec) > * { min-width: 0; }
 .pub-design :is(.es-row,.es-sec) img { max-width: 100%; }
 .pub-design a:focus-visible { outline: 3px solid #d98f63; outline-offset: 3px; }

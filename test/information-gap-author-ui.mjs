@@ -11,7 +11,7 @@ try {
   await page.getByLabel('Your name').fill('Test Writer');
   await page.getByLabel('Email').fill(`writer-${Date.now()}@example.test`);
   await page.getByLabel('Password').fill('testPass123!');
-  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByRole('button', { name: 'Make my account' }).click();
   await page.getByRole('link', { name: 'My writing' }).last().waitFor();
   await Promise.all([
     page.waitForURL('**/write'),

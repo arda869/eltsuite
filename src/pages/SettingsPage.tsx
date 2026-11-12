@@ -171,7 +171,7 @@ export function SettingsPage() {
       <SearchCtx.Provider value={q.trim()}>
       <main className="set-page">
         <span className="set-titlebar">
-          <h1 className="page-title">Settings</h1>
+          <h1 className="sr-only">Settings</h1>
           <label className="set-search">
             <UiIcon name="search" size={15} />
             <input value={q} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings" aria-label="Search settings" onKeyDown={(e) => e.key === 'Escape' && setSearch('')} />

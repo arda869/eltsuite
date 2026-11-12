@@ -1,0 +1,74 @@
+/* Sign in and join: the same look as eltsuite.com/signin (src/pages/SignIn.tsx with public.css and
+   public-v2.css). A welcome on the left; on the right a white card with Google first, then email and
+   password, one copper main button and a quiet second choice. Keep the two in step. */
+.ig-auth {
+  --ink: #33302c; --muted: #696969; --hair: rgba(51, 48, 44, .12); --hair-strong: rgba(51, 48, 44, .2);
+  --paper: #ffffff; --accent: #d98f63; --accent-text: #975f40; --accent-btn: #a8653f; --accent-btn-hover: #8c5331; --on-accent: #ffffff;
+  --wrong: #9a5148; --right: #4e6b55;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 40px 64px; align-items: center;
+  width: min(100% - 40px, 1200px); min-height: calc(100vh - 360px); margin: 0 auto; padding: clamp(40px, 6vw, 88px) 0;
+  color: var(--ink); font-size: 14px;
+}
+.ig-auth-intro { display: grid; gap: 16px; justify-items: start; align-content: center; }
+.ig-auth-kicker { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-text); }
+.ig-auth-intro h1 { margin: 0; font: 600 clamp(38px, 4.6vw, 54px)/1.08 Fraunces, Georgia, serif; letter-spacing: -.02em; }
+.ig-auth-intro p { margin: 0; max-width: 520px; font: 400 clamp(19px, 1.6vw, 22px)/1.5 Fraunces, Georgia, serif; color: var(--muted); }
+.ig-auth-intro p.ig-auth-note { font: 15px/1.6 Karla, 'Segoe UI', Arial, sans-serif; }
+.ig-auth-back { color: var(--accent-text); font-weight: 700; }
+
+.ig-auth-card {
+  display: flex; flex-direction: column; gap: 14px; width: 100%; margin: 0;
+  padding: clamp(22px, 3vw, 32px); border: 1px solid var(--hair); border-radius: 14px;
+  background: var(--paper); box-shadow: 0 1px 2px rgba(51, 48, 44, .04), 0 24px 50px -36px rgba(51, 48, 44, .35);
+}
+.ig-auth-card h2 { margin: 0; font: 600 26px/1.2 Fraunces, Georgia, serif; }
+.ig-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.ig-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 42px; padding: 0 14px;
+  border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink);
+  font: 600 14px Karla, 'Segoe UI', Arial, sans-serif; cursor: pointer; white-space: nowrap;
+}
+.ig-btn:hover { background: #f4f4f3; }
+.ig-btn:disabled { opacity: .55; cursor: default; }
+.ig-btn.ig-primary { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--on-accent); }
+.ig-btn.ig-primary:not(:disabled):hover { background: var(--accent-btn-hover); border-color: var(--accent-btn-hover); }
+.ig-btn:focus-visible, .ig-link:focus-visible, .ig-auth a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ig-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.ig-divider::before, .ig-divider::after { content: ""; flex: 1; height: 1px; background: var(--hair); }
+
+.ig-field { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
+.ig-field input {
+  width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px;
+  background: var(--paper); color: var(--ink); font: 400 14px Karla, 'Segoe UI', Arial, sans-serif;
+}
+.ig-field input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 70%, var(--ink)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.ig-field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ig-link { border: 0; padding: 0; background: none; color: var(--accent-text); font: 500 13px Karla, 'Segoe UI', Arial, sans-serif; text-decoration: underline; cursor: pointer; }
+.ig-hint { font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--muted); }
+.ig-error { font-size: 13px; color: var(--wrong); padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--wrong) 9%, var(--paper)); }
+.ig-notice { font-size: 13px; color: var(--right); }
+
+.ig-switch { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.ig-switch > span { font-size: 13px; color: var(--muted); }
+.ig-btn.ig-invite { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-text); }
+.ig-legal a { color: inherit; }
+
+@media (max-width: 860px) {
+  .ig-auth { grid-template-columns: 1fr; min-height: 0; gap: 28px; padding-block: 36px 56px; }
+  .ig-auth-intro p.ig-auth-note, .ig-auth-back { display: none; }
+}
+@media (max-width: 520px) {
+  .ig-auth { width: min(100% - 32px, 1200px); }
+  .ig-field input { height: 46px; font-size: 16px; }
+  .ig-btn { height: 46px; }
+}
+@media (prefers-color-scheme: dark) {
+  .ig-auth {
+    --ink: #ece7df; --muted: #b1aba2; --hair: rgba(236, 231, 223, .12); --hair-strong: rgba(236, 231, 223, .22);
+    --paper: #22211e; --accent-text: #e6a982; --accent-btn: #e8b08c; --accent-btn-hover: #f1c6a8; --on-accent: #191816;
+    --wrong: #e0948a; --right: #8fbf9a;
+  }
+  .ig-btn:hover { background: #2b2926; }
+}

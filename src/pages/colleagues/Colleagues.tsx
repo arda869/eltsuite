@@ -140,7 +140,7 @@ export default function Colleagues() {
       <main className={'clg' + (pane ? ' has-pane' : '') + (empty ? ' is-empty' : '')}>
         <section className="clg-side" aria-label="Directory">
           <div className="clg-side-top">
-            <h1 className="page-title">Colleagues</h1>
+            <h1 className="sr-only">Colleagues</h1>
             {canInvite && !empty && (
               <button type="button" className={'btn small-btn clg-invite-btn' + (inviting ? ' on' : '')} onClick={invite} aria-pressed={inviting}>
                 <UiIcon name="plus" size={14} />
