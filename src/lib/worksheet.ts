@@ -330,9 +330,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       }
       case 'mcq': {
         n++;
-        cur.push({ kind: 'p', runs: [{ num: n }, { t: String(a.prompt || 'Choose an answer.') }], list, mark });
         const options: string[] = Array.isArray(a.options) ? a.options : [];
-        options.forEach((option, i) => cur.push({ kind: 'p', runs: [{ t: String.fromCharCode(65+i) + '. ' + option }] }));
+        cur.push({ kind: 'p', runs: [{ num: n }, { t: String(a.prompt || 'Choose an answer.') }, { stack: options.map((option, i) => `${UP[i]}  ${option}`) }], list, mark });
         if (options[a.correct]) answers.push({ n, text: options[a.correct] });
         return;
       }

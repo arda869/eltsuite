@@ -34,7 +34,7 @@ export function settleBudget(balance, reserved, usages) {
 export function checkRequestSize(body) {
   // UTF-8 bytes bound text token count; leave 10K tokens for message/schema framing.
   // Include the instructions AND output schema, not just the teacher's brief.
-  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 90_000) throw Error('The lesson is too long for this pilot request.');
+  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 100_000) throw Error('The lesson is too long for this pilot request.');
 }
 // Missing records, owner status and email addresses never grant access.
 export function isPilotTeacher(pilotEnabled) { return pilotEnabled === true; }

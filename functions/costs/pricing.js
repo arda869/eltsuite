@@ -1,5 +1,5 @@
-// List prices, reviewed 2026-11-03. Calculations are NEVER invoice confirmation.
-export const PRICING_VERSION = '2026-11-03.1';
+// List prices, reviewed 2026-11-12. Calculations are NEVER invoice confirmation.
+export const PRICING_VERSION = '2026-11-12.1';
 export const SOURCES = {
  openai: 'https://developers.openai.com/api/docs/pricing',
  google: 'https://ai.google.dev/gemini-api/docs/pricing',
@@ -7,8 +7,7 @@ export const SOURCES = {
 };
 export const RATE_CARD = {
  'gpt-6.1-sol': {provider:'openai',textInput:2,textCached:0.1,textOutput:10},
- // Cached-input price not yet confirmed: priced as full input until checked on the pricing page.
- 'gpt-6.1-terra': {provider:'openai',textInput:1,textCached:1,textOutput:5},
+ 'gpt-6.1-terra': {provider:'openai',textInput:1,textCached:0.05,textOutput:5},
  'gpt-image-2.5-flare': {provider:'openai',textInput:5,textCached:1.25,imageInput:8,imageCached:2,imageOutput:30},
  'gpt-image-2.5-sunburst': {provider:'openai',textInput:5,textCached:1.25,imageInput:8,imageCached:2,imageOutput:30},
  'gpt-realtime-2.1-mini': {provider:'openai',textInput:0.6,textCached:0.06,textOutput:2.4,audioInput:10,audioCached:0.3,audioOutput:20,imageInput:0.8,imageCached:0.08},

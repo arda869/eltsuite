@@ -528,7 +528,7 @@
 
 /* Statement matching: the A B C D buttons sit beside the statements, in one column, not at the far edge. */
 .task-frame[data-lesson-style='exam'] .pq-mm-row { grid-template-columns: subgrid; }
-@media (max-width: 640px) { .task-frame[data-lesson-style='exam'] .pq-mm-row { display: flex; flex-wrap: wrap; } }
+@media (max-width: 640px) { .task-frame[data-lesson-style='exam'] .pq-mm-row { display: grid; grid-template-columns: subgrid; } }
 /* The options of a question numbered at the start of its sentence sit under the sentence, not under the number. */
 .task-frame:is([data-lesson-style='exam'], [data-lesson-style='teen']) .para.q-lead .stacked-choice { margin-left: 1.75em; }
 [data-lesson-style='young'] .task-body .para.q-lead .stacked-choice { grid-template-columns: minmax(0, 1fr); margin-left: 0; }

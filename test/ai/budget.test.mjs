@@ -25,7 +25,7 @@ test('unknown models, stale prices and oversized UTF-8 requests cannot generate'
   assert.throws(() => checkModel('gpt-6-astra', PRICE_REVIEW_AFTER - 1));
   assert.throws(() => checkModel('gpt-6.1-sol', PRICE_REVIEW_AFTER));
   checkRequestSize({ input: 'short' });
-  assert.throws(() => checkRequestSize({ input: '字'.repeat(30000) }));
+  assert.throws(() => checkRequestSize({ input: '字'.repeat(40000) }));
 });
 test('access is off unless explicitly enabled by an administrator', () => {
   for (const value of [undefined, null, false, 'true', 1, {}]) assert.equal(isPilotTeacher(value), false);
