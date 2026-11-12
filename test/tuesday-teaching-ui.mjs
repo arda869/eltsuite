@@ -10,7 +10,15 @@ try{for(let i=0;i<120;i++){
   if(editor.includes('@tiptap_core.js')&&spelling.includes('@tiptap_react.js'))break;
  }
  await new Promise(r=>setTimeout(r,500));
-}browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);p.setDefaultNavigationTimeout(180000);p.on('pageerror',e=>console.log('Browser error',e.message));await p.goto(base+'/test/spelling-fixture.html');await p.waitForLoadState('networkidle');await p.reload();
+}browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);p.setDefaultNavigationTimeout(180000);p.on('pageerror',e=>console.log('Browser error',e.message));
+// A fresh Vite cache can replace its React prebundle while the first page loads.
+// Wait for the actual editable field, and retry a fresh navigation if that load was interrupted.
+for(let attempt=0;attempt<3;attempt++){
+ await p.goto(base+'/test/spelling-fixture.html');
+ await p.waitForLoadState('networkidle');
+ try{await p.getByRole('textbox',{name:'Writing',exact:true}).waitFor({timeout:10000});break;}
+ catch(error){if(attempt===2)throw error;await new Promise(r=>setTimeout(r,1000));}
+}
  const writing=p.getByRole('textbox',{name:'Writing',exact:true});await writing.click();await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'the ');assert.equal(await p.getByLabel('Saved plain').textContent(),'the ');await writing.press('Backspace');assert.equal(await writing.inputValue(),'teh');
  await p.getByLabel('Scope spell check').selectOption('off');await p.waitForFunction(()=>JSON.parse(document.querySelector('[data-spelling]').dataset.spelling)[0].enabled===false);await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');await p.waitForFunction(()=>document.querySelector('textarea')?.getAttribute('spellcheck')==='false');assert.equal(await writing.getAttribute('spellcheck'),'false');
  await p.getByLabel('Scope spell check').selectOption('on');await p.getByLabel('Scope autocorrect').selectOption('off');await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');
