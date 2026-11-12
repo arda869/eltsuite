@@ -532,3 +532,7 @@
 /* The options of a question numbered at the start of its sentence sit under the sentence, not under the number. */
 .task-frame:is([data-lesson-style='exam'], [data-lesson-style='teen']) .para.q-lead .stacked-choice { margin-left: 1.75em; }
 [data-lesson-style='young'] .task-body .para.q-lead .stacked-choice { grid-template-columns: minmax(0, 1fr); margin-left: 0; }
+/* Young learners word bank: compact, so it doesn't push the questions down */
+[data-lesson-style='young'] .task-body .word-bank { gap: 8px; margin: 2px 0 14px; padding: 10px 14px; border-radius: 18px; }
+[data-lesson-style='young'] .task-body .bank-word { min-height: 42px; min-width: 42px; padding: 2px 16px; border-radius: 13px; box-shadow: 0 3px 0 var(--yl-key); }
+[data-lesson-style='young'] .task-body .word-bank .bank-hint { flex-basis: auto; margin: 0 0 0 auto; font-size: 13px; }
