@@ -9,7 +9,16 @@ const require=createRequire(import.meta.url),base=process.env.MATERIAL_NATIVE_TE
 let server;if(!await fetch(base).then(r=>r.ok,()=>false)){server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port',new URL(base).port],{stdio:'ignore',detached:true});for(let i=0;i<80;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}}
 const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined}),context=await browser.newContext({viewport:{width:1350,height:950}}),p=await context.newPage(),errors=[];p.setDefaultTimeout(60000);p.on('pageerror',e=>errors.push(e.message));
 try{
- await p.goto(base+'/dev.html?seed&as=teacher&materials');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;});await p.waitForLoadState('networkidle');const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
+ let demo;
+ for(let attempt=0;attempt<3&&!demo;attempt++){
+  await p.goto(base+'/dev.html?seed&as=teacher&materials');
+  try{
+   await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;const saved=JSON.parse(localStorage.getItem('mockdemo')||'null');return !!saved?.classId&&!!saved?.itemId;},null,{timeout:30000});
+   await p.waitForLoadState('networkidle');
+   demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')||'null'));
+  }catch(error){if(attempt===2)throw error;}
+ }
+ assert.ok(demo?.classId&&demo?.itemId,'the simulated lesson must finish seeding before import');
  await p.evaluate(async()=>{const {doc,setDoc}=await import('/test/mock/firestore.ts');await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});});
  const lesson=base+'/class/'+demo.classId+'/lesson/'+demo.itemId;
  const openImport=async()=>{await p.goto(lesson);await p.locator('.task-editor').waitFor();await p.locator('.task-insert').last().locator('summary').click();await p.getByRole('button',{name:'Import a task'}).last().click();return p.getByRole('dialog',{name:'Import a task'});};
