@@ -213,6 +213,11 @@ jobs:
           npm install --no-save --no-audit --no-fund google-auth-library@9
           node scripts/deploy-rules.mjs
 
+      - name: Deploy Firestore indexes and expiry policies
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@14 deploy --only firestore:indexes --project lesson-lit --non-interactive
+
       - name: Deploy The Information Gap
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

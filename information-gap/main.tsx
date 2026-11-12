@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile, type User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, signOut, updateProfile, type User } from 'firebase/auth';
 import { auth, publishedArticles, visibleThreads, sharedLessons, getArticle, getThread, threadReplies, myArticles, myPitches, saveArticle, createThread, addReply, createPitch, getProfile, saveProfile, isEditor, editorialArticles, editorialThreads, editorialPitches, setArticleStatus, moderateThread, setPitchStatus, type Article, type Thread, type Reply, type Lesson, type Pitch } from './data';
 import './style.css';
 import './responsive-theme.css';
+import './auth.css';
 
 const parts = location.pathname.split('/').filter(Boolean);
 const page = parts[0] || 'home';
@@ -14,8 +15,9 @@ const date = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric',
 function name(user: User) { return user.displayName || user.email?.split('@')[0] || 'Teacher'; }
 function when(time?: number) { return time ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(time)) : ''; }
 function go(path: string) { location.href = path; }
-function Header({ user, editor }: { user: User | null; editor: boolean }) { return <header className="site-head"><div className="container"><div className="head-top"><span>A free publication for English language teachers</span><div><a href="/search">Search</a>{user ? <><a href="/write">My writing</a>{editor && <a href="/editorial">Editorial</a>}<a href="/account">{name(user)}</a></> : <><a href="/account">Join free</a><a href="/account">Sign in</a></>}</div></div><div className="masthead"><div><b>{date}</b><span>Teachers learning from teachers</span></div><div className="masthead-title"><a href="/">The Information Gap</a><small>by <img src="/elt-mark.svg" alt="" /> <b>ELT Suite</b></small></div></div></div><nav className="head-nav"><div className="container">{sections.map(([label, path]) => <a className={(path === '/' ? page === 'home' : location.pathname.startsWith(path)) ? 'active' : ''} key={path} href={path}>{label}</a>)}</div></nav></header>; }
+function Header({ user, editor }: { user: User | null; editor: boolean }) { return <header className="site-head"><div className="container"><div className="head-top"><span>A free publication for English language teachers</span><div><a href="/search">Search</a>{user ? <><a href="/write">My writing</a>{editor && <a href="/editorial">Editorial</a>}<a href="/account">{name(user)}</a></> : <><a href="/account?join">Join free</a><a href="/account">Sign in</a></>}</div></div><div className="masthead"><div><b>{date}</b><span>Teachers learning from teachers</span></div><div className="masthead-title"><a href="/">The Information Gap</a><small>by <img src="/elt-mark.svg" alt="" /> <b>ELT Suite</b></small></div></div></div><nav className="head-nav"><div className="container">{sections.map(([label, path]) => <a className={(path === '/' ? page === 'home' : location.pathname.startsWith(path)) ? 'active' : ''} key={path} href={path}>{label}</a>)}</div></nav></header>; }
 function Footer() { return <footer><div className="container"><div><a className="footer-title" href="/">The Information Gap</a><p>A free publication by ELT Suite. Teachers learning from teachers.</p></div><nav><a href="/about">About</a><a href="/guidelines">Guidelines</a><a href="/privacy">Privacy</a><a href="/pitch">Write for us</a></nav></div></footer>; }
+const GOOGLE = <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-10l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>;
 function ErrorNote({ children }: { children: React.ReactNode }) { return <p className="error" role="alert">{children}</p>; }
 function Empty({ title, children }: { title: string; children: React.ReactNode }) { return <div className="empty"><span aria-hidden="true">✳</span><h2>{title}</h2><p>{children}</p></div>; }
 function ArticleCard({ a, lead = false }: { a: Article; lead?: boolean }) { return <article className={`card ${lead ? 'lead' : ''}`}><span className="eyebrow">{a.section} / {a.topic || 'Teaching'}</span><h3><a href={`/article/${a.id}`}>{a.title}</a></h3><p>{a.standfirst}</p><div className="byline"><b>{a.authorName}</b><span>{when(a.publishedAt || a.createdAt)}</span></div></article>; }
@@ -35,10 +37,19 @@ function ThreadView({ thread, replies, user, refresh }: { thread: Thread | null;
 function Account({ user }: { user: User | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'signin' | 'join'>('signin');
+  const [mode, setMode] = useState<'signin' | 'join'>(new URLSearchParams(location.search).has('join') ? 'join' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [notice, setNotice] = useState('');
+  async function reset() {
+    setError(''); setNotice('');
+    if (!email.trim()) { setError('Type your email first, then choose “Forgot password?”.'); return; }
+    setBusy(true);
+    try { await sendPasswordResetEmail(auth, email.trim()); setNotice(`Check your inbox. We sent a link to reset your password to ${email.trim()}.`); }
+    catch { setError('We couldn’t send the reset link just now. Check the email and try again.'); }
+    finally { setBusy(false); }
+  }
   async function google() {
     setBusy(true); setError('');
     try { await signInWithPopup(auth, new GoogleAuthProvider()); go('/account'); }
@@ -59,7 +70,35 @@ function Account({ user }: { user: User | null }) {
       setError(code === 'auth/email-already-in-use' ? 'This email already has an account. Sign in instead.' : code === 'auth/invalid-credential' ? 'The email or password did not match.' : 'We could not finish signing in. Please try again.');
     } finally { setBusy(false); }
   }
-  return <main className="container main narrow"><div className="page-intro"><span className="eyebrow">Your account</span><h1>{user ? `Welcome, ${name(user)}` : 'Join the conversation'}</h1><p>{user ? 'Manage your writing and publication profile.' : 'Use your ELT Suite account, or create one to write and join conversations.'}</p></div>{user ? <div className="actions"><a className="button" href="/write">My writing</a><a className="button secondary" href="/pitch">Pitch an idea</a><a className="button secondary" href="/account/settings">Profile settings</a><button className="button secondary" onClick={() => signOut(auth).then(() => go('/'))}>Sign out</button></div> : <><div className="auth-tabs"><button type="button" className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>Sign in</button><button type="button" className={mode === 'join' ? 'active' : ''} onClick={() => setMode('join')}>Join free</button></div><form className="form auth-form" onSubmit={emailSubmit}>{mode === 'join' && <><label htmlFor="display-name">Your name</label><input id="display-name" autoComplete="name" required maxLength={100} value={displayName} onChange={e => setDisplayName(e.target.value)}/></>}<label htmlFor="email">Email</label><input id="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}/><label htmlFor="password">Password</label><input id="password" type="password" autoComplete={mode === 'join' ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)}/><button className="button" disabled={busy}>{busy ? 'Please wait…' : mode === 'join' ? 'Create account' : 'Sign in'}</button></form><div className="auth-divider">or</div><button className="button secondary" onClick={google} disabled={busy}>Continue with Google</button></>}{error && <ErrorNote>{error}</ErrorNote>}</main>;
+  if (user) return <main className="container main narrow"><div className="page-intro"><span className="eyebrow">Your account</span><h1>{`Welcome, ${name(user)}`}</h1><p>Manage your writing and publication profile.</p></div><div className="actions"><a className="button" href="/write">My writing</a><a className="button secondary" href="/pitch">Pitch an idea</a><a className="button secondary" href="/account/settings">Profile settings</a><button className="button secondary" onClick={() => signOut(auth).then(() => go('/'))}>Sign out</button></div>{error && <ErrorNote>{error}</ErrorNote>}</main>;
+  // Signed out: the same sign-in as eltsuite.com/signin — a welcome on the left, the card on the right.
+  const joining = mode === 'join';
+  return <main className="ig-auth">
+    <div className="ig-auth-intro">
+      <span className="ig-auth-kicker">The Information Gap · by ELT Suite</span>
+      <h1>{joining ? 'Join the conversation.' : 'Welcome back.'}</h1>
+      <p>{joining ? 'Make a free account to write, pitch ideas and reply to other teachers.' : 'Sign in to write, pitch ideas and join conversations.'}</p>
+      <p className="ig-auth-note">Already use ELT Suite? Sign in with the same email or Google account.</p>
+      <a className="ig-auth-back" href="/">Back to the publication</a>
+    </div>
+    <form className="ig-auth-card" onSubmit={emailSubmit} noValidate={false}>
+      <h2 className={joining ? '' : 'ig-sr'}>{joining ? 'Make your free account' : 'Sign in'}</h2>
+      <button type="button" className="ig-btn" onClick={google} disabled={busy}>{GOOGLE}Continue with Google</button>
+      <div className="ig-divider">or</div>
+      {joining && <label className="ig-field">Your name<input autoComplete="name" required maxLength={100} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="How other teachers will see you"/></label>}
+      <label className="ig-field">Email<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}/></label>
+      <div className="ig-field">
+        <span className="ig-field-row"><label htmlFor="ig-password">Password</label>{!joining && <button type="button" className="ig-link" onClick={reset} disabled={busy}>Forgot password?</button>}</span>
+        <input id="ig-password" type="password" autoComplete={joining ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)}/>
+        {joining && <span className="ig-hint">At least 6 characters.</span>}
+      </div>
+      {error && <span className="ig-error" role="alert">{error}</span>}
+      {notice && <span className="ig-notice" role="status">{notice}</span>}
+      <button type="submit" className="ig-btn ig-primary" disabled={busy}>{busy ? 'One moment…' : joining ? 'Make my account' : 'Sign in'}</button>
+      <div className="ig-switch"><span>{joining ? 'Already have an account?' : 'New to The Information Gap?'}</span><button type="button" className="ig-btn ig-invite" onClick={() => { setMode(joining ? 'signin' : 'join'); setError(''); setNotice(''); }}>{joining ? 'Sign in instead' : 'Join free'}</button></div>
+      <span className="ig-hint ig-legal"><a href="/privacy">Privacy</a> · <a href="/guidelines">Community guidelines</a></span>
+    </form>
+  </main>;
 }
 function ProfileSettings({ user }: { user: User }) { const [displayName, setName] = useState(name(user)); const [bio, setBio] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(''); useEffect(() => { getProfile(user.uid).then(p => { if (p) { setName(p.displayName); setBio(p.bio); } }).catch(() => setMessage('Your profile could not load.')); }, [user.uid]); async function submit(e: React.FormEvent) { e.preventDefault(); setBusy(true); try { await saveProfile(user.uid, displayName, bio); setMessage('Profile saved.'); } catch { setMessage('Your profile could not be saved.'); } finally { setBusy(false); } } return <main className="container main narrow"><div className="page-intro"><h1>Profile settings</h1></div><form className="form" onSubmit={submit}><label htmlFor="name">Name</label><input id="name" value={displayName} onChange={e => setName(e.target.value)} required maxLength={100}/><label htmlFor="bio">About you</label><textarea id="bio" value={bio} onChange={e => setBio(e.target.value)} rows={6} maxLength={1200}/><button className="button" disabled={busy}>Save profile</button>{message && <p role="status">{message}</p>}</form></main>; }
 function MyWriting({ articles, pitches }: { articles: Article[]; pitches: Pitch[] }) { return <main className="container main"><div className="page-intro"><span className="eyebrow">Contribute</span><h1>My writing</h1><p>Your drafts, submissions and ideas in one place.</p><div className="actions"><a className="button" href="/write/new">New article</a><a className="button secondary" href="/pitch">Pitch an idea</a></div></div><section className="content-section"><h2>Articles</h2>{articles.length ? <div className="grid">{articles.map(a => <article className="card" key={a.id}><span className="eyebrow">{a.section} · {a.status}</span><h3><a href={`/write/${a.id}`}>{a.title}</a></h3><p>{a.standfirst}</p></article>)}</div> : <Empty title="Your first story starts here">Share something you have learned from teaching.</Empty>}</section><section className="content-section"><h2>Pitches</h2>{pitches.length ? <div className="grid">{pitches.map(p => <article className="card" key={p.id}><span className="eyebrow">{p.status}</span><h3>{p.title}</h3><p>{p.summary}</p></article>)}</div> : <p>No pitches yet.</p>}</section></main>; }

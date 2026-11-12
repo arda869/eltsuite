@@ -18,9 +18,23 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
-  await page.goto(`${base}/dev.html?seed&as=teacher`);
-  await page.waitForFunction(async () => { if (!window.__mockReady) return false; await window.__mockReady; return !!localStorage.getItem('mockdemo'); }, null, { timeout: 120000 });
-  const demo = await page.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
+  let demo;
+  for (let attempt = 0; attempt < 3 && !demo; attempt++) {
+    await page.goto(`${base}/dev.html?seed&as=teacher`);
+    try {
+      await page.waitForFunction(async () => {
+        if (!window.__mockReady) return false;
+        await window.__mockReady;
+        const saved = JSON.parse(localStorage.getItem('mockdemo') || 'null');
+        return !!saved?.classId && !!saved?.itemId;
+      }, null, { timeout: 30000 });
+      await page.waitForLoadState('networkidle');
+      demo = await page.evaluate(() => JSON.parse(localStorage.getItem('mockdemo') || 'null'));
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  assert.ok(demo?.classId && demo?.itemId, 'the simulated lesson must finish seeding before import');
   await page.evaluate(async () => { const { doc, setDoc } = await import('/test/mock/firestore.ts'); await setDoc(doc({}, 'aiPilot', 'teacher1'), { enabled: true }); });
   await page.goto(`${base}/class/${demo.classId}/lesson/${demo.itemId}`);
   await page.locator('.task-editor').waitFor();

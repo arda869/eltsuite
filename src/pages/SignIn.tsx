@@ -281,6 +281,6 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </span>
       </form>
   );
-  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div className="pub-auth-intro"><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back.</h1><p>Sign in to continue with your teaching.</p><p className="pub-note">ELT Suite is currently open to invited teachers. No invitation yet? <Link to="/contact">Get in touch</Link>.</p><figure className="pub-auth-preview"><img src="/landing/editor.webp" alt="A lesson in the ELT Suite editor" loading="lazy" /></figure><Link className="pub-text-link" to="/">Back to the homepage</Link></div>{form}</main></PublicLayout>;
+  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div className="pub-auth-intro"><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back.</h1><p>Sign in to continue with your teaching.</p><p className="pub-note">ELT Suite is currently open to invited teachers. No invitation yet? <Link to="/contact">Get in touch</Link>.</p><figure className="pub-auth-preview"><img src="/landing/editor-focus.webp" alt="A lesson in the ELT Suite editor" loading="lazy" /></figure><Link className="pub-text-link" to="/">Back to the homepage</Link></div>{form}</main></PublicLayout>;
   return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }

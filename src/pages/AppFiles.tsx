@@ -15,7 +15,6 @@ import { useStars, setStar } from '../lib/stars';
 import { MediaDialog } from '../media/MediaDialog';
 import { MAX_PDF, openPdf, pageSizes, saveFilePdf } from '../pdf/pdfData';
 import { useLibrary, type LibDoc } from './ArchiveLibrary';
-import { AppLogo } from '../components/AppGrid';
 
 // Collab, Reading Journal, PDF and Recordings as apps of their own, the way Docs and Slides are
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
@@ -163,9 +162,9 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
       {!embedded && <TopBar><MainNav on="" /></TopBar>}
       <Content className="af" aria-label={a.name}>
         <header className="af-head">
-          {!embedded && <AppLogo k={app} size={44} />}
+          
           <span className="af-title">
-            {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="page-title">{a.name}</h1>}
+            {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="sr-only">{a.name}</h1>}
             <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />

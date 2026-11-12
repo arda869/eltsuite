@@ -143,7 +143,7 @@ export function RoomsPage() {
           <>
             <header className="rm-head">
               <span className="rm-head-t">
-                <h1 className="rm-title">Rooms</h1>
+                <h1 className="sr-only">Rooms</h1>
                 <span className="rm-date">{new Date(now).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
               </span>
               <span className="rm-acts">

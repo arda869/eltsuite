@@ -162,7 +162,7 @@ export function MessagesPage() {
         <div className={'msg' + (cur||coachOpen ? ' has-chat' : '')}>
           <aside className="msg-side">
             <div className="msg-side-top">
-              <h1 className="page-title">Messages</h1>
+              <h1 className="sr-only">Messages</h1>
               <span style={{ display: 'flex', gap: 6 }}>
                 <MsgSettings uid={teacher ? user.uid : ''} />
                 <button type="button" className="btn small-btn" onClick={() => setCreating('group')} data-tip="Start a group chat">

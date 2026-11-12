@@ -50,9 +50,27 @@ const go = async (path, wait = 2500) => {
 };
 const click = async (name, opts = {}) => p.getByRole(opts.role || 'button', { name, exact: opts.exact ?? false }).first().click({ timeout: 6000 });
 
+// The part of each 1440×900 screen the website shows (CSS px). Whole-app captures shrunk into a column
+// are too small to read, so each shot keeps only what its section is about. editor stays whole: it is
+// the laptop on the homepage; editor-focus is its crop for the other pages.
+const FOCUS = {
+  'editor-focus': { x: 0, y: 72, width: 1176, height: 786 },
+  'editor-language': { x: 0, y: 72, width: 1176, height: 786 },
+  'editor-speaking': { x: 0, y: 72, width: 1176, height: 786 },
+  teach: { x: 240, y: 78, width: 1200, height: 800 },
+  class: { x: 0, y: 72, width: 1440, height: 792 },
+  reports: { x: 0, y: 72, width: 1440, height: 816 },
+  portfolio: { x: 0, y: 336, width: 1440, height: 564 },
+  development: { x: 0, y: 228, width: 1176, height: 672 },
+  coach: { x: 0, y: 228, width: 1440, height: 672 },
+  concordance: { x: 120, y: 36, width: 1008, height: 864 },
+  'collab-editor': { x: 0, y: 0, width: 1440, height: 630 },
+};
+
 const shots = {
   // The lesson editor on the lead-in task: aims, the dialogue recording, a question and teaching notes.
   async editor() { await p.setViewportSize({ width: 1440, height: 900 }); await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 6000); },
+  async 'editor-focus'() { await p.setViewportSize({ width: 1440, height: 900 }); await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 6000); },
   async 'editor-language'() { await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000); await p.getByText('Notice the language').first().click(); await p.waitForTimeout(1500); },
   async 'editor-speaking'() { await go(`/class/${demo.classId}/lesson/${demo.itemId}`, 5000); await p.getByText('One space. Two priorities.').first().click(); await p.waitForTimeout(1500); },
   async class() { await go(`/class/${demo.classId}`, 3000); },
@@ -195,12 +213,12 @@ for (const [name, run] of Object.entries(shots)) {
   if (only.length && !only.includes(name)) continue;
   try {
     await Promise.race([run(), new Promise((_, no) => setTimeout(() => no(Error('timed out')), 60000))]);
-    const clip = name === 'paper' ? await p.evaluate(() => window.__clip) : null;
+    const clip = name === 'paper' ? await p.evaluate(() => window.__clip) : FOCUS[name] ?? null;
     const png = await p.screenshot({ timeout: 20000, animations: 'disabled', ...(clip ? { clip } : {}) });
     writeFileSync(raw + name + '.png', png);
     await p.setViewportSize({ width: 1440, height: 900 });
     if (webp) {
-      writeFileSync(root + `public/landing/${name}.webp`, await toWebp(png, 2400));
+      writeFileSync(root + `public/landing/${name}.webp`, await toWebp(png, clip && name !== 'paper' ? Math.min(2400, clip.width * 2) : 2400));
       writeFileSync(root + `public/landing/${name}-sm.webp`, await toWebp(png, 1100, 0.8));
     }
     console.log('saved', name);
