@@ -213,7 +213,7 @@ function splitPack(t, d, id) {
         used.add(i);
         return i;
       });
-      return { pub: { image: d.image ?? "", points: pts.map((p) => ({ x: p.x, y: p.y })), labels }, key: { map } };
+      return { pub: { image: d.image ?? "", ...d.imageSize ? { imageSize: d.imageSize } : {}, points: pts.map((p) => ({ x: p.x, y: p.y })), labels }, key: { map } };
     }
     case "odd": {
       const ws = (d.words ?? []).map((w) => String(w ?? "").trim());

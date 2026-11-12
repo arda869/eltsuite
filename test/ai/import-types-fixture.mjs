@@ -21,19 +21,28 @@ const data={
  survey:{title:'Class feedback',anonymous:true,questions:[{type:'single',prompt:'Choose a topic.',options:['Travel','Food'],max:5,low:'',high:''}]},
  drawcard:{repeat:false,cards:[{title:'A',text:'Describe a favourite place.'},{title:'B',text:'Describe a favourite meal.'}]},wheel:{repeat:false,cards:[{title:'A',text:'Talk about travel.'},{title:'B',text:'Talk about food.'}]},boxes:{repeat:false,cards:[{title:'A',text:'Describe a friend.'},{title:'B',text:'Describe a pet.'}]},
  speaking:{title:'Make a plan',scenario:'You and a friend choose an afternoon activity.',focus:'Ask for clarification.',learnerRole:'A friend making plans',partnerRole:'A friend with another idea',level:'A2',seconds:120},
+ heading:{text:'Part A'},list:{ordered:true,start:1,items:['Read the text.','Answer the questions.']},quote:{text:'A short quotation.'},reveal:{label:'Hint',text:'Read the first sentence again.'},
+ table:{headers:['Question','Answer'],rows:[['Where?','___']],answers:['At school']},
+ ipa:{word:'cat',transcription:'kæt',accent:'RP'},stress:{syllables:['ta','ble'],stressed:0},subst:{options:['can','could']},
+ phonchart:{accent:'RP',part:'vowels'},phoncard:{sound:'iː',accent:'RP',show:'sound'},
+ dictcut:{word:'camping',pos:'noun',meaning:'staying in a tent for a holiday',example:'We went camping.',ipa:'ˈkæmpɪŋ'},
+ linkcard:{url:'https://example.com/resource',title:'Source resource',note:'Open the resource.'},
+ investigation:{family:'corpus'},
  'tt-custom':{title:'Observation notes',fields:[{label:'Evidence observed',kind:'long',hint:'Record what happened, not an interpretation.',value:''}]}
 };
 for(const kind of ['analysis','plan','observe','loop','rehearsal','exam','reflection'])data['tt-'+kind]={title:'Teacher development',mode:'complete',fields:[]};
-export const importElements=Object.fromEntries(Object.entries(data).map(([kind,value])=>[kind,{...newImportElement(kind),prompt:['gap','lettergap','wordform','drop','dropdown'].includes(kind)?'Yesterday, we ___ to school.':'Complete the source activity.',reason:'Matches the response requested in the source.',data:value}]));
+export const importElements=Object.fromEntries(Object.entries(data).map(([kind,value])=>[kind,{...newImportElement(kind),prompt:['gap','lettergap','wordform','drop','dropdown','subst'].includes(kind)?'Yesterday, we ___ to school.':'Complete the source activity.',reason:'Matches the response requested in the source.',data:value}]));
 export function importTask(elements=Object.values(importElements)){
  return {...structuredClone(rebuilt.tasks[0]),title:'Native task types',input:'',blocks:[],definitions:[],visuals:[],questions:[],inlineElements:structuredClone(elements),subTasks:[]};
 }
 export function importLesson(elements=Object.values(importElements)){
- return {...structuredClone(rebuilt),title:'Native import verification',warnings:[],tasks:[importTask(elements)]};
+ const task=importTask(elements.slice(0,60));
+ if(elements.length>60)task.subTasks=[{instructions:'Complete the remaining source items.',input:'',blocks:[],definitions:[],visuals:[],structures:[],inlineElements:structuredClone(elements.slice(60))}];
+ return {...structuredClone(rebuilt),title:'Native import verification',warnings:[],tasks:[task]};
 }
 // Test provider responses obey the compact model schema, not the saved compatibility shape.
 export function asImportModel(value){
- const convert=e=>({kind:e.kind,prompt:e.prompt,selectionReason:e.reason,feedback:e.feedback,example:e.example,needs:e.needs??[],...Object.fromEntries(Object.entries(e.data).map(([k,v])=>[k==='prompt'?'oralPrompt':k,v]))});
- const body=b=>({instructions:b.instructions,input:b.input,blocks:b.blocks??[],definitions:b.definitions??[],visuals:b.visuals??[],inlineElements:(b.inlineElements?.length?b.inlineElements:(b.questions??[]).map(q=>({...newImportElement('shortAnswer'),prompt:q.prompt,reason:'A short source answer.',feedback:q.explanation,data:{answers:[q.answer,...q.acceptedAnswers]}}))).map(convert)});
+ const convert=e=>({kind:e.kind,prompt:e.prompt,selectionReason:e.reason,feedback:e.feedback,example:e.example,needs:e.needs??[],...Object.fromEntries(Object.entries(e.data).map(([k,v])=>[k==='prompt'?'oralPrompt':k==='example'?'sampleSentence':k,v]))});
+ const body=b=>({instructions:b.instructions,input:b.input,blocks:b.blocks??[],definitions:b.definitions??[],visuals:b.visuals??[],structures:b.structures??[],inlineElements:(b.inlineElements?.length?b.inlineElements:(b.questions??[]).map(q=>({...newImportElement('shortAnswer'),prompt:q.prompt,reason:'A short source answer.',feedback:q.explanation,data:{answers:[q.answer,...q.acceptedAnswers]}}))).map(convert)});
  return {title:value.title,rationale:value.rationale,differentiation:value.differentiation,recycling:value.recycling,warnings:value.warnings,tasks:value.tasks.map(t=>({stageId:t.stageId,title:t.title,minutes:t.minutes,layout:t.layout,...body(t),subTasks:(t.subTasks??[]).map(body),teacherOnlyInput:t.teacherOnlyInput,teacherNotes:t.teacherNotes,support:t.support,challenge:t.challenge}))};
 }

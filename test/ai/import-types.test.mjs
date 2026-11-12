@@ -20,6 +20,23 @@ test('every native import type validates, renders to native nodes and survives e
   assert.deepEqual(again.content,native.content,t.kind+' round trips through the real editor');
  }
 });
+test('one source worksheet with every importable element becomes one task with private answers',()=>{
+ const elements=Object.values(importElements).map(e=>structuredClone(e));
+ const worksheet=elements.map((e,i)=>`${i+1}. ${e.kind}: ${e.prompt}`).join('\n');
+ assert.equal(worksheet.split('\n').length,IMPORT_TYPES.length);
+ // The editor accepts 60 inline elements per part. A long source stays one task with a
+ // continuation part, preserving source order rather than dropping the last five elements.
+ const rebuilt=importLesson(elements.slice(0,60));
+ rebuilt.tasks[0].subTasks=[{instructions:'Continue the worksheet.',input:'',blocks:[],definitions:[],visuals:[],questions:[],inlineElements:elements.slice(60)}];
+ const checked=checkRebuild(rebuilt,'task',{training:true});
+ assert.equal(checked.tasks[0].inlineElements.length+checked.tasks[0].subTasks[0].inlineElements.length,IMPORT_TYPES.length);
+ const native=nativeTask(checked.tasks[0],0,'all_elements');
+ const again=splitKey(mergeKey(native.content,native.key));
+ assert.deepEqual(again.content,native.content);
+ assert.deepEqual(again.key,native.key);
+ assert.ok(Object.keys(native.key).length>20,'answer key was not created');
+ assert.ok(!JSON.stringify(native.content).includes('successful'),'private word-formation answer leaked to learners');
+});
 test('task picker exposes every editor question command, classroom response and training form',()=>{
  const editor=readFileSync('src/editor/TaskEditor.tsx','utf8');
  const source=ts.createSourceFile('TaskEditor.tsx',editor,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),keys=[];

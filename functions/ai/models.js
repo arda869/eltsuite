@@ -6,8 +6,7 @@
 // before adding a model; budget.js charges every job at the dearest price, to stay on the safe side.
 export const TEXT_MODELS = {
   'gpt-6.1-sol': { input: 2, cachedInput: 0.1, output: 10, note: 'Strongest. Slower. For planning, checking and anything a teacher relies on being right.' },
-  // Cached-input price not yet confirmed: charged as full input until it is.
-  'gpt-6.1-terra': { input: 1, cachedInput: 1, output: 5, note: 'Faster and half the price. For short, well-defined jobs.' },
+  'gpt-6.1-terra': { input: 1, cachedInput: 0.05, output: 5, note: 'Faster and half the price. For short, well-defined jobs.' },
 };
 export const DEFAULT_TEXT_MODEL = 'gpt-6.1-sol';
 

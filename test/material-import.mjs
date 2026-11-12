@@ -1,49 +1,68 @@
-import {reviewAi} from './cohesion.mjs';
 // Browser journeys use local Firebase/model stand-ins, not live AI or production accounts.
+// Keep the source-reader checks alongside the task-level import journey used in production.
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright';
-import {zipSync,strToU8} from 'fflate';
-import {createRequire} from 'node:module';
-import {spawn} from 'node:child_process';
-const require=createRequire(import.meta.url),base=process.env.MATERIAL_TEST_URL||'http://localhost:5193';
-let server=null;if(!await fetch(base).then(r=>r.ok,()=>false)){server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port',new URL(base).port],{stdio:'ignore',detached:true});for(let i=0;i<80;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}}
-const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});const ctx=await browser.newContext({viewport:{width:1300,height:900}}),p=await ctx.newPage(),crashes=[];p.setDefaultTimeout(60000);p.on('pageerror',e=>crashes.push(e.message));
-try{
- await p.goto(base+'/dev.html?seed&as=teacher&materials');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;});await p.waitForLoadState('networkidle');const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
- for(const type of ['lesson','homework','exam','practice']){
-  await p.goto(`${base}/class/${demo.classId}/assistant`);await p.getByRole('button',{name:'Import existing materials',exact:true}).click();const dialog=p.getByRole('dialog',{name:'Import existing materials'});await dialog.getByLabel('Rebuild as').selectOption(type);
-  assert.equal(await dialog.getByRole('button',{name:'Rebuild materials',exact:true}).isDisabled(),true);
-  await dialog.getByLabel('Or paste the materials').fill('Would you like to come on Saturday? Which day?');await dialog.getByLabel('I have permission to upload and adapt these materials.').check();
-  // All optional fields, including page range and change instructions, stay blank.
-  await dialog.getByRole('button',{name:'Rebuild materials',exact:true}).click();await reviewAi(p,'Import materials');await dialog.getByText('2. Review your rebuilt materials',{exact:true}).waitFor();
-  const req=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockMaterialRequest')));assert.equal(req.instructions,'');assert.equal(req.creationType,type);assert.equal(req.source.text,'Would you like to come on Saturday? Which day?');
-  await dialog.getByLabel('Item title',{exact:true}).fill('Reviewed '+type);if(!(await dialog.locator('.mi-task').getAttribute('open')!==null))await dialog.locator('summary').filter({hasText:'Read the invitation'}).click();await dialog.getByLabel('Task 1 · Instructions',{exact:true}).fill('Read this invitation carefully.');
-  await dialog.getByLabel('I’ve checked the content, answer keys and import notes.').check();
-  await dialog.getByRole('button',{name:'Add reviewed '+type,exact:true}).click();await reviewAi(p,'Import materials');await dialog.getByText('The source check updated your tasks.',{exact:false}).waitFor();assert.equal(await dialog.getByLabel('I’ve checked the content, answer keys and import notes.').isChecked(),false);assert.equal(await dialog.getByRole('button',{name:'Confirm checked changes and add',exact:true}).isDisabled(),true);await dialog.getByLabel('I’ve checked the content, answer keys and import notes.').check();await dialog.getByRole('button',{name:'Confirm checked changes and add',exact:true}).click();await reviewAi(p,'Import materials');await p.waitForURL(/\/lesson\/import-/);await p.locator('.task-editor').waitFor();
-  const url=p.url();await p.reload();await p.locator('.task-editor').waitFor();const saved=await p.evaluate(({classId,type})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([k,v])=>k.startsWith(`classes/${classId}/items/import-`)&&!k.includes('/tasks/')&&v.title==='Reviewed '+type),{classId:demo.classId,type});assert.equal(saved.length,1);assert.equal(saved[0][1].type,type);assert.equal(saved[0][1].hidden,true);
-  assert.ok(await p.locator('.task-editor').getByText('Would you like to come on Saturday?',{exact:false}).count());
-  if(type==='homework'){
-   await p.locator('.task-insert').last().locator('summary').click();await p.locator('.task-insert').last().getByRole('button',{name:'Import material',exact:true}).click();
-   const d=p.getByRole('dialog',{name:'Import existing materials'});await d.getByLabel('Or paste the materials').fill('Would you like to come on Saturday? Which day?');await d.getByLabel('I have permission to upload and adapt these materials.').check();await d.getByRole('button',{name:'Rebuild materials',exact:true}).click();await reviewAi(p,'Import materials');await d.getByLabel('I’ve checked the content, answer keys and import notes.').check();await d.getByRole('button',{name:'Add reviewed task',exact:true}).click();await reviewAi(p,'Import materials');await d.waitFor({state:'hidden'});assert.equal(p.url(),url);
-   const tasks=await p.evaluate(id=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.startsWith(`classes/${id.classId}/items/${id.itemId}/tasks/`)&&k.split('/').length===6).length,{classId:demo.classId,itemId:url.split('/').at(-1)});assert.equal(tasks,2);
+import { spawn } from 'node:child_process';
+import { chromium } from 'playwright';
+import { zipSync, strToU8 } from 'fflate';
+
+const base = process.env.MATERIAL_TEST_URL || 'http://localhost:5193';
+let server = null;
+if (!await fetch(base).then(r => r.ok, () => false)) {
+  server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', new URL(base).port], { stdio: 'ignore', detached: true });
+  for (let i = 0; i < 80; i++) { if (await fetch(base).then(r => r.ok, () => false)) break; await new Promise(r => setTimeout(r, 500)); }
+}
+let browser;
+try {
+  process.env.PR282_BASE = base;
+  await import('./pr282-import-ui.mjs');
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(`${base}/dev.html?seed&as=teacher`);
+  await page.waitForFunction(async () => { if (!window.__mockReady) return false; await window.__mockReady; return !!localStorage.getItem('mockdemo'); }, null, { timeout: 120000 });
+  const demo = await page.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
+  await page.evaluate(async () => { const { doc, setDoc } = await import('/test/mock/firestore.ts'); await setDoc(doc({}, 'aiPilot', 'teacher1'), { enabled: true }); });
+  await page.goto(`${base}/class/${demo.classId}/lesson/${demo.itemId}`);
+  await page.locator('.task-editor').waitFor();
+  await page.locator('.task-insert').last().locator('summary').click();
+  await page.getByRole('button', { name: 'Import a task' }).last().click();
+  const dialog = page.getByRole('dialog', { name: 'Import a task' });
+  await dialog.waitFor();
+
+  const files = [
+    { name: 'sample.docx', entries: { 'word/document.xml': '<w:document xmlns:w="word"><w:body><w:p><w:r><w:t>DOCX Invitation Saturday</w:t></w:r></w:p></w:body></w:document>' }, expected: 'DOCX Invitation Saturday' },
+    { name: 'sample.pptx', entries: { 'ppt/slides/slide1.xml': '<p:sld xmlns:p="presentation" xmlns:a="drawing"><a:p><a:r><a:t>PPTX Invitation Saturday</a:t></a:r></a:p></p:sld>' }, expected: 'PPTX Invitation Saturday' },
+    { name: 'sample.xlsx', entries: { 'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row><c r="A1" t="inlineStr"><is><t>XLSX Invitation Saturday</t></is></c></row></sheetData></worksheet>' }, expected: 'XLSX Invitation Saturday' },
+  ];
+  for (const f of files) {
+    const buffer = Buffer.from(zipSync(Object.fromEntries(Object.entries(f.entries).map(([name, value]) => [name, strToU8(value)]))));
+    await dialog.getByLabel('Upload existing materials').setInputFiles({ name: f.name, mimeType: 'application/octet-stream', buffer });
+    await dialog.getByRole('region', { name: 'Selected source' }).getByText(f.name).waitFor();
+    await dialog.getByText('Review extracted text and page previews').click();
+    assert.match(await dialog.locator('.mi-source').innerText(), new RegExp(f.expected));
+    await dialog.getByRole('button', { name: 'Remove source' }).click();
   }
- }
- // File readers: actual DOCX/PPTX/XLSX ZIPs, HTML and image/PDF decoding in the browser.
- await p.goto(`${base}/class/${demo.classId}/assistant`);await p.getByRole('button',{name:'Import existing materials',exact:true}).click();const d=p.getByRole('dialog',{name:'Import existing materials'});
- const cases=[['sample.docx',{'word/document.xml':'<w:document xmlns:w="word"><w:body><w:p><w:r><w:t>Invitation Saturday</w:t></w:r></w:p></w:body></w:document>'}],['sample.pptx',{'ppt/slides/slide1.xml':'<p:sld xmlns:p="presentation" xmlns:a="drawing"><a:p><a:r><a:t>Invitation Saturday</a:t></a:r></a:p></p:sld>'}],['sample.xlsx',{'xl/worksheets/sheet1.xml':'<worksheet><sheetData><row><c r="A1" t="inlineStr"><is><t>Invitation Saturday</t></is></c></row></sheetData></worksheet>'}]];
- for(const [name,entries]of cases){const buffer=Buffer.from(zipSync(Object.fromEntries(Object.entries(entries).map(([k,v])=>[k,strToU8(v)]))));await d.getByLabel('Upload existing materials').setInputFiles({name,mimeType:'application/octet-stream',buffer});await d.getByText(name,{exact:true}).waitFor();await d.getByText('Review extracted text and page previews',{exact:true}).click();assert.ok((await d.locator('.mi-source').innerText()).includes('Invitation Saturday'));await d.getByRole('button',{name:'Remove source',exact:true}).click();}
- const fixtureJpeg=new Uint8Array(require('node:fs').readFileSync('test/fixtures/import-shapes.jpg'));
- for(const type of ['docx','pptx']){
-  const entries=type==='docx'?{'word/document.xml':'<w:document xmlns:w="word" xmlns:a="drawing" xmlns:r="rels"><w:body><w:p><w:r><w:t>Invitation Saturday</w:t><a:blip r:embed="rId1"/></w:r></w:p></w:body></w:document>','word/_rels/document.xml.rels':'<Relationships><Relationship Id="rId1" Target="media/picture.jpg"/></Relationships>','word/media/picture.jpg':fixtureJpeg}:{'ppt/slides/slide1.xml':'<p:sld xmlns:p="presentation" xmlns:a="drawing" xmlns:r="rels"><a:p><a:r><a:t>Invitation Saturday</a:t></a:r></a:p><a:blip r:embed="rId1"/></p:sld>','ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Id="rId1" Target="../media/picture.jpg"/></Relationships>','ppt/media/picture.jpg':fixtureJpeg};
-  const buffer=Buffer.from(zipSync(Object.fromEntries(Object.entries(entries).map(([k,v])=>[k,typeof v==='string'?strToU8(v):v]))));await d.getByLabel('Upload existing materials').setInputFiles({name:'pictures.'+type,mimeType:'application/octet-stream',buffer});await d.getByText('pictures.'+type,{exact:true}).waitFor();await d.getByText('Review extracted text and page previews',{exact:true}).click();assert.equal(await d.locator('.mi-pages img').count(),1);assert.ok((await d.locator('.mi-source').innerText()).includes('Source preview 1'));await d.getByRole('button',{name:'Remove source',exact:true}).click();
- }
- let remoteRequests=0;await p.route('https://import-tracker.invalid/**',route=>{remoteRequests++;return route.abort();});await d.getByLabel('Upload existing materials').setInputFiles({name:'source.html',mimeType:'text/html',buffer:Buffer.from('<p>Invitation Saturday</p><img src="https://import-tracker.invalid/pixel"><iframe src="https://import-tracker.invalid/frame"></iframe><script>window.badImport=true</script>')});await d.getByText('source.html',{exact:true}).waitFor();assert.equal(await p.evaluate(()=>window.badImport),undefined);assert.equal(remoteRequests,0,'HTML import must not fetch external resources');await d.getByRole('button',{name:'Remove source',exact:true}).click();
- // An inaccessible local file must be cancellable, with a usable form afterwards.
- await p.evaluate(()=>{window.originalBitmap=createImageBitmap;window.createImageBitmap=()=>new Promise(()=>{});});
- await d.getByLabel('Upload existing materials').setInputFiles('test/fixtures/import-shapes.jpg');await d.getByRole('button',{name:'Cancel reading',exact:true}).waitFor();await d.getByRole('button',{name:'Cancel reading',exact:true}).click();await d.getByText('Reading cancelled.',{exact:false}).waitFor();assert.equal(await d.getByLabel('Upload existing materials').isEnabled(),true);await p.evaluate(()=>{window.createImageBitmap=window.originalBitmap;delete window.originalBitmap;});
- const image=await p.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=300;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,600,300);x.fillStyle='black';x.font='30px sans-serif';x.fillText('Invitation Saturday',30,80);return c.toDataURL('image/png').split(',')[1];});
- await d.getByLabel('Upload existing materials').setInputFiles({name:'page.png',mimeType:'image/png',buffer:Buffer.from(image,'base64')});await d.getByText('page.png',{exact:true}).waitFor();await d.getByRole('button',{name:'Remove source',exact:true}).click();
- const {jsPDF}=require('jspdf'),pdf=new jsPDF();pdf.text('Invitation Saturday',20,20);await d.getByLabel('Upload existing materials').setInputFiles({name:'page.pdf',mimeType:'application/pdf',buffer:Buffer.from(pdf.output('arraybuffer'))});await d.getByText('page.pdf',{exact:true}).waitFor();
- await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});const violations=await p.evaluate(async()=>{const r=await axe.run(document,{runOnly:['wcag2a','wcag2aa']});return r.violations.map(x=>({id:x.id,targets:x.nodes.map(n=>n.target)}));});assert.deepEqual(violations,[]);assert.deepEqual(crashes,[]);
- console.log('PASS: four source-only creation modes, permission/review gates, edited content saved/reopened, append task without replacement, DOCX/PPTX/XLSX/HTML/image/PDF readers and accessibility. AI/Firebase simulated; not live verification.');
-}finally{await ctx.close();await browser.close();if(server)try{process.kill(-server.pid,'SIGTERM');}catch{}}
+
+  let remoteRequests = 0;
+  await page.route('https://import-tracker.invalid/**', route => { remoteRequests++; return route.abort(); });
+  await dialog.getByLabel('Upload existing materials').setInputFiles({ name: 'source.html', mimeType: 'text/html', buffer: Buffer.from('<p>HTML Invitation Saturday</p><img src="https://import-tracker.invalid/pixel"><script>window.badImport=true</script>') });
+  await dialog.getByRole('region', { name: 'Selected source' }).getByText('source.html').waitFor();
+  assert.match(await dialog.locator('.mi-source').textContent() || '', /HTML Invitation Saturday/);
+  assert.equal(await page.evaluate(() => window.badImport), undefined);
+  assert.equal(remoteRequests, 0);
+  await dialog.getByRole('button', { name: 'Remove source' }).click();
+
+  await dialog.getByLabel('Upload existing materials').setInputFiles('test/fixtures/import-shapes.jpg');
+  await dialog.locator('.mi-shot').first().waitFor();
+  await dialog.getByRole('button', { name: 'Remove screenshot or picture 1' }).click();
+  assert.equal(await dialog.locator('.mi-shot').count(), 0);
+  await page.goto(`${base}/class/${demo.classId}/assistant`);
+  assert.equal(await page.getByRole('button', { name: 'Import existing materials' }).count(), 0, 'lesson assistant must not offer lesson-level import');
+  await page.goto(`${base}/class/${demo.classId}`);
+  assert.equal(await page.getByRole('button', { name: 'Import existing materials' }).count(), 0, 'lessons tab must not offer lesson-level import');
+  console.log('PASS: task import journey, DOCX/PPTX/XLSX/HTML/image/PDF readers and removed lesson-level entry points. AI/Firebase simulated.');
+  await context.close();
+} finally {
+  await browser?.close();
+  if (server) try { process.kill(-server.pid, 'SIGTERM'); } catch { /* already stopped */ }
+}
