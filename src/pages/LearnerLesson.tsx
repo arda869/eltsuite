@@ -12,7 +12,6 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { LiveWho } from '../components/LiveWho';
 import { recordMistakes } from '../lib/mistakes';
-import { LearnerQuiz } from '../components/TeamQuiz';
 import { LearnerQuizBanner } from '../quiz/AddToLesson';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
 // The class notebook is switched off for now; its parts stay for later.
@@ -542,7 +541,6 @@ export function LearnerLesson() {
       {live?.liveQuiz && Date.now() - (live.liveQuiz.at || 0) < 4 * 3600 * 1000 && <LearnerQuizBanner quiz={live.liveQuiz} />}
       <LearnerLiveVideo c={c} live={live} myRoomId={myRoom?.id} itemId={itemId} />
       {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems.filter((i) => !i.topicId || nbTopics.some((t) => t.id === i.topicId))} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
-      {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
       {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
       {liveHere && (
         <div className="live-float">

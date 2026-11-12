@@ -95,6 +95,7 @@ import { TaskAudience } from '../components/TaskAudience';
 import { ExamSettings } from '../components/ExamSettings';
 import { PollDialog } from '../components/Poll';
 import { GameDialog } from '../quiz/AddToLesson';
+import { endQuiz } from '../lib/quiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
 // The class notebook is switched off for now; its parts stay for later.
 const NOTEBOOK = false as boolean;
@@ -287,6 +288,13 @@ export function LessonEditor() {
   useLiveAudioSetup(classId, teachingHere, true);
   // While this screen teaches, it checks in every minute, so the lesson stays live for the class.
   const mineLive = teachingHere && (!live?.teacherUid || live.teacherUid === user?.uid);
+  // The older team quiz is no longer offered. Clear sessions left by that version
+  // when the teacher returns, so learners are not trapped on its lobby screen.
+  useEffect(() => {
+    if (!mineLive || !live?.quiz) return;
+    void endQuiz(classId).catch(() => {});
+    void setLive(classId, { quiz: null }).catch(() => {});
+  }, [mineLive, live?.quiz, classId]);
   useEffect(() => {
     if (!mineLive) return;
     const beat = () => void setLive(classId, {}).catch(() => {});
@@ -1211,7 +1219,7 @@ export function LessonEditor() {
                 {picking ? (
                   <span className="picking-name">{picking}</span>
                 ) : (
-                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz || live?.liveQuiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip={tr('Pick a learner, poll, game, announcement')}>
+                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.liveQuiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip={tr('Pick a learner, poll, game, announcement')}>
                     Activities
                     <span aria-hidden="true">▾</span>
                   </button>
