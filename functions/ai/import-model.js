@@ -14,14 +14,14 @@ export function importModelSchema(training,selectedKinds){
  const original=activitySchema.properties.tasks.items.properties;
  const allowed=selectedKinds?.length?new Set(selectedKinds):null;
  const elements={anyOf:IMPORT_TYPES.filter(t=>(training||!t.kind.startsWith('tt-'))&&(!allowed||allowed.has(t.kind))).map(t=>{
-  const details=Object.fromEntries(Object.entries(t.dataSchema.properties).map(([key,s])=>[key==='prompt'?'oralPrompt':key,t.kind==='picture'&&key==='asset'?{type:'string',enum:['']}:s]));
+  const details=Object.fromEntries(Object.entries(t.dataSchema.properties).map(([key,s])=>[key==='prompt'?'oralPrompt':key==='example'?'sampleSentence':key,t.kind==='picture'&&key==='asset'?{type:'string',enum:['']}:s]));
   return obj({kind:{type:'string',enum:[t.kind]},prompt:ref('text'),selectionReason:ref('reason'),feedback:ref('short'),example:{type:'boolean'},needs:ref('needs'),...details});
  })};
  const body={instructions:text(1),input:text(),blocks:original.blocks,definitions:original.definitions,visuals:original.visuals,structures:original.structures,inlineElements:array(ref('importElement'))};
  return {...obj({title:text(1),rationale:text(1),differentiation:text(1),recycling:text(1),warnings:array(text(1,1000),0,30),tasks:array(obj({stageId:text(1),title:text(1),minutes:{type:'integer',minimum:1,maximum:180},layout:{type:'string',enum:['stacked','columns']},...body,subTasks:array(obj(body),0,6),teacherOnlyInput:text(0,2500),teacherNotes:text(1),support:text(0,2500),challenge:text(0,2500)}),1,12)}),$defs:{text:text(),short:text(0,1000),reason:text(1,600),needs:array({type:'string',enum:['picture','recording','transcript','classroomSetup']},0,4),importElement:elements}};
 }
 export function fromImportModel(value){
- const element=e=>{const type=IMPORT_TYPES.find(t=>t.kind===e.kind);if(!type)throw Error('Unsupported inline task type.');const result={kind:e.kind,prompt:e.prompt,reason:e.selectionReason,feedback:e.feedback,example:e.example,needs:e.needs,data:Object.fromEntries(Object.keys(type.dataSchema.properties).map(k=>[k,e[k==='prompt'?'oralPrompt':k]]))};
+ const element=e=>{const type=IMPORT_TYPES.find(t=>t.kind===e.kind);if(!type)throw Error('Unsupported inline task type.');const result={kind:e.kind,prompt:e.prompt,reason:e.selectionReason,feedback:e.feedback,example:e.example,needs:e.needs,data:Object.fromEntries(Object.keys(type.dataSchema.properties).map(k=>[k,e[k==='prompt'?'oralPrompt':k==='example'?'sampleSentence':k]]))};
   // A worksheet may label a teacher-reviewed response "Open answer". That label
   // is not an answer key: never turn it into a scored text gap for learners.
   if(['shortAnswer','gap'].includes(result.kind)&&result.data.answers?.length&&result.data.answers.every(answer=>/^(?:open answer|answers? (?:may )?vary|any (?:reasonable|suitable|appropriate) answer|own answer|teacher(?:'s)? (?:check|judgement))\.?$/i.test(answer.trim()))){

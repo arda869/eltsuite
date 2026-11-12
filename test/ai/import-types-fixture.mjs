@@ -36,11 +36,13 @@ export function importTask(elements=Object.values(importElements)){
  return {...structuredClone(rebuilt.tasks[0]),title:'Native task types',input:'',blocks:[],definitions:[],visuals:[],questions:[],inlineElements:structuredClone(elements),subTasks:[]};
 }
 export function importLesson(elements=Object.values(importElements)){
- return {...structuredClone(rebuilt),title:'Native import verification',warnings:[],tasks:[importTask(elements)]};
+ const task=importTask(elements.slice(0,60));
+ if(elements.length>60)task.subTasks=[{instructions:'Complete the remaining source items.',input:'',blocks:[],definitions:[],visuals:[],structures:[],inlineElements:structuredClone(elements.slice(60))}];
+ return {...structuredClone(rebuilt),title:'Native import verification',warnings:[],tasks:[task]};
 }
 // Test provider responses obey the compact model schema, not the saved compatibility shape.
 export function asImportModel(value){
- const convert=e=>({kind:e.kind,prompt:e.prompt,selectionReason:e.reason,feedback:e.feedback,example:e.example,needs:e.needs??[],...Object.fromEntries(Object.entries(e.data).map(([k,v])=>[k==='prompt'?'oralPrompt':k,v]))});
- const body=b=>({instructions:b.instructions,input:b.input,blocks:b.blocks??[],definitions:b.definitions??[],visuals:b.visuals??[],inlineElements:(b.inlineElements?.length?b.inlineElements:(b.questions??[]).map(q=>({...newImportElement('shortAnswer'),prompt:q.prompt,reason:'A short source answer.',feedback:q.explanation,data:{answers:[q.answer,...q.acceptedAnswers]}}))).map(convert)});
+ const convert=e=>({kind:e.kind,prompt:e.prompt,selectionReason:e.reason,feedback:e.feedback,example:e.example,needs:e.needs??[],...Object.fromEntries(Object.entries(e.data).map(([k,v])=>[k==='prompt'?'oralPrompt':k==='example'?'sampleSentence':k,v]))});
+ const body=b=>({instructions:b.instructions,input:b.input,blocks:b.blocks??[],definitions:b.definitions??[],visuals:b.visuals??[],structures:b.structures??[],inlineElements:(b.inlineElements?.length?b.inlineElements:(b.questions??[]).map(q=>({...newImportElement('shortAnswer'),prompt:q.prompt,reason:'A short source answer.',feedback:q.explanation,data:{answers:[q.answer,...q.acceptedAnswers]}}))).map(convert)});
  return {title:value.title,rationale:value.rationale,differentiation:value.differentiation,recycling:value.recycling,warnings:value.warnings,tasks:value.tasks.map(t=>({stageId:t.stageId,title:t.title,minutes:t.minutes,layout:t.layout,...body(t),subTasks:(t.subTasks??[]).map(body),teacherOnlyInput:t.teacherOnlyInput,teacherNotes:t.teacherNotes,support:t.support,challenge:t.challenge}))};
 }
