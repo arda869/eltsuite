@@ -7,22 +7,24 @@ const bool={type:'boolean'};
 const list=(items,minItems=0,maxItems=30)=>({type:'array',items,minItems,maxItems});
 const choice=(...values)=>({type:'string',enum:values});
 const obj=properties=>({type:'object',additionalProperties:false,properties,required:Object.keys(properties)});
-const answers=list(required,1,8),extras=list(word,0,20),options=list(word,2,12);
+// A listening worksheet can be imported before its recording or answer key is supplied.
+// Empty answers remain private, editable gaps for the teacher to complete later.
+const answers=list(text(0,200),0,8),extras=list(word,0,20),options=list(word,2,12);
 const records=list(obj({name:word,value:str}),0,30);
 const entries=[
  ['text','Text or reading','Keep a passage or instruction in its original place.',{text:required}],
  ['boxedText','Boxed text','Preserve a visibly bordered or shaded group of source text as an editable box, including its instructions and bullets.',{style:choice('box','info'),tone:choice('grey','mist','sand','sage','sky','rose'),label:short,text:required}],
- ['dialogue','Dialogue','Keep speaker turns together in the native Dialogue element. Use ___ for each answer gap and give its answer in the same turn, in order.',{layout:choice('stacked','side'),turns:list(obj({speaker:text(1,60),text:text(1,1000),answers:list(word,0,12)}),2,30)}],
+ ['dialogue','Dialogue','Keep speaker turns together in the native Dialogue element. Use ___ for each answer gap and give its answer in the same turn, in order.',{layout:choice('stacked','side'),turns:list(obj({speaker:text(1,60),text:text(1,1000),answers:list(text(0,200),0,12)}),2,30)}],
  ['picture','Source illustration','Recreate only the illustration region from a supplied page, retaining every answer-critical detail.',{ref:text(1,60),sourceImage:integer(1,6),x:number(),y:number(),width:number(1,100),height:number(1,100),alt:text(1,300),recreationPrompt:text(1,1200),asset:text(0,64)}],
  ['gap','Text gap','Complete one blank with a word or phrase.',{answers}],
  ['shortAnswer','Short answer','Answer a question with a word, number or short phrase.',{answers}],
  ['lettergap','Letter gaps','A gap with one line per missing letter.',{answers,firstLetter:bool}],
  ['wordform','Word formation','Complete a gap using the supplied stem word.',{stem:word,answers}],
- ['radio','Multiple choice, as a list','Choose one of the supplied options displayed as a list.',{options,answer:word}],
- ['dropdown','Multiple choice in line','Choose an option inside a sentence, at ___.',{options,answer:word}],
- ['multi','Multiple selection','Select every correct option, not just one.',{options,answers:list(word,1,12)}],
- ['truefalse','True or false','Judge the statement against the source.',{answer:choice('True','False')}],
- ['notgiven','True, false or not given','Distinguish contradiction from information not supplied.',{answer:choice('True','False','Not given')}],
+ ['radio','Multiple choice, as a list','Choose one of the supplied options displayed as a list.',{options,answer:text(0,200)}],
+ ['dropdown','Multiple choice in line','Choose an option inside a sentence, at ___.',{options,answer:text(0,200)}],
+ ['multi','Multiple selection','Select every correct option, not just one.',{options,answers:list(word,0,12)}],
+ ['truefalse','True or false','Judge the statement against the source.',{answer:choice('','True','False')}],
+ ['notgiven','True, false or not given','Distinguish contradiction from information not supplied.',{answer:choice('','True','False','Not given')}],
  ['match','Matching','Match genuine left/right pairs, retaining extra distractors.',{pairs:list(obj({left:required,right:required}),2,20),extras}],
  ['drop','Drag-and-drop gap','Complete a ___ from the shared word bank.',{answer:word}],
  ['bank','Word bank','One shared bank for drag-and-drop gaps; extras are distractors.',{extras}],
@@ -57,7 +59,7 @@ const entries=[
  ['list','List','A bulleted or numbered list that is not a set of questions. Keep the source order and numbering start.',{ordered:bool,start:integer(1,100),items:list(required,1,40)}],
  ['quote','Quote','A quotation or passage set apart from the main text.',{text:required}],
  ['reveal','Reveal box','Content hidden until the learner opens it: a hint, a model answer, a tip.',{label:text(1,80),text:required}],
- ['table','Table','A table with a header row. Put ___ in a cell for each answer gap and list the answers in reading order, left to right, top to bottom. Use an empty answers list when there are no gaps.',{headers:list(text(0,300),1,8),rows:list(list(text(0,500),1,8),1,30),answers:list(word,0,60)}],
+ ['table','Table','A table with a header row. Put ___ in a cell for each answer gap and list the answers in reading order, left to right, top to bottom. Use an empty answers list when there are no gaps.',{headers:list(text(0,300),1,8),rows:list(list(text(0,500),1,8),1,30),answers:list(text(0,200),0,60)}],
  ['ipa','Phonemic transcription','A word or phrase with its phonemic transcription between slashes in the source.',{word:text(0,200),transcription:text(1,200),accent:choice('RP','GA')}],
  ['stress','Word stress','A word divided into syllables with its stressed syllable marked (index from 0).',{syllables:list(text(1,30),1,8),stressed:integer(0,7)}],
  ['subst','Substitution slot','Words that can each fill one place in a model sentence, shown stacked at ___ in the prompt.',{options:list(word,2,12)}],

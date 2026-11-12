@@ -108,11 +108,11 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
     let r;
     try {r=await generate({apiKey,model,schema:generationSchema,name:'rebuild',input,sourceImages:images,instructions:nativeImportInstructions,timeoutMs:Math.min(250000,Math.max(1000,deadline-Date.now()-85000)),maxOutputTokens:source.scope==='task'?14000:undefined});}
     catch(e){
-      if(!(e instanceof GenerationError)||e.reason!=='output_limit')throw e;
+      if(!(e instanceof GenerationError)||!['output_limit','output_validation'].includes(e.reason))throw e;
       const retryKinds=selectedKinds?.length?selectedKinds:undefined;
       const retrySchema=importModelSchema(training,retryKinds);
       if(source.scope==='task')retrySchema.properties.tasks.maxItems=1;
-      r=await metered({name:'rebuild',schema:retrySchema,instructions:nativeImportInstructions+'\nKeep the output proportional to the supplied source. Include all source questions, but do not invent extra tasks, repeat passages in multiple fields or expand teacher notes beyond what is necessary.',input,sourceImages:images,timeoutMs:Math.min(180000,Math.max(1000,deadline-Date.now()-5000))});
+      r=await metered({name:'rebuild',schema:retrySchema,instructions:nativeImportInstructions+'\nKeep the output proportional to the supplied source. Include all source questions, but do not invent extra tasks, repeat passages in multiple fields or expand teacher notes beyond what is necessary. Check every required field against the schema before responding.',input,sourceImages:images,timeoutMs:Math.min(180000,Math.max(1000,deadline-Date.now()-5000))});
     }
     mark('structure');
     try{r.value=checkRebuild(fromImportModel(r.value),source.scope,{training:cls.get('kind')==='training'});}catch(validationError){

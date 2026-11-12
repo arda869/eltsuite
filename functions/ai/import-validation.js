@@ -12,7 +12,7 @@ export function checkImportElements(elements,training){
   if(e.kind.startsWith('tt-')&&training===false)throw Error('Teacher-training forms need a teacher-training class.');
   if(['gap','lettergap','wordform','drop'].includes(e.kind)&&e.prompt.split('___').length!==2)throw Error('A '+e.kind+' needs exactly one ___ in its prompt.');
   if(['radio','dropdown','multi'].includes(e.kind)&&new Set(d.options).size!==d.options.length)throw Error('Choice options must be distinct.');
-  if(['radio','dropdown'].includes(e.kind)&&!d.options.includes(d.answer))throw Error('The choice answer must match an option.');
+  if(['radio','dropdown'].includes(e.kind)&&d.answer&&!d.options.includes(d.answer))throw Error('The choice answer must match an option.');
   if(e.kind==='multi'&&(new Set(d.answers).size!==d.answers.length||d.answers.some(a=>!d.options.includes(a))))throw Error('Every selected answer must match a distinct option.');
   if(e.kind==='dropdown'&&e.prompt.split('___').length!==2)throw Error('An inline choice needs exactly one ___.');
   if(e.kind==='bank'&&elements.filter(x=>x.kind==='bank').length>1)throw Error('Use one shared word bank per activity part.');

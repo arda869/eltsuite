@@ -48,6 +48,31 @@ test('a table with gaps keeps its answers in the key', () => {
   assert.ok(!JSON.stringify(r.content).includes('went'), 'answers must not reach learners');
 });
 
+test('a listening worksheet without a key keeps its questions and flags review', () => {
+  const gap = newImportElement('gap', 'The train leaves at ___.');
+  gap.needs = ['recording'];
+  const choice = newImportElement('radio', 'Where does the train stop?');
+  choice.data = { options: ['London', 'York', 'Leeds'], answer: '' };
+  choice.needs = ['recording'];
+  const required = checkImportElements([gap, choice], false);
+  const result = nativeImportedElements([gap, choice], 'listening');
+  assert.ok(required.some(x => x.includes('missing answer key')));
+  assert.ok(required.some(x => x.includes('original recording')));
+  assert.deepEqual(result.key.listening_e0.answers, []);
+  assert.equal(result.key.listening_e1.correct, -1);
+  assert.ok(JSON.stringify(result.content).includes('Where does the train stop?'));
+});
+
+test('a supplied answer key remains private and does not trigger a missing-key warning', () => {
+  const gap = newImportElement('gap', 'The train leaves at ___.');
+  gap.data.answers = ['nine'];
+  const required = checkImportElements([gap], false);
+  const result = nativeImportedElements([gap], 'keyed');
+  assert.ok(!required.some(x => x.includes('missing answer key')));
+  assert.deepEqual(result.key.keyed_e0.answers, ['nine']);
+  assert.ok(!JSON.stringify(result.content).includes('nine'));
+});
+
 test('new element checks', () => {
   const table = newImportElement('table');
   table.data = { headers: ['A'], rows: [['___']], answers: [] };
