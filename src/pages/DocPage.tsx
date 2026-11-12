@@ -243,7 +243,7 @@ export function SharePeople({ title, itemName, ownerId, ownerName, members, extr
             ))}
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={picked.length ? 'Add more' : teachersOnly ? 'Colleagues' : 'Colleagues or learners'} aria-label="Find people" autoFocus />
           </span>
-          {(s || !picked.length) && found.length > 0 && (
+          {s && found.length > 0 && (
             <span className="dp-found">
               {found.map((p) => (
                 <button key={p.key} type="button" onClick={() => (setPicked((x) => [...x, p]), setQ(''))}>

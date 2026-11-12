@@ -93,8 +93,6 @@ export const VIDEO_SHORTCUTS = [
   ["Shift Delete", "Remove and close the gap on this track"],
   ["C", "Add a caption"],
   ["M", "Mute / unmute selected track"],
-  ["V", "Open media library"],
-  ["G", "Open character library"],
   ["+ / −", "Zoom timeline"],
   ["?", "Show keyboard shortcuts"],
   ["Escape", "Close a menu or dialog"],

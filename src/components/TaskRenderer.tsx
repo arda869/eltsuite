@@ -447,6 +447,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           autoCorrect="off"
           spellCheck={false}
           size={Math.max(6, value.length + 1)}
+          style={value ? { width: `${Math.max(7, Math.ceil(value.length * 1.4) + 2)}ch`, maxWidth: '100%' } : undefined}
           onChange={(e) => onChange?.(id, e.target.value)}
         />
         {node.attrs?.stem && <span className="wf-stem">{node.attrs.stem}</span>}
