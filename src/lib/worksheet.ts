@@ -25,6 +25,8 @@ export type Run = {
   options?: string[];
   stack?: string[];
   num?: number;
+  ql?: string; // the question's printed label when it isn't its number: a, b for two questions in one numbered line
+  ol?: string; // an option letter (A, B, C) in front of an option
   bold?: boolean;
   italic?: boolean;
   u?: boolean; // underline
@@ -282,16 +284,31 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           const firstBlock = cur.length;
           const firstAnswer = answers.length;
           li.content?.forEach((child, k) => walk(child, 'number', k ? '' : label + '.'));
-          if (answers.length !== firstAnswer + 1) return;
-          const answer = answers[firstAnswer];
-          for (const block of cur.slice(firstBlock)) {
-            if (block.kind !== 'p' || block.list !== 'number') continue;
-            const marker = block.runs.findIndex(run => run.num === answer.n);
-            if (marker === -1) continue;
-            block.runs.splice(marker, 1);
-            answer.label = subtaskLabel ? subtaskLabel + '.' + label : label;
-            break;
+          // One question in the line: the line's number is its number, so it needs no other.
+          // Two or more: they are a, b, c of that line (1a, 1b in the answer key).
+          const got = answers.slice(firstAnswer);
+          if (!got.length) return;
+          const markerOf = (answer: { n: number }) => {
+            for (const block of cur.slice(firstBlock)) {
+              if (block.kind !== 'p' || block.list !== 'number') continue;
+              const at = block.runs.findIndex(run => run.num === answer.n && run.ql === undefined);
+              if (at !== -1) return { block, at };
+            }
+            return null;
+          };
+          const markers = got.map(markerOf);
+          if (markers.some((m) => !m)) return;
+          const base = subtaskLabel ? subtaskLabel + '.' + label : label;
+          if (got.length === 1) {
+            markers[0]!.block.runs.splice(markers[0]!.at, 1);
+            got[0].label = base;
+            return;
           }
+          got.forEach((answer, k) => {
+            const m = markers[k]!;
+            m.block.runs[m.at] = { ...m.block.runs[m.at], ql: LET[k] };
+            answer.label = base + LET[k];
+          });
         });
         return;
       }
@@ -300,20 +317,21 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         cur.push({ kind: 'table', structure: (node.content ?? []).map(row => (row.content ?? []).map(cell => ({header: cell.type === 'tableHeader', colspan: Math.max(1, Number(cell.attrs?.colspan) || 1), rowspan: Math.max(1, Number(cell.attrs?.rowspan) || 1)}))), rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())), cells: (node.content ?? []).map((r) => (r.content ?? []).map((c) => (c.content ?? []).flatMap((pp, k) => [...(k ? [{ t: ' ' }] : []), ...runsOf(pp.content)]))) });
         return;
       case 'match': {
-        n++;
+        // Each row is a question, numbered on from the questions before it, as on screen.
         const pairs: { left: string; right: string }[] = a.pairs ?? [];
         const extras: string[] = a.extras ?? [];
         const right = [...pairs.map((p) => p.right), ...extras].sort(abc);
+        const first = n + 1;
+        n += Math.max(1, pairs.length);
         marks += pairs.length;
-        answers.push({ n, text: pairs.map((p, i) => `${i + 1}–${LET[right.indexOf(p.right)]}`).join(', ') });
-        cur.push({ kind: 'match', n, left: pairs.map((p) => p.left), right });
+        answers.push({ n: first, ...(pairs.length > 1 ? { label: `${first}–${first + pairs.length - 1}` } : {}), text: pairs.map((p, i) => `${first + i} ${LET[right.indexOf(p.right)]}`).join(', ') });
+        cur.push({ kind: 'match', n: first, left: pairs.map((p) => p.left), right });
         return;
       }
       case 'mcq': {
         n++;
-        cur.push({ kind: 'p', runs: [{ num: n }, { t: String(a.prompt || 'Choose an answer.') }], list, mark });
         const options: string[] = Array.isArray(a.options) ? a.options : [];
-        options.forEach((option, i) => cur.push({ kind: 'p', runs: [{ t: String.fromCharCode(65+i) + '. ' + option }] }));
+        cur.push({ kind: 'p', runs: [{ num: n }, { t: String(a.prompt || 'Choose an answer.') }, { stack: options.map((option, i) => `${UP[i]}  ${option}`) }], list, mark });
         if (options[a.correct]) answers.push({ n, text: options[a.correct] });
         return;
       }
@@ -424,7 +442,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         if (kind === 'speaking') {
           cur.push({ kind: 'p', runs: [{ t: 'Speaking: ' + (d.prompt ?? ''), bold: true }] });
           const imgs = ((d.images ?? []) as unknown[]).map((x) => (typeof x === 'string' ? x : String((x as { src?: string })?.src ?? ''))).filter(Boolean);
-          if (imgs.length) cur.push({ kind: 'p', runs: imgs.map((src) => ({ pic: { src, size: imgs.length > 1 ? 'm' : 'l', label: '' } })) });
+          if (imgs.length) cur.push({ kind: 'p', runs: imgs.map((src) => ({ pic: { src, size: String(d.imageSize ?? (imgs.length > 1 ? 'm' : 'l')), label: '' } })) });
           (d.questions ?? []).filter(Boolean).forEach((q: string) => cur.push({ kind: 'p', runs: [{ t: q }], list: 'bullet' }));
           return;
         }
@@ -454,12 +472,12 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
             break;
           case 'sentences':
             cur.push({ kind: 'p', runs: [pre, { t: 'Put in the right order:', bold: true }] });
-            pub.items.forEach((s: string, i: number) => cur.push({ kind: 'p', runs: [{ t: `${UP[i]}  ${s}` }] }));
+            pub.items.forEach((s: string, i: number) => cur.push({ kind: 'p', runs: [{ ol: UP[i] }, { t: s }] }));
             cur.push({ kind: 'lines', n, count: 1 });
             break;
           case 'label':
             cur.push({ kind: 'p', runs: [pre, { t: 'Write the right label next to each number.' }] });
-            if (pub.image) cur.push({ kind: 'p', runs: [{ pic: { src: String(pub.image), size: 'full', label: '', pts: pub.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y })) } }] });
+            if (pub.image) cur.push({ kind: 'p', runs: [{ pic: { src: String(pub.image), size: String(d.imageSize ?? 'full'), label: '', pts: pub.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y })) } }] });
             cur.push({ kind: 'box', words: pub.labels, label: 'Labels' });
             cur.push({ kind: 'p', runs: pub.points.flatMap((_: unknown, i: number) => [{ t: `${i ? '    ' : ''}${i + 1} ` }, { blank: 12 }]) });
             break;
@@ -469,12 +487,18 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
             break;
           case 'gapped':
             cur.push({ kind: 'p', runs: [pre, { t: String(pub.text ?? '').replace(/\{\{(\d+)\}\}/g, ' [ $1 ] ') }] });
-            pub.options.forEach((o: string, i: number) => cur.push({ kind: 'p', runs: [{ t: `${UP[i]}  ${o}` }] }));
+            pub.options.forEach((o: string, i: number) => cur.push({ kind: 'p', runs: [{ ol: UP[i] }, { t: o }] }));
             break;
-          case 'matching':
-            cur.push({ kind: 'p', runs: [pre, { t: `Options: ${pub.options.join(', ')}`, bold: true }] });
-            pub.statements.forEach((s: string, i: number) => cur.push({ kind: 'p', runs: [{ t: `${i + 1}. ${s}  ` }, { blank: 4 }] }));
+          case 'matching': {
+            // Each statement is a question, numbered on, as on screen.
+            const first = n;
+            const st: string[] = pub.statements ?? [];
+            n += Math.max(0, st.length - 1);
+            if (key && st.length > 1) answers[answers.length - 1].label = `${first}–${first + st.length - 1}`;
+            cur.push({ kind: 'p', runs: [{ t: 'Options: ', bold: true }, ...(pub.options as string[]).flatMap((o: string, i: number) => [...(i ? [{ t: '   ' }] : []), { t: o, bold: true }])] });
+            st.forEach((s: string, i: number) => cur.push({ kind: 'p', runs: [{ num: first + i }, { t: s + ' ' }, { blank: 4 }] }));
             break;
+          }
           case 'dictation':
             cur.push({ kind: 'p', runs: [pre, { t: `Dictation (${pub.count} words): your teacher reads the sentence.` }] });
             cur.push({ kind: 'lines', n, count: 2 });
@@ -590,7 +614,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         node.content?.forEach((c) => walk(c));
         subtaskLabel = previousLabel;
         cur = prev;
-        cur.push({ kind: 'subtask', letter, text: String(a.instr ?? ''), blocks: inner });
+        // A sub-task can have its own instruction for paper ("Circle" for "Tap").
+        cur.push({ kind: 'subtask', letter, text: String((typeof a.paperInstr === 'string' && a.paperInstr.trim()) || a.instr || ''), blocks: inner });
         return;
       }
       case 'media':
@@ -636,6 +661,19 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
     node.content?.forEach(inlineRefs);
   };
   inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
+  // A task with one question needs no number for it (and none in the key). Not when there is an example (0).
+  if (answers.length === 1 && answers[0].label === undefined && n === answers[0].n) {
+    const only = answers[0];
+    const all: Block[] = [];
+    const gather = (bs: Block[]) => bs.forEach((b) => (all.push(b), (b.kind === 'callout' || b.kind === 'subtask') && gather(b.blocks)));
+    gather(blocks);
+    const example = all.some((b) => b.kind === 'p' && b.runs.some((r) => r.num === 0));
+    const holders = all.filter((b): b is Extract<Block, { kind: 'p' }> => b.kind === 'p' && b.runs.some((r) => r.num === only.n));
+    if (!example && holders.length === 1 && !all.some((b) => b.kind === 'match')) {
+      holders[0].runs = holders[0].runs.filter((r) => r.num !== only.n);
+      only.label = '';
+    }
+  }
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
   const icon = lessonStyle === 'young' ? youngIcon(t.print?.icon && t.print.icon !== 'same' ? t.print.icon : t.ylIcon, t.content) : null;
   return { ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
@@ -697,7 +735,8 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
       if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: S(20) })];
       if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));
-      if (r.num !== undefined) return [new TextRun({ text: ` ${r.num} `, bold: true, font: SERIF, color: ACC_INK })];
+      if (r.num !== undefined) return [new TextRun({ text: ` ${r.ql ?? r.num} `, bold: true, font: SERIF, color: ACC_INK })];
+      if (r.ol) return [new TextRun({ text: `${r.ol}  `, bold: true, font: SANS, color: '8A847D' })];
       const q = /^\s*\((\d+)\)\s*$/.exec(r.t ?? '');
       if (q) return [new TextRun({ text: ` ${q[1]} `, bold: true, font: SANS, size: S(16), color: ACC, superScript: false })];
       const IPA_FONT = 'Segoe UI';
@@ -866,7 +905,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
-            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ cantSplit: true, children: [new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.left[i] ? [new TextRun({ text: `${i + 1}  `, bold: true, color: ACC, font: SANS, size: S(18) }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: S(18) }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
+            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ cantSplit: true, children: [new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.left[i] ? [new TextRun({ text: `${b.n ? b.n + i : i + 1}  `, bold: true, color: ACC, font: SANS, size: S(18) }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: S(18) }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
           }),
         );
       else if (b.kind === 'table') out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: b.rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((c) => new TableCell({ shading: ri === 0 ? { fill: 'F7EFE9', color: 'auto', type: 'clear' as never } : c === '■' ? { fill: 'E6E3DE', color: 'auto', type: 'clear' as never } : undefined, children: [new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: c === '■' ? '' : c, bold: ri === 0, font: ri === 0 ? SANS : SERIF, size: ri === 0 ? 18 : 22 })] })] })) })) }));

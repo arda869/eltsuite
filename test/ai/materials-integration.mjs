@@ -37,7 +37,7 @@ try{
  await db.doc('classes/'+classId).update({kind:'training'});
  modelOutput=importLesson();
  const advanced=await call({...base,requestId:'all_native_types'});
- assert.equal(advanced.rebuilt.tasks[0].inlineElements.length,Object.keys(importElements).length);
+ assert.equal(advanced.rebuilt.tasks[0].inlineElements.length+advanced.rebuilt.tasks[0].subTasks.reduce((count,part)=>count+part.inlineElements.length,0),Object.keys(importElements).length);
  const allSaved=await call({action:'importCreate',requestId:'all_native_types',scope:'item',rebuilt:advanced.rebuilt,reviewed:true});
  const allTasks=await db.collection('classes/'+classId+'/items/'+allSaved.createdItemId+'/tasks').get(),allTask=allTasks.docs[0],nodes=[];
  const walk=n=>{nodes.push(n);for(const child of n.content??[])walk(child);};walk(allTask.get('content'));

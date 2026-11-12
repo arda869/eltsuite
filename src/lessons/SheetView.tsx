@@ -120,6 +120,31 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
     else window.scrollBy(0, d);
   };
   // Lay the blocks out page by page from their own heights.
+  // The print engine's drawing of a block, inside its shadow root.
+  const pieceOf = (k: HTMLElement) => k.querySelector<HTMLElement>(':scope > .sh-hit > div')?.shadowRoot ?? null;
+  // Push the parts of a long block that would cross a page edge to the top of the next page. Returns
+  // the block's new height. Parts are the exercise's paragraphs, boxes and sub-tasks' parts; one taller
+  // than a page runs on, as it does on paper.
+  const breakInside = (k: HTMLElement, at: number, page: number) => {
+    const root = pieceOf(k);
+    if (!root) return k.offsetHeight;
+    const parts = [...root.querySelectorAll<HTMLElement>('.ex-body > *, .subex > .subex-h, .subex-b > *')].filter((e) => !e.querySelector('.subex-h, .subex-b > *'));
+    const box = () => k.getBoundingClientRect();
+    const ratio = box().height / Math.max(1, k.offsetHeight) || 1;
+    let pg = page;
+    for (const e of parts) {
+      const r = e.getBoundingClientRect();
+      const top = at + (r.top - box().top) / ratio;
+      const bottom = top + r.height / ratio;
+      while (top >= areaBottom(pg)) pg++;
+      if (bottom > areaBottom(pg) && top > areaTop(pg) + 1) {
+        e.style.marginTop = `${(parseFloat(getComputedStyle(e).marginTop) || 0) + areaTop(pg + 1) - top}px`;
+        e.setAttribute('data-sh-push', '');
+        pg++;
+      }
+    }
+    return k.offsetHeight;
+  };
   useLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -130,10 +155,15 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
       let y = 0; // where the last block ended
       let st = { page: -1, extra: 0 };
       let filled = false; // a task (not only a heading) is on this page already
+      // Undo the page breaks made inside long tasks last time, so their heights are their own again.
+      kids.forEach((k) => pieceOf(k)?.querySelectorAll<HTMLElement>('[data-sh-push]').forEach((e) => {
+        e.style.marginTop = '';
+        e.removeAttribute('data-sh-push');
+      }));
       kids.forEach((k, i) => {
         // The task being edited is laid out at its printed height, so the pages break as they print.
         const m = k.querySelector<HTMLElement>(':scope > .sh-measure');
-        const h = m ? m.offsetHeight : k.offsetHeight;
+        let h = m ? m.offsetHeight : k.offsetHeight;
         let at = y;
         // A section heading goes with the task after it.
         // (A task taller than a whole page can't go anywhere better: it starts under its heading.)
@@ -151,9 +181,19 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
         }
         if (!heading) filled = true;
         next.push(at - y);
-        if (m) st = { page, extra: Math.max(0, k.offsetHeight - h) };
+        if (m) {
+          // The task being edited: its page grows to hold the whole editor, so nothing of the next
+          // page is drawn over it. A task longer than a page ends that page.
+          const fits = at + h <= areaBottom(page);
+          st = { page, extra: Math.max(0, fits ? k.offsetHeight - h : at + k.offsetHeight - areaBottom(page)) };
+          y = fits ? at + h : areaBottom(page);
+          return;
+        }
+        // A task longer than the room left: as on paper, it goes on at the top of the next page,
+        // broken between its paragraphs, never under the footer or the next page's band.
+        if (at + h > areaBottom(page)) h = breakInside(k, at, page);
         y = at + h;
-        while (y > areaBottom(page)) (page++, (filled = true)); // only a task taller than a page runs on
+        while (y > areaBottom(page)) (page++, (filled = true));
       });
       setPages((n) => (n === page + 1 ? n : page + 1));
       setStretch((o) => (o.page === st.page && Math.abs(o.extra - st.extra) < 1 ? o : st));

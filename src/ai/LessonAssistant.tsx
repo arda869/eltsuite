@@ -9,8 +9,7 @@ import { StudioMark } from "./StudioMark";
 import { AutoTextarea } from './AutoTextarea';
 import { ClassProfileFields, defaultProfile, type LearningProfile } from './ClassProfileFields';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
+import { Link, useParams } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../lib/firebase';
 import { TopBar } from '../components/TopBar';
@@ -110,8 +109,6 @@ function RevisionPreview({value}:{value:Value}) {
 function LessonAssistantPanel() {
   const { classId = '' } = useParams();
   const enabled = useAiPilot();
-  const navigate=useNavigate();
-  const [materialImport,setMaterialImport]=useState(false);
   const [classKind,setClassKind]=useState('language');
   const isTraining=classKind==='training';
   const [trainingProfile,setTrainingProfile]=useState<TrainingProfile>(defaultTrainingProfile);
@@ -261,7 +258,6 @@ function LessonAssistantPanel() {
   };
   if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
   return <MaterialNames.Provider value={Object.fromEntries((Array.isArray(plan?.learnerMaterials)?plan.learnerMaterials:[]).map(m=>[String((m as RecordValue).id),String((m as RecordValue).title)]))}><TopBar /><main className="ai-assistant">
-    {materialImport&&<MaterialImport classId={classId} creationType="lesson" onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
     <Link to={`/class/${classId}`}>Back to class</Link>
     <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Plan activities for this class.'}<br/><em>{isTraining?'Shape their practice.':'Start with an idea.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Describe what you want. You get ready-to-teach activities to check and change.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'They’re made for your class, and nothing is added until you say so.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
     <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
@@ -297,7 +293,7 @@ function LessonAssistantPanel() {
       {!isTraining&&<label className="ai-field">Level estimate<select value={brief.level} onChange={e => {changeBrief({ ...brief, level: e.target.value });setProfileDirty(true);}}>{(isTraining?['Foundation','Developing','Experienced','Mixed experience']:['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).map(v => <option key={v}>{v}</option>)}</select></label>}
       <label className="ai-field">{creationType==='exam'?'Time limit (minutes)':creationType==='homework'?'Expected time (minutes)':'Minutes'}<input required type="number" min={15} max={180} value={brief.duration} onChange={e => changeBrief({ ...brief, duration: Number(e.target.value) })} /></label>
       {creationType==='lesson'&&<label className="ai-field">Approach<select value={brief.methodology} onChange={e => changeBrief({ ...brief, methodology: e.target.value })}>{(isTraining?['Recommend','Experiential input','Exam preparation','Reflective practice','Workshop']:['Recommend', 'PPP', 'TTT', 'Task-based', 'Guided discovery', 'Text-based', 'Skills']).map(v => <option key={v}>{v}</option>)}</select></label>}
-      <p className="hint" role="status">{profileDirty?'Save your class profile changes above before generating.':!brief.objectives.trim()||!brief.context.trim()?'Add a learning objective and context. Topic and additional objectives are optional.':'Your brief is ready. Topic and additional objectives can stay blank.'}</p><div className="ai-actions"><AiButton className="btn primary" type="submit">Suggest an outline</AiButton><ImportMaterialsButton onClick={()=>setMaterialImport(true)}/></div></fieldset></form>}
+      <p className="hint" role="status">{profileDirty?'Save your class profile changes above before generating.':!brief.objectives.trim()||!brief.context.trim()?'Add a learning objective and context. Topic and additional objectives are optional.':'Your brief is ready. Topic and additional objectives can stay blank.'}</p><div className="ai-actions"><AiButton className="btn primary" type="submit">Suggest an outline</AiButton></div></fieldset></form>}
     {step===1 && outline && <section role="tabpanel" id="creation-panel-1" aria-labelledby="creation-tab-1"><h2>2. Review the outline</h2><p>Edit the outcomes, approach and stages. Stage timings must total {brief.duration} minutes.</p><fieldset disabled={locked}><Fields name="Outline" value={outline} onChange={v => { setOutline(v as RecordValue);setPlan(null);setActivities(null);setMedia([]);setCreatedItemId(''); setDirty(true); }} /><AiButton className="btn primary" onClick={() => void run('plan', { outline, approved: true })}>Approve outline and make the plan</AiButton></fieldset></section>}
     {step===2 && plan && <section role="tabpanel" id="creation-panel-2" aria-labelledby="creation-tab-2"><h2>3. Review and edit</h2><p>This is your private draft. Check the language, tasks and answer keys before teaching.</p>
       <div className="ai-actions"><button className="btn" aria-pressed={tab === 'teacher'} onClick={() => setTab('teacher')}>{isTraining?'Trainer plan':'Teacher plan'}</button><button className="btn" aria-pressed={tab === 'learner'} onClick={() => setTab('learner')}>{isTraining?'Trainee materials':'Learner materials'}</button></div>

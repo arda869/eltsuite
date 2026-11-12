@@ -55,6 +55,13 @@ version of a question type must keep to it. Change these rules only when the own
   #a9a49d). No other colours, no gradients except the cover fade and the section rule.
 - **Sections:** Karla 800, uppercase, letter-spaced, in the accent, with a thin accent rule to the right.
   **Exercises:** a number in the accent, the instruction as the heading, the body indented under it.
+- **Question numbering, one style for every question type** (`numberingCss` in `src/lib/themeWorksheet.ts`,
+  the end of `src/lessons/themeLayers.css` on screen): task number, then the question number (bold, before
+  its gap, sentence or row), then option letters (a, b, c, lighter, in grey). No brackets, no grey cells.
+  Numbers run on through matching rows. A question alone in a numbered line takes the line's number; two or
+  more in one line are its a, b; a task with one question has no number. A question with its options listed
+  under it has its number at the start of its sentence. Paper (`src/lib/worksheet.ts`) and screen
+  (`TaskRenderer`) decide this the same way.
 - **Answer space is drawn, not typed:** gaps are underlines, writing is ruled lines 7.4mm apart, matching
   is two lists with short answer lines (1 A), word boxes are pills, tables have hairline rows.
 - **Sound and video** print as a QR code (20mm, rounded white tile) with a small accent label, the title
@@ -98,3 +105,21 @@ own media (`doc:<id>`). `src/design/render.ts` draws a page on a canvas, the sam
 downloads. Teaching tools: numbered labels with a learners' copy (words become lines), a word bank, covers
 (blur, pixels, a plain cover, a mystery card), learner A / learner B things, cut-out cards, background
 removal and print-friendly pictures. Free pictures come from Wikimedia Commons, with a credit line.
+
+## AI models
+
+Every text job calls `generate()` in `functions/ai/provider.js`, which takes its model from the table in
+`functions/ai/models.js` by the job's name (`JOB_MODEL`). To move a job to another model, change it there,
+after a side-by-side test: switch on `ELT_AI_CAPTURE=on` for a short, agreed window (it copies teachers'
+AI requests into `aiCaptures`, server only, deleted after 14 days), run `scripts/ai-compare.mjs`, rate the
+blind pairs and summarise. Move a job only when the second model is no worse in at least 90% of pairs,
+never wrong where the first was right, and faster. A new model needs its prices in `models.js` and
+`functions/costs/pricing.js` first. Pictures, speech, transcription and songs use their own models
+(`functions/ai/illustration.js`, `functions/speech/`, `functions/songs/`).
+
+## Importing a task
+
+Import (`src/materials/MaterialImport.tsx`, `functions/ai/materials.js`) only ever makes tasks. Every
+element a teacher can add by hand can be made by import: `functions/ai/import-types.js` lists the kinds,
+`functions/ai/import-elements.js` turns each into editor content, and `functions/test/import-elements.mjs`
+checks that every editor element maps to an import kind. Add a new editor element there too.

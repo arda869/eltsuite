@@ -1,3 +1,4 @@
+import { TEXT_MODELS } from './models.js';
 // USD accounting uses integer millionths of a dollar; no floating-point balance.
 // Standard short-context prices verified 8 November 2026:
 // https://developers.openai.com/api/docs/pricing
@@ -10,7 +11,7 @@ export const RESERVATION_PER_CALL = 2 * MAX_INPUT_TOKENS + 10 * MAX_OUTPUT_TOKEN
 export const PRICE_REVIEW_AFTER = Date.parse('2027-02-01T00:00:00Z');
 
 export function checkModel(model, now = Date.now()) {
-  if (model !== PILOT_MODEL || now >= PRICE_REVIEW_AFTER) throw Error('The pilot model prices need review before generation can continue.');
+  if (!TEXT_MODELS[model] || now >= PRICE_REVIEW_AFTER) throw Error('The pilot model prices need review before generation can continue.');
 }
 export function reserveBudget(balance, calls, isAdmin = false) {
   if (!Number.isSafeInteger(balance) || balance < 0 || ![1, 2].includes(calls)) throw Error('Invalid budget record.');
@@ -33,7 +34,7 @@ export function settleBudget(balance, reserved, usages) {
 export function checkRequestSize(body) {
   // UTF-8 bytes bound text token count; leave 10K tokens for message/schema framing.
   // Include the instructions AND output schema, not just the teacher's brief.
-  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 90_000) throw Error('The lesson is too long for this pilot request.');
+  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 100_000) throw Error('The lesson is too long for this pilot request.');
 }
 // Missing records, owner status and email addresses never grant access.
 export function isPilotTeacher(pilotEnabled) { return pilotEnabled === true; }
