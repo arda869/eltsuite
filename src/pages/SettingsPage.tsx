@@ -415,6 +415,7 @@ function ToolbarSettings() {
 // A learner's own sign-in and email, when their class allows it: Google sign-in, and an email for
 // message summaries.
 export function LearnerAccount({ uid, classId }: { uid: string; classId: string }) {
+  const prefs = useMsgPrefs(uid);
   const [mode, setMode] = useState<'off' | 'optional' | 'required' | null>(null);
   const [email, setEmail] = useState('');
   const [saved, setSaved] = useState('');
@@ -428,7 +429,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
       setSaved(e);
     }, () => {});
   }, [uid, classId]);
-  if (mode === null || mode === 'off') return null;
+  if (mode === null || (mode === 'off' && !saved)) return null;
   const linkGoogle = async () => {
     setMsg('');
     try {
@@ -446,15 +447,25 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
   const saveEmail = async (v = email) => {
     const e = v.trim();
     if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return setMsg('That email doesn’t look right.');
-    await updateDoc(doc(db, 'users', uid), { contactEmail: e, msgPrefs: { email: !!e, after: 60 } }).catch(() => {});
+    try {
+      const profile = await getDoc(doc(db, 'users', uid));
+      const previous = profile.data()?.msgPrefs as { email?: boolean; after?: number } | undefined;
+      await updateDoc(doc(db, 'users', uid), {
+        contactEmail: e,
+        'msgPrefs.email': !!e && previous?.email !== false,
+        'msgPrefs.after': previous?.after ?? 15,
+      });
+    } catch {
+      return setMsg('We couldn’t save your email. Check your connection and try again.');
+    }
     setSaved(e);
     setEmail(e);
-    setMsg(e ? 'Saved. We’ll email you when messages are waiting.' : 'Email removed.');
+    setMsg(e ? 'Email saved. Check the message reminder setting below.' : 'Email removed.');
   };
   return (
     <Section icon="person" title="Sign-in and email">
       {mode === 'required' && !google && !saved && <div className="set-must">Your teacher asks everyone to link an email. Link Google, or add your email below.</div>}
-      <Row title="Sign in with Google" hint={google ? `Linked to ${google}` : 'Then you can sign in with your Google account instead of your class code and PIN'}>
+      {mode !== 'off' && <Row title="Sign in with Google" hint={google ? `Linked to ${google}` : 'Then you can sign in with your Google account instead of your class code and PIN'}>
         {google ? (
           <span className="set-done">Linked</span>
         ) : (
@@ -462,7 +473,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
             Link Google
           </button>
         )}
-      </Row>
+      </Row>}
       <Row title="Email for message summaries" hint="When messages are waiting, we’ll send you a short email">
         <span className="set-email">
           <input type="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveEmail()} aria-label="Email" />
@@ -471,6 +482,14 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
           </button>
         </span>
       </Row>
+      {saved && <Row title="Email me about unread messages" hint="One summary for new messages after 15 minutes by default">
+        <Toggle label="Email me about unread messages" on={prefs.email} onChange={(v) => void saveMsgPrefs(uid, { ...prefs, email: v })} />
+      </Row>}
+      {saved && prefs.email && <Row title="When they stay unread for">
+        <NSelect className="set-select" value={prefs.after} onChange={(e) => void saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
+          {AFTER.map(([m, l]) => <option key={m} value={m}>{l}</option>)}
+        </NSelect>
+      </Row>}
       {msg && <span className="hint set-msg">{msg}</span>}
     </Section>
   );

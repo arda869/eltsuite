@@ -1,6 +1,6 @@
 import { frame, pad, h1, small } from './email-layout.mjs';
-// Emails each teacher who asked for it a short summary of messages that have waited unread
-// longer than they chose. Runs every 15 minutes from GitHub Actions.
+// Emails teachers and learners with an address a short summary of new messages that have
+// waited unread longer than their selected delay. Runs every 15 minutes from GitHub Actions.
 // Needs: GOOGLE_APPLICATION_CREDENTIALS (the deploy key) and SMTP_URL (an email account),
 // for example smtps://user:app-password@smtp.gmail.com:465. MAIL_FROM is optional.
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
@@ -29,7 +29,7 @@ for (const u of users.docs) {
   const learner = u.data().role === 'learner';
   const uid = learner ? u.data().learnerId : u.id;
   if (!uid) continue;
-  const after = Number(u.data().msgPrefs?.after ?? 60) * 60000;
+  const after = Number(u.data().msgPrefs?.after ?? 15) * 60000;
   const chats = await db.collection('chats').where('members', 'array-contains', uid).get();
   const waiting = chats.docs.filter((c) => {
     const d = c.data();
@@ -46,6 +46,9 @@ for (const u of users.docs) {
     }
   }
   if (!email) continue;
+  // An account can opt out while this job is collecting unread messages.
+  const latest = await u.ref.get();
+  if (latest.data()?.msgPrefs?.email !== true) continue;
   const parts = [];
   let total = 0;
   for (const c of waiting) {
@@ -66,7 +69,7 @@ for (const u of users.docs) {
     from: FROM,
     to: email,
     subject: `${n} unread ${n === 1 ? 'message' : 'messages'} on ELT Suite`,
-    html: frame({ title: 'Messages waiting for you', body: pad(h1('Messages waiting for you') + small('You asked for a summary when messages stay unread.') + parts.join('')), footer: 'Change this in Messages, under the bell.' }),
+    html: frame({ title: 'Messages waiting for you', body: pad(h1('Messages waiting for you') + small('New messages have been waiting unread.') + parts.join('')), footer: `Change or turn off these emails in <a href="${learner ? LEARN : SITE}/settings">Settings</a>.` }),
   });
   for (const c of waiting) await c.ref.update({ [`digested.${uid}`]: c.data().lastAt });
   console.log(`Sent a summary of ${waiting.length} chats.`);
