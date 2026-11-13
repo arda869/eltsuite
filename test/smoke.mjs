@@ -455,6 +455,20 @@ const J = {
     await coach.waitFor();
     const coachWidth=await coach.evaluate(el=>parseFloat(getComputedStyle(el).width));
     if(Math.abs(coachWidth-width)>1)throw Error(`Companion opened at a different width from person messages: ${width}px → ${coachWidth}px`);
+    await s.p.evaluate(async()=>{const {dockOpen}=await import('/src/components/ChatDock.tsx');dockOpen('list');});
+    await list.waitFor();
+    await s.p.waitForTimeout(500); // Let the opening animation settle before using the corner handle.
+    const otherWidth=await list.evaluate(el=>el.getBoundingClientRect().width);
+    const corner=await coach.locator('.dock-size').boundingBox();
+    await s.p.mouse.move(corner.x+8,corner.y+8);
+    await s.p.mouse.down();
+    await s.p.mouse.move(corner.x-65,corner.y-35,{steps:4});
+    await s.p.mouse.up();
+    await s.p.waitForTimeout(200);
+    const coachAfter=await coach.evaluate(el=>el.getBoundingClientRect().width);
+    if(coachAfter<=coachWidth+40)throw Error(`Dragging Companion corner did not resize it: ${coachWidth}px → ${coachAfter}px`);
+    const listAfter=await list.evaluate(el=>el.getBoundingClientRect().width);
+    if(Math.abs(listAfter-otherWidth)>1)throw Error(`Resizing Companion also resized the Messages window: ${otherWidth}px → ${listAfter}px`);
     if(await s.p.locator('.coach-floating').count())throw Error('Companion opened a separate floating panel');
     await coach.getByRole('link',{name:'Open selected lesson'}).waitFor();
     if(await coach.getByText('This activity is attached.').count())throw Error('The intrusive lesson-context notice is visible');
@@ -1052,8 +1066,11 @@ const J = {
     await p.getByRole('button',{name:'Menu'}).click();
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in'}).click();
     await p.getByLabel('Email',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Continue with Google'}).hover();
+    await axe(p,'Public sign-in Google hover light',A11Y_FOUND);
     await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
     await p.reload();await p.getByLabel('Email',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Continue with Google'}).hover();
     await axe(p,'Public sign-in dark',A11Y_FOUND);
     await p.goto(BASE+'/signin?invite');await p.getByRole('heading',{name:'I have an invitation'}).waitFor();
     const mobile=await b.newContext({viewport:{width:320,height:740},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
@@ -2142,6 +2159,63 @@ const J = {
     await axe(s.p, 'Messages', A11Y_FOUND);
     return s;
   },
+  'Message document preview fits phone': async (b) => {
+    const s = await session(b);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.evaluate(() => localStorage.setItem('ll.theme', 'dark'));
+    await s.p.goto(`${BASE}/messages`);
+    await s.p.getByRole('searchbox', { name: 'Search conversations and people' }).fill('Mia');
+    await s.p.getByRole('option', { name: /Mia Chan/ }).click();
+    await see(s.p, '[aria-label="Message history"]', 'the conversation');
+    const chatId = new URL(s.p.url()).searchParams.get('c');
+    if (!chatId) throw Error('The message conversation has no ID');
+    const title = 'Verification · sharing and revocation · 8 November · a long document name that should remain readable';
+    await s.p.evaluate(async ({ chatId, title }) => {
+      const { doc, setDoc } = await import('/test/mock/firestore.ts');
+      await setDoc(doc({}, 'chats', chatId, 'msgs', 'file-preview-overflow'), {
+        by: 'teacher1', name: 'Arda Nurioğlu', role: 'teacher', at: Date.now(), text: `I shared ${title} with you.`,
+        file: { id: 'sd-preview-test', title, kind: 'doc', ownerName: 'Arda Nurioğlu' },
+      });
+    }, { chatId, title });
+    const card = s.p.locator('#m-file-preview-overflow .msg-file');
+    await card.waitFor();
+    const fit = await card.evaluate((el, title) => {
+      const bubble = el.closest('.bub-box');
+      const row = el.closest('.bub');
+      const label = el.querySelector('.msg-file-t b');
+      const card = el.getBoundingClientRect();
+      const outer = bubble.getBoundingClientRect();
+      return {
+        cardWithinBubble: card.left >= outer.left - 1 && card.right <= outer.right + 1,
+        cardWithinPhone: card.left >= -1 && card.right <= innerWidth + 1,
+        bubbleWithinPhone: row.getBoundingClientRect().right <= innerWidth + 1,
+        noHorizontalScroll: document.documentElement.scrollWidth <= innerWidth + 1,
+        fullTitle: label.textContent === title && getComputedStyle(label).whiteSpace !== 'nowrap' && label.scrollWidth <= label.clientWidth + 1,
+      };
+    }, title);
+    if (Object.values(fit).some(v => !v)) throw Error('Document preview overflows or clips on phone: ' + JSON.stringify(fit));
+    mkdirSync('outputs', { recursive: true });
+    await s.p.screenshot({ path: 'outputs/message-document-preview-dark-phone.png' });
+    await axe(s.p, 'Document preview in dark messages on phone', A11Y_FOUND);
+    return s;
+  },
+  'Message composer keeps focus after Enter': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/messages`);
+    await s.p.getByRole('searchbox', { name: 'Search conversations and people' }).fill('Mia');
+    await s.p.getByRole('option', { name: /Mia Chan/ }).click();
+    const editor = s.p.locator('.chat-box .ProseMirror');
+    await editor.click();
+    await s.p.keyboard.type('First message');
+    await s.p.keyboard.press('Enter');
+    await s.p.locator('.bub-doc').filter({ hasText: 'First message' }).waitFor();
+    if (!await editor.evaluate(el => document.activeElement === el)) throw Error('Sending with Enter moved focus out of the message box: ' + await s.p.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className} (editor count ${document.querySelectorAll('.chat-box .ProseMirror').length})`));
+    await s.p.keyboard.type('Second message');
+    await s.p.keyboard.press('Enter');
+    await s.p.locator('.bub-doc').filter({ hasText: 'Second message' }).waitFor();
+    if (!await editor.evaluate(el => document.activeElement === el)) throw Error('The message box lost focus after the second send');
+    return s;
+  },
   'GIF picker: GIPHY search and a sent picture in dark mode': async (b) => {
     const s = await session(b);
     await s.p.evaluate(async () => {
@@ -2169,6 +2243,8 @@ const J = {
     await s.p.waitForFunction(() => document.querySelector('.gif-q')?.value === 'cat');
     await picker.getByRole('button', { name: 'Happy cat' }).waitFor();
     if (!calls.some(url => url.includes('/search') && url.includes('q=cat'))) throw Error('GIPHY did not receive the search term');
+    const gridFits = await picker.locator('.gif-grid').evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().right <= innerWidth + 1);
+    if (!gridFits) throw Error('The GIF picker scrolls horizontally or extends past the phone');
     await axe(s.p, 'GIPHY picker in dark mode on phone', A11Y_FOUND);
     mkdirSync('outputs', { recursive: true });
     await s.p.screenshot({ path: 'outputs/giphy-picker-dark-phone.png' });
@@ -2365,6 +2441,13 @@ const J = {
     await see(t, 'button:has-text("+ Task")', 'the new exam');
     await t.click('button:has-text("+ Task")');
     await t.waitForTimeout(800);
+    await t.setViewportSize({ width: 1280, height: 800 });
+    const lessonWidth = await t.locator('.lf').evaluate(el => ({ width: el.getBoundingClientRect().width, viewport: innerWidth }));
+    if (lessonWidth.width < lessonWidth.viewport - 64) throw Error(`The standalone lesson leaves unused side margins: ${lessonWidth.width}px in ${lessonWidth.viewport}px`);
+    await t.screenshot({ path: 'outputs/standalone-lesson-desktop.png' });
+    await t.setViewportSize({ width: 390, height: 780 });
+    if (await t.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('The standalone lesson overflows a phone screen');
+    await t.screenshot({ path: 'outputs/standalone-lesson-phone.png' });
     await t.close();
     await see(s.p, '.ma-card', 'the exam in the library');
     await s.p.click('.ma-card');

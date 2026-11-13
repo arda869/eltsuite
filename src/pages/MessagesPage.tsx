@@ -362,6 +362,21 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
     else write();
   };
   const [edKey, setEdKey] = useState(0);
+  const focusAfterSend = useRef(false);
+  useEffect(() => {
+    if (!focusAfterSend.current) return;
+    let frame = 0;
+    let tries = 0;
+    const focus = () => {
+      const editor = boxRef.current?.querySelector<HTMLElement>('.ProseMirror');
+      if (editor) {
+        editor.focus();
+        focusAfterSend.current = false;
+      } else if (++tries < 10) frame = requestAnimationFrame(focus);
+    };
+    frame = requestAnimationFrame(focus);
+    return () => cancelAnimationFrame(frame);
+  }, [edKey]);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [editing, setEditing] = useState<Msg | null>(null);
   const [busy, setBusy] = useState(false);
@@ -427,7 +442,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   };
   useEffect(() => () => setTyping(c.id, me.key, false), [c.id, me.key]);
   const typing = useTyping(c.id, me.key);
-  const send = async () => {
+  const send = async (keepFocus = false) => {
     if (isEmptyContent(content) || busy) return;
     const tasky = blocksIn(content) + questionIds(content).length;
     if (!elementsOk && tasky) return setErr('Your teacher has turned off task elements in messages. Take out the questions to send.');
@@ -439,6 +454,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
       // The box clears at once (the reply bar too); if sending fails, what was written comes back.
       const was = { content, replyTo, editing };
       const reply = replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null;
+      focusAfterSend.current = keepFocus;
       reset();
       try {
         if (was.editing) await editMsg(c, was.editing.id, m);
@@ -549,7 +565,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           if (cmd || (enterSends && !rich && !e.shiftKey && !menuOpen && (e.target as HTMLElement).classList.contains('ProseMirror'))) {
             e.preventDefault();
             e.stopPropagation();
-            void send();
+            void send(true);
           }
         }}
       >
@@ -593,7 +609,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
               </svg>
             </button>
-            <button type="button" className="chat-send" disabled={busy || isEmptyContent(content)} onClick={send} aria-label={editing ? 'Save' : 'Send'} data-tip={editing ? 'Save' : 'Send'}>
+            <button type="button" className="chat-send" disabled={busy || isEmptyContent(content)} onClick={() => void send()} aria-label={editing ? 'Save' : 'Send'} data-tip={editing ? 'Save' : 'Send'}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 {editing ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />}
               </svg>
@@ -1217,7 +1233,7 @@ const dayText = (t: number) => {
 function Ticks({ t }: { t: Tick }) {
   const label = t === 'read' ? 'Read' : t === 'got' ? 'Delivered' : 'Sent';
   return (
-    <span className={'bub-ticks t-' + t} aria-label={label} title={label}>
+    <span className={'bub-ticks t-' + t} role="img" aria-label={label} title={label}>
       <svg width={t === 'sent' ? 12 : 16} height="10" viewBox={t === 'sent' ? '0 0 12 10' : '0 0 16 10'} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M1 5.5 4 8.5 10.5 1.5" />
         {t !== 'sent' && <path d="M7.5 8 8 8.5 14.5 1.5" />}

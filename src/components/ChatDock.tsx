@@ -22,7 +22,7 @@ import { CallButtons } from './Rooms';
 // all of them can be minimised or closed at once. They stay as you move between apps.
 
 const KEY = 'll.dock2';
-export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number; coachContext?: CoachContext }; // id: a chat, 'teaching-coach', or 'list'
+export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number; size?: { w: number; h: number }; coachContext?: CoachContext }; // id: a chat, 'teaching-coach', or 'list'
 type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
@@ -55,11 +55,12 @@ export function fitDock() {
 // Open a chat (or the list) in a window; `min` puts it straight in a tab.
 export function dockOpen(id: string, min = false, coachContext?: CoachContext) {
   const st = read();
+  const size = st.wins.find((w) => w.id === id)?.size;
   const rest = st.wins.filter((w) => w.id !== id).map((w) => (min || w.min ? w : { ...w, max: false }));
   // At most a few open side by side: older ones fold into tabs.
   const open = rest.filter((w) => !w.min);
   const fold = min ? [] : open.slice(0, Math.max(0, open.length - (maxOpen() - 1))).map((w) => w.id);
-  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min, coachContext, at: Date.now() }] });
+  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min, size, coachContext, at: Date.now() }] });
 }
 // Kept for older callers: open the window with this chat.
 export function setDock(v: { open?: boolean; chat?: string; min?: boolean }) {
@@ -238,18 +239,7 @@ function DockTab({ me, c, id }: { me: string; c?: Chat; id: string }) {
   );
 }
 
-// Chat windows: one size for all, set by dragging the top left corner of any of them, remembered.
-const SIZE_KEY = 'll.dockSize';
-function applySize(w: number, h: number) {
-  document.documentElement.style.setProperty('--dock-w', w + 'px');
-  document.documentElement.style.setProperty('--dock-h', h + 'px');
-}
-try {
-  const v = JSON.parse(localStorage.getItem(SIZE_KEY) || 'null') as { w: number; h: number } | null;
-  if (v) applySize(v.w, v.h);
-} catch {
-  /* fine */
-}
+// Keep each chat window's size with that window, including while it is minimised.
 function sizeWins(e: React.PointerEvent) {
   e.preventDefault();
   const win = (e.currentTarget as HTMLElement).closest('.dock-win') as HTMLElement | null;
@@ -260,16 +250,13 @@ function sizeWins(e: React.PointerEvent) {
   let size = { w: r.width, h: r.height };
   const move = (ev: PointerEvent) => {
     size = { w: Math.round(Math.max(300, Math.min(window.innerWidth - 40, r.width + (x0 - ev.clientX)))), h: Math.round(Math.max(320, Math.min(window.innerHeight - 90, r.height + (y0 - ev.clientY)))) };
-    applySize(size.w, size.h);
+    win.style.setProperty('--dock-w', size.w + 'px');
+    win.style.setProperty('--dock-h', size.h + 'px');
   };
   const up = () => {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
-    try {
-      localStorage.setItem(SIZE_KEY, JSON.stringify(size));
-    } catch {
-      /* fine */
-    }
+    patch(win.dataset.win || '', { size });
   };
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
@@ -308,7 +295,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [w.max]);
   return (
-    <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+    <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title} style={w.size ? { '--dock-w': w.size.w + 'px', '--dock-h': w.size.h + 'px' } as React.CSSProperties : undefined}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
       <div className="dock-head">
         {coachOpen ? <span className="dock-face"><UiIcon name="message" size={18}/></span> : cur ? (

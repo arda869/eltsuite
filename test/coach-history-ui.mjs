@@ -33,7 +33,7 @@ try{
  await panel.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('');
  await p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).history.length===2);
  await panel.getByRole('button',{name:'New chat',exact:true}).click();await panel.getByRole('log').getByText(question,{exact:true}).waitFor({state:'hidden'});
- await panel.getByRole('button',{name:'History',exact:true}).click();await panel.getByRole('navigation',{name:'Saved coaching conversations'}).getByRole('button',{name:new RegExp(question.replace('?','\\?'))}).click();await panel.getByRole('log').getByText('Would a short demonstration help?',{exact:true}).waitFor();await panel.getByRole('button',{name:'New chat',exact:true}).waitFor({state:'visible'});
+ await panel.getByRole('button',{name:'History',exact:true}).click();await panel.getByRole('navigation',{name:'Saved coaching conversations'}).locator('.coach-history-open').filter({hasText:question}).click();await panel.getByRole('log').getByText('Would a short demonstration help?',{exact:true}).waitFor();await panel.getByRole('button',{name:'New chat',exact:true}).waitFor({state:'visible'});
  await panel.getByRole('button',{name:'Unpin Teacher’s Companion'}).click();assert.equal(await panel.count(),0);
  await p.evaluate(async demo=>{(await import('/src/components/ChatDock.tsx')).dockOpen('teaching-coach',false,{lessonContext:{classId:demo.classId,itemId:demo.itemId}});},demo);
  const dock=p.locator('.dock-win[data-win="teaching-coach"]');await dock.waitFor();

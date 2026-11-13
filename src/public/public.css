@@ -424,6 +424,7 @@
 /* Keep public sign-in contrast independent of signed-in app theme overrides. */
 .pub .pub-auth form .btn.primary:not(:disabled) { background: var(--accent-btn); color: var(--on-accent); border-color: var(--accent-btn); }
 .pub .pub-auth form .btn.primary:not(:disabled):hover { background: var(--accent-btn-hover); color: var(--on-accent); border-color: var(--accent-btn-hover); }
+.pub .pub-auth form .btn:not(.primary):not(.link):hover { background: var(--paper-soft); color: var(--ink); border-color: var(--ink); }
 
 /* ------------------------------------------------------------------ legal pages */
 .pub-legal p, .pub-legal li { line-height: 1.65; }

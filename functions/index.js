@@ -38,6 +38,7 @@ export { recordingLyrics, recordingSong, recordingSongResult, recordingSongLesso
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
 export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
 export { setSharedDocumentLink, openSharedDocumentLink, organisationDocumentLinksChanged } from './collab/link.js';
+export { manageCoachConversation } from './ai/coach-manage.js';
 const OWNER = 'ardanurioglu@gmail.com';
 
 async function isSuper(token) {
