@@ -15,7 +15,7 @@ type Idea={title:string;reason:string;direction:string;kind:'support'|'challenge
 type Result={ideas?:Idea[];entries?:{taskId:string;questionId:string;reason:string;key:Record<string,unknown>}[];issues?:string[];activity?:{title:string;instructions:string};native?:{content:JSONContent;key:AnswerKey;notes:string}};
 type Media={id:string;title:string;status:string;error?:string};
 type Reply={status?:string;result?:Result;media?:Media[];error?:string;applied?:boolean;taskId?:string;requestId?:string};
-type Pending={id:string;mode:Mode;step:'ideas'|'generate';scope:string;direction?:string;minutes?:number;selected?:Idea|null};
+type Pending={id:string;mode:Mode;step:'ideas'|'generate';scope:string;direction?:string;minutes?:number;selected?:Idea|null;includeImage?:boolean};
 const call=httpsCallable<Record<string,unknown>,Reply>(getFunctions(undefined,'us-central1'),'lessonAssistant',{timeout:420000});
 const descriptions:Record<Mode,string>={answers:'Fill missing answers without replacing your existing answer key.',differentiate:'Make a supported or more challenging version of this activity.',next:'Suggest a purposeful activity that builds on this lesson.',edit:'Ask AI to revise the selected activity’s text, instructions and questions; review before applying.'};
 const labels:Record<Mode,string>={edit:'Edit with AI',answers:'Fill in the answer key',differentiate:'Differentiate activity',next:'Suggest next activity'};
@@ -27,6 +27,7 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
  const storageKey=`lesson-tool:${classId}:${itemId}:${mode}`;
  const [pending,setPending]=useState<Pending|null>(()=>{try{return JSON.parse(localStorage.getItem(storageKey)??'null');}catch{return null;}});
  const [direction,setDirection]=useState(pending?.direction??''),[scope,setScope]=useState(pending?.scope??(mode==='answers'?'lesson':'activity')),[minutes,setMinutes]=useState(pending?.minutes??10);
+ const [includeImage,setIncludeImage]=useState(pending?.includeImage??false);
  const [result,setResult]=useState<Result|null>(null),[media,setMedia]=useState<Media[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [selected,setSelected]=useState<Idea|null>(pending?.selected??null);
  const lastAction=useRef<'ideas'|'generate'|'recover'|'apply'>('generate');
@@ -45,12 +46,12 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
   if(step==='generate'&&mode!=='answers'&&!selected&&!direction.trim()){setError('Choose an idea or describe the activity you want.');return;}
   setBusy(true);setError('');setResult(null);setMedia([]);
   if(mode==='next'&&step==='ideas'){
-   try{const r=(await call({action:'taskToolsIdeas',classId,itemId,minutes,direction})).data;if(r.status==='running'&&r.requestId)remember({id:r.requestId,mode,step,scope,direction,minutes,selected});accept(r);}
+   try{const r=(await call({action:'taskToolsIdeas',classId,itemId,minutes,direction})).data;if(r.status==='running'&&r.requestId)remember({id:r.requestId,mode,step,scope,direction,minutes,selected,includeImage});accept(r);}
    catch(e){setError(e instanceof Error?e.message:'Could not prepare ideas. Please try again.');}
    finally{setBusy(false);}return;
   }
-  const p:Pending={id:crypto.randomUUID(),mode,step,scope,direction,minutes,selected};remember(p);
-  try{accept((await call({action:'taskTools',classId,itemId,taskId:taskId??'',requestId:p.id,mode,step,scope,minutes,direction:[selected?.direction,direction].filter(Boolean).join('\n').slice(0,2500),variantLabel:selected?.kind==='challenge'?'Challenge':'Supported'})).data);}catch(e){try{const saved=(await call({action:'taskToolsStatus',classId,itemId,requestId:p.id})).data;accept(saved);if(saved.status==='running')setError('The request is still running. Use Check progress to check again.');}catch{setError('We could not confirm whether the draft finished. Your lesson is unchanged. Use Check progress to check before starting again.');}}finally{setBusy(false);}
+  const p:Pending={id:crypto.randomUUID(),mode,step,scope,direction,minutes,selected,includeImage};remember(p);
+  try{accept((await call({action:'taskTools',classId,itemId,taskId:taskId??'',requestId:p.id,mode,step,scope,minutes,includeImage:mode==='next'&&includeImage,direction:[selected?.direction,direction].filter(Boolean).join('\n').slice(0,2500),variantLabel:selected?.kind==='challenge'?'Challenge':'Supported'})).data);}catch(e){try{const saved=(await call({action:'taskToolsStatus',classId,itemId,requestId:p.id})).data;accept(saved);if(saved.status==='running')setError('The request is still running. Use Check progress to check again.');}catch{setError('We could not confirm whether the draft finished. Your lesson is unchanged. Use Check progress to check before starting again.');}}finally{setBusy(false);}
  };
  // Nothing is sent to the AI until the teacher presses a button: opening a tool only shows its form.
  const apply=async()=>{if(!pending||busy)return;lastAction.current='apply';setBusy(true);setError('');try{const r=(await call({action:'taskToolsApply',classId,itemId,requestId:pending.id})).data;if(r.applied){remember(null);onApplied(r.taskId??taskId??'');onClose();}}catch(e){setError(e instanceof Error?e.message:'Could not apply the draft.');}finally{setBusy(false);}};
@@ -69,6 +70,7 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
   <AiField label={mode==='answers'?'Anything the AI should know':'What would you like?'} optional={mode!=='edit'} hint={mode==='answers'?'Rules for marking, spellings to accept, how long model answers should be.':result?.ideas?'Pick an option above, or describe your own.':'Describe the activity in a sentence, or ask for options.'}>
    <textarea rows={2} maxLength={2000} value={direction} disabled={busy||!!pending} onChange={e=>setDirection(e.target.value)} placeholder={examples[0]}/>
   </AiField>
+  {mode==='next'&&<label className="lesson-tool-image-choice"><input type="checkbox" checked={includeImage} disabled={busy||!!pending} onChange={e=>setIncludeImage(e.target.checked)}/><span>Add a picture for learners to use <small>AI can use a suitable picture from your Resources or prepare a new one. You’ll review it before adding the activity.</small></span></label>}
   <AiExamples examples={examples} disabled={busy||!!pending} onPick={setDirection}/>
   <AiMore summary="Options">
    {mode==='answers'&&<AiField label="Answer-key scope"><select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></AiField>}
