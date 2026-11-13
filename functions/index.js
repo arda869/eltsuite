@@ -37,6 +37,7 @@ export { recordingDialogue } from './speech/dialogue.js';
 export { recordingLyrics, recordingSong, recordingSongResult, recordingSongLesson } from './songs/index.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
 export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
+export { setSharedDocumentLink, openSharedDocumentLink, organisationDocumentLinksChanged } from './collab/link.js';
 const OWNER = 'ardanurioglu@gmail.com';
 
 async function isSuper(token) {

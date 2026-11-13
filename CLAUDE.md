@@ -123,3 +123,21 @@ Import (`src/materials/MaterialImport.tsx`, `functions/ai/materials.js`) only ev
 element a teacher can add by hand can be made by import: `functions/ai/import-types.js` lists the kinds,
 `functions/ai/import-elements.js` turns each into editor content, and `functions/test/import-elements.mjs`
 checks that every editor element maps to an import kind. Add a new editor element there too.
+
+## Collab document links
+
+The owner chooses a view-only link audience in the Collab document sharing dialog. The link token is
+made and checked by `functions/collab/link.js`, never by the browser. The callable grants a visitor
+`linkOnly` membership, which the existing Firestore and Realtime Database access rules then use.
+Turning the link off or changing its audience rotates the token and removes only link-only visitors;
+explicit person shares remain. Organisation admins set the maximum audience with `policy.docLinks`
+in Rules; the existing `outside` rule is the fallback. If the effective audience or teacher roster changes,
+the organisation trigger rechecks links and revokes access that no longer fits. A link for “anyone”
+currently means anyone signed in to ELT Suite; the sharing screen says this plainly.
+
+## GIF search
+
+Messages uses GIPHY's Web SDK fetch API and requests G-rated GIFs. The super admin adds the public Web
+SDK key in the GIF picker; it is stored in `admin/gif.giphyKey` and checked before saving. An old
+Tenor key, if present, stays in use until the GIPHY key is added. The picker also accepts a GIF
+from the teacher's device when no key is set. Keep GIPHY attribution visible.

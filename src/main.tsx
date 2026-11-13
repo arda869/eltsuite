@@ -11,7 +11,7 @@ import { startOutsideClose } from './lib/outsideClose';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
 import { ComputerOnly } from './components/ComputerOnly';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -127,9 +127,14 @@ const Boot = () => <Loader full label="" />;
 
 function Home() {
   const { user, profile, ready } = useAuth();
+  const [after] = useState(() => { try { return sessionStorage.getItem(AFTER_SIGN_IN) ?? ''; } catch { return ''; } });
+  useEffect(() => { if (ready && user && after) { try { sessionStorage.removeItem(AFTER_SIGN_IN); } catch { /* This browser may block session storage. */ } } }, [ready, user, after]);
   if (!ready) return <Boot />;
   // learn.eltsuite.com: the learners' home page, to join a class.
   if (!user) return onLearnSite() ? <LearnerJoin home /> : new URLSearchParams(window.location.search).has('code') ? <SignIn /> : <PublicHome />;
+  // A document link opened while signed out returns here after sign-in. Keep the
+  // token in this tab only, including when the visitor is a learner.
+  if (/^\/doc\/[A-Za-z0-9_-]{1,120}\?share=[A-Za-z0-9_-]{30,100}$/.test(after)) return <Navigate to={after} replace />;
   // Teachers preview learners in a separate tab on eltsuite.com. Keep that tab in
   // the learner home after the preview signs in; ordinary learner sessions still
   // use learn.eltsuite.com.
@@ -138,13 +143,6 @@ function Home() {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
   }
   // Back to a shared link opened before signing in.
-  let after = '';
-  try {
-    after = sessionStorage.getItem(AFTER_SIGN_IN) ?? '';
-    if (after) sessionStorage.removeItem(AFTER_SIGN_IN);
-  } catch {
-    /* fine */
-  }
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
   if (profile?.onboarding === 'new') return <Navigate to="/welcome" replace />;
   return <HomePage />;
@@ -192,7 +190,9 @@ function TeacherOnly({ children }: { children: JSX.Element }) {
 
 function SignedIn({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
+  const location = useLocation();
   if (!ready || (user && !profile)) return <Boot />;
+  if (!user && /^\/doc\/[A-Za-z0-9_-]{1,120}$/.test(location.pathname) && new URLSearchParams(location.search).has('share')) return <div className="dp-msg"><h1>Sign in to open this document</h1><p>People with this link can view the document after signing in to ELT Suite.</p><Link to="/signin" className="btn primary" onClick={() => { try { sessionStorage.setItem(AFTER_SIGN_IN, location.pathname + location.search); } catch { /* Sign-in still works without storage. */ } }}>Sign in</Link></div>;
   return user ? children : <PublicError restricted />;
 }
 

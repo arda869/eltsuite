@@ -63,6 +63,7 @@ export function classDefaults(p?: OrgPolicy | null) {
   return { ...(n.length < NAME_CHOICES.length ? { profile: { names: n.includes('full') ? 'full' : n[0] } } : {}), ...(e.length < EMAIL_CHOICES.length ? { accounts: { email: e.includes('optional') ? 'optional' : e[0] } } : {}) };
 }
 export type OrgPolicy = {
+  docLinks?: 'anyone' | 'org'; // maximum audience for links to collaborative documents
   levels?: { cefr?: boolean; custom?: string[] }; // the levels classes can have: CEFR, the organisation's own, or both
   createClasses?: boolean; // false: admins make the classes for their teachers
   seeEmails?: boolean; // whether teachers see their learners' emails

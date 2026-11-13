@@ -1,6 +1,7 @@
 async function openPlanning(p){const details=p.locator('.lesson-support-tools');if(await details.getAttribute('open')===null)await details.locator(':scope > summary').click();}
 async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
+import {documentSharing} from './document-sharing.mjs';
 import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
@@ -186,6 +187,7 @@ const J = {
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
   'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: text-only Teacher’s Companion':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday latest: highlight dialogue authoring, save and learner feedback':async b=>{const s=await session(b);await highlightJourney(s,BASE,axe,A11Y_FOUND);return s;},
@@ -2138,6 +2140,40 @@ const J = {
     if(!(await s.p.getByRole('link',{name:'Settings',exact:true}).count()))throw Error('Missing Companion settings action.');
     if(await s.p.getByText('The page name is available; its content is not automatically shared.').count())throw Error('The old page-context warning is still visible.');
     await axe(s.p, 'Messages', A11Y_FOUND);
+    return s;
+  },
+  'GIF picker: GIPHY search and a sent picture in dark mode': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(async () => {
+      const { doc, setDoc } = await import('/test/mock/firestore.ts');
+      await setDoc(doc({}, 'admin', 'gif'), { giphyKey: 'test-giphy-web-sdk-key' });
+      localStorage.setItem('ll.theme', 'dark');
+    });
+    const calls = [];
+    await s.p.route('https://api.giphy.com/**', async route => {
+      const url = new URL(route.request().url());
+      calls.push(url.pathname + url.search);
+      if (url.searchParams.get('rating') !== 'g') throw Error('GIF search did not request G-rated results');
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'cat-one', title: 'Happy cat', alt_text: 'Happy cat', images: { downsized: { url: 'https://media.giphy.com/media/cat-one/giphy.gif' }, fixed_width: { url: 'https://media.giphy.com/media/cat-one/200.gif', width: 200, height: 150 } } }], meta: { status: 200, msg: 'OK', response_id: 'test' }, pagination: { count: 1, total_count: 1, offset: 0 } }) });
+    });
+    await s.p.route('https://media.giphy.com/**', route => route.fulfill({ status: 200, contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64') }));
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(`${BASE}/messages`);
+    await s.p.getByRole('searchbox', { name: 'Search conversations and people' }).fill('Mia');
+    await s.p.getByRole('option', { name: /Mia Chan/ }).click();
+    await s.p.getByRole('button', { name: 'GIF', exact: true }).click();
+    const picker = s.p.getByRole('dialog', { name: 'GIFs' });
+    await picker.getByRole('button', { name: 'Happy cat' }).waitFor();
+    await picker.getByText('Powered by GIPHY').waitFor();
+    await picker.getByRole('textbox', { name: 'Search for a GIF' }).fill('cat');
+    await s.p.waitForFunction(() => document.querySelector('.gif-q')?.value === 'cat');
+    await picker.getByRole('button', { name: 'Happy cat' }).waitFor();
+    if (!calls.some(url => url.includes('/search') && url.includes('q=cat'))) throw Error('GIPHY did not receive the search term');
+    await axe(s.p, 'GIPHY picker in dark mode on phone', A11Y_FOUND);
+    mkdirSync('outputs', { recursive: true });
+    await s.p.screenshot({ path: 'outputs/giphy-picker-dark-phone.png' });
+    await picker.getByRole('button', { name: 'Happy cat' }).click();
+    await s.p.waitForFunction(() => Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(m => m?.text === 'GIF' && JSON.stringify(m.content).includes('media.giphy.com/media/cat-one/giphy.gif')));
     return s;
   },
   'Timetable: a class added, and Rooms': async (b) => {

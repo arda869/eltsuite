@@ -3,7 +3,8 @@ import { permissionUid } from './shareIdentity';
 import { noteFeature } from '../discovery/store';
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { app, db } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { get } from 'firebase/database';
 import { collabRef } from '../collab/provider';
 import { newId } from './tasks';
@@ -36,8 +37,9 @@ export type SharedDoc = {
   kind: DocKind;
   designType?: 'image' | 'storyboard';
   docKey: string;
-  members: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner' }>;
+  members: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner'; linkOnly?: boolean }>;
   memberIds: string[];
+  link?: { mode: 'org' | 'anyone'; token: string; orgId: string | null; orgName: string; updatedAt: number } | null;
   classes?: Record<string, { role: DocRole; name: string }>;
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
@@ -98,7 +100,7 @@ export function useMyDocs(uid?: string, includeDeleted = false) {
   return useMemo(() => ({ mine: includeDeleted ? mine : mine?.filter((d) => !d.deletedAt && ready(d)) ?? null, withMe: withMe?.filter((d) => !d.deletedAt && ready(d)) ?? null }), [mine, withMe, includeDeleted]);
 }
 
-export function useSharedDoc(id?: string) {
+export function useSharedDoc(id?: string, retry = 0) {
   const [d, setD] = useState<SharedDoc | null | undefined>(undefined);
   useEffect(() => {
     if (!id) return;
@@ -107,9 +109,19 @@ export function useSharedDoc(id?: string) {
       (s) => setD(s.exists() ? ({ id: s.id, ...(s.data() as Omit<SharedDoc, 'id'>) } as SharedDoc) : null),
       () => setD(null),
     );
-  }, [id]);
+  }, [id, retry]);
   return d;
 }
+
+const links = getFunctions(app, 'us-central1');
+export const setDocumentLink = async (docId: string, mode: 'off' | 'org' | 'anyone') => {
+  const result = await httpsCallable<{ docId: string; mode: string }, { link: SharedDoc['link'] }>(links, 'setSharedDocumentLink')({ docId, mode });
+  return result.data.link;
+};
+export const openDocumentLink = async (docId: string, token: string) => {
+  await httpsCallable<{ docId: string; token: string }, { opened: boolean }>(links, 'openSharedDocumentLink')({ docId, token });
+};
+export const documentAccessLink = (d: SharedDoc) => d.link?.token ? `${docLink(d.id)}?share=${encodeURIComponent(d.link.token)}` : '';
 
 export const roleOf = (d: SharedDoc, uid: string): DocRole | null => (d.owner === uid ? 'edit' : d.members?.[uid]?.role ?? null);
 
@@ -135,7 +147,7 @@ export async function shareWith(d: SharedDoc, people: Person[], role: DocRole) {
   patch.memberIds = [...new Set([...(d.memberIds ?? []).filter((id) => !people.some((p, i) => p.role === 'learner' && p.key === id && id !== uids[i])), ...uids])];
   await updateDoc(doc(col, d.id), patch);
 }
-export const setMemberRole = (d: SharedDoc, uid: string, role: DocRole) => updateDoc(doc(col, d.id), { [`members.${uid}.role`]: role });
+export const setMemberRole = (d: SharedDoc, uid: string, role: DocRole) => updateDoc(doc(col, d.id), { [`members.${uid}.role`]: role, ...(role !== 'view' ? { [`members.${uid}.linkOnly`]: deleteField() } : {}) });
 export const unshare = (d: SharedDoc, uid: string) => updateDoc(doc(col, d.id), { [`members.${uid}`]: deleteField(), memberIds: (d.memberIds ?? []).filter((x) => x !== uid) });
 export const noteClass = (d: SharedDoc, classId: string, name: string, role: DocRole) => updateDoc(doc(col, d.id), { [`classes.${classId}`]: { role, name }, updatedAt: serverTimestamp() });
 

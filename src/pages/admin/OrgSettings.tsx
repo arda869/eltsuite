@@ -56,6 +56,9 @@ export function OrgRules({ d }: { d: OrgData }) {
         </Setting>
       </Panel>
       <Panel title="Teachers">
+        <Setting title="Document links" about={`Choose whether teachers can make a document link for anyone who signs in, or only for teachers in ${org.name}. Teachers can always choose a smaller audience for each document.`}>
+          <Select value={p.docLinks ?? (org.outside === 'org' ? 'org' : 'anyone')} options={[{ v: 'org', label: `Only teachers in ${org.name}` }, { v: 'anyone', label: 'Anyone with the link' }]} onChange={(v) => set({ docLinks: v as 'org' | 'anyone' }, `Document links: ${v === 'org' ? `only ${org.name}` : 'anyone'}`)} label="Who can use document links" />
+        </Setting>
         <Setting title="Colleagues outside the organisation" about={`Teachers in ${org.name} are always colleagues of each other. This decides whether they can also add others.`}>
           <Select value={org.outside ?? 'anyone'} options={[{ v: 'anyone', label: 'Allowed' }, { v: 'org', label: 'Not allowed' }]} onChange={(v) => void saveOutside(org, v as 'anyone' | 'org').then(() => d.note('Changed a rule', `Colleagues outside: ${v === 'org' ? 'not allowed' : 'allowed'}`))} label="Colleagues outside the organisation" />
         </Setting>
