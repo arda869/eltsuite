@@ -15,7 +15,6 @@ export function organisationInvitation(d, id, existing) {
   const features = existing ? [
     `The teachers at ${org} become your colleagues, so sharing lessons and folders with them takes one step.`,
     `You get ${org}’s shared folders and its look on your worksheets.`,
-    'Your account, classes, lessons and files stay yours.',
   ] : benefits();
   const link = `${SITE}/invite/${encodeURIComponent(id)}`;
   const label = existing ? 'See the invitation' : 'Create my account';

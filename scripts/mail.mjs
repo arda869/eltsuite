@@ -356,7 +356,7 @@ if (R) {
             L.callout(facts.join('<br>')) +
             (!cancel && s.online && joinUrl ? L.button(joinUrl, 'Join the meeting') + L.small(`Or open this link: ${L.esc(joinUrl)}`) : '') +
             (!cancel && s.notes ? L.p(L.esc(s.notes).replace(/\n/g, '<br>')) : '') +
-            L.small(cancel ? 'Nothing else to do.' : 'The calendar invitation is attached. Many email apps add it to your calendar for you; if yours doesn’t, open the attachment.'),
+            L.small(cancel ? 'Nothing else to do.' : 'The calendar invitation is attached. If it doesn’t appear in your calendar, open the attachment to add it.'),
         );
         await mail.sendMail({
           from: FROM,
