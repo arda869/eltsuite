@@ -68,13 +68,21 @@ export const sendUnreadMessageSummaries = onSchedule({
     }
     if (!email) continue;
     const count = Math.max(total, waiting.length);
-    await mail.sendMail({
-      from,
-      to: email,
-      subject: `${count} unread ${count === 1 ? 'message' : 'messages'} on ELT Suite`,
-      html: frame({ title: 'Messages waiting for you', body: pad(h1('Messages waiting for you') + small('New messages have been waiting unread.') + parts.join('')), footer: `Change or turn off these emails in <a href="${learner ? learn : SITE}/settings">Settings</a>.` }),
-    });
-    for (const chat of waiting) await chat.ref.update({ [`digested.${uid}`]: chat.data().lastAt });
+    try {
+      await mail.sendMail({
+        from,
+        to: email,
+        subject: `${count} unread ${count === 1 ? 'message' : 'messages'} on ELT Suite`,
+        html: frame({ title: 'Messages waiting for you', body: pad(h1('Messages waiting for you') + small('New messages have been waiting unread.') + parts.join('')), footer: `Change or turn off these emails in <a href="${learner ? learn : SITE}/settings">Settings</a>.` }),
+      });
+    } catch (error) {
+      console.error('Could not send one unread-message summary.', error?.code ?? 'unknown');
+      continue;
+    }
+    for (const chat of waiting) {
+      try { await chat.ref.update({ [`digested.${uid}`]: chat.data().lastAt }); }
+      catch { console.error('Could not record one sent unread-message summary.'); }
+    }
     console.log(`Sent a summary of ${waiting.length} chats.`);
   }
 });
