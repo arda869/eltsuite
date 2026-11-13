@@ -10,6 +10,7 @@ for (const existing of [false, true]) {
   assert.ok(mail.text.includes('Hello Mina,'));
   assert.ok(mail.subject.includes(existing ? 'would like you to join them' : 'your place at'));
   assert.ok(mail.html.includes(existing ? 'See the invitation' : 'Create my account'));
+  if (existing) assert.ok(!mail.text.includes('Your account, classes, lessons and files stay yours.'));
 }
 const malicious = organisationInvitation({ ...d, name: '<img src=x>', orgName: '<script>alert(1)</script>', email: '\" onclick=\"alert(1)' }, 'safe', false);
 assert.ok(!malicious.html.includes('<script>'));
