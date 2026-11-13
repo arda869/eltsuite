@@ -35,7 +35,7 @@ async function provision(user: User): Promise<Profile | null> {
       // Recheck inside the transaction: another tab may already have completed setup.
       const current = await tx.get(ref);
       if (current.exists()) return profileOf(current.data());
-      const p = { role: 'teacher' as const, displayName, email: user.email || '', onboarding: 'new' as const, createdAt: serverTimestamp(), ...inviteFields() };
+      const p = { role: 'teacher' as const, displayName, email: user.email || '', onboarding: 'new' as const, createdAt: serverTimestamp(), msgPrefs: { email: true, after: 15 }, ...inviteFields() };
       if (typed) {
         const code = await tx.get(doc(db, 'inviteCodes', typed));
         if (!code.exists()) throw new NotInvited('This invitation code is no longer available.');

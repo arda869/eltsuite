@@ -5,6 +5,10 @@ on:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
+concurrency:
+  group: notification-digest
+  cancel-in-progress: false
+
 jobs:
   digest:
     runs-on: ubuntu-latest
@@ -34,6 +38,6 @@ jobs:
           node video.mjs || echo "Video rooms could not be made this time."
           push_status=0
           node push.mjs || push_status=$?
-          if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; node digest.mjs; else echo "No SMTP_URL secret yet: no emails."; fi
+          if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; else echo "No SMTP_URL secret yet: no class emails."; fi
           rm -f "$RUNNER_TEMP/sa.json"
           exit "$push_status"
