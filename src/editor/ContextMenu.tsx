@@ -154,6 +154,17 @@ export function EditorContextMenu({
     f();
   };
   const items: Item[] = [
+    { label: 'Cut', hint: keyLabel('Mod+X'), run: run(cut), show: anything },
+    { label: 'Copy', hint: keyLabel('Mod+C'), run: run(copy), show: anything },
+    { label: 'Paste', hint: keyLabel('Mod+V'), run: run(paste) },
+    { label: 'Delete', run: run(() => editor.chain().focus().deleteSelection().run()), show: anything, danger: isObject },
+    { label: 'Select all', hint: keyLabel('Mod+A'), run: run(() => editor.chain().focus().selectAll().run()) },
+    'sep',
+    { label: 'Bold', run: run(() => editor.chain().focus().toggleBold().run()), show: has },
+    { label: 'Italic', run: run(() => editor.chain().focus().toggleItalic().run()), show: has },
+    { label: 'Underline', run: run(() => editor.chain().focus().toggleUnderline().run()), show: has },
+    { label: 'Strikethrough', run: run(() => editor.chain().focus().toggleStrike().run()), show: has },
+    'sep',
     { label: editor.isActive('definition') ? 'Edit definition' : 'Add a definition', hint: short, run: run(onDefinition), show: has || editor.isActive('definition') },
     { label: editor.isActive('lessonLink') || editor.isActive('link') ? 'Change link' : linkLabel, run: run(onLink), show: has || editor.isActive('lessonLink') || editor.isActive('link') },
     { label: 'Add to the class notebook', hint: short, run: run(() => actions.notebook?.(text, editor.state.doc.textBetween(editor.state.selection.$from.start(), editor.state.selection.$from.end(), ' '))), show: has && !!actions.notebook },
@@ -166,16 +177,6 @@ export function EditorContextMenu({
     { label: 'Make it multiple choice', run: run(() => actions.choice?.(text)), show: has && !!actions.choice },
     'sep',
     ...extra.map((x) => ({ ...x, run: run(x.run) })),
-    'sep',
-    { label: 'Bold', run: run(() => editor.chain().focus().toggleBold().run()), show: has },
-    { label: 'Italic', run: run(() => editor.chain().focus().toggleItalic().run()), show: has },
-    { label: 'Underline', run: run(() => editor.chain().focus().toggleUnderline().run()), show: has },
-    { label: 'Strikethrough', run: run(() => editor.chain().focus().toggleStrike().run()), show: has },
-    'sep',
-    { label: 'Cut', hint: keyLabel('Mod+X'), run: run(cut), show: anything },
-    { label: 'Copy', hint: keyLabel('Mod+C'), run: run(copy), show: anything },
-    { label: 'Paste', hint: keyLabel('Mod+V'), run: run(paste) },
-    { label: isObject ? 'Delete' : 'Delete', run: run(() => editor.chain().focus().deleteSelection().run()), show: anything, danger: isObject },
     'sep',
     { label: 'Remove definition', run: run(() => editor.chain().focus().extendMarkRange('definition').unsetMark('definition').run()), show: editor.isActive('definition'), danger: true },
     { label: 'Remove link', run: run(() => editor.chain().focus().extendMarkRange('lessonLink').unsetMark('lessonLink').run()), show: editor.isActive('lessonLink'), danger: true },
@@ -206,7 +207,7 @@ export function EditorContextMenu({
       )}
       {clean.map((i, k) =>
         i === 'sep' ? (
-          <span key={k} className="ctx-sep" />
+          <span key={k} className="ctx-sep" role="separator" />
         ) : (
           <button key={k} type="button" role="menuitem" className={'ctx-item' + (i.danger ? ' danger' : '')} onClick={i.run}>
             <span>{i.label}</span>
