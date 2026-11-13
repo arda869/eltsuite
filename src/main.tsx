@@ -3,7 +3,6 @@ import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
-import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
 import { startViewport, stopPinchZoom } from './lib/viewport';
 import { startAutogrow } from './lib/autogrow';
@@ -208,7 +207,6 @@ startViewport();
 stopPinchZoom();
 startAutogrow();
 startOutsideClose();
-startTilt();
 watchChunkErrors();
 
 createRoot(document.getElementById('root')!).render(
