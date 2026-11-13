@@ -19,6 +19,8 @@ export const sendUnreadMessageSummaries = onSchedule({
   if (!smtp) throw new Error('SMTP_URL is not bound to the scheduled email function.');
   const db = getFirestore();
   const mail = nodemailer.createTransport(smtp);
+  await mail.verify();
+  console.log('Scheduled email transport authenticated.');
   const from = process.env.MAIL_FROM || FALLBACK_FROM;
   const learn = await fetch('https://learn.eltsuite.com/version.json', { signal: AbortSignal.timeout(8000) })
     .then((r) => (r.ok ? 'https://learn.eltsuite.com' : SITE), () => SITE);
