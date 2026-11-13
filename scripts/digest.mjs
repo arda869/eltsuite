@@ -37,18 +37,6 @@ for (const u of users.docs) {
     return d.last && d.last.by !== uid && (d.seen?.[uid] ?? 0) < d.lastAt && now - d.lastAt >= after && (d.digested?.[uid] ?? 0) < d.lastAt;
   });
   if (!waiting.length) continue;
-  let email = String(u.data().contactEmail ?? '');
-  if (!email && !learner) {
-    try {
-      email = (await getAuth().getUser(u.id)).email ?? '';
-    } catch {
-      continue;
-    }
-  }
-  if (!email) continue;
-  // An account can opt out while this job is collecting unread messages.
-  const latest = await u.ref.get();
-  if (latest.data()?.msgPrefs?.email !== true) continue;
   const parts = [];
   let total = 0;
   for (const c of waiting) {
@@ -65,6 +53,18 @@ for (const u of users.docs) {
     </div>`);
   }
   const n = Math.max(total, waiting.length);
+  // Recheck after collecting messages so an opt-out or removed address takes effect before send.
+  const latest = await u.ref.get();
+  if (latest.data()?.msgPrefs?.email !== true) continue;
+  let email = String(latest.data()?.contactEmail ?? '');
+  if (!email && !learner) {
+    try {
+      email = (await getAuth().getUser(u.id)).email ?? '';
+    } catch {
+      continue;
+    }
+  }
+  if (!email) continue;
   await mail.sendMail({
     from: FROM,
     to: email,
