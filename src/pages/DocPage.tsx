@@ -20,7 +20,8 @@ import { CITE_STYLES, type CiteStyle } from '../lib/cite';
 import { Select, NSelect } from '../components/Select';
 import { doc as fsDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ROLES, rolesFor, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
+import { ROLES, rolesFor, docLink, documentAccessLink, openDocumentLink, setDocumentLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
+import { useMyOrg } from '../lib/admin';
 import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
@@ -51,8 +52,23 @@ export function DocPage() {
   const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
   const [setOpen, setSetOpen] = useState(false);
   const { user, profile } = useAuth();
-  const d = useSharedDoc(id || undefined);
+  const shareToken = qs.get('share') ?? '';
+  const [linkRetry, setLinkRetry] = useState(0);
+  const [linkState, setLinkState] = useState<'idle' | 'opening' | 'ready' | 'error'>('idle');
+  const [linkError, setLinkError] = useState('');
+  const d = useSharedDoc(id || undefined, linkRetry);
   const uid = user?.uid ?? auth.currentUser?.uid ?? '';
+  useEffect(() => {
+    if (!id || !shareToken || !uid) return;
+    let current = true;
+    setLinkState('opening');
+    void openDocumentLink(id, shareToken).then(() => {
+      if (current) { setLinkRetry((v) => v + 1); setLinkState('ready'); }
+    }).catch((e) => {
+      if (current) { setLinkError(String(e?.message || 'This link could not be opened.')); setLinkState('error'); }
+    });
+    return () => { current = false; };
+  }, [id, shareToken, uid]);
   const name = (profile?.role === 'learner' ? profile.displayName : user?.displayName || 'Teacher').split(' ')[0];
   const [sharing, setSharing] = useState(false);
   const [title, setTitle] = useState('');
@@ -95,6 +111,8 @@ export function DocPage() {
   }, [d, role]);
 
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
+  if (shareToken && (linkState === 'idle' || linkState === 'opening')) return <div className="dp-msg">Opening shared document…</div>;
+  if (shareToken && linkState === 'error' && !role) return <div className="dp-msg">{linkError}<Link to="/">Back to ELT Suite</Link></div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && d && startN && start === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && d?.deletedAt) return <div className="dp-msg">This file is in the recycle bin.<Link to="/archive?show=bin">Open Resources</Link></div>;
@@ -140,12 +158,12 @@ export function DocPage() {
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
-            <button type="button" className="btn primary dp-share" data-shared={others > 0} onClick={() => setSharing(true)}>
-              <UiIcon name={others ? 'groups' : 'lock'} size={15} /> Share
+            <button type="button" className="btn primary dp-share" data-shared={others > 0 || !!d.link} onClick={() => setSharing(true)}>
+              <UiIcon name={others || d.link ? 'groups' : 'lock'} size={15} /> Share
             </button>
           )}
           {d && (
-            <button type="button" className="btn small-btn" aria-label="Copy link" onClick={() => void copyText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
+            <button type="button" className="btn small-btn" aria-label="Copy link" onClick={() => void copyText(teacher && d.link ? documentAccessLink(d) : docLink(d.id))} data-tip={teacher && d.link ? 'Copy the link with the access you chose' : 'Only people it’s shared with can open it'}>
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
@@ -165,31 +183,67 @@ export function DocPage() {
 // Sharing: people and what each can do, with a chat message that carries the link.
 export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void }) {
   const dir = useDirectory();
+  const org = useMyOrg();
+  const live = useSharedDoc(d.id) ?? d;
+  const orgOnly = live.kind === 'doc' && !!org && (org.outside === 'org' || org.policy?.docLinks === 'org');
+  const allowedTeacherIds = orgOnly ? new Set(Object.keys(org.teachers ?? {})) : undefined;
   return (
     <SharePeople
-      roles={rolesFor(d.kind)}
-      teachersOnly={!['doc', 'slides', 'pdf', 'file', 'design'].includes(d.kind)}
+      roles={rolesFor(live.kind)}
+      teachersOnly={!['doc', 'slides', 'pdf', 'file', 'design'].includes(live.kind)}
       title="Share document"
-      itemName={d.title}
-      ownerId={d.owner}
-      ownerName={d.ownerName}
-      members={d.members ?? {}}
-      extra={Object.entries(d.classes ?? {}).map(([k, c]) => ({ k, name: c.name, about: `Whole class, in a lesson · ${ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}` }))}
+      itemName={live.title}
+      ownerId={live.owner}
+      ownerName={live.ownerName}
+      members={live.members ?? {}}
+      allowedTeacherIds={allowedTeacherIds}
+      extra={Object.entries(live.classes ?? {}).map(([k, c]) => ({ k, name: c.name, about: `Whole class, in a lesson · ${ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}` }))}
+      accessPanel={live.kind === 'doc' ? <DocumentLinkAccess d={live} org={org} /> : undefined}
       onShare={async (people, role, tell, note) => {
-        await shareWith(d, people, role);
+        if (allowedTeacherIds && people.some((p) => p.role === 'teacher' && !allowedTeacherIds.has(p.authUid || p.key))) throw new Error('Your organisation only allows sharing this document with its teachers.');
+        await shareWith(live, people, role);
         if (tell && dir) {
-          try { await sendDocInChat(d, dir.me, people, note); }
+          try { await sendDocInChat(live, dir.me, people, note); }
           catch (e) { console.error('Document access was granted, but the chat notification failed', e); return 'The document is shared, but we couldn’t send the message with its link. You can copy the link and send it yourself.'; }
         }
       }}
-      onRole={(k, r) => void setMemberRole(d, k, r)}
-      onRemove={(k) => void unshare(d, k)}
+      onRole={(k, r) => void setMemberRole(live, k, r)}
+      onRemove={(k) => void unshare(live, k)}
       onClose={onClose}
     />
   );
 }
 
-export function SharePeople({ title, itemName, ownerId, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; itemName?: string; ownerId?: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void | string>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+function DocumentLinkAccess({ d, org }: { d: SharedDoc; org: ReturnType<typeof useMyOrg> }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const inOrg = !!org?.teachers?.[auth.currentUser?.uid || ''];
+  const restricted = !!org && (org.policy?.docLinks === 'org' || (!org.policy?.docLinks && org.outside === 'org'));
+  const current = d.link?.mode ?? 'off';
+  const options: { mode: 'off' | 'org' | 'anyone'; label: string; about: string }[] = [
+    { mode: 'off', label: 'Only people added above', about: 'The link does not give anyone else access.' },
+    ...(org && inOrg ? [{ mode: 'org' as const, label: `Only in ${org.name}`, about: `Teachers in ${org.name} with the link can view.` }] : []),
+    ...(!restricted ? [{ mode: 'anyone' as const, label: 'Anyone with the link', about: 'Anyone signed in to ELT Suite with the link can view.' }] : []),
+  ];
+  const change = async (mode: 'off' | 'org' | 'anyone') => {
+    if (busy || mode === current) return;
+    setBusy(true); setMessage('');
+    try { await setDocumentLink(d.id, mode); setMessage(mode === 'off' ? 'Link access turned off.' : 'Link access updated.'); }
+    catch (e) { setMessage(String((e as Error)?.message || 'Could not change link access.')); }
+    finally { setBusy(false); }
+  };
+  return <section className="dp-link-access" aria-label="Link access">
+    <h3>Link access</h3>
+    <p className="hint">Choose who can open this document with its link. They can view it; people you add above keep their own access.</p>
+    <div className="dp-link-options" role="radiogroup" aria-label="Who can open this link">
+      {options.map(({ mode, label, about }) => <button key={mode} type="button" role="radio" aria-checked={current === mode} className={current === mode ? 'on' : ''} disabled={busy} onClick={() => void change(mode)}><b>{label}</b><span className="hint">{about}</span></button>)}
+    </div>
+    {current !== 'off' && d.link?.token && <div className="dp-link-copy"><input readOnly aria-label="Document sharing link" value={documentAccessLink(d)} onFocus={e => e.target.select()} /><button className="btn small-btn" type="button" onClick={() => void copyText(documentAccessLink(d)).then(() => setMessage('Link copied.'))}>Copy link</button></div>}
+    {message && <p role="status" className="hint">{message}</p>}
+  </section>;
+}
+
+export function SharePeople({ title, itemName, ownerId, ownerName, members, extra = [], accessPanel, allowedTeacherIds, onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; itemName?: string; ownerId?: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; accessPanel?: React.ReactNode; allowedTeacherIds?: Set<string>; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void | string>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -200,9 +254,9 @@ export function SharePeople({ title, itemName, ownerId, ownerName, members, extr
   const [done, setDone] = useState('');
   const people = useMemo(() => {
     const all = new Map<string, Person & { where: string }>();
-    for (const g of dir?.groups ?? []) for (const p of g.people) if (p.key !== dir?.me.key && !all.has(p.key) && (!teachersOnly || p.role === 'teacher')) all.set(p.key, { ...p, where: g.label });
+    for (const g of dir?.groups ?? []) for (const p of g.people) if (p.key !== dir?.me.key && !all.has(p.key) && (!teachersOnly || p.role === 'teacher') && (p.role !== 'teacher' || !allowedTeacherIds || allowedTeacherIds.has(p.authUid || p.key))) all.set(p.key, { ...p, where: g.label });
     return [...all.values()];
-  }, [dir, teachersOnly]);
+  }, [dir, teachersOnly, allowedTeacherIds]);
   const s = q.trim().toLowerCase();
   const found = people.filter((p) => !members?.[p.authUid || p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
   const faceId = (memberId: string) => people.find((p) => p.authUid === memberId || p.key === memberId)?.key ?? memberId;
@@ -216,7 +270,7 @@ export function SharePeople({ title, itemName, ownerId, ownerName, members, extr
       setNote('');
     } catch (e) {
       console.error(e);
-      setDone('We couldn’t share it. Try again.');
+      setDone(e instanceof Error && e.message.startsWith('Your organisation') ? e.message : 'We couldn’t share it. Try again.');
     }
     setBusy(false);
   };
@@ -281,6 +335,7 @@ export function SharePeople({ title, itemName, ownerId, ownerName, members, extr
           </>
         )}
         {done && <span className="hint dp-done">{done}</span>}
+        {accessPanel}
         <div className="dp-members">
           <span className="dp-members-title">People with access</span>
           <span className="dp-mem dp-mem-owner">

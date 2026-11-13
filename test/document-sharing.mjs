@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+
+export async function documentSharing(s, base, axe, out) {
+  const p = s.p;
+  await p.goto(base + '/dev.html?colleagues&as=teacher');
+  await p.waitForFunction(() => localStorage.getItem('mockcolleagues') === '1');
+  await p.evaluate(async () => {
+    const { doc, setDoc } = await import('/test/mock/firestore.ts');
+    await setDoc(doc({}, 'accounts', 't-tomas'), { org: 'o1' });
+    const users = JSON.parse(localStorage.getItem('mockauth'));
+    users['t-tomas'] = { uid: 't-tomas', email: 'tomas@harbour.example', displayName: 'Tomás Rivera', password: 'Link-test-password-1' };
+    users['t-daniel'] = { uid: 't-daniel', email: 'daniel@riverside.example', displayName: 'Daniel Brooks', password: 'Link-test-password-2' };
+    localStorage.setItem('mockauth', JSON.stringify(users));
+  });
+  const openAs = async (uid, url) => {
+    await p.evaluate((id) => sessionStorage.setItem('mockuid', id), uid);
+    await p.goto(url);
+  };
+  await p.goto(base + '/doc/sd-plan');
+  await p.getByRole('button', { name: 'Share', exact: true }).click();
+  const dialog = p.getByRole('dialog', { name: /Share document/ });
+  await dialog.getByRole('radio', { name: /Only in Harbour School/ }).waitFor();
+  assert.equal(await dialog.locator('.dp-found').count(), 0, 'People search should stay closed before typing');
+  await dialog.getByRole('radio', { name: /Only in Harbour School/ }).click();
+  const input = dialog.getByRole('textbox', { name: 'Document sharing link' });
+  await input.waitFor();
+  const orgUrl = await input.inputValue();
+  assert.match(orgUrl, /\/doc\/sd-plan\?share=[A-Za-z0-9_-]{30,100}$/);
+  await axe(p, 'Organisation document sharing on desktop', out);
+  await p.setViewportSize({ width: 390, height: 844 });
+  await axe(p, 'Organisation document sharing on phone', out);
+  assert.equal(await dialog.evaluate(el => el.getBoundingClientRect().right <= innerWidth + 1), true, 'Sharing dialog must fit a phone');
+  await mkdir('outputs', { recursive: true });
+  await p.screenshot({ path: 'outputs/document-sharing-phone.png' });
+  await openAs('t-tomas', orgUrl);
+  assert.equal(await p.evaluate(() => sessionStorage.getItem('mockuid')), 't-tomas', 'Visitor browser identity');
+  assert.equal(await p.evaluate(async () => (await import('/test/mock/auth.ts')).getAuth().currentUser?.uid), 't-tomas', 'Visitor Firebase identity');
+  await p.locator('.dp').waitFor();
+  assert.match(await p.locator('.dp-sub').innerText(), /can view/i);
+  await openAs('t-daniel', orgUrl);
+  await p.getByText(/Only teachers in Harbour School can open this link/).waitFor();
+  await openAs('teacher1', base + '/doc/sd-plan');
+  await p.getByRole('button', { name: 'Share', exact: true }).click();
+  await p.getByRole('radio', { name: /Only people added above/ }).click();
+  await p.waitForFunction(() => !JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/sd-plan'].members['t-tomas']);
+  assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/sd-plan'].members['t-lena'].role), 'edit', 'Direct person access must survive link revocation');
+  await openAs('t-tomas', orgUrl);
+  await p.getByText(/no longer available/).waitFor();
+  await openAs('teacher1', base + '/doc/sd-plan');
+  await p.getByRole('button', { name: 'Share', exact: true }).click();
+  await p.getByRole('radio', { name: /Anyone with the link/ }).click();
+  const anyoneUrl = await p.getByRole('textbox', { name: 'Document sharing link' }).inputValue();
+  assert.notEqual(anyoneUrl, orgUrl, 'Changing the audience must rotate the link');
+  await p.evaluate(() => sessionStorage.removeItem('mockuid'));
+  await p.goto(anyoneUrl);
+  await p.getByRole('heading', { name: 'Sign in to open this document' }).waitFor();
+  await p.getByRole('link', { name: 'Sign in', exact: true }).click();
+  assert.equal(await p.evaluate(() => sessionStorage.getItem('ll.afterSignIn')), new URL(anyoneUrl).pathname + new URL(anyoneUrl).search, 'Sign-in should remember the document');
+  await p.getByLabel('Email', { exact: true }).fill('daniel@riverside.example');
+  await p.getByLabel('Password', { exact: true }).fill('Link-test-password-2');
+  await p.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await p.locator('.dp').waitFor({ timeout: 5000 });
+  assert.match(await p.locator('.dp-sub').innerText(), /can view/i);
+  assert.equal(new URL(p.url()).searchParams.get('share'), new URL(anyoneUrl).searchParams.get('share'), 'Sign-in must return to the same shared document');
+  return s;
+}

@@ -6,6 +6,40 @@ import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'setSharedDocumentLink' || name === 'openSharedDocumentLink') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    const ref = doc(db, 'sharedDocs', d.docId);
+    const item = (await getDoc(ref)).data();
+    if (!uid || !item || item.kind !== 'doc') throw Error('This document is not available.');
+    const ownerAccount = (await getDoc(doc(db, 'accounts', item.owner))).data();
+    const orgId = ownerAccount?.org || null;
+    const org = orgId ? (await getDoc(doc(db, 'orgs', orgId))).data() : null;
+    const audience = org?.policy?.docLinks ?? (org?.outside === 'org' ? 'org' : 'anyone');
+    if (name === 'setSharedDocumentLink') {
+      if (item.owner !== uid) throw Error('Only the owner can change this link.');
+      if (d.mode === 'org' && !org?.teachers?.[uid]) throw Error('You need to belong to an organisation.');
+      if (d.mode === 'anyone' && audience === 'org') throw Error('Your organisation limits document links.');
+      const members = Object.fromEntries(Object.entries(item.members ?? {}).filter(([, m]) => !(m as { linkOnly?: boolean }).linkOnly));
+      const memberIds = (item.memberIds ?? []).filter((id: string) => !!members[id]);
+      const link = d.mode === 'off' ? null : { mode: d.mode, token: crypto.randomUUID().replaceAll('-', ''), orgId, orgName: org?.name ?? '', updatedAt: Date.now() };
+      await updateDoc(ref, { members, memberIds, link });
+      return { data: { link } };
+    }
+    if (!item.link || item.link.token !== d.token) throw Error('This document link is no longer available.');
+    if (item.link.mode === 'anyone' && audience === 'org') throw Error('This document link is limited by its organisation.');
+    if (item.link.mode === 'org') {
+      const visitorAccount = (await getDoc(doc(db, 'accounts', uid))).data();
+      if (visitorAccount?.org !== orgId || !org?.teachers?.[uid]) throw Error(`Only teachers in ${org?.name ?? 'this organisation'} can open this link.`);
+    }
+    const profile = (await getDoc(doc(db, 'users', uid))).data();
+    if (!profile || !['teacher', 'learner'].includes(profile.role)) throw Error('Finish signing in first.');
+    if (uid !== item.owner && !item.members?.[uid]) await updateDoc(ref, {
+      members: { ...(item.members ?? {}), [uid]: { role: 'view', name: profile.displayName || 'Link visitor', kind: profile.role, linkOnly: true } },
+      memberIds: [...new Set([...(item.memberIds ?? []), uid])],
+    });
+    return { data: { opened: true } };
+  }
   if (name === 'startCallRoom') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;

@@ -6262,6 +6262,16 @@ body:has(.sx) .ctx-sep { background: #3a3733; }
 .dock-chat .toolbar .ti-row { white-space: nowrap; }
 /* Document top bar: every tool on one line with Share */
 .dp-slot { display: inline-flex; align-items: center; gap: 6px; }
+.dp-link-access { display: grid; gap: 10px; padding: 18px 0; border-block: 1px solid var(--hair); }
+.dp-link-access h3 { margin: 0; font: 600 18px var(--serif); }
+.dp-link-access > p { margin: 0; }
+.dp-link-options { display: grid; gap: 7px; }
+.dp-link-options > button { display: grid; gap: 3px; width: 100%; padding: 12px 14px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; }
+.dp-link-options > button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+.dp-link-options > button:disabled { opacity: .7; cursor: wait; }
+.dp-link-copy { display: flex; gap: 8px; min-width: 0; }
+.dp-link-copy input { min-width: 0; flex: 1; padding: 8px 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: 12px var(--sans); }
+@media (max-width: 480px) { .dp-link-copy { flex-wrap: wrap; } .dp-link-copy input { flex-basis: 100%; } }
 .dp-slot .cd-people { margin: 0 4px 0 0; }
 .dp-slot .cd-words { font-size: 12px; color: var(--muted); margin-right: 4px; white-space: nowrap; }
 .dp-ib { position: relative; height: 34px; min-width: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 9px; background: var(--paper); color: var(--ink); cursor: pointer; }
@@ -8313,9 +8323,9 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .gif-i:hover, .gif-i:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gif-nokey { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
 .gif-key { display: flex; gap: 6px; } .gif-key input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
-.gif-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.gif-via { font: 700 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.bub-doc .pic-node:has(img[src*="tenor"]), .bub-doc img[src*="tenor"] { border-radius: 12px; }
+.gif-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gif-via { display: inline-flex; align-items: center; min-height: 28px; margin-left: auto; padding: 3px 8px; border: 1px solid var(--hair-strong); border-radius: 7px; font: 700 11.5px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--ink); text-decoration: none; }
+.bub-doc .pic-node:has(img[src*="tenor"]), .bub-doc img[src*="tenor"], .bub-doc .pic-node:has(img[src*="giphy"]), .bub-doc img[src*="giphy"] { border-radius: 12px; }
 /* A call in the chat: the card is the message (no bubble around it), with the time inside. */
 .bub-box:has(> .msg-call) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
 .bub-box:has(> .msg-call) .bub-meta { right: 14px; bottom: 9px; color: var(--soft) !important; }
