@@ -39,7 +39,7 @@ export type SharedDoc = {
   docKey: string;
   members: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner'; linkOnly?: boolean }>;
   memberIds: string[];
-  link?: { mode: 'org' | 'anyone'; token: string; orgId: string | null; orgName: string; updatedAt: number } | null;
+  link?: { mode: 'org' | 'anyone'; role?: DocRole; token: string; orgId: string | null; orgName: string; updatedAt: number } | null;
   classes?: Record<string, { role: DocRole; name: string }>;
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
@@ -114,8 +114,8 @@ export function useSharedDoc(id?: string, retry = 0) {
 }
 
 const links = getFunctions(app, 'us-central1');
-export const setDocumentLink = async (docId: string, mode: 'off' | 'org' | 'anyone') => {
-  const result = await httpsCallable<{ docId: string; mode: string }, { link: SharedDoc['link'] }>(links, 'setSharedDocumentLink')({ docId, mode });
+export const setDocumentLink = async (docId: string, mode: 'off' | 'org' | 'anyone', role: DocRole = 'view') => {
+  const result = await httpsCallable<{ docId: string; mode: string; role: DocRole }, { link: SharedDoc['link'] }>(links, 'setSharedDocumentLink')({ docId, mode, role });
   return result.data.link;
 };
 export const openDocumentLink = async (docId: string, token: string) => {

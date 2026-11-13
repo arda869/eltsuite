@@ -220,23 +220,32 @@ function DocumentLinkAccess({ d, org }: { d: SharedDoc; org: ReturnType<typeof u
   const inOrg = !!org?.teachers?.[auth.currentUser?.uid || ''];
   const restricted = !!org && (org.policy?.docLinks === 'org' || (!org.policy?.docLinks && org.outside === 'org'));
   const current = d.link?.mode ?? 'off';
-  const options: { mode: 'off' | 'org' | 'anyone'; label: string; about: string }[] = [
-    { mode: 'off', label: 'Only people added above', about: 'The link does not give anyone else access.' },
-    ...(org && inOrg ? [{ mode: 'org' as const, label: `Only in ${org.name}`, about: `Teachers in ${org.name} with the link can view.` }] : []),
-    ...(!restricted ? [{ mode: 'anyone' as const, label: 'Anyone with the link', about: 'Anyone signed in to ELT Suite with the link can view.' }] : []),
+  const currentRole = d.link?.role ?? 'view';
+  const options: { mode: 'off' | 'org' | 'anyone'; label: string }[] = [
+    { mode: 'off', label: 'Restricted' },
+    ...(org && inOrg ? [{ mode: 'org' as const, label: `Only in ${org.name}` }] : []),
+    ...(!restricted ? [{ mode: 'anyone' as const, label: 'Anyone with the link' }] : []),
   ];
-  const change = async (mode: 'off' | 'org' | 'anyone') => {
-    if (busy || mode === current) return;
+  const change = async (mode: 'off' | 'org' | 'anyone', role: DocRole = currentRole) => {
+    if (busy || (mode === current && (mode === 'off' || role === currentRole))) return;
     setBusy(true); setMessage('');
-    try { await setDocumentLink(d.id, mode); setMessage(mode === 'off' ? 'Link access turned off.' : 'Link access updated.'); }
+    try { await setDocumentLink(d.id, mode, role); setMessage(mode === 'off' ? 'Link access turned off.' : 'Link access updated. Copy the new link to share it.'); }
     catch (e) { setMessage(String((e as Error)?.message || 'Could not change link access.')); }
     finally { setBusy(false); }
   };
-  return <section className="dp-link-access" aria-label="Link access">
-    <h3>Link access</h3>
-    <p className="hint">Choose who can open this document with its link. They can view it; people you add above keep their own access.</p>
-    <div className="dp-link-options" role="radiogroup" aria-label="Who can open this link">
-      {options.map(({ mode, label, about }) => <button key={mode} type="button" role="radio" aria-checked={current === mode} className={current === mode ? 'on' : ''} disabled={busy} onClick={() => void change(mode)}><b>{label}</b><span className="hint">{about}</span></button>)}
+  return <section className="dp-link-access" aria-label="General access">
+    <h3>General access</h3>
+    <div className="dp-link-row">
+      <span className="dp-link-icon"><UiIcon name={current === 'off' ? 'lock' : 'link'} size={18} /></span>
+      <div className="dp-link-controls">
+      <label><NSelect value={current} disabled={busy} onChange={e => void change(e.target.value as 'off' | 'org' | 'anyone')} aria-label="Who can open this link">
+        {options.map(({ mode, label }) => <option key={mode} value={mode}>{label}</option>)}
+      </NSelect></label>
+      {current !== 'off' && <label><NSelect value={currentRole} disabled={busy} onChange={e => void change(current, e.target.value as DocRole)} aria-label="What people with the link can do">
+        {ROLES.map(r => <option key={r.k} value={r.k}>{r.k === 'suggest' ? 'Can suggest' : r.label}</option>)}
+      </NSelect></label>}
+      <p className="hint">{current === 'off' ? 'Only people with access can open this link.' : current === 'org' ? `Teachers in ${org?.name || 'this organisation'} with the link can open it.` : 'Anyone signed in to ELT Suite with the link can open it.'}</p>
+      </div>
     </div>
     {current !== 'off' && d.link?.token && <div className="dp-link-copy"><input readOnly aria-label="Document sharing link" value={documentAccessLink(d)} onFocus={e => e.target.select()} /><button className="btn small-btn" type="button" onClick={() => void copyText(documentAccessLink(d)).then(() => setMessage('Link copied.'))}>Copy link</button></div>}
     {message && <p role="status" className="hint">{message}</p>}

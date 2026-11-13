@@ -37,4 +37,14 @@ export async function tuesdayCoach(s,base,axe,out){
  await p.screenshot({path:'outputs/tuesday/coach-phone.jpg',fullPage:false});
  await p.getByRole('button',{name:'New chat',exact:true}).click();
  assert.equal(await p.locator('.coach-floating').count(),0,'New chat must stay in the current view');
+ await p.getByRole('button',{name:'History',exact:true}).click();
+ const saved=p.locator('.coach-history-row').filter({hasText:'How can I include quieter learners?'});
+ await saved.getByRole('button',{name:/^Rename/}).click();
+ await p.getByRole('textbox',{name:'Chat name'}).fill('Quieter learners');
+ await p.locator('.coach-history-row').getByRole('button',{name:'Save'}).click();
+ const renamed=p.locator('.coach-history-row').filter({hasText:'Quieter learners'});
+ await renamed.waitFor();
+ await renamed.getByRole('button',{name:/^Delete/}).click();
+ await p.getByRole('button',{name:'Delete chat',exact:true}).click();
+ await renamed.waitFor({state:'detached'});
 }

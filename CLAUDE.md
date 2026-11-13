@@ -126,10 +126,10 @@ checks that every editor element maps to an import kind. Add a new editor elemen
 
 ## Collab document links
 
-The owner chooses a view-only link audience in the Collab document sharing dialog. The link token is
+The owner chooses the link audience and whether visitors can view, comment, suggest or edit in the Collab document sharing dialog. The link token is
 made and checked by `functions/collab/link.js`, never by the browser. The callable grants a visitor
 `linkOnly` membership, which the existing Firestore and Realtime Database access rules then use.
-Turning the link off or changing its audience rotates the token and removes only link-only visitors;
+Turning the link off or changing its audience or permission rotates the token and removes only link-only visitors;
 explicit person shares remain. Organisation admins set the maximum audience with `policy.docLinks`
 in Rules; the existing `outside` rule is the fallback. If the effective audience or teacher roster changes,
 the organisation trigger rechecks links and revokes access that no longer fits. A link for “anyone”

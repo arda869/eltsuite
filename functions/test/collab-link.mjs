@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { documentLinkPolicy, removeLinkVisitors, sameToken } from '../collab/link.js';
+import { documentLinkPolicy, documentLinkRole, removeLinkVisitors, sameToken } from '../collab/link.js';
+
+test('old links stay view-only and invalid permissions never grant more', () => {
+  assert.equal(documentLinkRole({}), 'view');
+  assert.equal(documentLinkRole({ role: 'edit' }), 'edit');
+  assert.equal(documentLinkRole({ role: 'owner' }), 'view');
+});
 
 test('organisation rule controls the maximum link audience', () => {
   assert.equal(documentLinkPolicy({ outside: 'org' }), 'org');

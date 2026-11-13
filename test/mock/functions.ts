@@ -1,11 +1,25 @@
 import helpLibrary from '../../functions/help/library.json';
 import { AI_FEATURES } from '../../functions/ai/features.js';
-import { addDoc, collection, doc, setDoc, getDoc, getDocs, updateDoc, runTransaction } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { ref, set } from 'firebase/database';
 import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'manageCoachConversation') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    if (!uid) throw Error('Sign in first.');
+    const ref = doc(db, 'teachingCoach', uid, 'conversations', d.conversationId);
+    if (!(await getDoc(ref)).exists()) throw Error('This conversation is no longer in your history.');
+    if (d.action === 'rename') await updateDoc(ref, { title: d.title.trim(), updatedAt: Date.now() });
+    else if (d.action === 'delete') {
+      const turns = await getDocs(collection(db, 'teachingCoach', uid, 'conversations', d.conversationId, 'turns'));
+      for (const turn of turns.docs) await deleteDoc(turn.ref);
+      await deleteDoc(ref);
+    } else throw Error('Choose a conversation action.');
+    return { data: { ok: true } };
+  }
   if (name === 'setSharedDocumentLink' || name === 'openSharedDocumentLink') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;
@@ -20,9 +34,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
       if (item.owner !== uid) throw Error('Only the owner can change this link.');
       if (d.mode === 'org' && !org?.teachers?.[uid]) throw Error('You need to belong to an organisation.');
       if (d.mode === 'anyone' && audience === 'org') throw Error('Your organisation limits document links.');
+      if (!['view', 'comment', 'suggest', 'edit'].includes(d.role ?? 'view')) throw Error('Choose what people with the link can do.');
       const members = Object.fromEntries(Object.entries(item.members ?? {}).filter(([, m]) => !(m as { linkOnly?: boolean }).linkOnly));
       const memberIds = (item.memberIds ?? []).filter((id: string) => !!members[id]);
-      const link = d.mode === 'off' ? null : { mode: d.mode, token: crypto.randomUUID().replaceAll('-', ''), orgId, orgName: org?.name ?? '', updatedAt: Date.now() };
+      const link = d.mode === 'off' ? null : { mode: d.mode, role: d.role ?? 'view', token: crypto.randomUUID().replaceAll('-', ''), orgId, orgName: org?.name ?? '', updatedAt: Date.now() };
       await updateDoc(ref, { members, memberIds, link });
       return { data: { link } };
     }
@@ -35,7 +50,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const profile = (await getDoc(doc(db, 'users', uid))).data();
     if (!profile || !['teacher', 'learner'].includes(profile.role)) throw Error('Finish signing in first.');
     if (uid !== item.owner && !item.members?.[uid]) await updateDoc(ref, {
-      members: { ...(item.members ?? {}), [uid]: { role: 'view', name: profile.displayName || 'Link visitor', kind: profile.role, linkOnly: true } },
+      members: { ...(item.members ?? {}), [uid]: { role: ['view', 'comment', 'suggest', 'edit'].includes(item.link.role) ? item.link.role : 'view', name: profile.displayName || 'Link visitor', kind: profile.role, linkOnly: true } },
       memberIds: [...new Set([...(item.memberIds ?? []), uid])],
     });
     return { data: { opened: true } };

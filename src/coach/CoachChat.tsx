@@ -21,11 +21,13 @@ import { Qualifications } from './Qualifications';
 import { AutoTextarea } from '../ai/AutoTextarea';
 import { AiExamples, AiNotice, AiText } from '../ai/kit';
 import { useCoachPreferences } from './CoachPreferences';
+import { ask } from '../lib/ask';
 
 const STARTERS=['Help me think through a lesson that didn’t go to plan','I want to try something new with a mixed-ability class','Challenge one of my teaching beliefs','Plan a small classroom inquiry for this term'];
 export type LessonCoachContext={classId:string;itemId:string;taskId?:string;reportId?:string};
 type Source={title:string;url:string};
 const call = httpsCallable<Record<string, unknown>, { reply: string; basis: string[]; journalDraft?: string | null; sources?:Source[] }>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 240000 });
+const manageConversation = httpsCallable<{ action: 'rename' | 'delete'; conversationId: string; title?: string }, { ok: boolean }>(getFunctions(app, 'us-central1'), 'manageCoachConversation');
 
 function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingReflection, formContext:incomingForm, onClearForm, evidencePacketId:incomingEvidence = '', lessonContext:incomingLesson, pageContext:incomingPage, onClearLesson, initialConversationId, compact=false, onConversationChange }: {
   initialConversationId?:string;compact?:boolean;formContext?:{docId:string;formId:string};onClearForm?:()=>void;onConversationChange?:(id:string,context:CoachContext)=>void;
@@ -42,6 +44,9 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const messages=saved.messages;
   useEffect(()=>{const entry=saved.conversations.find(c=>c.id===conversationId);if(entry)setContext(entry.context);},[conversationId,saved.conversations]);
   const [showHistory,setShowHistory]=useState(false);
+  const [renaming,setRenaming]=useState('');
+  const [renameTitle,setRenameTitle]=useState('');
+  const [managing,setManaging]=useState('');
   const [draft, setDraft] = useState(()=>readDraft(uid,conversationId)||initialPrompt);
 
   const mode = preferences.mode;
@@ -113,13 +118,28 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
     finally {setJournalSaving(false);}
   }
   function newChat() { setJournal(null);setJournalSaved('');chooseConversation(crypto.randomUUID());request.current=null; }
+  async function renameChat(id:string) {
+    const title=renameTitle.trim();
+    if(!title) return setError('Add a name for this chat.');
+    setManaging(id);setError('');
+    try { await manageConversation({action:'rename',conversationId:id,title});setRenaming('');setRenameTitle(''); }
+    catch { setError('We couldn’t rename this chat. Try again.'); }
+    finally { setManaging(''); }
+  }
+  async function removeChat(id:string,title:string) {
+    if(!(await ask(`Delete “${title}”? Its messages will be removed from your saved history. You can’t undo this.`,{ok:'Delete chat',cancel:'Keep chat',title:'Delete chat'})))return;
+    setManaging(id);setError('');
+    try { await manageConversation({action:'delete',conversationId:id});if(id===conversationId)newChat(); }
+    catch { setError('We couldn’t delete this chat. Try again.'); }
+    finally { setManaging(''); }
+  }
   const evidenceReady=!evidencePacketId||approvedPacket===evidencePacketId;
   const journalError=error==='We couldn’t save your reflection. Your edits are still here.';
   const canSend = complete && preferencesReady && saved.ready && !saved.pending && !busy && !!draft.trim() && evidenceReady;
   return <section className="coach-chat" aria-label="Teacher’s Companion chat">
     {evidencePacketId&&<CoachEvidenceReview id={evidencePacketId} onConfirm={()=>setApprovedPacket(evidencePacketId)}/>}
     <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teacher’s Companion</h2></div><div className="coach-chat-tools" aria-label="Conversation actions"><button type="button" className="coach-tool-icon" aria-label="History" title="History" aria-expanded={showHistory} onClick={()=>setShowHistory(!showHistory)}><UiIcon name="history" size={18}/></button><button type="button" className="coach-tool-icon" aria-label="New chat" title="New chat" disabled={busy || saved.pending || !messages.length} onClick={newChat}><UiIcon name="plus" size={18}/></button>{lessonContext&&<><Link className="coach-tool-icon" aria-label="Open selected lesson" title="Open selected lesson" to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}><UiIcon name="classes" size={18}/></Link><button type="button" className="coach-tool-icon" aria-label="Remove lesson context" title="Stop using this lesson" disabled={busy} onClick={()=>{setContext(c=>({...c,lessonContext:null}));onClearLesson?.();}}><UiIcon name="videoClose" size={18}/></button></>}{!compact&&<button type="button" className="coach-tool-icon" aria-label="Pin chat" title="Keep this conversation open at the top right" onClick={()=>setCoachPanel({uid,conversationId,context})}><UiIcon name="pin" size={18}/></button>}<Link className="coach-tool-icon" aria-label="Settings" title="Settings" to="/settings#set-teaching-coach"><UiIcon name="settings" size={18}/></Link></div></header>
-    {showHistory&&<nav className="coach-history" aria-label="Saved coaching conversations"><p>Private to you. Starting a new chat keeps previous conversations here.</p>{saved.conversations.length?saved.conversations.map(c=><button className="btn" key={c.id} aria-current={c.id===conversationId?'true':undefined} disabled={busy} onClick={()=>chooseConversation(c.id,c.context)}>{c.title}<small>{new Date(c.updatedAt).toLocaleDateString('en-GB')}</small></button>):<p>No saved conversations yet.</p>}</nav>}
+    {showHistory&&<nav className="coach-history" aria-label="Saved coaching conversations"><p>Private to you. Starting a new chat keeps previous conversations here.</p>{saved.conversations.length?saved.conversations.map(c=><div className="coach-history-row" key={c.id}>{renaming===c.id?<form onSubmit={e=>{e.preventDefault();void renameChat(c.id);}}><input aria-label="Chat name" autoFocus maxLength={100} value={renameTitle} onChange={e=>setRenameTitle(e.target.value)}/><button className="btn small-btn" disabled={managing===c.id||!renameTitle.trim()}>Save</button><button type="button" className="btn small-btn" onClick={()=>setRenaming('')}>Cancel</button></form>:<><button type="button" className="btn coach-history-open" aria-current={c.id===conversationId?'true':undefined} disabled={busy||managing===c.id} onClick={()=>chooseConversation(c.id,c.context)}><span>{c.title}</span><small>{new Date(c.updatedAt).toLocaleDateString('en-GB')}</small></button><button type="button" className="btn small-btn" disabled={busy||!!managing} onClick={()=>{setRenaming(c.id);setRenameTitle(c.title);}} aria-label={`Rename ${c.title}`}>Rename</button><button type="button" className="btn small-btn" disabled={busy||!!managing} onClick={()=>void removeChat(c.id,c.title)} aria-label={`Delete ${c.title}`}>Delete</button></>}</div>):<p>No saved conversations yet.</p>}</nav>}
     {saved.error&&<p className="coach-notice coach-error" role="alert">{saved.error}</p>}
     {!saved.ready&&!saved.error&&<p role="status" className="coach-notice">Opening your saved conversation…</p>}
     {saved.interrupted&&<p className="coach-notice">An earlier reply did not finish. Your messages are saved; you can send a follow-up below.</p>}

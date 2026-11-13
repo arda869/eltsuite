@@ -4764,6 +4764,11 @@ li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
 .bub-share .hint { color: var(--muted); font-size: 12px; }
 .bub-share .sh-ic { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text); }
 .bub-share .sh-pt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bub:has(.bub-share) { width: min(380px, 100%); max-width: 100%; }
+.bub:has(.bub-share) .bub-col { flex: 1; min-width: 0; max-width: 100%; }
+.bub:has(.bub-share) .bub-box { box-sizing: border-box; width: 100%; min-width: 0; }
+.bub:has(.bub-share) .bub-share { box-sizing: border-box; max-width: 100%; }
+.bub-share .sh-pt :is(b, .hint) { white-space: normal; overflow-wrap: anywhere; }
 /* The small messages window: no sideways scrolling */
 .dock-chat .chat-body { overflow-x: hidden; }
 .dock-chat .bub-doc.has-blocks { min-width: 0; width: auto; }
@@ -5818,12 +5823,12 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .fd-del { align-self: flex-start; }
 
 /* A lesson in Files */
-.lf { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; max-width: 1240px; width: 100%; margin: 0 auto; align-items: start; }
+.lf { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; width: 100%; min-width: 0; align-items: start; }
 .lf-side { position: sticky; top: 79px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); max-height: calc(100vh - 100px); overflow-y: auto; }
 .lf-list { display: flex; flex-direction: column; gap: 2px; }
 .lf-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 9px; background: none; text-align: left; font: 14px var(--sans); color: inherit; cursor: pointer; }
 .lf-row:hover { background: var(--surface); }
-.lf-row.on { background: var(--selected); font-weight: 600; }
+.lf-row.on { background: var(--selected); box-shadow: inset 2px 0 0 var(--accent); font-weight: 600; }
 .lf-row.k-section { font: 700 11px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
 .lf-n { width: 18px; color: var(--muted); font-size: 12px; text-align: right; }
 .lf-adds { display: flex; gap: 6px; }
@@ -6265,10 +6270,14 @@ body:has(.sx) .ctx-sep { background: #3a3733; }
 .dp-link-access { display: grid; gap: 10px; padding: 18px 0; border-block: 1px solid var(--hair); }
 .dp-link-access h3 { margin: 0; font: 600 18px var(--serif); }
 .dp-link-access > p { margin: 0; }
-.dp-link-options { display: grid; gap: 7px; }
-.dp-link-options > button { display: grid; gap: 3px; width: 100%; padding: 12px 14px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; }
-.dp-link-options > button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
-.dp-link-options > button:disabled { opacity: .7; cursor: wait; }
+.dp-link-row { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.dp-link-icon { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--surface); color: var(--ink); }
+.dp-link-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.dp-link-controls > label { min-width: 0; max-width: 100%; }
+.dp-link-controls > label:first-child { flex: 1 1 180px; }
+.dp-link-controls > label:nth-child(2) { flex: 0 1 175px; }
+.dp-link-controls select { width: 100%; }
+.dp-link-controls > p { flex-basis: 100%; margin: 0; }
 .dp-link-copy { display: flex; gap: 8px; min-width: 0; }
 .dp-link-copy input { min-width: 0; flex: 1; padding: 8px 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: 12px var(--sans); }
 @media (max-width: 480px) { .dp-link-copy { flex-wrap: wrap; } .dp-link-copy input { flex-basis: 100%; } }
@@ -7333,7 +7342,7 @@ input.dg-cell-label:focus { outline: none; }
   .bub .bub-tools { transition: opacity .12s .15s; }
 }
 
-/* Chat windows: one size, set by the corner handle */
+/* Chat windows keep their own size, set by each corner handle. */
 .dock-bar .dock-win { width: var(--dock-w, 360px); height: min(var(--dock-h, 520px), calc(100vh - 110px)); position: relative; }
 .dock-size { position: absolute; left: 0; top: 0; width: 16px; height: 16px; z-index: 3; cursor: nwse-resize; }
 .dock-size::before { content: ''; position: absolute; left: 4px; top: 4px; width: 7px; height: 7px; border-left: 2px solid var(--hair-strong); border-top: 2px solid var(--hair-strong); border-radius: 2px 0 0 0; opacity: 0; transition: opacity .15s; }
@@ -8224,7 +8233,7 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .bub-box, .bub-doc, .bub-doc :is(p, li, a, code, pre) { overflow-wrap: anywhere; word-break: break-word; }
 .bub-doc pre { white-space: pre-wrap; }
 /* A call in the chat, as a card. */
-.bub-box:has(> .msg-call:only-child), .bub-box:has(> .msg-file:only-child) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.bub-box:has(> .msg-call:only-child), .bub-box:has(> .msg-file):not(:has(> .bub-doc)) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
 .msg-call { display: flex; align-items: center; gap: 12px; min-width: min(280px, 70vw); padding: 12px 14px; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 4px 14px -6px rgba(51, 48, 44, .18); }
 .msg-call-ic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--paper)); color: var(--accent-text); }
 .msg-call.on .msg-call-ic { background: #2f8a5b; color: #fff; animation: msg-call-pulse 1.8s ease-in-out infinite; }
@@ -8234,12 +8243,15 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .msg-call-t span { font: 12.5px/1.35 var(--sans); color: var(--muted); }
 .bub-doc + .msg-file, .msg-call + .bub-doc { margin-top: 8px; }
 /* A file from Files: a preview, its name, and Open. */
-.msg-file { display: flex; flex-direction: column; width: min(300px, 72vw); margin-top: 2px; border-radius: 16px; overflow: hidden; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: 0 0 0 1px var(--hair), 0 6px 18px -8px rgba(51, 48, 44, .22); transition: box-shadow .15s, transform .15s; }
+.bub:has(.msg-file) { width: min(340px, 84%); }
+.bub:has(.msg-file) .bub-col { flex: 1; min-width: 0; max-width: 100%; }
+.bub:has(.msg-file) .bub-box { box-sizing: border-box; width: 100%; min-width: 0; }
+.msg-file { display: flex; flex-direction: column; box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; margin-top: 2px; border-radius: 16px; overflow: hidden; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: 0 0 0 1px var(--hair), 0 6px 18px -8px rgba(51, 48, 44, .22); transition: box-shadow .15s, transform .15s; }
 .msg-file:hover { box-shadow: 0 0 0 1.5px var(--accent), 0 8px 22px -8px rgba(51, 48, 44, .28); transform: translateY(-1px); }
 .msg-file-prev { height: 150px; display: grid; place-items: center; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, var(--paper)), color-mix(in srgb, var(--ink) 5%, var(--paper))); border-bottom: 1px solid var(--hair); }
 .msg-file-prev canvas, .msg-file-prev img { width: 78%; height: auto; margin-top: 24px; border-radius: 4px 4px 0 0; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); align-self: start; }
 .msg-file-t { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 4px; }
-.msg-file-t b { font: 600 14.5px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-file-t b { font: 600 14.5px/1.3 var(--sans); white-space: normal; overflow-wrap: anywhere; }
 .msg-file-t span { font: 12.5px/1.35 var(--sans); color: var(--muted); }
 .msg-file-open { display: inline-flex; align-items: center; gap: 4px; padding: 4px 14px 12px; font: 700 13px var(--sans); color: var(--accent-text); }
 /* On a phone, Messages fills the screen: no Minimise. */
@@ -8315,10 +8327,10 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 /* GIFs */
 .chat-in .chat-gif { width: auto; padding: 0 6px; font: 800 11px/1 var(--sans); letter-spacing: .04em; }
 .chat-compose { position: relative; }
-.gif-pop { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 8px; max-height: min(420px, 60vh); padding: 10px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -14px rgba(0, 0, 0, .35); }
+.gif-pop { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 8px; max-height: min(420px, 60vh); min-width: 0; box-sizing: border-box; overflow: hidden; padding: 10px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -14px rgba(0, 0, 0, .35); }
 .gif-q { height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; }
-.gif-grid { flex: 1; min-height: 120px; overflow-y: auto; columns: 3 110px; column-gap: 6px; }
-.gif-i { display: block; width: 100%; margin: 0 0 6px; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--ink) 6%, var(--paper)); cursor: pointer; break-inside: avoid; }
+.gif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); align-content: start; gap: 6px; flex: 1; min-height: 120px; overflow-y: auto; overflow-x: hidden; }
+.gif-i { display: block; width: 100%; aspect-ratio: 1 !important; margin: 0; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--ink) 6%, var(--paper)); cursor: pointer; }
 .gif-i img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .gif-i:hover, .gif-i:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gif-nokey { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }

@@ -8,6 +8,7 @@ import { syncSharedDocumentAccess } from './access.js';
 const RTDB = 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app';
 const token = () => randomBytes(32).toString('base64url');
 export const documentLinkPolicy = org => org?.policy?.docLinks === 'org' || (!org?.policy?.docLinks && org?.outside === 'org') ? 'org' : 'anyone';
+export const documentLinkRole = link => ['view', 'comment', 'suggest', 'edit'].includes(link?.role) ? link.role : 'view';
 const safeId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(value);
 export const sameToken = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
@@ -28,9 +29,10 @@ async function sync(db, id) {
 // The owner creates or revokes a link. A changed scope receives a fresh token, and
 // access granted solely by the old link is removed before the new link is usable.
 export const setSharedDocumentLink = onCall({ region: 'us-central1', maxInstances: 10 }, async req => {
-  const uid = req.auth?.uid, id = req.data?.docId, mode = req.data?.mode;
+  const uid = req.auth?.uid, id = req.data?.docId, mode = req.data?.mode, role = req.data?.role ?? 'view';
   if (!uid) throw new HttpsError('unauthenticated', 'Sign in first.');
   if (!safeId(id) || !['off', 'org', 'anyone'].includes(mode)) throw new HttpsError('invalid-argument', 'Choose a document and who may use its link.');
+  if (!['view', 'comment', 'suggest', 'edit'].includes(role)) throw new HttpsError('invalid-argument', 'Choose what people with the link can do.');
   const db = getFirestore(), ref = db.doc(`sharedDocs/${id}`);
   const result = await db.runTransaction(async tx => {
     const snap = await tx.get(ref);
@@ -41,9 +43,9 @@ export const setSharedDocumentLink = onCall({ region: 'us-central1', maxInstance
     if (mode === 'org' && (!org?.exists || !org.get('teachers')?.[uid])) throw new HttpsError('failed-precondition', 'You need to belong to an organisation to use an organisation link.');
     if (mode === 'anyone' && org?.exists && documentLinkPolicy(org.data()) === 'org') throw new HttpsError('permission-denied', 'Your organisation limits document links to its teachers.');
     const current = snap.data();
-    if (current.link?.mode === mode && current.link?.orgId === (orgId || null)) return current.link;
+    if (current.link?.mode === mode && current.link?.orgId === (orgId || null) && (mode === 'off' || documentLinkRole(current.link) === role)) return current.link;
     const { members, memberIds } = removeLinkVisitors(current);
-    const link = mode === 'off' ? null : { mode, token: token(), orgId: orgId || null, orgName: org?.get('name') || '', updatedAt: Date.now() };
+    const link = mode === 'off' ? null : { mode, role, token: token(), orgId: orgId || null, orgName: org?.get('name') || '', updatedAt: Date.now() };
     tx.update(ref, { link, members, memberIds });
     return link;
   });
@@ -52,7 +54,7 @@ export const setSharedDocumentLink = onCall({ region: 'us-central1', maxInstance
 });
 
 // Possession of the unguessable URL is checked by the server, then the visitor
-// receives read-only membership. The existing Firestore and Realtime rules apply.
+// receives the permission chosen by the owner. The existing Firestore and Realtime rules apply.
 export const openSharedDocumentLink = onCall({ region: 'us-central1', maxInstances: 20 }, async req => {
   const uid = req.auth?.uid, id = req.data?.docId, supplied = req.data?.token;
   if (!uid) throw new HttpsError('unauthenticated', 'Sign in to open this document.');
@@ -76,7 +78,7 @@ export const openSharedDocumentLink = onCall({ region: 'us-central1', maxInstanc
     const profile = await tx.get(db.doc(`users/${uid}`));
     if (!profile.exists || !['teacher', 'learner'].includes(profile.get('role'))) throw new HttpsError('permission-denied', 'Finish signing in to ELT Suite before opening this link.');
     const name = String(profile.get('displayName') || req.auth.token.name || req.auth.token.email || 'Link visitor').slice(0, 100);
-    tx.update(ref, new FieldPath('members', uid), { role: 'view', name, kind: profile.get('role'), linkOnly: true }, 'memberIds', FieldValue.arrayUnion(uid));
+    tx.update(ref, new FieldPath('members', uid), { role: documentLinkRole(link), name, kind: profile.get('role'), linkOnly: true }, 'memberIds', FieldValue.arrayUnion(uid));
   });
   await sync(db, id);
   return { opened: true };
