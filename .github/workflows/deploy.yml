@@ -146,6 +146,26 @@ jobs:
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
 
+      - name: Set up scheduled email secret
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+        run: |
+          trap 'rm -f "$RUNNER_TEMP/smtp-url" "$RUNNER_TEMP/mail-from"' EXIT
+          if [ -z "$SMTP_URL" ]; then echo '::error::SMTP_URL is missing, so unread-message emails cannot be scheduled.'; exit 1; fi
+          if [ -z "$MAIL_FROM" ]; then echo '::error::MAIL_FROM is missing, so unread-message emails cannot be scheduled.'; exit 1; fi
+          if ! npx --yes firebase-tools@14 functions:secrets:get SMTP_URL --project lesson-lit --non-interactive >/dev/null 2>&1; then
+            printf '%s' "$SMTP_URL" > "$RUNNER_TEMP/smtp-url"
+            npx --yes firebase-tools@14 functions:secrets:set SMTP_URL --data-file "$RUNNER_TEMP/smtp-url" --project lesson-lit --non-interactive
+            rm -f "$RUNNER_TEMP/smtp-url"
+          fi
+          if ! npx --yes firebase-tools@14 functions:secrets:get MAIL_FROM --project lesson-lit --non-interactive >/dev/null 2>&1; then
+            printf '%s' "$MAIL_FROM" > "$RUNNER_TEMP/mail-from"
+            npx --yes firebase-tools@14 functions:secrets:set MAIL_FROM --data-file "$RUNNER_TEMP/mail-from" --project lesson-lit --non-interactive
+            rm -f "$RUNNER_TEMP/mail-from"
+          fi
+
       - name: Deploy Designer image service
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
@@ -234,6 +254,7 @@ jobs:
           fi
 
           grep -q 'Deploy complete!' "$RUNNER_TEMP/fn.log" || { echo '::error::Firebase did not confirm the server function deployment completed.'; exit 1; }
+          node functions/notifications/check-binding.mjs
 
       - name: Deploy Firestore indexes and expiry policies
         env:
