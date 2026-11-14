@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { manageCoachConversationRequest } from '../ai/coach-manage.js';
+import { createManageCoachConversationHandler, manageCoachConversationRequest } from '../ai/coach-manage.js';
 
 function fixture(activeRequest = '') {
   const changed = [];
@@ -22,6 +22,13 @@ function fixture(activeRequest = '') {
 }
 
 const auth = { uid: 'teacher-one', token: { email: 'teacher@example.com' } };
+
+test('Firebase callable response argument is not used as Firestore', async () => {
+  const { db, changed } = fixture();
+  const handler = createManageCoachConversationHandler(() => db);
+  await handler({ auth, data: { action: 'rename', conversationId: 'chat-one', title: 'History check' } }, { send() {} });
+  assert.equal(changed[0].value.title, 'History check');
+});
 
 test('a teacher can rename only their own saved conversation', async () => {
   const { db, changed } = fixture();
