@@ -21,6 +21,10 @@ async function imagesFor(id: string, pages: DPage[], els: El[], accent: string) 
         const im = await loadPicture(id, e.img).catch(() => null);
         if (im) imgs.set(e.img, im);
       }
+      if (e.t === 'figure' && e.figure?.kind === 'map' && e.figure.backgroundImage) {
+        const im = await loadPicture(id, e.figure.backgroundImage).catch(() => null);
+        if (im) imgs.set(e.figure.backgroundImage, im);
+      }
       if (e.font) await ensureFont(e.font).catch(() => {});
     }),
   );

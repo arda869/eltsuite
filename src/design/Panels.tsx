@@ -5,6 +5,7 @@ import { FONTS, MM, SIZES, SWATCHES, VIEWS, ensureFont, type ArtView, type El, t
 import { SCENES } from '../storyboard/scenes';
 import { isLine, textHeight } from './render';
 import { nameOf } from './Drawers';
+import { FigureProps } from './FigureProps';
 
 // The settings for what's selected, or for the page when nothing is.
 
@@ -182,6 +183,7 @@ export function Props({ cx }: { cx: Ctx }) {
 
       </Sec>
       {one?.t === 'image' && <PictureProps cx={cx} e={one} set={set} live={live} />}
+      {one?.t === 'figure' && one.figure && <FigureProps cx={cx} e={one} set={set} />}
       {textual && <TextProps cx={cx} e={one!} set={set} live={live} />}
       {one?.t === 'shape' && <ShapeProps cx={cx} e={one} set={set} live={live} />}
       {one?.t === 'path' && (
@@ -252,7 +254,7 @@ export function Props({ cx }: { cx: Ctx }) {
     </div>
   );
 }
-const keepR = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr';
+const keepR = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr' || e.t === 'figure';
 
 function FontPick({ value, onChange }: { value: string; onChange: (f: string) => void }) {
   return (

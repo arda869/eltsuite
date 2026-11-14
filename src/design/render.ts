@@ -1,6 +1,7 @@
 import { getStroke } from 'perfect-freehand';
 import { drawnOf } from '../storyboard/bounds';
 import type { DPage, El, Fx, ShapeKind } from './model';
+import { drawFigure } from './figures';
 
 // Drawing a page: the same code draws it on screen while you work, and for downloads and printing,
 // so what you see is what you get.
@@ -686,6 +687,9 @@ export function drawEl(ctx: CanvasRenderingContext2D, e: El, env: Env, nums: Map
       break;
     case 'lines':
       drawLines(ctx, e);
+      break;
+    case 'figure':
+      if (e.figure) drawFigure(ctx, e.figure, e.w, e.h, e.figure.kind==='map'?env.imgs.get(e.figure.backgroundImage??''):undefined);
       break;
   }
   ctx.restore();

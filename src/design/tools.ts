@@ -124,6 +124,7 @@ export async function designPdfBytes(id: string, title: string): Promise<Uint8Ar
     els.map(async (e) => {
       try {
         if (e.t === 'image' && e.img) imgs.set(e.img, await m.loadPicture(id, e.img));
+        if (e.t === 'figure' && e.figure?.kind === 'map' && e.figure.backgroundImage) imgs.set(e.figure.backgroundImage, await m.loadPicture(id, e.figure.backgroundImage));
         if (e.font) await m.ensureFont(e.font);
       } catch {
         /* drawn without it */
