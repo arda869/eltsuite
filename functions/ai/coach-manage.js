@@ -29,4 +29,11 @@ export async function manageCoachConversationRequest(req, db = getFirestore()) {
   return { ok: true };
 }
 
-export const manageCoachConversation = onCall({ region: 'us-central1', maxInstances: 2 }, manageCoachConversationRequest);
+// Callable handlers receive a second response argument from Firebase. Keep the
+// injectable Firestore argument inside our own adapter so it cannot be mistaken
+// for that response object in production.
+export function createManageCoachConversationHandler(dbFactory = getFirestore) {
+  return (request) => manageCoachConversationRequest(request, dbFactory());
+}
+
+export const manageCoachConversation = onCall({ region: 'us-central1', maxInstances: 2 }, createManageCoachConversationHandler());
