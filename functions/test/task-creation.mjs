@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { checkActivities, nativeTask, taskCreationSchema } from '../ai/activities.js';
 import { IMPORT_TYPES, newImportElement } from '../ai/import-types.js';
 import { checkTaskMediaPlan } from '../ai/task-media.js';
+import { compactSchema } from '../ai/compact-schema.js';
+import { generationSchema } from '../ai/contract.js';
 
 const task = (changes = {}) => ({
   stageId:'tool',title:'At the café',format:'listening',mediaPlan:[{sourceRef:'',style:'',kind:'audio',title:'At the café',prompt:'',alt:'',lines:[
@@ -22,6 +24,9 @@ test('task creation exposes each native editor/import element except source-only
     assert.ok(available.has(type.kind), type.kind);
   }
   assert.ok(!available.has('picture'), 'generated images must use the media preparation path');
+  const wireSchema=compactSchema(generationSchema(taskCreationSchema()));
+  assert.ok(wireSchema.$defs.importElement.anyOf.length>=available.size);
+  assert.ok(Buffer.byteLength(JSON.stringify(wireSchema))<400_000,'the complete schema must fit in one provider request');
 });
 
 test('listening task needs new audio, matching private script and private answers', () => {
