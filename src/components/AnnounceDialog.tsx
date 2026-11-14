@@ -8,6 +8,16 @@ import { plainOf } from '../lib/chat';
 import { cancelScheduled, pinAnnouncement, postAnnouncement, remind, retract, useAnnouncements } from '../lib/announce';
 import { useAuth } from '../lib/auth';
 
+function suggestedEmailSubject(message: string): string {
+  const clean = message.trim().replace(/\s+/g, ' ');
+  if (!clean) return 'A message from your teacher';
+  const sentence = clean.match(/^.*?[.!?](?=\s|$)/)?.[0] || clean;
+  if (sentence.length <= 70) return sentence;
+  const clipped = sentence.slice(0, 69);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return `${lastSpace > 24 ? clipped.slice(0, lastSpace) : clipped}…`;
+}
+
 // Teacher: send a short announcement to the class or to some learners, and see who has read it.
 export function AnnounceDialog({ classId, roster, onClose }: { classId: string; roster: { id: string; name: string }[]; onClose: () => void }) {
   const [text, setText] = useState('');
@@ -48,7 +58,7 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
     setBusy(true);
     try {
       setErr('');
-      const mail = byEmail && body ? { email: { subject: subject.trim() || text.trim().slice(0, 70) || 'A message from your teacher', content: body, byUid: user?.uid ?? '', byName: user?.displayName || 'Your teacher' } } : {};
+      const mail = byEmail && body ? { email: { subject: subject.trim() || suggestedEmailSubject(text), content: body, byUid: user?.uid ?? '', byName: user?.displayName || 'Your teacher' } } : {};
       await postAnnouncement(classId, { ...mail, text: text.trim() || plainOf(body).slice(0, 400), ...(link.trim() ? { link: link.trim() } : {}), to: all ? 'all' : picked, chime: withChime, pinned, ...(laterAt > Date.now() ? { sendAt: laterAt } : {}), byName: (user?.displayName || 'Teacher').split(' ')[0] });
       setText('');
       setLink('');
@@ -107,7 +117,7 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
         )}
         {byEmail && body && (
           <div className="ann-email">
-            <input className="ann-link-input" value={subject} placeholder={'Subject: ' + (text.trim().slice(0, 50) || 'A message from your teacher')} onChange={(e) => setSubject(e.target.value)} aria-label="Email subject" />
+            <input className="ann-link-input" value={subject} placeholder={'Subject: ' + suggestedEmailSubject(text)} onChange={(e) => setSubject(e.target.value)} aria-label="Email subject" />
             <div className="chat-editor ann-email-editor">
               <TaskEditor key={bodyKey} content={body} onChange={setBody} handles={false} compact textOnly classId={classId} placeholder="The email. Use the tools for bold, lists, word stress, IPA and more." />
             </div>
