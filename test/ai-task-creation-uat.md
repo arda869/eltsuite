@@ -69,7 +69,7 @@ Updated 14 Nov 2026. This matrix separates local contract checks from complete p
 | S9 | quadrant | Diagram or timeline | Make a B1 café activity with a native quadrant that learners use to answer a question. | Pending live | — |
 | S10 | pyramid | Diagram or timeline | Make a B1 café activity with a native pyramid that learners use to answer a question. | Pending live | — |
 | M1 | image via mediaPlan | Picture | Make a B1 label-the-picture task about a café counter and generate the image within the task. | Pending live | — |
-| M2 | audio via mediaPlan | Recording | Make a B1 listening task about ordering food with a new two-speaker audio dialogue and three questions. | Teacher pass; learner pending | Hidden Demo Class UAT lesson, 14 Nov: 42-second generated audio played, task saved and reopened. |
+| M2 | audio via mediaPlan | Recording | Make a B1 listening task about ordering food with a new two-speaker audio dialogue and three questions. | Teacher and learner pass on previous published build; new build pending | Demo Class UAT lesson, 14 Nov: a 42-second two-speaker recording was generated inside the task, played, saved and reopened. Temporarily showed the lesson to UAT Email Learner through View as: playback advanced to 0:03, all three questions appeared, and the private script, transcript and explanations were absent. Hid the lesson again after checking. The next build's stricter task schema is not yet published or checked. |
 | L1 | two-column layout | Columns | Make a B1 reading task about a café with the source text beside the questions. | Pending live | — |
 | L2 | definition marks | Definitions | Make a B1 café reading with contextual definitions for two non-answer vocabulary items. | Pending live | — |
 
