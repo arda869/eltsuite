@@ -1,12 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {validateSpeech,speechInstructions} from '../../functions/speech/contract.js';
-import {generateSpeech} from '../../functions/speech/provider.js';
+import {validateSpeech,prepareSpeechScript,speechInstructions} from '../../functions/speech/contract.js';
+import {generateSpeech,transcriptReadsDirection} from '../../functions/speech/provider.js';
 import {validateAudio,transcriptSegments} from '../../functions/speech/transcribe.js';
 import {validateActivity,selectFocus,roleplayInstructions,validateTurns,feedbackInstructions} from '../../functions/speaking/contract.js';
 const request={text:'I was— no, Friday.',voice:'marin',accent:'British English',direction:'Hesitate, then repair.'};
 test('voice input bounds and intentional disfluencies',()=>{assert.equal(validateSpeech(request).text,request.text);for(const patch of [{text:''},{text:'a'.repeat(1201)},{voice:'fake'},{direction:'a'.repeat(601)}])assert.throws(()=>validateSpeech({...request,...patch}));assert.match(speechInstructions(request),/Preserve all hesitations/);});
+test('parenthetical directions guide speech but are never sent as script words',async()=>{
+  const text='(softly) Hello. I (hesitates) thought it was Thursday— [laughs] sorry, Friday.';
+  const prepared=prepareSpeechScript(text);
+  assert.equal(prepared.spoken,'Hello. I thought it was Thursday— sorry, Friday.');
+  assert.deepEqual(prepared.cues.map(c=>c.direction),['softly','hesitates','laughs']);
+  assert.throws(()=>validateSpeech({...request,text:'(softly)'}),/Add words to speak/);
+  assert.match(speechInstructions(request,prepared.cues),/softly/);
+  let socket;
+  class DirectionSocket extends Socket {constructor(){super();socket=this;}}
+  await generateSpeech('test',{...request,text},{Socket:DirectionSocket});
+  const item=socket.sent.find(event=>event.type==='conversation.item.create');
+  assert.equal(item.item.content[0].text,`Perform only this script:\n${prepared.spoken}`);
+  assert.doesNotMatch(item.item.content[0].text,/softly|hesitates|laughs/);
+  assert.match(socket.sent.find(event=>event.type==='session.update').session.instructions,/Cue 1: softly/);
+  assert.equal(transcriptReadsDirection('Softly, hello.',prepared.spoken,prepared.cues),true);
+  assert.equal(transcriptReadsDirection('Hello. I thought it was Thursday— sorry, Friday.',prepared.spoken,prepared.cues),false);
+});
 class Socket extends EventEmitter{constructor(){super();queueMicrotask(()=>this.emit('message',Buffer.from(JSON.stringify({type:'session.created'}))));}send(raw){const e=JSON.parse(raw);this.sent??=[];this.sent.push(e);if(e.type==='session.update')queueMicrotask(()=>this.emit('message',Buffer.from('{"type":"session.updated"}')));if(e.type==='response.create')queueMicrotask(()=>{for(const event of [{type:'response.output_audio.delta',delta:Buffer.alloc(4800).toString('base64')},{type:'response.output_audio_transcript.done',transcript:request.text},{type:'response.done',response:{status:'completed'}}])this.emit('message',Buffer.from(JSON.stringify(event)));});}close(){this.emit('close');}}
 test('Realtime audio assembly and transcript',async()=>{const r=await generateSpeech('test',request,{Socket});assert.equal(Buffer.from(r.pcm,'base64').length,4800);assert.equal(r.rate,24000);assert.equal(r.transcript,request.text);});
 test('premature connection closure rejects without a partial take',async()=>{class Broken extends Socket{send(){queueMicrotask(()=>this.emit('close'));}}await assert.rejects(generateSpeech('test',request,{Socket:Broken}),/before the take/);});
