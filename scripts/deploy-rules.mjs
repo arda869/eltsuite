@@ -13,6 +13,16 @@ async function call(method, url, body) {
   return res;
 }
 
+async function retryTransient(request, description) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const response = await request();
+    if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) return response;
+    const delay = 1000 * 2 ** attempt;
+    console.warn(`${description} returned ${response.status}; retrying in ${delay / 1000}s.`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
 const content = readFileSync('firestore.rules', 'utf8');
 const rs = await call('POST', `${base}/rulesets`, { source: { files: [{ name: 'firestore.rules', content }] } });
 if (rs.status >= 300) {
@@ -21,7 +31,7 @@ if (rs.status >= 300) {
 }
 const rulesetName = rs.data.name;
 const releaseName = `projects/${project}/releases/cloud.firestore`;
-let rel = await call('PATCH', `https://firebaserules.googleapis.com/v1/${releaseName}`, { release: { name: releaseName, rulesetName } });
+let rel = await retryTransient(() => call('PATCH', `https://firebaserules.googleapis.com/v1/${releaseName}`, { release: { name: releaseName, rulesetName } }), 'Firestore rules release');
 if (rel.status === 404) rel = await call('POST', `${base}/releases`, { name: releaseName, rulesetName });
 if (rel.status >= 300) {
   console.error(`::error::Rules release failed (${rel.status}): ${JSON.stringify(rel.data?.error?.message ?? rel.data).slice(0, 400)}`);
@@ -34,7 +44,7 @@ try {
   const dbAuth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/firebase.database', 'https://www.googleapis.com/auth/userinfo.email'] });
   const dbClient = await dbAuth.getClient();
   const rules = readFileSync('database.rules.json', 'utf8');
-  const res = await dbClient.request({ method: 'PUT', url: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app/.settings/rules.json', data: rules, headers: { 'Content-Type': 'application/json' }, validateStatus: () => true });
+  const res = await retryTransient(() => dbClient.request({ method: 'PUT', url: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app/.settings/rules.json', data: rules, headers: { 'Content-Type': 'application/json' }, validateStatus: () => true }), 'Realtime Database rules release');
   if (res.status >= 300) {
     console.error(`::error::Realtime Database rules were rejected (${res.status}): ${JSON.stringify(res.data).slice(0, 400)}`);
     process.exit(1);
