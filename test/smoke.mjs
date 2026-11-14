@@ -772,7 +772,14 @@ const J = {
     await map.getByRole('button', { name: 'Save map' }).click();
     const id = new URL(design.url()).pathname.split('/').at(-1);
     await design.waitForFunction(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([path, value]) => path.startsWith(`sharedDocs/${fileId}/dels/`) && value.figure?.kind === 'map' && value.figure.items.some(item => item.label === 'Library' && item.w >= .24 && item.rotation === 20) && value.figure.items.some(item => item.kind === 'road' && item.points?.length === 3)), id);
+    const savedMap = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path, value]) => path.startsWith(`sharedDocs/${fileId}/dels/`) && value.figure?.kind === 'map').map(([, value]) => value)[0], id);
     await design.reload();
+    await design.getByRole('button', { name: 'Download' }).waitFor();
+    const pageCanvas = design.getByRole('img', { name: 'Page 1' });
+    const pageSize = await design.evaluate(({ fileId, pageId }) => { const page = JSON.parse(localStorage.getItem('mockfs'))[`sharedDocs/${fileId}/dpages/${pageId}`]; return { width: page.w, height: page.h }; }, { fileId: id, pageId: savedMap.page });
+    const pageBox = await pageCanvas.boundingBox();
+    if (!pageBox) throw Error('Saved map page is not visible');
+    await design.mouse.click(pageBox.x + (savedMap.x + savedMap.w / 2) / pageSize.width * pageBox.width, pageBox.y + (savedMap.y + savedMap.h / 2) / pageSize.height * pageBox.height);
     await design.getByRole('button', { name: 'Edit map and symbols' }).click();
     const reopened = design.getByRole('dialog', { name: 'Edit map' });
     await reopened.locator('.dz-map-layers button').filter({ hasText: 'Library' }).waitFor();
