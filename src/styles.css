@@ -1574,8 +1574,10 @@ body.is-dragging-inline, body.is-dragging-inline * { cursor: grabbing !important
 .av-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: transparent; border-radius: 12px; padding: 8px 4px; cursor: pointer; transition: transform 0.12s, background 0.12s; }
 .av-opt:hover:not(:disabled) { background: var(--surface); transform: translateY(-2px); }
 .av-opt.on { background: var(--surface); box-shadow: 0 0 0 2px var(--ink); }
-.av-opt.taken { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.6); }
+.av-opt.taken { cursor: not-allowed; }
+.av-opt.taken :is(.avatar-pic, .avatar-fallback) { opacity: 0.4; filter: grayscale(0.6); }
 .av-label { font: 11px var(--sans); color: var(--muted); }
+.av-dialog .hint { color: var(--ink); }
 .person .avatar-pic, .person .avatar-fallback { margin-right: 2px; }
 .lg-name .avatar-pic, .lg-name .avatar-fallback { margin-right: 2px; }
 .rf-person .avatar-pic, .rf-person .avatar-fallback { margin: 0; }
