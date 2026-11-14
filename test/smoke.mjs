@@ -799,6 +799,7 @@ const J = {
     await map.getByRole('button', { name: 'Lock Road' }).click();
     if (!await map.locator('.dz-layer-main').filter({ hasText: 'Road' }).isDisabled()) throw Error('A locked road can still be selected');
     await map.getByRole('button', { name: 'Unlock Road' }).click();
+    if (process.env.MAP_SCREENSHOT) await map.screenshot({ path: process.env.MAP_SCREENSHOT });
     await map.getByRole('tab', { name: '4 Finish' }).click();
     await map.getByRole('button', { name: 'Phone', exact: true }).click();
     if (!await map.locator('.dz-map-preview-phone').count()) throw Error('Phone preview was not shown');
