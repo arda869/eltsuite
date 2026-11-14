@@ -15,7 +15,7 @@ export type MapItemKind = 'road' | 'river' | 'footpath' | 'wall' | 'fence' | 'zo
 export type MapItem = {
   id: string; kind: MapItemKind; x?: number; y?: number; w?: number; h?: number;
   points?: Point[]; label?: string; icon?: string; fill?: string; dashed?: boolean; rotation?: number; hidden?: boolean; locked?: boolean;
-  groupId?: string; keyText?: string;
+  groupId?: string;
 };
 export type MapFigure = { kind: 'map'; title: string; items: MapItem[]; ink?: string; paper?: string; showBorder?: boolean; backgroundImage?: string; backgroundOpacity?: number; backgroundFit?: 'contain'|'cover'; backgroundOffsetX?: number; backgroundOffsetY?: number; backgroundLocked?: boolean };
 export type Figure = ChartFigure | MapFigure;

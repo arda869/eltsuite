@@ -51,7 +51,7 @@ const labelFor = (item: MapItem) => item.label?.trim() || (item.kind === 'icon' 
 export function MapLayersPanel({ items, selectedIds, onSelectIds, onChangeItems }: LayersProps) {
   const [message, setMessage] = useState('');
   const lastIndex = useRef<number | null>(null);
-  const selectable = items.filter(item => !item.locked);
+  const selectable = items.filter(item => !item.locked && !item.hidden);
   const selected = new Set(selectedIds);
   const unlockedCount = items.filter(item => selected.has(item.id) && !item.locked).length;
   const ordered = [...items].reverse();
@@ -66,6 +66,7 @@ export function MapLayersPanel({ items, selectedIds, onSelectIds, onChangeItems 
     setMessage(`${labelFor(items[index])} moved ${direction === 1 ? 'forward' : 'backward'}.`);
   };
   const selectRow = (id: string, rowIndex: number, additive: boolean, range: boolean) => {
+    if (ordered[rowIndex]?.locked || ordered[rowIndex]?.hidden) return;
     if (range && lastIndex.current !== null) {
       const first = Math.min(lastIndex.current, rowIndex), last = Math.max(lastIndex.current, rowIndex);
       const ids = ordered.slice(first, last + 1).filter(item => !item.locked).map(item => item.id);
@@ -98,8 +99,8 @@ export function MapLayersPanel({ items, selectedIds, onSelectIds, onChangeItems 
     {items.length ? <>
       <div className="dz-layer-list" role="group" aria-label="Map object layers">
         {ordered.map((item, rowIndex) => <div className={`dz-layer-row${selected.has(item.id) ? ' is-selected' : ''}${item.hidden ? ' is-hidden' : ''}`} key={item.id}>
-          <label className="dz-layer-check"><input type="checkbox" checked={selected.has(item.id)} disabled={item.locked} onChange={() => selectRow(item.id, rowIndex, true, false)} aria-label={`Select ${labelFor(item)}`} /></label>
-          <button type="button" className="dz-layer-main" onClick={event => selectRow(item.id, rowIndex, event.metaKey || event.ctrlKey, event.shiftKey)} aria-pressed={selected.has(item.id)} title={labelFor(item)}>
+          <label className="dz-layer-check"><input type="checkbox" checked={selected.has(item.id)} disabled={item.locked || item.hidden} onChange={() => selectRow(item.id, rowIndex, true, false)} aria-label={`Select ${labelFor(item)}`} /></label>
+          <button type="button" className="dz-layer-main" disabled={item.locked || item.hidden} onClick={event => selectRow(item.id, rowIndex, event.metaKey || event.ctrlKey, event.shiftKey)} aria-pressed={selected.has(item.id)} title={labelFor(item)}>
             <LayerPicture item={item} /><span className="dz-layer-words"><span className="dz-layer-name">{labelFor(item)}</span><small>{item.groupId ? 'Grouped · ' : ''}{item.locked ? 'Locked · ' : ''}{kindNames[item.kind]}</small></span>
           </button>
           <div className="dz-layer-actions">
@@ -120,13 +121,12 @@ export function MapLayersPanel({ items, selectedIds, onSelectIds, onChangeItems 
 
 export function MapMarkerKey({ items, onChangeItems }: { items: MapItem[]; onChangeItems: (items: MapItem[]) => void }) {
   const markers = items.filter(item => item.kind === 'marker');
-  const update = (id: string, keyText: string) => onChangeItems(items.map(item => item.id === id ? { ...item, keyText } : item));
   const labelInOrder = () => {
     let index = 0;
     onChangeItems(items.map(item => item.kind === 'marker' ? { ...item, label: letterForIndex(index++) } : item));
   };
   return <section className="dz-map-marker-key" aria-label="Map letter key"><div className="dz-marker-heading"><strong>Letter key</strong><button type="button" onClick={labelInOrder} disabled={!markers.length}>Label A–Z in order</button></div>
-    {markers.length ? <><p>Write what each letter means. Keep answers in the Classes task.</p><div className="dz-marker-key-list">{markers.map(item => <label key={item.id}><span>{item.label || '·'}</span><input value={item.keyText || ''} onChange={event => update(item.id, event.target.value)} placeholder="Place name" aria-label={`Place name for ${item.label || 'unlabelled marker'}`} /></label>)}</div></> : <p>Add a letter marker to the map to make a key.</p>}
+    {markers.length ? <><p>Use these letters in a Classes label-the-picture task. Put correct answers in that task’s answer key.</p><div className="dz-marker-key-list">{markers.map(item => <div key={item.id} aria-label={`Map marker ${item.label || 'unlabelled'}`}><span>{item.label || '·'}</span><small>Map marker</small></div>)}</div></> : <p>Add a letter marker to the map to make a key.</p>}
   </section>;
 }
 

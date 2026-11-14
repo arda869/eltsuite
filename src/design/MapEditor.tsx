@@ -4,11 +4,12 @@ import type { Ctx } from './Editor';
 import { blankMap, cloneFigure, makeMapItem, MAP_PRESETS, mapPointFromCanvas } from './figureTemplates';
 import { drawFigure, MAP_ICONS, type MapFigure, type MapItem, type MapItemKind, type Point } from './figures';
 import MapSymbolLibrary from './MapSymbolLibrary';
+import { MapHistoryToolbar, MapLayersPanel, MapMarkerKey } from './MapLayersPanel';
 
 type MapTool = 'select' | MapItemKind;
 type MapTab = 'layout' | 'places' | 'labels' | 'finish';
 type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
-type Dragging = { id: string; item: MapItem; start: Point; mode: 'move' | 'vertex' | 'resize' | 'rotate'; vertex?: number; handle?: Handle };
+type Dragging = { id: string; item: MapItem; start: Point; mode: 'move' | 'vertex' | 'resize' | 'rotate'; vertex?: number; handle?: Handle; groupItems?: MapItem[]; recorded?: boolean };
 
 const pathKinds: MapItemKind[] = ['road', 'river', 'footpath', 'wall', 'fence', 'bridge'];
 const placeKinds: MapItemKind[] = ['building', 'room', 'zone', 'water', 'roundabout', 'tree', 'gate'];
@@ -45,10 +46,46 @@ function NumberField({ name, value, onChange }: { name: string; value?: number; 
 export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set: (patch: Partial<El>, key?: string) => void; onClose: () => void }) {
   const initial = e.figure as MapFigure;
   const [draft, setDraft] = useState<MapFigure>(() => copyMap(initial));
+  const draftRef = useRef(draft);
+  const history = useRef<{ past: MapFigure[]; future: MapFigure[] }>({ past: [], future: [] });
+  const [, updateHistory] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selected = selectedIds.at(-1) || '';
+  const selectIds = (ids: string[]) => setSelectedIds(ids);
+  const changeDraft = (update: MapFigure | ((value: MapFigure) => MapFigure), record = true) => {
+    const previous = draftRef.current;
+    const next = typeof update === 'function' ? update(previous) : update;
+    if (JSON.stringify(next) === JSON.stringify(previous)) return;
+    if (record) {
+      history.current.past.push(copyMap(previous));
+      if (history.current.past.length > 100) history.current.past.shift();
+      history.current.future = [];
+      updateHistory(value => value + 1);
+    }
+    draftRef.current = next;
+    setDraft(next);
+  };
+  const checkpoint = () => {
+    history.current.past.push(copyMap(draftRef.current));
+    if (history.current.past.length > 100) history.current.past.shift();
+    history.current.future = [];
+    updateHistory(value => value + 1);
+  };
+  const travel = (direction: 'undo' | 'redo') => {
+    const from = direction === 'undo' ? history.current.past : history.current.future;
+    const to = direction === 'undo' ? history.current.future : history.current.past;
+    const next = from.pop();
+    if (!next) return;
+    to.push(copyMap(draftRef.current));
+    draftRef.current = next;
+    setDraft(next);
+    setSelectedIds(ids => ids.filter(id => next.items.some(item => item.id === id)));
+    setNamingId('');
+    updateHistory(value => value + 1);
+  };
   const [activeTab, setActiveTab] = useState<MapTab>(initial.title === 'New map' ? 'layout' : 'places');
   const [tool, setTool] = useState<MapTool>('select');
   const [iconKey, setIconKey] = useState('café');
-  const [selected, setSelected] = useState('');
   const [namingId, setNamingId] = useState('');
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
@@ -64,8 +101,8 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
   const upload = useRef<HTMLInputElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const dragging = useRef<Dragging | null>(null);
-  const backgroundDrag = useRef<{ start: Point; x: number; y: number } | null>(null);
-  const current = draft.items.find(item => item.id === selected);
+  const backgroundDrag = useRef<{ start: Point; x: number; y: number; recorded?: boolean } | null>(null);
+  const current = draft.items.find(item => item.id === selected && !item.hidden && !item.locked);
   const naming = draft.items.find(item => item.id === namingId);
 
   useEffect(() => {
@@ -153,15 +190,15 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     return snap ? { x: snapValue(point.x), y: snapValue(point.y) } : point;
   };
   const point = (event: PointerEvent<HTMLCanvasElement>) => pointFromClient(event.clientX, event.clientY);
-  const modify = (patch: Partial<MapItem>, id = selected) => setDraft(value => ({
+  const modify = (patch: Partial<MapItem>, id = selected, record = true) => changeDraft(value => ({
     ...value, items: value.items.map(item => item.id === id ? { ...item, ...patch } : item),
-  }));
+  }), record);
   const place = (kind: MapItemKind, at: Point, symbol = iconKey) => {
     const item = makeMapItem(kind, at.x, at.y, symbol);
     if (kind === 'icon') item.label = MAP_ICONS.find(([key]) => key === symbol)?.[1] || 'Place';
     if (kind === 'marker') item.label = nextLetter(draft.items);
-    setDraft(value => ({ ...value, items: [...value.items, item] }));
-    setSelected(item.id);
+    changeDraft(value => ({ ...value, items: [...value.items, item] }));
+    selectIds([item.id]);
     setNamingId(item.id);
     setTool('select');
     setError('');
@@ -176,7 +213,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     return undefined;
   };
   const hitAt = (at: Point) => draft.items.slice().reverse().find(item => {
-    if (item.hidden) return false;
+    if (item.hidden || item.locked) return false;
     if (item.points?.length) {
       return item.points.some(vertex => near(at, vertex, .035)) || item.points.slice(1).some((end, index) => distanceToSegment(at, item.points![index], end) < .024);
     }
@@ -187,8 +224,8 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     const points = pendingPath.filter((value, index) => index === 0 || !near(value, pendingPath[index - 1], .008));
     if (points.length < 2) { setError('Click at least two points to draw the line.'); return; }
     const item: MapItem = { id: crypto.randomUUID(), kind: tool as MapItemKind, points };
-    setDraft(value => ({ ...value, items: [...value.items, item] }));
-    setPendingPath([]); setHoverPoint(null); setTool('select'); setSelected(item.id); setError('');
+    changeDraft(value => ({ ...value, items: [...value.items, item] }));
+    setPendingPath([]); setHoverPoint(null); setTool('select'); selectIds([item.id]); setError('');
   };
   const down = (event: PointerEvent<HTMLCanvasElement>) => {
     const at = point(event);
@@ -207,7 +244,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
       }
     }
     const hit = hitAt(at);
-    setSelected(hit?.id || '');
+    selectIds(hit ? [hit.id] : []);
     setNamingId('');
     if (!hit) {
       if (activeTab === 'layout' && draft.backgroundImage && draft.backgroundLocked === false) {
@@ -216,9 +253,9 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
       }
       return;
     }
-    if (hit.locked) return;
     const vertex = hit.points?.findIndex(value => near(at, value, .035));
-    dragging.current = { id: hit.id, item: copyMap({ kind: 'map', title: '', items: [hit] }).items[0], start: at, mode: vertex !== undefined && vertex >= 0 ? 'vertex' : 'move', vertex };
+    const groupItems = hit.groupId ? copyMap({ kind: 'map', title: '', items: draft.items.filter(item => item.groupId === hit.groupId && !item.locked && !item.hidden) }).items : undefined;
+    dragging.current = { id: hit.id, item: copyMap({ kind: 'map', title: '', items: [hit] }).items[0], start: at, mode: groupItems ? 'move' : vertex !== undefined && vertex >= 0 ? 'vertex' : 'move', vertex, groupItems };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const move = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -226,26 +263,36 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     if (isPath(tool)) { if (pendingPath.length) setHoverPoint(at); return; }
     const imageDrag = backgroundDrag.current;
     if (imageDrag && event.currentTarget.hasPointerCapture(event.pointerId)) {
-      setDraft(value => ({ ...value, backgroundOffsetX: clamp(imageDrag.x + (at.x - imageDrag.start.x) * 2, -1, 1), backgroundOffsetY: clamp(imageDrag.y + (at.y - imageDrag.start.y) * 2, -1, 1) }));
+      if (near(at, imageDrag.start, .003)) return;
+      if (!imageDrag.recorded) { checkpoint(); imageDrag.recorded = true; }
+      changeDraft(value => ({ ...value, backgroundOffsetX: clamp(imageDrag.x + (at.x - imageDrag.start.x) * 2, -1, 1), backgroundOffsetY: clamp(imageDrag.y + (at.y - imageDrag.start.y) * 2, -1, 1) }), false);
       return;
     }
     const drag = dragging.current;
     if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
     const dx = at.x - drag.start.x, dy = at.y - drag.start.y;
+    if (Math.hypot(dx, dy) < .003) return;
+    if (!drag.recorded) { checkpoint(); drag.recorded = true; }
     const item = drag.item;
     if (drag.mode === 'rotate') {
       const angle = Math.atan2(at.y - (item.y ?? .5), at.x - (item.x ?? .5));
-      modify({ rotation: Math.round((angle + Math.PI / 2) * 180 / Math.PI) }, drag.id);
+      modify({ rotation: Math.round((angle + Math.PI / 2) * 180 / Math.PI) }, drag.id, false);
     } else if (drag.mode === 'resize') {
       const sideX = drag.handle?.endsWith('e') ? 1 : -1;
       const sideY = drag.handle?.startsWith('s') ? 1 : -1;
       const w = clamp((item.w ?? .1) + dx * sideX, .025, 1);
       const h = clamp((item.h ?? .1) + dy * sideY, .025, 1);
-      modify({ w, h, x: clamp((item.x ?? .5) + (w - (item.w ?? .1)) * sideX / 2, w / 2, 1-w/2), y: clamp((item.y ?? .5) + (h - (item.h ?? .1)) * sideY / 2, h/2, 1-h/2) }, drag.id);
+      modify({ w, h, x: clamp((item.x ?? .5) + (w - (item.w ?? .1)) * sideX / 2, w / 2, 1-w/2), y: clamp((item.y ?? .5) + (h - (item.h ?? .1)) * sideY / 2, h/2, 1-h/2) }, drag.id, false);
     } else if (drag.mode === 'vertex') {
-      modify({ points: item.points?.map((value, index) => index === drag.vertex ? { x: clamp(value.x + dx), y: clamp(value.y + dy) } : value) }, drag.id);
+      modify({ points: item.points?.map((value, index) => index === drag.vertex ? { x: clamp(value.x + dx), y: clamp(value.y + dy) } : value) }, drag.id, false);
     } else {
-      modify({ x: item.x === undefined ? undefined : clamp(item.x + dx), y: item.y === undefined ? undefined : clamp(item.y + dy), points: item.points?.map(value => ({ x: clamp(value.x + dx), y: clamp(value.y + dy) })) }, drag.id);
+      if (drag.groupItems?.length) {
+        const originals = new Map(drag.groupItems.map(value => [value.id, value]));
+        changeDraft(value => ({ ...value, items: value.items.map(currentItem => {
+          const original = originals.get(currentItem.id);
+          return original ? { ...currentItem, x: original.x === undefined ? undefined : clamp(original.x + dx), y: original.y === undefined ? undefined : clamp(original.y + dy), points: original.points?.map(point => ({ x: clamp(point.x + dx), y: clamp(point.y + dy) })) } : currentItem;
+        }) }), false);
+      } else modify({ x: item.x === undefined ? undefined : clamp(item.x + dx), y: item.y === undefined ? undefined : clamp(item.y + dy), points: item.points?.map(value => ({ x: clamp(value.x + dx), y: clamp(value.y + dy) })) }, drag.id, false);
     }
   };
   const up = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -261,7 +308,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
   const choosePreset = (name: string, figure: MapFigure) => {
     const next = { name, figure: copyMap(figure) };
     if (draft.items.length > 1 || !!draft.backgroundImage) { setPendingPreset(next); return; }
-    setDraft(next.figure); setSelected(''); setBackground(undefined);
+    changeDraft(next.figure); selectIds([]); setBackground(undefined);
   };
   const importImage = async (file?: File) => {
     if (!file) return;
@@ -271,7 +318,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
       const { id } = await storePicture(cx.d.id, file);
       const image = await loadPicture(cx.d.id, id);
       setBackground(image);
-      setDraft(value => ({ ...value, backgroundImage: id, backgroundLocked: true }));
+      changeDraft(value => ({ ...value, backgroundImage: id, backgroundLocked: true }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'We couldn’t add this image. Try another picture.');
     } finally {
@@ -293,13 +340,13 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     <div className="dz-figure-work"><div className="dz-map-tools">
       <p className="dz-map-tab-help">{tabs.find(tab => tab.key === activeTab)?.help}</p>
       {activeTab === 'layout' && <>
-        <Field name="Map title" value={draft.title} onChange={title => setDraft(value => ({ ...value, title }))} />
+        <Field name="Map title" value={draft.title} onChange={title => changeDraft(value => ({ ...value, title }))} />
         <div className="dz-map-toolgroup"><strong>Start with a layout</strong><div className="dz-map-start-list">
           <button type="button" onClick={() => choosePreset('Blank map', blankMap())}>Blank map</button>
           {MAP_PRESETS.filter(preset => ['park','site','airport','town-now','town','castle'].includes(preset.id)).map(preset => <button type="button" key={preset.id} onClick={() => choosePreset(preset.name, preset.figure as MapFigure)}><b>{preset.name}</b><small>{preset.about}</small></button>)}
         </div><p className="dz-map-muted">For a before-and-after pair, choose the two-map layout in Charts & maps.</p></div>
         <div className="dz-map-toolgroup"><strong>Trace an existing plan</strong><input ref={upload} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={event => void importImage(event.target.files?.[0])} /><button type="button" onClick={() => upload.current?.click()} disabled={busy}>{busy ? 'Importing…' : 'Import map image'}</button>
-          {draft.backgroundImage && <><label>Fit<select value={draft.backgroundFit || 'contain'} onChange={event => setDraft(value => ({ ...value, backgroundFit: event.target.value as 'contain' | 'cover' }))}><option value="contain">Show the whole image</option><option value="cover">Fill the map</option></select></label><label>Image opacity <input type="range" min="10" max="100" value={Math.round((draft.backgroundOpacity ?? 1) * 100)} onChange={event => setDraft(value => ({ ...value, backgroundOpacity: Number(event.target.value) / 100 }))} /></label><label className="dz-map-check"><input type="checkbox" checked={draft.backgroundLocked !== false} onChange={event => setDraft(value => ({ ...value, backgroundLocked: event.target.checked }))} /> Lock the reference image</label>{draft.backgroundLocked === false && <><p className="dz-map-muted">Drag the empty map area to move the reference image.</p><label>Move left or right<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetX || 0) * 100)} onChange={event => setDraft(value => ({ ...value, backgroundOffsetX: Number(event.target.value) / 100 }))} /></label><label>Move up or down<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetY || 0) * 100)} onChange={event => setDraft(value => ({ ...value, backgroundOffsetY: Number(event.target.value) / 100 }))} /></label></>}<button type="button" onClick={() => { setDraft(value => ({ ...value, backgroundImage: undefined })); setBackground(undefined); }}>Remove image</button></>}
+          {draft.backgroundImage && <><label>Fit<select value={draft.backgroundFit || 'contain'} onChange={event => changeDraft(value => ({ ...value, backgroundFit: event.target.value as 'contain' | 'cover' }))}><option value="contain">Show the whole image</option><option value="cover">Fill the map</option></select></label><label>Image opacity <input type="range" min="10" max="100" value={Math.round((draft.backgroundOpacity ?? 1) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOpacity: Number(event.target.value) / 100 }))} /></label><label className="dz-map-check"><input type="checkbox" checked={draft.backgroundLocked !== false} onChange={event => changeDraft(value => ({ ...value, backgroundLocked: event.target.checked }))} /> Lock the reference image</label>{draft.backgroundLocked === false && <><p className="dz-map-muted">Drag the empty map area to move the reference image.</p><label>Move left or right<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetX || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetX: Number(event.target.value) / 100 }))} /></label><label>Move up or down<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetY || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetY: Number(event.target.value) / 100 }))} /></label></>}<button type="button" onClick={() => { changeDraft(value => ({ ...value, backgroundImage: undefined })); setBackground(undefined); }}>Remove image</button></>}
         </div>
         <div className="dz-map-toolgroup"><strong>Drawing aid</strong><label className="dz-map-check"><input type="checkbox" checked={showGrid} onChange={event => setShowGrid(event.target.checked)} /> Show grid</label><label className="dz-map-check"><input type="checkbox" checked={snap} onChange={event => setSnap(event.target.checked)} /> Snap to grid</label></div>
       </>}
@@ -311,19 +358,21 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
       </>}
       {activeTab === 'labels' && <>
         <div className="dz-map-toolgroup"><strong>Letters and names</strong><p className="dz-map-muted">Pick a marker, then click the map. Its letter can be changed beside the point.</p><button type="button" className={tool === 'marker' ? 'on' : ''} onClick={() => chooseTool('marker')}>Add next letter ({nextLetter(draft.items)})</button><button type="button" className={tool === 'label' ? 'on' : ''} onClick={() => chooseTool('label')}>Add text label</button><button type="button" className={tool === 'compass' ? 'on' : ''} onClick={() => chooseTool('compass')}>Add north arrow</button></div>
-        <div className="dz-map-toolgroup"><strong>Existing labels</strong>{draft.items.filter(item => !!item.label).map(item => <button type="button" key={item.id} onClick={() => { chooseTool('select'); setSelected(item.id); setNamingId(item.id); }}>{item.label}</button>)}</div>
+        <div className="dz-map-toolgroup"><strong>Existing labels</strong>{draft.items.filter(item => !!item.label && !item.hidden && !item.locked).map(item => <button type="button" key={item.id} onClick={() => { chooseTool('select'); selectIds([item.id]); setNamingId(item.id); }}>{item.label}</button>)}</div>
+        <MapMarkerKey items={draft.items} onChangeItems={items => changeDraft(value => ({ ...value, items }))} />
       </>}
       {activeTab === 'finish' && <>
-        <Field name="Map title" value={draft.title} onChange={title => setDraft(value => ({ ...value, title }))} />
-        <label className="dz-map-check"><input type="checkbox" checked={draft.showBorder !== false} onChange={event => setDraft(value => ({ ...value, showBorder: event.target.checked }))} /> Show map border</label>
+        <Field name="Map title" value={draft.title} onChange={title => changeDraft(value => ({ ...value, title }))} />
+        <label className="dz-map-check"><input type="checkbox" checked={draft.showBorder !== false} onChange={event => changeDraft(value => ({ ...value, showBorder: event.target.checked }))} /> Show map border</label>
         <div className="dz-map-toolgroup"><strong>Preview size</strong><div>{(['class','phone','print'] as const).map(size => <button type="button" key={size} className={previewSize === size ? 'on' : ''} onClick={() => setPreviewSize(size)}>{size === 'class' ? 'Class' : size === 'phone' ? 'Phone' : 'Print'}</button>)}</div><p className="dz-map-muted">The same map is used on screen and on paper. Questions and answers are added in Classes.</p></div>
         <p className="dz-map-summary">{draft.items.length} map objects · {draft.items.filter(item => item.kind === 'marker').length} letter markers</p>
       </>}
-      {pendingPreset && <div className="dz-map-confirm" role="alertdialog" aria-label="Replace current map"><strong>Replace the current map?</strong><p>Choosing {pendingPreset.name} removes the objects and reference image in this map. Your saved design stays as it is until you save.</p><div><button type="button" onClick={() => setPendingPreset(null)}>Keep this map</button><button type="button" onClick={() => { setDraft(pendingPreset.figure); setBackground(undefined); setSelected(''); setPendingPreset(null); }}>Replace map</button></div></div>}
+      {pendingPreset && <div className="dz-map-confirm" role="alertdialog" aria-label="Replace current map"><strong>Replace the current map?</strong><p>Choosing {pendingPreset.name} removes the objects and reference image in this map. Your saved design stays as it is until you save.</p><div><button type="button" onClick={() => setPendingPreset(null)}>Keep this map</button><button type="button" onClick={() => { changeDraft(pendingPreset.figure); setBackground(undefined); selectIds([]); setPendingPreset(null); }}>Replace map</button></div></div>}
       {error && <p role="alert" className="dz-map-error">{error}</p>}
     </div>
     <div className={`dz-map-center dz-map-preview-${previewSize}`}>
       <div className="dz-map-instruction">{isPath(tool) ? `Click to draw a ${tool}. Add bends, then finish the line.` : tool === 'select' ? 'Click an object to edit it. Drag its handles to resize or rotate.' : `Click the map to place ${tool === 'icon' ? MAP_ICONS.find(([key]) => key === iconKey)?.[1] : labelOf(tool)}.`}</div>
+      <MapHistoryToolbar canUndo={history.current.past.length > 0} canRedo={history.current.future.length > 0} onUndo={() => travel('undo')} onRedo={() => travel('redo')} />
       {isPath(tool) && <div className="dz-map-path-actions"><span>{pendingPath.length ? `${pendingPath.length} point${pendingPath.length === 1 ? '' : 's'} placed` : 'Click the starting point'}</span><button type="button" disabled={pendingPath.length < 2} onClick={finishPath}>Finish line</button><button type="button" disabled={!pendingPath.length} onClick={() => { setPendingPath([]); setHoverPoint(null); }}>Cancel line</button></div>}
       <div className="dz-map-zoom"><button type="button" onClick={() => setZoom(value => Math.max(.75, value - .25))} aria-label="Zoom map out">−</button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom(value => Math.min(2.5, value + .25))} aria-label="Zoom map in">+</button></div>
       <div className="dz-map-canvas-wrap" style={{ width: `${zoom * 100}%` }} onDragOver={event => { if (Array.from(event.dataTransfer.types).includes('application/x-elt-map-symbol')) event.preventDefault(); }} onDrop={drop}>
@@ -338,9 +387,9 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
         {current.kind === 'icon' && <label className="dz-field"><span>Symbol</span><select value={current.icon} onChange={event => modify({ icon: event.target.value })}>{MAP_ICONS.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>}
         {!current.points && <details className="dz-map-advanced"><summary>Exact position and size</summary><NumberField name="Across (%)" value={Math.round((current.x ?? .5) * 100)} onChange={value => modify({ x: clamp((value ?? 50) / 100) })} /><NumberField name="Down (%)" value={Math.round((current.y ?? .5) * 100)} onChange={value => modify({ y: clamp((value ?? 50) / 100) })} />{resizableKinds.includes(current.kind) && <><NumberField name="Width (%)" value={Math.round((current.w ?? .1) * 100)} onChange={value => modify({ w: clamp((value ?? 10) / 100, .025, 1) })} /><NumberField name="Height (%)" value={Math.round((current.h ?? .1) * 100)} onChange={value => modify({ h: clamp((value ?? 10) / 100, .025, 1) })} /><NumberField name="Rotation (°)" value={Math.round(current.rotation ?? 0)} onChange={value => modify({ rotation: value ?? 0 })} /></>}</details>}
         {['building','room','zone'].includes(current.kind) && <label className="dz-field"><span>Fill colour</span><input type="color" value={current.fill || '#ffffff'} onChange={event => modify({ fill: event.target.value })} /></label>}
-        <div className="dz-map-layer-actions"><button type="button" onClick={() => { setDraft(value => ({ ...value, items: value.items.filter(item => item.id !== selected) })); setSelected(''); }}>Delete</button><button type="button" onClick={() => { const copy = { ...current, id: crypto.randomUUID(), x: clamp((current.x ?? .5) + .04), y: clamp((current.y ?? .5) + .04), points: current.points?.map(point => ({ x: clamp(point.x + .04), y: clamp(point.y + .04) })) }; setDraft(value => ({ ...value, items: [...value.items, copy] })); setSelected(copy.id); }}>Duplicate</button></div>
+        <div className="dz-map-layer-actions"><button type="button" onClick={() => { changeDraft(value => ({ ...value, items: value.items.filter(item => item.id !== selected) })); selectIds([]); }}>Delete</button><button type="button" onClick={() => { const copy = { ...current, id: crypto.randomUUID(), x: clamp((current.x ?? .5) + .04), y: clamp((current.y ?? .5) + .04), points: current.points?.map(point => ({ x: clamp(point.x + .04), y: clamp(point.y + .04) })) }; changeDraft(value => ({ ...value, items: [...value.items, copy] })); selectIds([copy.id]); }}>Duplicate</button></div>
       </> : <p>Choose an object on the map or from the list below.</p>}
-      <div className="dz-map-layers">{draft.items.map(item => <button type="button" key={item.id} className={selected === item.id ? 'on' : ''} onClick={() => { setSelected(item.id); chooseTool('select'); }}>{item.label || labelOf(item.kind)}</button>)}</div>
+      <MapLayersPanel items={draft.items} selectedIds={selectedIds} onSelectIds={ids => { chooseTool('select'); selectIds(ids); }} onChangeItems={items => { changeDraft(value => ({ ...value, items })); selectIds(selectedIds.filter(id => items.some(item => item.id === id && !item.hidden && !item.locked))); }} />
     </div></div>
     <footer><button type="button" onClick={onClose}>Cancel</button><button type="button" className="btn primary" onClick={save}>Save map</button></footer>
   </div></div>;
