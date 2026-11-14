@@ -3,6 +3,7 @@
 .dz-symbol-search:focus-within{border-color:var(--dz,#8c6ca7);box-shadow:0 0 0 3px color-mix(in srgb,var(--dz,#8c6ca7) 16%,transparent)}
 .dz-symbol-search-icon{font-size:21px;line-height:1;color:var(--dz-muted,#77717a)}
 .dz-symbol-search input{min-width:0;width:100%;height:38px;padding:0;border:0;outline:0;background:transparent;color:var(--dz-ink,#302e31);font:13px var(--sans,Arial,sans-serif)}
+.dz-figure-dialog .dz-symbol-search input[type=search]{border:0;border-radius:0;background:transparent;box-shadow:none;padding:0;outline:0}
 .dz-symbol-search input::placeholder{color:var(--dz-muted,#77717a)}
 .dz-symbol-categories{display:flex;flex-wrap:wrap;gap:5px;max-width:100%;overflow-x:hidden}
 .dz-symbol-categories button{border:1px solid var(--dz-line,#d8d4da);border-radius:99px;background:var(--dz-panel,#fff);color:var(--dz-muted,#77717a);padding:5px 8px;font:700 11px/1.2 var(--sans,Arial,sans-serif);cursor:pointer;white-space:normal;text-align:center}

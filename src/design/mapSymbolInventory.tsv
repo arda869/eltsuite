@@ -1,0 +1,220 @@
+key	name	category	glyph	recognisable feature
+tree	Tree	nature	lucide:tree-deciduous	Rounded tree canopy above a trunk.
+café	Café	food	bespoke:café	Steaming cup with handle.
+toilets	Toilets	services	lucide:toilet	Toilet bowl and cistern.
+parking	Car park	transport	lucide:square-parking	Letter P inside a parking sign.
+playground	Playground	leisure	bespoke:playground	Swing suspended from a frame.
+school	School	education	lucide:school	School building with a bell.
+medical	Medical centre	services	lucide:stethoscope	Stethoscope and earpieces.
+shop	Shop	buildings	lucide:store	Storefront with an awning.
+atm	ATM	services	bespoke:atm	Cash machine with screen and dispensing slot.
+train	Sky train	transport	lucide:train-front-tunnel	Front of train in an elevated tunnel.
+car	Car hire	transport	lucide:car-front	Front of a passenger car.
+plane	Airport	transport	lucide:plane	Aircraft seen from above.
+checkin	Check-in	wayfinding	lucide:clipboard-check	Checked registration clipboard.
+baggage	Bag drop	wayfinding	lucide:luggage	Suitcase with handle and wheels.
+tower	Tower	buildings	lucide:radio-tower	Tapering communications tower.
+castle	Castle	heritage	lucide:castle	Battlements and a central gate.
+museum	Museum	heritage	lucide:landmark	Classical portico with columns.
+factory	Factory	buildings	lucide:factory	Industrial roof and chimneys.
+house	Housing	buildings	lucide:houses	Cluster of homes.
+field	Sports field	sports	bespoke:field	Marked rectangular field and centre circle.
+tennis	Tennis courts	sports	bespoke:tennis	Tennis racket with string pattern.
+gym	Outdoor gym	sports	lucide:dumbbell	Weight lifting dumbbell.
+flower	Flowers	nature	lucide:flower-2	Petalled flower on stem.
+pond	Pond	nature	bespoke:pond	Small oval pool with reeds.
+bridge	Bridge	transport	lucide:bridge	Curved bridge span.
+gate	Gate	wayfinding	bespoke:gate	Two posts and hinged gate leaf.
+bus	Bus stop	transport	lucide:bus-front	Front of a bus.
+information	Information	services	lucide:info	Information letter inside a circle.
+sculpture	Sculpture	heritage	bespoke:sculpture	Standing figure on a plinth.
+food	Canteen	food	bespoke:food	Tray with plate and cutlery.
+office	Office	buildings	lucide:building-2	Multi-storey office windows.
+reception	Reception	services	bespoke:reception	Reception desk and attendant.
+restaurant	Restaurant	food	lucide:utensils-crossed	Crossed knife and fork.
+picnic	Picnic area	food	bespoke:picnic	Picnic table under a parasol.
+hotel	Hotel	buildings	lucide:hotel	Hotel facade and entrance.
+camping	Campsite	leisure	lucide:tent	Canvas tent with opening.
+warehouse	Warehouse	buildings	lucide:warehouse	Wide storage building and loading door.
+bank	Bank	services	bespoke:bank	Bank facade with a currency mark.
+post	Post office	services	lucide:mailbox	Street mailbox with flag.
+library	Library	education	lucide:library	Books on shelves.
+pharmacy	Pharmacy	services	lucide:pill-bottle	Medicine bottle with tablets.
+hospital	Hospital	services	lucide:hospital	Hospital facade with cross.
+police	Police station	safety	lucide:shield-user	Shield containing a person.
+fire	Fire station	safety	bespoke:firestation	Station building with a flame above vehicle doors.
+security	Security	safety	lucide:shield-check	Shield with verification tick.
+passport	Passport control	wayfinding	bespoke:passport	Passport booklet and globe.
+customs	Customs	wayfinding	lucide:package-check	Inspected parcel with tick.
+arrival	Arrivals	wayfinding	lucide:plane-landing	Plane descending to runway.
+departure	Departures	wayfinding	lucide:plane-takeoff	Plane climbing from runway.
+ticket	Tickets	services	lucide:ticket	Ticket with tear-off notch.
+ferry	Ferry terminal	transport	lucide:ship	Passenger vessel on water.
+rail	Rail station	transport	lucide:train-front	Rail train from the front.
+tram	Tram stop	transport	lucide:tram-front	Tram with twin front windows.
+bike	Bicycle parking	transport	lucide:bike	Two-wheel bicycle.
+charging	EV charging	transport	lucide:battery-charging	Battery with charging flash.
+petrol	Petrol station	transport	lucide:fuel	Fuel pump and hose.
+taxi	Taxi rank	transport	lucide:car-taxi-front	Taxi roof light above car.
+walkway	Walkway	wayfinding	lucide:footprints	Pair of walking footprints.
+stairs	Stairs	wayfinding	bespoke:stairs	Rising staircase profile.
+lift	Lift	wayfinding	bespoke:lift	Lift cabin and up/down arrows.
+accessible	Accessible entrance	wayfinding	lucide:accessibility	Person in accessible movement posture.
+entrance	Entrance	wayfinding	lucide:log-in	Arrow entering a doorway.
+exit	Exit	wayfinding	lucide:log-out	Arrow leaving a doorway.
+emergency	Emergency exit	safety	bespoke:emergency	Running person leaving doorway.
+firstaid	First aid	safety	bespoke:firstaid	Medical cross on portable case.
+drinking	Drinking water	services	lucide:glass-water	Glass containing water.
+garden	Garden	nature	bespoke:garden	Garden bed with two flowering shoots.
+forest	Forest	nature	lucide:trees	Several overlapping trees.
+lake	Lake	nature	bespoke:lake	Wide lake shoreline and ripples.
+river	River	nature	lucide:waves	Continuous wave strokes.
+beach	Beach	nature	lucide:umbrella	Open beach umbrella.
+mountain	Mountain	nature	lucide:mountain	Twin mountain peaks.
+waterfall	Waterfall	nature	bespoke:waterfall	Falling streams over a rock edge.
+fountain	Fountain	nature	bespoke:fountain	Water jets above a basin.
+bench	Bench	leisure	bespoke:bench	Park bench with legs and back.
+bin	Rubbish bin	services	lucide:trash-2	Covered waste bin.
+notice	Notice board	wayfinding	lucide:panel-top	Framed information panel.
+viewpoint	Viewpoint	leisure	lucide:binoculars	Twin viewing lenses.
+maze	Maze	leisure	bespoke:maze	Labyrinth path with turns.
+skate	Skateboard ramp	sports	bespoke:skate	Skateboard on curved ramp.
+cricket	Cricket pitch	sports	bespoke:cricket	Cricket bat with ball.
+football	Football pitch	sports	bespoke:football	Panelled football.
+basketball	Basketball court	sports	bespoke:basketball	Segmented basketball.
+pool	Swimming pool	sports	lucide:waves-ladder	Pool ladder over water.
+stadium	Stadium	sports	bespoke:stadium	Tiered spectator seating.
+zoo	Zoo	leisure	lucide:paw-print	Animal paw print.
+aquarium	Aquarium	leisure	lucide:fish	Fish with fin and tail.
+cinema	Cinema	leisure	lucide:clapperboard	Film clapper and screen.
+theatre	Theatre	leisure	lucide:theater	Pair of theatre masks.
+gallery	Gallery	heritage	lucide:images	Overlapping framed artworks.
+temple	Temple	heritage	bespoke:temple	Stepped shrine with pointed roof.
+church	Church	heritage	lucide:church	Church tower and cross.
+monument	Monument	heritage	bespoke:monument	Tall obelisk on a base.
+exhibit	Exhibition	heritage	lucide:gallery-vertical	Row of display frames.
+meeting	Meeting room	buildings	lucide:users-round	People around a meeting space.
+boardroom	Boardroom	buildings	lucide:presentation	Presentation screen for a meeting.
+coffee	Coffee room	food	lucide:coffee	Cup with steam and saucer.
+classroom	Classroom	education	bespoke:classroom	Teaching board and desks.
+lab	Laboratory	education	lucide:flask-conical	Laboratory flask.
+courtyard	Courtyard	buildings	bespoke:courtyard	Buildings enclosing open centre.
+roundabout	Roundabout	transport	bespoke:roundabout	Circular road with four approaches.
+north	North arrow	wayfinding	lucide:navigation	Pointed north navigation arrow.
+# NEW SYMBOLS
+pine	Pine tree	nature	lucide:tree-pine	Triangular evergreen crown.
+palm	Palm tree	nature	lucide:tree-palm	Fanned palm fronds.
+leaf	Leaf	nature	lucide:leaf	Leaf blade and stem.
+sprout	Seedling	nature	lucide:sprout	Two new leaves rising from soil.
+shrub	Shrub	nature	lucide:flower	Low rounded flowering plant.
+reeds	Reeds	nature	bespoke:reeds	Tall waterside stalks and seed heads.
+wetland	Wetland	nature	bespoke:wetland	Reeds rising out of shallow water.
+stream	Stream	nature	bespoke:stream	Narrow winding watercourse with two banks.
+canal	Canal	nature	bespoke:canal	Straight parallel banks with water.
+cliff	Cliff	nature	bespoke:cliff	Sheer rock face with drop.
+cave	Cave	nature	bespoke:cave	Arched opening in rock.
+sun	Sunny area	nature	lucide:sun	Radiating sun.
+shade	Shaded area	nature	lucide:cloud-sun	Cloud shading a sun.
+wind	Windy area	nature	lucide:wind	Sweeping wind lines.
+beachchair	Beach chairs	leisure	bespoke:beachchair	Reclining chair with slanted back.
+boatlaunch	Boat launch	transport	lucide:sailboat	Sailboat at water access.
+anchor	Harbour	transport	lucide:anchor	Maritime anchor.
+port	Port	transport	lucide:ship-cargo	Cargo vessel at terminal.
+helicopter	Helipad	transport	lucide:helicopter	Helicopter and rotor.
+motorbike	Motorbike parking	transport	lucide:motorbike	Motorcycle on wheels.
+busdepot	Bus depot	transport	lucide:bus	Long side-profile bus.
+metro	Metro station	transport	lucide:train-track	Train lines and rails.
+roadworks	Road works	transport	lucide:construction	Traffic barrier and tools.
+trafficcone	Traffic cone	transport	lucide:traffic-cone	Striped safety cone.
+caravan	Caravan park	transport	lucide:caravan	Caravan with tow bar.
+route	Route	wayfinding	lucide:route	Connected journey waypoints.
+intersection	Road junction	transport	lucide:git-fork	Forking routes.
+footbridge	Footbridge	transport	bespoke:footbridge	Narrow raised pedestrian bridge.
+crossing	Pedestrian crossing	transport	bespoke:crossing	Striped zebra crossing.
+loading	Loading bay	transport	lucide:truck	Goods truck at loading point.
+delivery	Delivery point	transport	lucide:package-open	Open delivery parcel.
+shipping	Shipping area	transport	lucide:container	Freight container.
+landmark	Landmark	heritage	lucide:map-pinned	Map with distinguished location pin.
+historicsite	Historic site	heritage	lucide:scroll-text	Historic scroll document.
+archaeology	Archaeological site	heritage	lucide:pickaxe	Excavation pickaxe.
+ruins	Ruins	heritage	bespoke:ruins	Broken columns and fallen stone.
+statue	Statue	heritage	bespoke:statue	Bust on pedestal.
+memorial	Memorial	heritage	lucide:flame	Remembrance flame.
+cemetery	Cemetery	heritage	bespoke:cemetery	Row of headstones.
+chapel	Chapel	heritage	bespoke:chapel	Small pitched-roof chapel and cross.
+mosque	Mosque	heritage	bespoke:mosque	Dome and minaret.
+synagogue	Synagogue	heritage	bespoke:synagogue	Building with Star of David.
+shrine	Shrine	heritage	bespoke:shrine	Small canopied altar.
+tourism	Visitor centre	services	lucide:map	Folded visitor map.
+helpdesk	Help desk	services	lucide:circle-help	Question-mark help point.
+lostproperty	Lost property	services	lucide:package-search	Searched lost parcel.
+locker	Lockers	services	lucide:lock-keyhole	Locked storage compartment.
+babychange	Baby changing	services	lucide:baby	Baby silhouette.
+shower	Showers	services	lucide:shower-head	Showerhead and droplets.
+laundry	Laundry	services	lucide:washing-machine	Front-loading washer.
+wifi	Wi-Fi	services	lucide:wifi	Wireless signal arcs.
+phone	Public telephone	services	lucide:phone	Telephone handset.
+recycle	Recycling point	services	lucide:recycle	Three circular recycling arrows.
+exchange	Currency exchange	services	lucide:arrow-left-right	Two opposite currency arrows.
+postbox	Post box	services	lucide:mail	Envelope for posted mail.
+parcel	Parcel collection	services	lucide:package	Closed parcel.
+ambulance	Ambulance bay	safety	lucide:ambulance	Ambulance with medical cross.
+defib	Defibrillator	safety	lucide:heart-pulse	Heart with electric pulse.
+vaccination	Vaccination centre	safety	lucide:syringe	Medical syringe.
+firealarm	Fire alarm	safety	lucide:alarm-smoke	Alarm and smoke.
+firehydrant	Fire hydrant	safety	bespoke:firehydrant	Hydrant barrel with side nozzles.
+lifejacket	Life jackets	safety	lucide:life-buoy	Circular flotation aid.
+lifeguard	Lifeguard	safety	bespoke:lifeguard	Raised lifeguard chair.
+firstaidpost	First-aid post	safety	lucide:briefcase-medical	Medical briefcase.
+checkpoint	Security checkpoint	safety	lucide:scan-line	Scanning frame.
+cctv	CCTV	safety	lucide:cctv	Surveillance camera.
+fence	Fence	wayfinding	bespoke:fence	Repeating posts with rails.
+signpost	Signpost	wayfinding	lucide:signpost	Two directional arrows on a post.
+compass	Compass rose	wayfinding	lucide:compass	Compass circle and needle.
+landmarkpin	Location pin	wayfinding	lucide:map-pin	Pointed pin with circle.
+flag	Flag	wayfinding	lucide:flag	Flag on upright pole.
+stop	Stop sign	wayfinding	bespoke:stop	Octagonal sign marked STOP.
+warning	Warning sign	wayfinding	lucide:triangle-alert	Triangle with exclamation.
+restricted	Restricted area	wayfinding	lucide:circle-slash	Slashed prohibition circle.
+open	Open access	wayfinding	lucide:lock-open	Open padlock.
+closed	Closed access	wayfinding	lucide:lock	Closed padlock.
+lowertunnel	Underpass	wayfinding	bespoke:underpass	Path passing below a road.
+upperbridge	Overpass	wayfinding	bespoke:overpass	Path passing over a road.
+bakery	Bakery	food	lucide:croissant	Crescent pastry.
+pub	Pub	food	lucide:beer	Pint glass with foam.
+supermarket	Supermarket	food	lucide:shopping-cart	Shopping trolley.
+grocery	Grocery shop	food	lucide:shopping-basket	Hand basket.
+icecream	Ice cream kiosk	food	lucide:ice-cream-cone	Ice cream cone.
+burger	Sandwich shop	food	lucide:sandwich	Prepared sandwich between bread slices.
+farmshop	Farm shop	food	lucide:carrot	Fresh carrot.
+barbecue	Barbecue area	food	lucide:flame-kindling	Flame over cooking fuel.
+apartments	Apartments	buildings	lucide:building	Stacked apartment windows.
+townhouse	Townhouses	buildings	lucide:house	Single pitched-roof home.
+retirement	Retirement home	buildings	lucide:house-heart	Home with heart.
+court	Courthouse	buildings	lucide:gavel	Judicial gavel.
+workshop	Workshop	buildings	lucide:hammer	Hand tool for making.
+construction	Construction site	buildings	lucide:hard-hat	Protective builder helmet.
+powerplant	Power station	buildings	lucide:zap	Electrical power bolt.
+solarfarm	Solar farm	buildings	lucide:solar-panel	Panel divided into cells.
+lighthouse	Lighthouse	buildings	lucide:lighthouse	Beacon tower and rays.
+greenhouse	Greenhouse	buildings	bespoke:greenhouse	Glass-roofed growing house.
+barn	Barn	buildings	bespoke:barn	Barn roof and wide doors.
+waterworks	Water treatment	buildings	lucide:droplets	Multiple water drops.
+observatory	Observatory	buildings	lucide:telescope	Astronomy telescope.
+golf	Golf course	sports	lucide:flag-triangle-right	Flag on a putting green.
+volleyball	Volleyball court	sports	bespoke:volleyball	Striped volleyball and net.
+badminton	Badminton court	sports	bespoke:badminton	Shuttlecock over net.
+hockey	Hockey pitch	sports	bespoke:hockey	Hockey stick and ball.
+rugby	Rugby field	sports	bespoke:rugby	Oval ball between goal posts.
+baseball	Baseball field	sports	bespoke:baseball	Stitched baseball and bat.
+skating	Ice rink	sports	bespoke:skating	Ice skate with blade.
+fitness	Fitness trail	sports	lucide:activity	Heart-rate exercise trace.
+archery	Archery range	sports	lucide:target	Concentric archery target.
+playcourt	Multi-use court	sports	bespoke:playcourt	Court boundaries and net.
+university	University	education	lucide:graduation-cap	Graduation cap.
+computerlab	Computer lab	education	lucide:monitor	Desktop monitor.
+science	Science room	education	lucide:atom	Orbiting atom model.
+artroom	Art room	education	lucide:palette	Painter palette.
+musicroom	Music room	education	lucide:music-2	Pair of musical notes.
+reading	Reading room	education	lucide:book-open	Open book with two visible pages.
+archive	Archive	education	lucide:archive	Archive storage box.

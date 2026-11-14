@@ -13,9 +13,9 @@ function normalize(value:string){return value.normalize('NFD').replace(/[\u0300-
 
 export function MapSymbolIcon({symbolKey,size=34}:{symbolKey:string;size?:number}){
   const glyph=mapSymbolGlyph(symbolKey);
-  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  return <svg width={size} height={size} viewBox={`0 0 ${glyph.viewBox||48} ${glyph.viewBox||48}`} fill="none" stroke="currentColor" strokeWidth={glyph.viewBox===24?2:2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     {glyph.paths.map((path,i)=><path key={i} d={path}/>)}
-    {glyph.text&&<text x="24" y="26" fill="currentColor" stroke="none" textAnchor="middle" dominantBaseline="middle" fontSize="25" fontWeight="700">{glyph.text}</text>}
+    {glyph.text&&<text x="24" y="25" fill="currentColor" stroke="none" textAnchor="middle" dominantBaseline="middle" fontSize={glyph.text.length>1?11:25} fontWeight="800">{glyph.text}</text>}
   </svg>;
 }
 

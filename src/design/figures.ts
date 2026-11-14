@@ -128,10 +128,11 @@ export function drawChart(g: CanvasRenderingContext2D, f: ChartFigure) {
 function rounded(g:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r=8){g.beginPath();g.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
 function icon(g:CanvasRenderingContext2D,key:string,x:number,y:number,s:number,color:string){
   const glyph=mapSymbolGlyph(key);
-  g.save();g.translate(x,y);g.scale(s/48,s/48);
-  g.strokeStyle=color;g.fillStyle=color;g.lineWidth=2.5;g.lineCap='round';g.lineJoin='round';
+  const viewBox=glyph.viewBox||48;
+  g.save();g.translate(x,y);g.scale(s/viewBox,s/viewBox);
+  g.strokeStyle=color;g.fillStyle=color;g.lineWidth=viewBox===24?2:2.5;g.lineCap='round';g.lineJoin='round';
   for(const d of glyph.paths)g.stroke(new Path2D(d));
-  if(glyph.text){g.font=`700 25px ${font}`;g.textAlign='center';g.textBaseline='middle';g.fillText(glyph.text,24,25);}
+  if(glyph.text){g.font=`800 ${glyph.text.length>1?11:25}px ${font}`;g.textAlign='center';g.textBaseline='middle';g.fillText(glyph.text,24,25);}
   g.restore();
 }
 const mapBox={x:40,y:88,w:920,h:570};
