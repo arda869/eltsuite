@@ -8569,7 +8569,7 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .coach:not(.dock-coach) .coach-panel{padding:20px}
 /* The closed Messages launcher has its own bottom strip, outside app canvases. */
 body:has(.dock-bar){--suite-dock-space:40px;padding-bottom:var(--suite-dock-space)}
-body:has(.dock-bar) :is(.shell.wide,.lib-shell,.dp.k-doc,.dp.k-slide,.dp.k-flash,.dp.k-pd){height:calc(100dvh - var(--proxy-h,0px) - var(--suite-dock-space));min-height:0}
+body:has(.dock-bar) :is(.shell.wide,.lib-shell,.dp.k-doc,.dp.k-slide,.dp.k-flash,.dp.k-pd,.dp.k-design){height:calc(100dvh - var(--proxy-h,0px) - var(--suite-dock-space));min-height:0}
 body:has(.dock-bar) .shell:not(.wide){min-height:calc(100dvh - var(--suite-dock-space))}
 body:has(.dock-bar) .dp{min-height:calc(100dvh - var(--suite-dock-space))}
 .dock-bar{right:12px}
