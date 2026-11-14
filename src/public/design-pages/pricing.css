@@ -51,7 +51,7 @@
 .pub-design-pricing .price-table :is(th,td){padding:14px 17px;border-bottom:1px solid #e8e5e1;line-height:1.4;vertical-align:top}
 .pub-design-pricing .price-table tr:last-child :is(th,td){border-bottom:0}
 .pub-design-pricing .price-table thead th{background:#f4f4f3;font:800 14px/1.4 Karla,Arial,sans-serif}
-.pub-design-pricing .price-table tbody th{width:35%;font-weight:700}
+.pub-design-pricing .price-table tbody th{width:35%;font:700 14px/1.4 Karla,Arial,sans-serif;text-transform:none;letter-spacing:normal}
 .pub-design-pricing .price-table tbody td{color:#4e4842}
 .pub-design-pricing .price-table tbody tr:nth-child(even){background:#fbfaf9}
 .pub-design-pricing .price-table :is(th,td):first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 #e4e2df}
