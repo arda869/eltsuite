@@ -1025,7 +1025,7 @@ const J = {
       ['/explore','From your first idea to your next lesson'],
       ['/professional-learning','Keep your questions about teaching alive'],
       ['/schools','A shared space for your teaching team'],
-      ['/pricing','Find the right space for your teaching'],
+      ['/pricing','Good teaching deserves good tools.'],
       ['/about','Created out of a love for English language teaching'],
       ['/help','A little help to get you started'],
       ['/contact','We would like to hear from you'],
@@ -1047,6 +1047,20 @@ const J = {
       if(images.length)throw Error(path+' has broken images: '+images.join(', '));
       if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error(path+' overflows horizontally');
     }
+    await p.goto(BASE+'/pricing');
+    await p.getByRole('heading',{name:'Good teaching deserves good tools.',level:1}).waitFor();
+    const planNames=await p.locator('.price-plan h3').allTextContents();
+    if(planNames.join('|')!=='Free|Teacher|Teacher Plus')throw Error('Pricing plans do not match the proposed three-plan launch');
+    if(!await p.locator('.price-notice').getByText(/Paid plans and credit purchases are not available yet/).count())throw Error('Pricing must show its prelaunch notice');
+    if(await p.locator('a[href*="checkout"],a[href*="subscribe"]').count())throw Error('Pricing contains a purchase link before checkout opens');
+    for(const link of await p.locator('.price-plan .price-button').all()){
+      if(!String(await link.getAttribute('href')).startsWith('mailto:arda@eltsuite.com?subject='))throw Error('Pricing invitation action is not usable');
+    }
+    if(await p.locator('.price-table-scroll').first().locator('tbody tr').count()!==13)throw Error('Pricing comparison is incomplete');
+    if(await p.locator('.price-action-table tbody tr').count()!==8)throw Error('Pricing action prices are incomplete');
+    await p.locator('.price-faq summary').first().click();
+    if(!await p.locator('.price-faq details').first().evaluate(e=>e.open))throw Error('Pricing FAQ does not open');
+    await axe(p,'Public pricing desktop',A11Y_FOUND);
     await p.goto(BASE+'/');
     if(await p.getByRole('link',{name:/Buy now|Subscribe|Start free trial/}).count())throw Error('Unapproved purchase action');
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Explore'}).click();
@@ -1063,6 +1077,8 @@ const J = {
     await nav.getByRole('link',{name:'Pricing'}).click();
     await p.waitForURL(BASE+'/pricing');
     if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public page overflows on mobile');
+    if(!await p.locator('.price-table-scroll').first().evaluate(e=>e.scrollWidth>e.clientWidth))throw Error('Pricing comparison should scroll inside its panel on mobile');
+    await axe(p,'Public pricing phone',A11Y_FOUND);
     await p.getByRole('button',{name:'Menu'}).click();
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in'}).click();
     await p.getByLabel('Email',{exact:true}).waitFor();
