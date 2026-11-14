@@ -60,55 +60,59 @@ export const MAP_PRESETS:FigurePreset[]=[
     route('footpath',[[.22,.68],[.42,.75],[.58,.7],[.65,.45]]),
     p('water',.46,.55,.22,.16,'Lily pond'),building(.19,.39,.18,.12,'Community hall'),
     p('zone',.7,.32,.17,.13,'Playground'),p('zone',.68,.73,.16,.12,'Sports field'),
-    ...[[.15,.22],[.27,.32],[.36,.24],[.8,.25],[.84,.46],[.54,.77],[.1,.72]].map(([x,y])=>tree(x,y)),
+    ...[[.15,.22],[.3,.22],[.36,.24],[.8,.25],[.84,.46],[.54,.77],[.1,.72]].map(([x,y])=>tree(x,y)),
     marker(.15,.58,'A'),marker(.4,.35,'B'),marker(.57,.28,'C'),marker(.72,.54,'D'),marker(.91,.72,'E'),
     p('gate',.23,.87,.05,.06,'West gate'),p('gate',.81,.87,.05,.06,'East gate'),compass()
   ])},
   {id:'site',name:'Building or factory plan',about:'Rooms, courtyard, access roads and labelled points',figure:map('Stevenson’s site',[
     building(.48,.18,.63,.19,'Factory'),
-    route('road',[[.08,.95],[.92,.95]],'Main road'),route('road',[[.82,.94],[.82,.45],[.75,.36]],'Access road'),
-    ...[[.22,.46,'A'],[.43,.46,'B'],[.64,.46,'C'],[.22,.63,'D'],[.43,.63,'E'],[.22,.8,'F'],[.63,.75,'G'],[.37,.84,'H'],[.51,.84,'I'],[.64,.84,'J']].map(([x,y,n])=>building(Number(x),Number(y),.15,.14,String(n))),
-    p('zone',.47,.68,.17,.18,'Open courtyard'),...[[.1,.42],[.1,.57],[.1,.72],[.9,.5]].map(([x,y])=>tree(x,y)),compass(.91,.16)
+    route('road',[[.05,.985],[.94,.985]],'Main road'),route('road',[[.89,.96],[.89,.42]],'Access road'),
+    ...[[.18,.43,'A'],[.4,.43,'B'],[.73,.43,'C'],[.18,.59,'D'],[.4,.59,'E'],[.18,.74,'F'],[.73,.72,'G']].map(([x,y,n])=>building(Number(x),Number(y),.16,.12,String(n))),
+    p('zone',.51,.72,.2,.14,'Open courtyard'),
+    ...[[.26,.87,'H'],[.43,.87,'I'],[.6,.87,'J']].map(([x,y,n])=>building(Number(x),Number(y),.12,.1,String(n))),
+    building(.75,.87,.17,.1,'Reception'),
+    ...[[.08,.43],[.08,.59],[.08,.75],[.96,.48]].map(([x,y])=>tree(x,y)),compass(.94,.16)
   ])},
   {id:'town',name:'Town before and after',about:'Roads, roundabouts, river and new facilities',figure:map('Industrial area · proposed development',[
     route('river',[[.04,.16],[.25,.22],[.48,.18],[.72,.27],[.96,.2]],'River'),
     route('road',[[.06,.87],[.49,.87],[.49,.59],[.84,.59]]),
     route('road',[[.49,.59],[.49,.33],[.49,.2]]),p('roundabout',.49,.59,.11,.16),
     p('zone',.25,.37,.17,.13,'Housing'),p('zone',.68,.38,.2,.14,'Playground'),
-    icon(.75,.68,'School','school'),icon(.32,.68,'Shops','shop'),icon(.57,.78,'Medical centre','medical'),
-    p('gate',.49,.87,.06,.06,'Town road'),compass(.9,.12)
+    icon(.75,.68,'School','school'),icon(.32,.68,'Shops','shop'),icon(.58,.69,'Medical centre','medical'),
+    p('gate',.49,.87,.06,.06),compass(.9,.12)
   ])},
   {id:'airport',name:'Airport plan',about:'Terminal, concourse, gates and amenity icons',figure:map('Southwest Airport · after development',[
-    route('road',[[.1,.92],[.9,.92]],'Access'),
-    building(.5,.69,.54,.29,'Terminal'),route('wall',[[.5,.56],[.5,.21]]),
+    route('road',[[.1,.97],[.9,.97]],'Access'),
+    building(.5,.66,.64,.35,'Terminal'),route('wall',[[.5,.48],[.5,.21]]),
     route('wall',[[.5,.21],[.22,.09]]),route('wall',[[.5,.21],[.79,.09]]),
     ...Array.from({length:8},(_,i)=>marker(.25+i*.07,.18,i<4?String(i+1):String(i+9))),
-    icon(.33,.7,'Check-in','checkin'),icon(.48,.68,'Café','café'),icon(.64,.68,'ATM','atm'),
-    icon(.35,.82,'Bag drop','baggage'),icon(.58,.82,'Car hire','car'),icon(.5,.39,'Sky train','train'),
-    p('gate',.32,.92,.05,.06,'Departures'),p('gate',.69,.92,.05,.06,'Arrivals'),compass(.91,.15)
+    icon(.25,.62,'Check-in','checkin'),icon(.5,.62,'Café','café'),icon(.75,.62,'ATM','atm'),
+    icon(.35,.73,'Bag drop','baggage'),icon(.65,.73,'Car hire','car'),icon(.5,.37,'Sky train','train'),
+    p('gate',.29,.96,.05,.06,'Departures'),p('gate',.71,.96,.05,.06,'Arrivals'),compass(.91,.15)
   ])},
   {id:'castle',name:'Castle or heritage site',about:'River, walls, towers, bridges and walking routes',figure:map('Branley Castle',[
     route('river',[[.04,.72],[.14,.55],[.18,.32],[.31,.18],[.59,.2],[.92,.23]],'River'),
-    route('footpath',[[.55,.95],[.55,.72],[.83,.56],[.84,.24]]),
-    route('footpath',[[.55,.72],[.34,.76],[.18,.68]]),
-    p('roundabout',.52,.49,.38,.48),p('water',.52,.49,.18,.17,'Great Hall'),
-    ...[[.35,.34],[.7,.34],[.35,.65],[.7,.65]].map(([x,y])=>icon(x,y,'Tower','tower')),
-    p('bridge',.21,.67,.1,.06,'Bridge'),p('gate',.52,.29,.05,.06,'North gate'),p('gate',.52,.72,.05,.06,'South gate'),
-    ...[[.2,.4,'A'],[.53,.2,'B'],[.78,.47,'C'],[.3,.7,'D'],[.62,.75,'E'],[.85,.7,'F']].map(([x,y,n])=>marker(Number(x),Number(y),String(n))),compass(.91,.13)
+    route('footpath',[[.53,.94],[.53,.79],[.83,.62],[.84,.3]]),
+    route('footpath',[[.53,.79],[.32,.82],[.19,.72]]),
+    p('roundabout',.53,.53,.4,.44),building(.53,.52,.19,.16,'Great Hall'),
+    ...[[.34,.39],[.72,.39],[.34,.68],[.72,.68]].map(([x,y])=>icon(x,y,'','tower')),
+    p('bridge',.2,.72,.1,.06,'Bridge'),p('gate',.53,.31,.05,.06),p('gate',.53,.75,.05,.06),
+    p('label',.53,.1,.1,.04,'North gate'),p('label',.64,.91,.1,.04,'South gate'),
+    ...[[.2,.43,'A'],[.53,.24,'B'],[.79,.49,'C'],[.27,.74,'D'],[.64,.79,'E'],[.88,.74,'F']].map(([x,y,n])=>marker(Number(x),Number(y),String(n))),compass(.92,.13)
   ])}
 ];
 
 const townNow=map('Industrial area · now',[
   route('river',[[.04,.16],[.25,.22],[.48,.18],[.72,.27],[.96,.2]],'River'),
   route('road',[[.06,.87],[.49,.87],[.49,.59],[.84,.59]]),p('roundabout',.49,.59,.11,.16),
-  ...[[.28,.43],[.37,.33],[.65,.48],[.73,.52],[.78,.37]].map(([x,y])=>building(x,y,.12,.07,'Factory')),
+  ...[[.28,.43],[.37,.33],[.64,.46],[.75,.56],[.78,.37]].map(([x,y])=>building(x,y,.12,.07,'Factory')),
   p('zone',.22,.72,.16,.12,'Town'),compass(.9,.12)
 ]);
 const airportNow=map('Southwest Airport · now',[
-  route('road',[[.1,.92],[.9,.92]],'Access'),building(.5,.7,.54,.28,'Terminal'),
-  route('wall',[[.5,.56],[.5,.25]]),building(.5,.2,.11,.12,'Gates 1–8'),
-  icon(.37,.69,'Check-in','checkin'),icon(.64,.69,'Café','café'),
-  p('gate',.32,.92,.05,.06,'Departures'),p('gate',.69,.92,.05,.06,'Arrivals'),compass(.9,.14)
+  route('road',[[.1,.97],[.9,.97]],'Access'),building(.5,.66,.6,.35,'Terminal'),
+  route('wall',[[.5,.48],[.5,.25]]),building(.5,.2,.14,.12,'Gates 1–8'),
+  icon(.32,.64,'Check-in','checkin'),icon(.68,.64,'Café','café'),
+  p('gate',.29,.96,.05,.06,'Departures'),p('gate',.71,.96,.05,.06,'Arrivals'),compass(.9,.14)
 ]);
 MAP_PRESETS.unshift({id:'town-now',name:'Town plan · now',about:'Pair with the proposed development map',figure:townNow});
 MAP_PRESETS.push({id:'airport-now',name:'Airport plan · now',about:'Pair with the airport redevelopment map',figure:airportNow});
