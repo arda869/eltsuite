@@ -809,7 +809,7 @@ const J = {
       if (!path.startsWith(`sharedDocs/${fileId}/dels/`) || value.figure?.kind !== 'map') return false;
       const library = value.figure.items.find(item => item.label === 'Library');
       const road = value.figure.items.find(item => item.kind === 'road');
-      return library?.w >= .24 && library.rotation === 20 && library.x > .34 && library.groupId && road?.points?.length === 3 && road.points[0].x > .2 && road.groupId === library.groupId && value.figure.items.some(item => item.kind === 'marker' && item.label === 'A') && value.figure.items.some(item => item.kind === 'icon' && item.icon === 'café');
+      return library?.w >= .24 && library.rotation === 20 && library.x > .34 && library.groupId && road?.points?.length === 3 && road.points[0].x > .2 && road.groupId === library.groupId && value.figure.items.some(item => item.kind === 'marker' && item.label === 'A') && value.figure.items.some(item => item.kind === 'icon' && item.icon === 'café') && value.figure.items.every(item => !Object.hasOwn(item, 'keyText'));
     }), id);
     const savedMap = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path, value]) => path.startsWith(`sharedDocs/${fileId}/dels/`) && value.figure?.kind === 'map').map(([, value]) => value)[0], id);
     await design.reload();
