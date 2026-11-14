@@ -7,7 +7,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
 import { createHash, randomUUID } from 'node:crypto';
 import { generate } from './provider.js';
-import { activitySchema, activityInstructions, checkActivities, nativeTask } from './activities.js';
+import { activitySchema, activityInstructions, checkActivities, nativeTask, taskCreationSchema, taskCreationCatalogue } from './activities.js';
 import { taskMediaContext, checkTaskMediaPlan, prepareActivityAssets, taskMediaGuidance } from './task-media.js';
 import { mediaRequests } from './media-contract.js';
 import { trainingActivityInstructions, trainingActivitySchema } from './training.js';
@@ -155,7 +155,19 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(d.mode==='edit'){schema=editSchema;instructions=editInstructions;name='task_edit';}
   else if(d.mode==='answers'){schema=keysSchema;instructions=keyInstructions;name='task_keys';}
   else if(d.step==='ideas'){schema=ideasSchema;name='task_ideas';instructions=activityInstructions+'\n'+contentReviewStandard+'\nIDEAS ONLY: Return exactly two genuinely different, concise options, not full activities. For differentiation return one support option and one challenge option addressing the SAME objective and comparable duration. Describe concrete changes to the existing native tasks (e.g. gap to choices; word bank removal), never just extra work. For next activity, read the whole lesson sequence and suggest two pedagogically justified next moves, recycling language where useful. Teacher direction takes precedence. No abstract teacher jargon in titles.';}
-  else {schema=structuredClone(cls.get('kind')==='training'?trainingActivitySchema:activitySchema);schema.properties.tasks.maxItems=1;schema.properties.tasks.items.properties.roles.maxItems=0;schema.properties.tasks.items.properties.versions.maxItems=0;schema.properties.tasks.items.properties.stageId={...schema.properties.tasks.items.properties.stageId,enum:['tool']};schema.properties.tasks.items.properties.minutes={type:'integer',minimum:input.minutes,maximum:input.minutes};name='activities';instructions=activityInstructions+(cls.get('kind')==='training'?trainingActivityInstructions:'')+'\nCreate exactly ONE complete activity with stageId "tool" and exactly the requested minutes. Follow the teacher-selected direction. Differentiation must preserve the original learning aim and change scaffolding or demand, not append more work. Keep important source texts and context. Use no additional versions or roles in this request. For next activity, build a coherent next step from the lesson already taught. Create needed audio/images through mediaPlan, with complete scripts. Never refer to an image or recording that you have not supplied in mediaPlan. Do not invent existing learner evidence. When differentiating, existing pictures, recordings and dialogues are retained automatically; keep the same source and adapt only the response/scaffold. Do not request replacement media for these existing resources.';}
+  else {
+    const training=cls.get('kind')==='training';
+    schema=d.mode==='next'?taskCreationSchema(training):structuredClone(training?trainingActivitySchema:activitySchema);
+    const taskSchema=schema.properties.tasks.items;
+    schema.properties.tasks.maxItems=1;
+    taskSchema.properties.roles.maxItems=0;
+    taskSchema.properties.versions.maxItems=0;
+    taskSchema.properties.stageId={...taskSchema.properties.stageId,enum:['tool']};
+    taskSchema.properties.minutes={type:'integer',minimum:input.minutes,maximum:input.minutes};
+    name='activities';
+    instructions=activityInstructions+(training?trainingActivityInstructions:'')+'\nCreate exactly ONE complete activity with stageId "tool" and exactly the requested minutes. Follow the teacher-selected direction. Differentiation must preserve the original learning aim and change scaffolding or demand, not append more work. Keep important source texts and context. Use no additional versions or roles in this request. For next activity, build a coherent next step from the lesson already taught. Create needed audio/images through mediaPlan, with complete scripts. Never refer to an image or recording that you have not supplied in mediaPlan. Do not invent existing learner evidence. When differentiating, existing pictures, recordings and dialogues are retained automatically; keep the same source and adapt only the response/scaffold. Do not request replacement media for these existing resources.';
+    if(d.mode==='next')instructions+='\nNATIVE ELEMENTS: You may use inlineElements in the task or a sub-task for the precise teacher-requested editor interaction. Do not put legacy questions in the same part as inlineElements. Every element needs a complete prompt and private answer data where applicable; leave needs empty. Do not use a text box as a substitute for a native question. Use mediaPlan for new pictures and recordings; do not fabricate external URLs. For a label-the-image element, leave data.image empty and request one image in mediaPlan; the app attaches it after preparation. For a speaking prompt with photos, leave data.images empty and request the needed image in mediaPlan. For a listening request, use format listening and request NEW audio with exact spoken lines unless the teacher explicitly asks to use an existing recording. Put only the exact spoken words, one line per turn, in teacherOnlyInput, with no speaker names or stage directions. Never put a transcript in learner input.\nAVAILABLE NATIVE ELEMENTS:\n'+taskCreationCatalogue(training);
+  }
   if(input.isFirstActivity)instructions+='\nThis lesson has no previous activities. Create a self-contained first activity using the teacher direction, lesson title, level and class goals. Supply all input and instructions it needs. Use any supplied classMedia when relevant. Do not assume the class has covered it before. Offer two distinct appropriate starting points when asked for ideas.';
   if(input.includeImage)instructions+='\nThe teacher requested a picture learners will use in this activity. Include exactly one image in mediaPlan. Use an existing Resources picture only when its metadata fits the task; otherwise request a new illustration or licensed photograph. Give learners a concrete action with the image. Do not claim the picture is already prepared; it must finish preparing before the activity is added.';
   instructions+='\n'+taskMediaGuidance;
@@ -164,9 +176,9 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    else if(d.mode==='answers'){const seen=new Set();for(const e of value.entries){const m=missing.find(x=>x.taskId===e.taskId&&x.questionId===e.questionId);if(!m||seen.has(e.taskId+':'+e.questionId))throw Error('Return only missing answers, once per question.');seen.add(e.taskId+':'+e.questionId);checkedKey(taskQuestions(scope.find(t=>t.id===e.taskId).content).get(e.questionId),JSON.parse(e.answerJson));}}
    else if(d.step==='ideas'){if(d.mode==='differentiate'&&(!value.ideas.some(i=>i.kind==='support')||!value.ideas.some(i=>i.kind==='challenge')))throw Error('Return one support and one challenge option.');}
    else {
-    checkTaskMediaPlan(value.tasks[0],classMedia,d.mode==='differentiate'?retainedMedia(selected.content):[]);
+    checkTaskMediaPlan(value.tasks[0],classMedia,d.mode==='differentiate'?retainedMedia(selected.content):[],d.direction);
     if(input.includeImage&&value.tasks[0].mediaPlan.filter(a=>a.kind==='image').length!==1)throw Error('Include the requested picture in the activity media plan.');
-    checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training');
+    checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training',d.mode==='next');
    }
   };
   const checked=await generateChecked({generate,args:{apiKey,model,schema,name,input,instructions},decode:v=>v,check:checkValue,reserveRepair:async()=>{repairStarted=true;return db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);tx.update(budget,{committedMicroUsd:reservation.balance});tx.update(job,{reserved:j.get('reserved')+reservation.reserved});});}});

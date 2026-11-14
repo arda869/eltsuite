@@ -1,4 +1,5 @@
 // Only teacher-authored media from the current class and pictures in the caller's own Resources.
+import { sameWords } from './media-contract.js';
 const validId = value => typeof value === 'string' && /^[\w-]{1,150}$/.test(value);
 const clean = (value, limit) => typeof value === 'string' ? value.trim().slice(0, limit) : '';
 // The native picture store accepts a single small raster. Do not send file bytes to the model.
@@ -63,7 +64,7 @@ export function checkExistingMedia(selection, catalogue, planned, task, retained
   }
   const kinds = new Set(planned.map(asset=>asset.kind));
   for(const ref of used)kinds.add(ref.startsWith('recording:')?'audio':'image');
-  for(const node of retained){if(node.type==='paragraph')kinds.add('image');else if(node.type==='media'||node.type==='dialogue')kinds.add('audio');}
+  for(const node of retained){if(node.type==='paragraph')kinds.add('image');else if(node.type==='media')kinds.add('audio');}
   const instructions=[task.instructions,...(task.subTasks??[]).map(part=>part.instructions)].join(' ');
   if(!kinds.has('image')&&/\b(?:look at|compare|label|describe|match) (?:the |these |both |two |each )*(?:pictures?|photographs?|photos?|illustrations?|images?)\b/i.test(instructions)){
     throw Error('The instructions refer to pictures. Attach a listed resource or request the necessary pictures in mediaPlan.');
@@ -115,9 +116,27 @@ export async function resolveExistingMedia(tx,{db,uid,cls},selection) {
   }));
 }
 
-export function checkTaskMediaPlan(task,catalogue,retained){
+export function checkTaskMediaPlan(task,catalogue,retained,direction=''){
   const plan=task.mediaPlan??[];
   checkExistingMedia(plan.filter(a=>a.sourceRef).map(a=>({ref:a.sourceRef,alt:a.alt})),catalogue,plan.filter(a=>!a.sourceRef),task,retained);
+  const requestedListening=/\b(?:listening|listen to|audio dialogue|audio recording)\b/i.test(direction);
+  if(requestedListening&&task.format!=='listening')throw Error('A listening request needs a listening activity with playable audio.');
+  if(task.format==='listening'){
+    const audio=plan.filter(a=>a.kind==='audio');
+    if(!audio.length&&!retained.some(n=>n.type==='media'))throw Error('A listening activity needs an attached recording.');
+    const existingRequested=/\b(?:existing|saved|previous|same|my|our)\s+(?:class\s+)?recording\b/i.test(direction);
+    if(requestedListening&&!existingRequested&&!audio.some(a=>!a.sourceRef))throw Error('This listening request needs a new recording.');
+    const generated=audio.filter(a=>!a.sourceRef);
+    if(generated.length){
+      const spoken=generated.flatMap(a=>a.lines).map(line=>line.text);
+      const privateLines=String(task.teacherOnlyInput??'').split(/\n+/).map(line=>line.trim().replace(/^[^:\n]{1,40}:\s*/,'')).filter(Boolean);
+      const matchingStart=privateLines.findIndex((line,start)=>sameWords(line,spoken[0])&&spoken.every((words,i)=>sameWords(privateLines[start+i]??'',words)));
+      if(matchingStart<0)throw Error('The private listening script must match the new recording line for line.');
+    }
+  }
+  const inline=[task,...(task.subTasks??[])].flatMap(b=>b.inlineElements??[]);
+  if(inline.some(e=>e.kind==='pq-label')&&!plan.some(a=>a.kind==='image')&&!retained.some(n=>n.type==='paragraph'))throw Error('Label the image needs a prepared picture.');
+  if(inline.some(e=>e.kind==='pq-speaking'&&/\b(?:photos?|pictures?|images?)\b/i.test(`${e.prompt} ${e.data?.prompt??''}`))&&!plan.some(a=>a.kind==='image')&&!retained.some(n=>n.type==='paragraph'))throw Error('A photo speaking prompt needs a prepared picture.');
 }
 
 // Resolve all source reads before issuing any writes in the enclosing transaction.
