@@ -670,6 +670,7 @@ const J = {
     await design.getByRole('button', { name: 'Add Park or recreation ground' }).click();
     await design.getByRole('button', { name: 'Edit map and symbols' }).click();
     const map = design.getByRole('dialog', { name: 'Edit map' });
+    await map.getByRole('tab', { name: '1 Layout' }).click();
     await map.locator('input[type=file]').setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') });
     await map.getByRole('button', { name: 'Remove image' }).waitFor();
     await axe(design, 'Designer map editor', A11Y_FOUND);
@@ -734,6 +735,48 @@ const J = {
     await s.p.locator('.task-row').last().locator('button').first().click();
     await s.p.locator('.pic-rendered img').first().waitFor();
     if (!await s.p.locator('.pic-rendered .pic-s').first().count()) throw Error('Learner does not see the teacher-selected visual size');
+    return s;
+  },
+
+  'Designer map editing: blank map, places, route and saved adjustments': async b => {
+    const s = await session(b, { owner: true });
+    await s.p.goto(BASE + '/design');
+    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
+    await design.getByRole('button', { name: 'Charts & maps' }).click();
+    await design.getByRole('tab', { name: 'Maps' }).click();
+    await design.getByRole('button', { name: /Start a blank map/ }).click();
+    await design.getByRole('button', { name: 'Edit map and symbols' }).click();
+    const map = design.getByRole('dialog', { name: 'Edit map' });
+    if (await map.getByRole('tab', { name: '1 Layout' }).getAttribute('aria-selected') !== 'true') throw Error('Blank map did not open on the starting layout step');
+    await map.getByRole('tab', { name: '2 Places' }).click();
+    await map.getByRole('button', { name: 'Building', exact: true }).click();
+    const canvas = map.getByLabel('Editable map canvas');
+    const box = await canvas.boundingBox();
+    if (!box) throw Error('Map canvas is not visible');
+    await canvas.click({ position: { x: box.width * .32, y: box.height * .48 } });
+    await map.getByRole('textbox', { name: 'Name this map object' }).fill('Library');
+    await map.getByRole('textbox', { name: 'Name this map object' }).press('Enter');
+    await map.getByRole('button', { name: 'Road', exact: true }).click();
+    await canvas.click({ position: { x: box.width * .19, y: box.height * .68 } });
+    await canvas.click({ position: { x: box.width * .42, y: box.height * .65 } });
+    await canvas.click({ position: { x: box.width * .65, y: box.height * .76 } });
+    await map.getByRole('button', { name: 'Finish line' }).click();
+    await map.locator('.dz-map-layers button').filter({ hasText: 'Library' }).click();
+    await map.getByText('Exact position and size').click();
+    await map.getByRole('spinbutton', { name: 'Width (%)' }).fill('25');
+    await map.getByRole('spinbutton', { name: 'Rotation (°)' }).fill('20');
+    await map.getByRole('tab', { name: '4 Finish' }).click();
+    await map.getByRole('button', { name: 'Phone', exact: true }).click();
+    if (!await map.locator('.dz-map-preview-phone').count()) throw Error('Phone preview was not shown');
+    await axe(design, 'Designer map editing', A11Y_FOUND);
+    await map.getByRole('button', { name: 'Save map' }).click();
+    const id = new URL(design.url()).pathname.split('/').at(-1);
+    await design.waitForFunction(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([path, value]) => path.startsWith(`sharedDocs/${fileId}/dels/`) && value.figure?.kind === 'map' && value.figure.items.some(item => item.label === 'Library' && item.w >= .24 && item.rotation === 20) && value.figure.items.some(item => item.kind === 'road' && item.points?.length === 3)), id);
+    await design.reload();
+    await design.getByRole('button', { name: 'Edit map and symbols' }).click();
+    const reopened = design.getByRole('dialog', { name: 'Edit map' });
+    await reopened.locator('.dz-map-layers button').filter({ hasText: 'Library' }).waitFor();
+    await reopened.getByRole('button', { name: 'Cancel' }).click();
     return s;
   },
   'Designer keeps a failed element edit through reload and retry': async b => {
