@@ -661,6 +661,9 @@ const J = {
     await design.getByRole('button', { name: 'Edit chart data and style' }).click();
     const chart = design.getByRole('dialog', { name: 'Edit chart' });
     await chart.getByRole('textbox', { name: 'Category 1' }).fill('Hong Kong');
+    await chart.getByRole('combobox', { name: 'Type' }).selectOption('pie');
+    await chart.getByLabel('Hong Kong slice colour').fill('#506a8f');
+    await chart.getByRole('combobox', { name: 'Type' }).selectOption('bars');
     await axe(design, 'Designer chart editor', A11Y_FOUND);
     await chart.getByRole('button', { name: 'Done' }).click();
     await design.getByRole('tab', { name: 'Maps' }).click();
@@ -675,6 +678,7 @@ const J = {
     const id = new URL(design.url()).pathname.split('/').at(-1);
     const saved = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path]) => path.startsWith(`sharedDocs/${fileId}/dels/`)).map(([, value]) => value), id);
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
+    if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
     await design.reload();
     await design.getByRole('button', { name: 'Download' }).click();

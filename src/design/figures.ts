@@ -4,6 +4,7 @@ export type ChartKind = 'bars' | 'lines' | 'pie' | 'table';
 export type Series = { name: string; values: number[]; color: string; dashed?: boolean };
 export type ChartFigure = {
   kind: 'chart'; chart: ChartKind; title: string; categories: string[]; series: Series[];
+  palette?: string[]; // shared category colours across all pies
   horizontal?: boolean; min?: number; max?: number; step?: number; unit?: string;
   xLabel?: string; yLabel?: string; footnote?: string; showValues?: boolean;
 };
@@ -135,10 +136,10 @@ function drawPie(g: CanvasRenderingContext2D, f: ChartFigure) {
   f.series.forEach((s,si)=>{
     const col=si%cols,row=Math.floor(si/cols),cx=400+(col-(cols-1)/2)*(cols===2?330:230),cy=105+row*(rows===1?0:220)+radius;
     const vals=f.categories.map((_,i)=>Math.max(0,Number(s.values[i])||0));const total=vals.reduce((a,b)=>a+b,0)||1;let a=-Math.PI/2;
-    vals.forEach((v,i)=>{const next=a+v/total*Math.PI*2;const color=CHART_PALETTE[i%CHART_PALETTE.length];g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,radius,a,next);g.closePath();g.fillStyle=color;g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();if(v/total>.045){const mid=(a+next)/2;label(g,`${Math.round(v/total*100)}%`,cx+Math.cos(mid)*radius*.66,cy+Math.sin(mid)*radius*.66,14,'center',700,darkText(color)?ink:'#fff');}a=next;});
+    vals.forEach((v,i)=>{const next=a+v/total*Math.PI*2;const color=f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length];g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,radius,a,next);g.closePath();g.fillStyle=color;g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();if(v/total>.045){const mid=(a+next)/2;label(g,`${Math.round(v/total*100)}%`,cx+Math.cos(mid)*radius*.66,cy+Math.sin(mid)*radius*.66,14,'center',700,darkText(color)?ink:'#fff');}a=next;});
     label(g,s.name,cx,cy+radius+21,17,'center',700);
   });
-  let x=60,y=505;f.categories.forEach((c,i)=>{const width=Math.min(180,g.measureText(c).width+32);if(x+width>770){x=60;y+=23;}g.fillStyle=CHART_PALETTE[i%CHART_PALETTE.length];g.fillRect(x,y-7,13,13);label(g,c,x+19,y,13);x+=width+14;});
+  let x=60,y=505;f.categories.forEach((c,i)=>{const width=Math.min(180,g.measureText(c).width+32);if(x+width>770){x=60;y+=23;}g.fillStyle=f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length];g.fillRect(x,y-7,13,13);label(g,c,x+19,y,13);x+=width+14;});
 }
 function drawTable(g: CanvasRenderingContext2D, f: ChartFigure) {
   const columns=f.series.length+1;const rows=f.categories.length+1;const x=42,y=92,w=716,h=Math.min(404,rows*46);const rh=h/rows;const first=Math.min(280,w*.4),other=(w-first)/(columns-1||1);
