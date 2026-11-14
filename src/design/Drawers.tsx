@@ -11,13 +11,14 @@ import { ensureFont, SIZES, TEXT_STYLES, blobOf, type El, type ShapeKind } from 
 import { drawPage, shapePath, textHeight, isLine } from './render';
 import { TEMPLATES, type Tpl } from './templates';
 import { drawnImages, searchPictures, type WebPic } from './assets';
+import { FigureDrawer } from './FigureDrawer';
 
-export type DrawerKey = 'ai' | 'templates' | 'elements' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
+export type DrawerKey = 'ai' | 'templates' | 'elements' | 'figures' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
 
 export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ctx; onClose: () => void; onAiOpen?:()=>void }) {
   const [seenAi,setSeenAi]=useState(k==='ai');
   useEffect(()=>{if(k==='ai')setSeenAi(true);},[k]);
-  const title = k?{ ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'Scene', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k]:'';
+  const title = k?{ ai:'AI images', templates: 'Templates', elements: 'Elements', figures: 'Charts & maps', text: 'Text', pictures: 'Pictures', people: 'Scene', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k]:'';
   return (
     <div className="dz-dr">
       <div className="dz-dr-head">
@@ -30,6 +31,7 @@ export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ct
         {(seenAi||k==='ai')&&<div hidden={k!=='ai'}><AiImages cx={cx} visible={k==='ai'} onOpen={onAiOpen}/></div>}
         {k === 'templates' && <Templates cx={cx} />}
         {k === 'elements' && <Elements cx={cx} />}
+        {k === 'figures' && <FigureDrawer cx={cx} />}
         {k === 'text' && <TextDrawer cx={cx} />}
         {k === 'pictures' && <Pictures cx={cx} />}
         {k === 'people' && <SceneDrawer cx={cx} />}

@@ -80,7 +80,7 @@ export type PictureOpts = {
 
 const SNAP = 6;
 const HANDLES: [number, number][] = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
-const keepRatio = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr' || (e.t === 'shape' && (e.shape === 'star' || e.shape === 'heart'));
+const keepRatio = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr' || e.t === 'figure' || (e.t === 'shape' && (e.shape === 'star' || e.shape === 'heart'));
 
 export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const { pages, els: server, meta } = useDesign(d.id);
@@ -142,6 +142,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     const need: [string, () => Promise<CanvasImageSource>][] = [];
     for (const e of els) {
       if (e.t === 'image' && e.img && !imgs.has(e.img)) need.push([e.img, () => loadPicture(d.id, e.img!)]);
+      if (e.t === 'figure' && e.figure?.kind === 'map' && e.figure.backgroundImage && !imgs.has(e.figure.backgroundImage)) { const id = e.figure.backgroundImage; need.push([id, () => loadPicture(d.id, id)]); }
       if (e.t === 'art') {
         const k = artKey(e, accent);
         if (!imgs.has(k)) need.push([k, () => artImage(e, accent)]);
@@ -847,6 +848,12 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     drag.current = { k: 'rotate', start: e, cx: e.x + e.w / 2, cy: e.y + e.h / 2 };
     (ev.currentTarget.closest('.dz-over') as HTMLDivElement).setPointerCapture?.(ev.pointerId);
   };
+  const rotateByKey = (degrees: number) => {
+    const e = sel[0];
+    if (!canEdit || !e || e.locked) return;
+    setLive({ [e.id]: { rot: ((e.rot ?? 0) + degrees + 360) % 360 } });
+    flush();
+  };
   const startAnchor = (ev: RPE<HTMLElement>, e: El) => {
     ev.stopPropagation();
     drag.current = { k: 'anchor', start: e };
@@ -1146,6 +1153,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             [
               ['templates', 'Templates', <path key="t" d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />],
               ['elements', 'Elements', <path key="e" d="M7 3.5 11 10H3zM17 7a3.5 3.5 0 1 1 0 .01M4 14h7v7H4zM17 14l3.5 3.5L17 21l-3.5-3.5z" />],
+              ['figures', 'Charts & maps', <path key="f" d="M4 20V11h4v9M10 20V5h4v15M16 20v-7h4v7M3 20h18" />],
               ['text', 'Text', <path key="x" d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6" />],
               ['ai', 'AI images', <path key="ai" d="M4 5h16v14H4zM4 15l5-5 6 6M16 7v4M14 9h4" />],
               ['pictures', 'Pictures', <path key="p" d="M4 5.5h16v13H4zM4 16l5-5 4 4 2.5-2.5L20 17M15.5 9.5h.01" />],
@@ -1254,7 +1262,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                       {canEdit && HANDLES.map(([hx, hy]) => (hx && hy ? <span key={hx + ',' + hy} className="dz-h" style={{ left: `${((hx + 1) / 2) * 100}%`, top: `${((hy + 1) / 2) * 100}%` }} onPointerDown={(ev) => startHandle(ev, hx, hy)} /> : null))}
                     </div>
                   )}
-                  {one && !cropOf && <SelBox e={one} z={z} canEdit={canEdit && !one.locked} onHandle={startHandle} onRotate={startRotate} onAnchor={startAnchor} />}
+                  {one && !cropOf && <SelBox e={one} z={z} canEdit={canEdit && !one.locked} onHandle={startHandle} onRotate={startRotate} onRotateKey={rotateByKey} onAnchor={startAnchor} />}
                   {cropEl && cropIm && (
                     <CropBox e={cropEl} im={cropIm} z={z} onStart={startCrop} onDone={() => (setCropOf(''), flush())} />
                   )}
@@ -1372,7 +1380,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 }
 
 // The box round one thing: handles to size it, and one to turn it.
-function SelBox({ e, z, canEdit, onHandle, onRotate, onAnchor }: { e: El; z: number; canEdit: boolean; onHandle: (ev: RPE<HTMLElement>, hx: number, hy: number) => void; onRotate: (ev: RPE<HTMLElement>) => void; onAnchor: (ev: RPE<HTMLElement>, e: El) => void }) {
+function SelBox({ e, z, canEdit, onHandle, onRotate, onRotateKey, onAnchor }: { e: El; z: number; canEdit: boolean; onHandle: (ev: RPE<HTMLElement>, hx: number, hy: number) => void; onRotate: (ev: RPE<HTMLElement>) => void; onRotateKey: (degrees: number) => void; onAnchor: (ev: RPE<HTMLElement>, e: El) => void }) {
   const rot = e.t === 'label' ? 0 : e.rot ?? 0;
   const line = e.t === 'shape' && isLine(e.shape);
   const text = e.t === 'text';
@@ -1386,9 +1394,9 @@ function SelBox({ e, z, canEdit, onHandle, onRotate, onAnchor }: { e: El; z: num
             <span key={hx + ',' + hy} className={'dz-h' + (hx && hy ? '' : hx ? ' side-v' : ' side-h')} style={{ left: `${((hx + 1) / 2) * 100}%`, top: `${((hy + 1) / 2) * 100}%` }} onPointerDown={(ev) => onHandle(ev, hx, hy)} />
           ))}
         {canEdit && e.t !== 'label' && (
-          <span className="dz-rot" onPointerDown={onRotate} aria-label="Turn" data-tip="Drag to turn. Shift: steps of 15°">
+          <button type="button" className="dz-rot" onPointerDown={onRotate} onKeyDown={(ev) => { if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft' || ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onRotateKey(ev.key === 'ArrowLeft' ? -15 : 15); } }} aria-label="Turn" data-tip="Drag to turn. Arrow keys: steps of 15°">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" /></svg>
-          </span>
+          </button>
         )}
         {e.locked && <span className="dz-lockb"><UiIcon name="lock" size={11} /></span>}
       </div>
@@ -1484,23 +1492,24 @@ function Pages({ cx, onMenu, onNew }: { cx: Ctx; onMenu: (p: DPage, i: number) =
   return (
     <div className="dz-pages" aria-label={cx.mode === 'storyboard' ? 'Panels' : 'Pages'}>
       {cx.pages.map((p, i) => (
-        <button
-          key={p.id}
-          type="button"
-          className={'dz-pg' + (p.id === cx.page.id ? ' on' : '')}
-          onClick={() => (cx.goPage(p.id), cx.select([]))}
-          onContextMenu={(e) => (e.preventDefault(), cx.canEdit && openMenu(e, onMenu(p, i)))}
-          aria-label={`${cx.mode === 'storyboard' ? 'Panel' : 'Page'} ${i + 1}${p.name ? ', ' + p.name : ''}`}
-          aria-current={p.id === cx.page.id}
-        >
-          {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="dz-pg-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
-          <span className="dz-pg-n">{p.name || i + 1}</span>
+        <div key={p.id} className="dz-pg-wrap">
+          <button
+            type="button"
+            className={'dz-pg' + (p.id === cx.page.id ? ' on' : '')}
+            onClick={() => (cx.goPage(p.id), cx.select([]))}
+            onContextMenu={(e) => (e.preventDefault(), cx.canEdit && openMenu(e, onMenu(p, i)))}
+            aria-label={`${cx.mode === 'storyboard' ? 'Panel' : 'Page'} ${i + 1}${p.name ? ', ' + p.name : ''}`}
+            aria-current={p.id === cx.page.id}
+          >
+            {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="dz-pg-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
+            <span className="dz-pg-n">{p.name || i + 1}</span>
+          </button>
           {cx.canEdit && p.id === cx.page.id && (
-            <span className="dz-pg-more" role="button" tabIndex={0} aria-label="Page options" onClick={(e) => (e.stopPropagation(), openMenu(e, onMenu(p, i)))}>
+            <button type="button" className="dz-pg-more" aria-label="Page options" onClick={(e) => openMenu(e, onMenu(p, i))}>
               ⋯
-            </span>
+            </button>
           )}
-        </button>
+        </div>
       ))}
       {cx.canEdit && (
         <button type="button" className="dz-pg add" onClick={onNew} aria-label={cx.mode === 'storyboard' ? 'Add a panel' : 'Add a page'} data-tip={cx.mode === 'storyboard' ? 'Add a panel' : 'Add a page'}>

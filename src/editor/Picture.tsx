@@ -514,6 +514,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
       <div className="field" style={{ gap: 6 }}>
         <span>Size</span>
         {segOf(PIC_SIZES, size, setSize, 'Size')}
+        <span className="hint">You can change this later or drag a picture corner to set its width.</span>
       </div>
       <div className="field" style={{ gap: 6 }}>
         <span>Label in the corner</span>

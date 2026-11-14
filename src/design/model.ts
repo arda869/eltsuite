@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { audioUrl, saveImage } from '../lib/media';
+import type { Figure } from './figures';
 
 // Design: pictures, posters, flashcards and worksheets made of pages, each with things on it
 // (pictures, text, shapes, drawings, labels…). Every thing is its own record, so everyone the file is
 // shared with for editing works on it at the same time and sees the others' changes straight away.
 // Pictures are kept in the file's own media.
 
-export type ElType = 'image' | 'text' | 'shape' | 'path' | 'art' | 'label' | 'cover' | 'wordbank' | 'qr' | 'lines';
+export type ElType = 'image' | 'text' | 'shape' | 'path' | 'art' | 'label' | 'cover' | 'wordbank' | 'qr' | 'lines' | 'figure';
 export type ShapeKind = 'rect' | 'ellipse' | 'triangle' | 'diamond' | 'pentagon' | 'hexagon' | 'star' | 'heart' | 'line' | 'arrow' | 'double' | 'speech' | 'thought' | 'shout' | 'cloud' | 'banner' | 'tick' | 'cross';
 export type Fx = { bright?: number; contrast?: number; sat?: number; blur?: number; gray?: number; sepia?: number; hue?: number; invert?: number };
 export type Crop = { x: number; y: number; w: number; h: number }; // parts of the picture, 0–1
@@ -97,6 +98,8 @@ export type El = {
   url?: string;
   // writing lines
   gap?: number;
+  // Editable chart, table or map. Designer owns the visual; Classes owns its questions.
+  figure?: Figure;
 };
 
 // A scene's backdrop (`scene`, drawn in the house style behind everything), where its floor meets the
