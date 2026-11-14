@@ -59,10 +59,11 @@ test('every named symbol renders as an SVG preview and canvas path', async () =>
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
-    const body = MAP_SYMBOLS.map(s => `<svg data-key="${s.key}" viewBox="0 0 ${s.glyph.viewBox} ${s.glyph.viewBox}" width="48" height="48" fill="none" stroke="black" stroke-width="${s.glyph.viewBox === 24 ? 2 : 2.5}" stroke-linecap="round" stroke-linejoin="round">${s.glyph.paths.map(path => `<path d="${path.replaceAll('"', '&quot;')}"/>`).join('')}</svg>`).join('');
+    const body = MAP_SYMBOLS.map(s => `<svg data-key="${s.key}" viewBox="0 0 ${s.glyph.viewBox} ${s.glyph.viewBox}" width="48" height="48" fill="none" stroke="black" stroke-width="${s.glyph.viewBox === 24 ? 2 : 2.5}" stroke-linecap="round" stroke-linejoin="round">${s.glyph.paths.map(path => `<path d="${path.replaceAll('"', '&quot;')}"/>`).join('')}${s.glyph.text ? `<text x="24" y="25" fill="black" stroke="none" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="800">${s.glyph.text}</text>` : ''}</svg>`).join('');
     await page.setContent(`<!doctype html><html><body>${body}<canvas width="48" height="48"></canvas></body></html>`);
     const bad = await page.evaluate(() => {
       const failures = [];
+      const rendered = [];
       const canvas = document.querySelector('canvas');
       const ctx = canvas.getContext('2d');
       for (const svg of document.querySelectorAll('svg')) {
@@ -71,12 +72,25 @@ test('every named symbol renders as an SVG preview and canvas path', async () =>
           const box = svg.getBBox();
           if (!Number.isFinite(box.width) || box.width <= 1 || box.height <= 1) failures.push(`${svg.dataset.key}: invisible SVG`);
           ctx.clearRect(0, 0, 48, 48);
-          ctx.save(); ctx.scale(48 / Number(svg.viewBox.baseVal.width), 48 / Number(svg.viewBox.baseVal.height));
+          const viewBox = Number(svg.viewBox.baseVal.width);
+          ctx.save(); ctx.scale(48 / viewBox, 48 / viewBox); ctx.lineWidth = viewBox === 24 ? 2 : 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
           paths.forEach(path => ctx.stroke(new Path2D(path.getAttribute('d'))));
+          const text = svg.querySelector('text');
+          if (text) { ctx.font = '800 11px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text.textContent, 24, 25); }
           ctx.restore();
           const pixels = ctx.getImageData(0, 0, 48, 48).data;
           if (!pixels.some((value, index) => index % 4 === 3 && value > 0)) failures.push(`${svg.dataset.key}: empty canvas path`);
+          rendered.push({ key: svg.dataset.key, mask: Uint8Array.from({ length: 48 * 48 }, (_, i) => Number(pixels[i * 4 + 3] > 100)) });
         } catch (error) { failures.push(`${svg.dataset.key}: ${error.message}`); }
+      }
+      for (let i = 0; i < rendered.length; i++) for (let j = i + 1; j < rendered.length; j++) {
+        let common = 0, union = 0;
+        for (let p = 0; p < 48 * 48; p++) {
+          const a = rendered[i].mask[p], b = rendered[j].mask[p];
+          if (a && b) common++;
+          if (a || b) union++;
+        }
+        if (common / union > .9) failures.push(`${rendered[i].key} and ${rendered[j].key}: indistinguishable at picker size`);
       }
       return failures;
     });

@@ -13,9 +13,9 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 7 | services | Medical centre (`medical`) | lucide:stethoscope | Stethoscope and earpieces. |
 | 8 | buildings | Shop (`shop`) | lucide:store | Storefront with an awning. |
 | 9 | services | ATM (`atm`) | bespoke:atm | Cash machine with screen and dispensing slot. |
-| 10 | transport | Sky train (`train`) | lucide:train-front-tunnel | Front of train in an elevated tunnel. |
-| 11 | transport | Car hire (`car`) | lucide:car-front | Front of a passenger car. |
-| 12 | transport | Airport (`plane`) | lucide:plane | Aircraft seen from above. |
+| 10 | transport | Sky train (`train`) | bespoke:skytrain | Elevated rail car above supporting pillars. |
+| 11 | transport | Car hire (`car`) | bespoke:carhire | Passenger car with a key above the roof. |
+| 12 | transport | Airport (`plane`) | bespoke:airportterminal | Aircraft silhouette above runway markings. |
 | 13 | wayfinding | Check-in (`checkin`) | lucide:clipboard-check | Checked registration clipboard. |
 | 14 | wayfinding | Bag drop (`baggage`) | lucide:luggage | Suitcase with handle and wheels. |
 | 15 | buildings | Tower (`tower`) | lucide:radio-tower | Tapering communications tower. |
@@ -24,21 +24,21 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 18 | buildings | Factory (`factory`) | lucide:factory | Industrial roof and chimneys. |
 | 19 | buildings | Housing (`house`) | lucide:houses | Cluster of homes. |
 | 20 | sports | Sports field (`field`) | bespoke:field | Marked rectangular field and centre circle. |
-| 21 | sports | Tennis courts (`tennis`) | bespoke:tennis | Tennis racket with string pattern. |
+| 21 | sports | Tennis courts (`tennis`) | bespoke:teniscourt | Tennis court rectangle with net and service boxes. |
 | 22 | sports | Outdoor gym (`gym`) | lucide:dumbbell | Weight lifting dumbbell. |
 | 23 | nature | Flowers (`flower`) | lucide:flower-2 | Petalled flower on stem. |
-| 24 | nature | Pond (`pond`) | bespoke:pond | Small oval pool with reeds. |
+| 24 | nature | Pond (`pond`) | bespoke:pond | Small oval pool beside three cattail reeds. |
 | 25 | transport | Bridge (`bridge`) | lucide:bridge | Curved bridge span. |
 | 26 | wayfinding | Gate (`gate`) | bespoke:gate | Two posts and hinged gate leaf. |
-| 27 | transport | Bus stop (`bus`) | lucide:bus-front | Front of a bus. |
+| 27 | transport | Bus stop (`bus`) | bespoke:busstop | Bus carriage beside a separate stop sign. |
 | 28 | services | Information (`information`) | lucide:info | Information letter inside a circle. |
-| 29 | heritage | Sculpture (`sculpture`) | bespoke:sculpture | Standing figure on a plinth. |
+| 29 | heritage | Sculpture (`sculpture`) | bespoke:sculpture | Abstract carved form on an exhibition plinth. |
 | 30 | food | Canteen (`food`) | bespoke:food | Tray with plate and cutlery. |
 | 31 | buildings | Office (`office`) | lucide:building-2 | Multi-storey office windows. |
 | 32 | services | Reception (`reception`) | bespoke:reception | Reception desk and attendant. |
 | 33 | food | Restaurant (`restaurant`) | lucide:utensils-crossed | Crossed knife and fork. |
 | 34 | food | Picnic area (`picnic`) | bespoke:picnic | Picnic table under a parasol. |
-| 35 | buildings | Hotel (`hotel`) | lucide:hotel | Hotel facade and entrance. |
+| 35 | buildings | Hotel (`hotel`) | bespoke:hotelfront | Hotel building marked with a large H. |
 | 36 | leisure | Campsite (`camping`) | lucide:tent | Canvas tent with opening. |
 | 37 | buildings | Warehouse (`warehouse`) | lucide:warehouse | Wide storage building and loading door. |
 | 38 | services | Bank (`bank`) | bespoke:bank | Bank facade with a currency mark. |
@@ -46,21 +46,21 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 40 | education | Library (`library`) | lucide:library | Books on shelves. |
 | 41 | services | Pharmacy (`pharmacy`) | lucide:pill-bottle | Medicine bottle with tablets. |
 | 42 | services | Hospital (`hospital`) | lucide:hospital | Hospital facade with cross. |
-| 43 | safety | Police station (`police`) | lucide:shield-user | Shield containing a person. |
+| 43 | safety | Police station (`police`) | bespoke:policestation | Station building with a police shield. |
 | 44 | safety | Fire station (`fire`) | bespoke:firestation | Station building with a flame above vehicle doors. |
 | 45 | safety | Security (`security`) | lucide:shield-check | Shield with verification tick. |
 | 46 | wayfinding | Passport control (`passport`) | bespoke:passport | Passport booklet and globe. |
-| 47 | wayfinding | Customs (`customs`) | lucide:package-check | Inspected parcel with tick. |
+| 47 | wayfinding | Customs (`customs`) | bespoke:customscheck | Suitcase at an inspection desk with a check. |
 | 48 | wayfinding | Arrivals (`arrival`) | lucide:plane-landing | Plane descending to runway. |
 | 49 | wayfinding | Departures (`departure`) | lucide:plane-takeoff | Plane climbing from runway. |
 | 50 | services | Tickets (`ticket`) | lucide:ticket | Ticket with tear-off notch. |
-| 51 | transport | Ferry terminal (`ferry`) | lucide:ship | Passenger vessel on water. |
-| 52 | transport | Rail station (`rail`) | lucide:train-front | Rail train from the front. |
-| 53 | transport | Tram stop (`tram`) | lucide:tram-front | Tram with twin front windows. |
-| 54 | transport | Bicycle parking (`bike`) | lucide:bike | Two-wheel bicycle. |
+| 51 | transport | Ferry terminal (`ferry`) | bespoke:ferryterminal | Ferry next to a pier with water below. |
+| 52 | transport | Rail station (`rail`) | bespoke:railstation | Station canopy framing a train and track. |
+| 53 | transport | Tram stop (`tram`) | bespoke:tramstop | Tram carriage beside a separate stop post. |
+| 54 | transport | Bicycle parking (`bike`) | bespoke:bicycleparking | Parking sign beside a bicycle. |
 | 55 | transport | EV charging (`charging`) | lucide:battery-charging | Battery with charging flash. |
 | 56 | transport | Petrol station (`petrol`) | lucide:fuel | Fuel pump and hose. |
-| 57 | transport | Taxi rank (`taxi`) | lucide:car-taxi-front | Taxi roof light above car. |
+| 57 | transport | Taxi rank (`taxi`) | bespoke:taxirank | Taxi waiting beside a marked rank sign. |
 | 58 | wayfinding | Walkway (`walkway`) | lucide:footprints | Pair of walking footprints. |
 | 59 | wayfinding | Stairs (`stairs`) | bespoke:stairs | Rising staircase profile. |
 | 60 | wayfinding | Lift (`lift`) | bespoke:lift | Lift cabin and up/down arrows. |
@@ -83,10 +83,10 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 77 | wayfinding | Notice board (`notice`) | lucide:panel-top | Framed information panel. |
 | 78 | leisure | Viewpoint (`viewpoint`) | lucide:binoculars | Twin viewing lenses. |
 | 79 | leisure | Maze (`maze`) | bespoke:maze | Labyrinth path with turns. |
-| 80 | sports | Skateboard ramp (`skate`) | bespoke:skate | Skateboard on curved ramp. |
-| 81 | sports | Cricket pitch (`cricket`) | bespoke:cricket | Cricket bat with ball. |
-| 82 | sports | Football pitch (`football`) | bespoke:football | Panelled football. |
-| 83 | sports | Basketball court (`basketball`) | bespoke:basketball | Segmented basketball. |
+| 80 | sports | Skateboard ramp (`skate`) | bespoke:skateramp | Large curved ramp with a rider and board. |
+| 81 | sports | Cricket pitch (`cricket`) | bespoke:cricketpitch | Cricket ground with central wicket pitch. |
+| 82 | sports | Football pitch (`football`) | bespoke:footballpitch | Football field with goals and centre circle. |
+| 83 | sports | Basketball court (`basketball`) | bespoke:basketballcourt | Basketball court lines and twin key areas. |
 | 84 | sports | Swimming pool (`pool`) | lucide:waves-ladder | Pool ladder over water. |
 | 85 | sports | Stadium (`stadium`) | bespoke:stadium | Tiered spectator seating. |
 | 86 | leisure | Zoo (`zoo`) | lucide:paw-print | Animal paw print. |
@@ -97,20 +97,20 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 91 | heritage | Temple (`temple`) | bespoke:temple | Stepped shrine with pointed roof. |
 | 92 | heritage | Church (`church`) | lucide:church | Church tower and cross. |
 | 93 | heritage | Monument (`monument`) | bespoke:monument | Tall obelisk on a base. |
-| 94 | heritage | Exhibition (`exhibit`) | lucide:gallery-vertical | Row of display frames. |
-| 95 | buildings | Meeting room (`meeting`) | lucide:users-round | People around a meeting space. |
-| 96 | buildings | Boardroom (`boardroom`) | lucide:presentation | Presentation screen for a meeting. |
+| 94 | heritage | Exhibition (`exhibit`) | bespoke:exhibition | Two framed works mounted inside an exhibition booth. |
+| 95 | buildings | Meeting room (`meeting`) | bespoke:meetingroom | Room outline with people facing a table. |
+| 96 | buildings | Boardroom (`boardroom`) | bespoke:boardroomtable | Conference table with chairs around it. |
 | 97 | food | Coffee room (`coffee`) | lucide:coffee | Cup with steam and saucer. |
 | 98 | education | Classroom (`classroom`) | bespoke:classroom | Teaching board and desks. |
 | 99 | education | Laboratory (`lab`) | lucide:flask-conical | Laboratory flask. |
 | 100 | buildings | Courtyard (`courtyard`) | bespoke:courtyard | Buildings enclosing open centre. |
 | 101 | transport | Roundabout (`roundabout`) | bespoke:roundabout | Circular road with four approaches. |
-| 102 | wayfinding | North arrow (`north`) | lucide:navigation | Pointed north navigation arrow. |
+| 102 | wayfinding | North arrow (`north`) | bespoke:northarrow | Arrow pointing vertically to a letter N. |
 | 103 | nature | Pine tree (`pine`) | lucide:tree-pine | Triangular evergreen crown. |
 | 104 | nature | Palm tree (`palm`) | lucide:tree-palm | Fanned palm fronds. |
 | 105 | nature | Leaf (`leaf`) | lucide:leaf | Leaf blade and stem. |
 | 106 | nature | Seedling (`sprout`) | lucide:sprout | Two new leaves rising from soil. |
-| 107 | nature | Shrub (`shrub`) | lucide:flower | Low rounded flowering plant. |
+| 107 | nature | Shrub (`shrub`) | bespoke:shrub | Low rounded multi-branch bush. |
 | 108 | nature | Reeds (`reeds`) | bespoke:reeds | Tall waterside stalks and seed heads. |
 | 109 | nature | Wetland (`wetland`) | bespoke:wetland | Reeds rising out of shallow water. |
 | 110 | nature | Stream (`stream`) | bespoke:stream | Narrow winding watercourse with two banks. |
@@ -121,21 +121,21 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 115 | nature | Shaded area (`shade`) | lucide:cloud-sun | Cloud shading a sun. |
 | 116 | nature | Windy area (`wind`) | lucide:wind | Sweeping wind lines. |
 | 117 | leisure | Beach chairs (`beachchair`) | bespoke:beachchair | Reclining chair with slanted back. |
-| 118 | transport | Boat launch (`boatlaunch`) | lucide:sailboat | Sailboat at water access. |
+| 118 | transport | Boat launch (`boatlaunch`) | bespoke:boatlaunch | Boat beside a sloped launching ramp. |
 | 119 | transport | Harbour (`anchor`) | lucide:anchor | Maritime anchor. |
 | 120 | transport | Port (`port`) | lucide:ship-cargo | Cargo vessel at terminal. |
-| 121 | transport | Helipad (`helicopter`) | lucide:helicopter | Helicopter and rotor. |
-| 122 | transport | Motorbike parking (`motorbike`) | lucide:motorbike | Motorcycle on wheels. |
-| 123 | transport | Bus depot (`busdepot`) | lucide:bus | Long side-profile bus. |
-| 124 | transport | Metro station (`metro`) | lucide:train-track | Train lines and rails. |
+| 121 | transport | Helipad (`helicopter`) | bespoke:helipad | Large H inside a circular landing pad. |
+| 122 | transport | Motorbike parking (`motorbike`) | bespoke:motorbikeparking | Parking sign beside a motorbike. |
+| 123 | transport | Bus depot (`busdepot`) | bespoke:busdepot | Bus parked inside a depot arch. |
+| 124 | transport | Metro station (`metro`) | bespoke:metrostation | Metro entrance with M and descending rails. |
 | 125 | transport | Road works (`roadworks`) | lucide:construction | Traffic barrier and tools. |
 | 126 | transport | Traffic cone (`trafficcone`) | lucide:traffic-cone | Striped safety cone. |
 | 127 | transport | Caravan park (`caravan`) | lucide:caravan | Caravan with tow bar. |
 | 128 | wayfinding | Route (`route`) | lucide:route | Connected journey waypoints. |
-| 129 | transport | Road junction (`intersection`) | lucide:git-fork | Forking routes. |
+| 129 | transport | Road junction (`intersection`) | bespoke:roadjunction | Road surface with a T junction and centre markings. |
 | 130 | transport | Footbridge (`footbridge`) | bespoke:footbridge | Narrow raised pedestrian bridge. |
 | 131 | transport | Pedestrian crossing (`crossing`) | bespoke:crossing | Striped zebra crossing. |
-| 132 | transport | Loading bay (`loading`) | lucide:truck | Goods truck at loading point. |
+| 132 | transport | Loading bay (`loading`) | bespoke:loadingbay | Warehouse loading door, parcel and truck. |
 | 133 | transport | Delivery point (`delivery`) | lucide:package-open | Open delivery parcel. |
 | 134 | transport | Shipping area (`shipping`) | lucide:container | Freight container. |
 | 135 | heritage | Landmark (`landmark`) | lucide:map-pinned | Map with distinguished location pin. |
@@ -149,10 +149,10 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 143 | heritage | Mosque (`mosque`) | bespoke:mosque | Dome and minaret. |
 | 144 | heritage | Synagogue (`synagogue`) | bespoke:synagogue | Building with Star of David. |
 | 145 | heritage | Shrine (`shrine`) | bespoke:shrine | Small canopied altar. |
-| 146 | services | Visitor centre (`tourism`) | lucide:map | Folded visitor map. |
+| 146 | services | Visitor centre (`tourism`) | bespoke:visitorcentre | Visitor centre building with map display. |
 | 147 | services | Help desk (`helpdesk`) | lucide:circle-help | Question-mark help point. |
-| 148 | services | Lost property (`lostproperty`) | lucide:package-search | Searched lost parcel. |
-| 149 | services | Lockers (`locker`) | lucide:lock-keyhole | Locked storage compartment. |
+| 148 | services | Lost property (`lostproperty`) | bespoke:lostproperty | Found-property case with a large question mark. |
+| 149 | services | Lockers (`locker`) | bespoke:lockers | Row of three storage lockers with handles. |
 | 150 | services | Baby changing (`babychange`) | lucide:baby | Baby silhouette. |
 | 151 | services | Showers (`shower`) | lucide:shower-head | Showerhead and droplets. |
 | 152 | services | Laundry (`laundry`) | lucide:washing-machine | Front-loading washer. |
@@ -162,12 +162,12 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 156 | services | Currency exchange (`exchange`) | lucide:arrow-left-right | Two opposite currency arrows. |
 | 157 | services | Post box (`postbox`) | lucide:mail | Envelope for posted mail. |
 | 158 | services | Parcel collection (`parcel`) | lucide:package | Closed parcel. |
-| 159 | safety | Ambulance bay (`ambulance`) | lucide:ambulance | Ambulance with medical cross. |
-| 160 | safety | Defibrillator (`defib`) | lucide:heart-pulse | Heart with electric pulse. |
-| 161 | safety | Vaccination centre (`vaccination`) | lucide:syringe | Medical syringe. |
+| 159 | safety | Ambulance bay (`ambulance`) | bespoke:ambulancebay | Medical vehicle parked in a marked bay. |
+| 160 | safety | Defibrillator (`defib`) | bespoke:defibrillator | AED cabinet with heart and electric bolt. |
+| 161 | safety | Vaccination centre (`vaccination`) | bespoke:vaccinationcentre | Medical building with cross and vaccine needle. |
 | 162 | safety | Fire alarm (`firealarm`) | lucide:alarm-smoke | Alarm and smoke. |
 | 163 | safety | Fire hydrant (`firehydrant`) | bespoke:firehydrant | Hydrant barrel with side nozzles. |
-| 164 | safety | Life jackets (`lifejacket`) | lucide:life-buoy | Circular flotation aid. |
+| 164 | safety | Life jackets (`lifejacket`) | bespoke:lifejacket | Wearable vest with collar and fasteners. |
 | 165 | safety | Lifeguard (`lifeguard`) | bespoke:lifeguard | Raised lifeguard chair. |
 | 166 | safety | First-aid post (`firstaidpost`) | lucide:briefcase-medical | Medical briefcase. |
 | 167 | safety | Security checkpoint (`checkpoint`) | lucide:scan-line | Scanning frame. |
@@ -180,7 +180,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 174 | wayfinding | Stop sign (`stop`) | bespoke:stop | Octagonal sign marked STOP. |
 | 175 | wayfinding | Warning sign (`warning`) | lucide:triangle-alert | Triangle with exclamation. |
 | 176 | wayfinding | Restricted area (`restricted`) | lucide:circle-slash | Slashed prohibition circle. |
-| 177 | wayfinding | Open access (`open`) | lucide:lock-open | Open padlock. |
+| 177 | wayfinding | Open access (`open`) | bespoke:openaccess | Gate swung open with a directional arrow. |
 | 178 | wayfinding | Closed access (`closed`) | lucide:lock | Closed padlock. |
 | 179 | wayfinding | Underpass (`lowertunnel`) | bespoke:underpass | Path passing below a road. |
 | 180 | wayfinding | Overpass (`upperbridge`) | bespoke:overpass | Path passing over a road. |
@@ -198,21 +198,21 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 192 | buildings | Courthouse (`court`) | lucide:gavel | Judicial gavel. |
 | 193 | buildings | Workshop (`workshop`) | lucide:hammer | Hand tool for making. |
 | 194 | buildings | Construction site (`construction`) | lucide:hard-hat | Protective builder helmet. |
-| 195 | buildings | Power station (`powerplant`) | lucide:zap | Electrical power bolt. |
+| 195 | buildings | Power station (`powerplant`) | bespoke:powerstation | Industrial power building with a bolt. |
 | 196 | buildings | Solar farm (`solarfarm`) | lucide:solar-panel | Panel divided into cells. |
 | 197 | buildings | Lighthouse (`lighthouse`) | lucide:lighthouse | Beacon tower and rays. |
 | 198 | buildings | Greenhouse (`greenhouse`) | bespoke:greenhouse | Glass-roofed growing house. |
 | 199 | buildings | Barn (`barn`) | bespoke:barn | Barn roof and wide doors. |
-| 200 | buildings | Water treatment (`waterworks`) | lucide:droplets | Multiple water drops. |
+| 200 | buildings | Water treatment (`waterworks`) | bespoke:waterplant | Treatment building with tanks and water. |
 | 201 | buildings | Observatory (`observatory`) | lucide:telescope | Astronomy telescope. |
 | 202 | sports | Golf course (`golf`) | lucide:flag-triangle-right | Flag on a putting green. |
-| 203 | sports | Volleyball court (`volleyball`) | bespoke:volleyball | Striped volleyball and net. |
-| 204 | sports | Badminton court (`badminton`) | bespoke:badminton | Shuttlecock over net. |
-| 205 | sports | Hockey pitch (`hockey`) | bespoke:hockey | Hockey stick and ball. |
-| 206 | sports | Rugby field (`rugby`) | bespoke:rugby | Oval ball between goal posts. |
-| 207 | sports | Baseball field (`baseball`) | bespoke:baseball | Stitched baseball and bat. |
+| 203 | sports | Volleyball court (`volleyball`) | bespoke:volleyball | Rectangular court with a central net and service zones. |
+| 204 | sports | Badminton court (`badminton`) | bespoke:badminton | Narrow court with a central net and service boxes. |
+| 205 | sports | Hockey pitch (`hockey`) | bespoke:hockeypitch | Hockey pitch lines and shooting circles. |
+| 206 | sports | Rugby field (`rugby`) | bespoke:rugbypitch | Rugby field with goal posts and halfway line. |
+| 207 | sports | Baseball field (`baseball`) | bespoke:baseball | Diamond infield and home plate. |
 | 208 | sports | Ice rink (`skating`) | bespoke:skating | Ice skate with blade. |
-| 209 | sports | Fitness trail (`fitness`) | lucide:activity | Heart-rate exercise trace. |
+| 209 | sports | Fitness trail (`fitness`) | bespoke:fitnesspath | Winding trail beside a running person. |
 | 210 | sports | Archery range (`archery`) | lucide:target | Concentric archery target. |
 | 211 | sports | Multi-use court (`playcourt`) | bespoke:playcourt | Court boundaries and net. |
 | 212 | education | University (`university`) | lucide:graduation-cap | Graduation cap. |
