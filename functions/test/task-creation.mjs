@@ -76,3 +76,22 @@ test('a speaking picture is attached inside its prompt without a duplicate', () 
   assert.deepEqual(picturePrompts[0].attrs.data.images,['media:prepared_picture']);
   assert.equal(native.content.content.filter(n=>n.type==='paragraph'&&n.content?.some(c=>c.type==='picture')).length,0);
 });
+
+test('dialogue and table gaps count as learner responses', () => {
+  const dialogue=newImportElement('dialogue','Complete the guest’s order.');
+  dialogue.data={layout:'stacked',turns:[
+    {speaker:'Guest',text:'I would like ___, please.',answers:['soup']},
+    {speaker:'Server',text:'Certainly.',answers:[]},
+  ]};
+  const speaking=task({inlineElements:[dialogue]});
+  assert.doesNotThrow(() => check(speaking));
+  const dialogueNative=nativeTask(speaking,0);
+  assert.ok(Object.values(dialogueNative.key).some(k=>k.answers?.includes('soup')));
+  assert.ok(!JSON.stringify(dialogueNative.content).includes('soup'));
+
+  const table=newImportElement('table','Complete the order table.');
+  table.data={headers:['Item','Price'],rows:[['Soup','___']],answers:['five pounds']};
+  const written=task({format:'gap',mediaPlan:[],teacherOnlyInput:'',inlineElements:[table]});
+  assert.doesNotThrow(() => check(written));
+  assert.ok(Object.values(nativeTask(written,0).key).some(k=>k.answers?.includes('five pounds')));
+});
