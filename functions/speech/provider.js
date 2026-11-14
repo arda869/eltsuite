@@ -1,11 +1,24 @@
 import {beginAttempt,settleAttempt} from '../costs/ledger.js';
 import {normaliseUsage} from '../costs/pricing.js';
 import WebSocket from 'ws';
-import { speechInstructions } from './contract.js';
+import { prepareSpeechScript, speechInstructions } from './contract.js';
+
+export function transcriptReadsDirection(transcript, spoken, cues) {
+  const tokens = value => (value.toLowerCase().match(/[\p{L}]+/gu) || []);
+  const heard = tokens(transcript), expected = tokens(spoken);
+  const occurrences = (source, phrase) => source.reduce((count, word, index) =>
+    count + (word === phrase[0] && phrase.every((part, offset) => source[index + offset] === part) ? 1 : 0), 0);
+  return cues.some(({ direction }) => {
+    const cue = tokens(direction);
+    return cue.length && occurrences(heard, cue) > occurrences(expected, cue);
+  });
+}
 
 // One session per utterance keeps speakers' voices independent. PCM is returned without
 // lossy encoding; the editor resamples to its project rate and encodes only when saving.
 export async function generateSpeech(key, request, { Socket = WebSocket, timeout = 85000 } = {}) {
+  const prepared = prepareSpeechScript(request.text);
+  if (!prepared.spoken) throw Error('Add words to speak as well as delivery directions.');
   const attempt=await beginAttempt({provider:'openai',model:'gpt-realtime-2.1-mini',ceilingMicroUsd:100000});
   let billingResponse;
   return new Promise((resolve, reject) => {
@@ -26,12 +39,12 @@ export async function generateSpeech(key, request, { Socket = WebSocket, timeout
       try {
         const event = JSON.parse(raw.toString());
         if (event.type === 'session.created') socket.send(JSON.stringify({ type: 'session.update', session: {
-          type: 'realtime', output_modalities: ['audio'], instructions: speechInstructions(request),
+          type: 'realtime', output_modalities: ['audio'], instructions: speechInstructions(request, prepared.cues),
           audio: { input: { turn_detection: null }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: request.voice } },
         } }));
         if (event.type === 'session.updated' && !requested) {
           requested = true;
-          socket.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: `Perform only this script:\n${request.text}` }] } }));
+          socket.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: `Perform only this script:\n${prepared.spoken}` }] } }));
           socket.send(JSON.stringify({ type: 'response.create', response: { output_modalities: ['audio'], max_output_tokens: 2048 } }));
         }
         if (event.type === 'response.output_audio.delta') {
@@ -45,6 +58,7 @@ export async function generateSpeech(key, request, { Socket = WebSocket, timeout
         if (event.type === 'response.done') {
           billingResponse=event.response;
           if (event.response?.status !== 'completed' || bytes < 4800 || bytes % 2) return finish(Error('The voice service did not finish this take. Try a shorter line.'));
+          if (transcript && transcriptReadsDirection(transcript, prepared.spoken, prepared.cues)) return finish(Error('The voice read a delivery direction aloud. Create this take again; your script is still here.'));
           finish(null, { pcm: Buffer.concat(chunks).toString('base64'), rate: 24000, transcript });
         }
       } catch { finish(Error('The voice service returned an unreadable take. Please try again.')); }
