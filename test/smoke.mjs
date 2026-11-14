@@ -772,6 +772,15 @@ const J = {
     await s.p.reload();
     const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create image'}).click()]);
     await image.getByRole('button',{name:'AI images',exact:true}).click();
+    const checkDesignerViewport=async()=>{
+      const size=await image.evaluate(()=>({page:document.documentElement.scrollHeight,viewport:innerHeight,canvas:!!document.querySelector('.dz-scroll')}));
+      if(!size.canvas||size.page>size.viewport+1)throw Error(`Designer page scrolls outside the canvas (${size.page}px in ${size.viewport}px).`);
+    };
+    await checkDesignerViewport();
+    const desktopSize=image.viewportSize();
+    await image.setViewportSize({width:390,height:844});
+    await checkDesignerViewport();
+    await image.setViewportSize(desktopSize);
     await image.getByRole('button',{name:'Generate preview'}).waitFor();
     await image.getByRole('button',{name:'What would you like to do?'}).click();
     await image.getByRole('option',{name:'Change an image'}).click();
