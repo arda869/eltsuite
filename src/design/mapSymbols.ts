@@ -1,0 +1,152 @@
+// Shared map-symbol catalogue. The same vector strokes are used in the picker,
+// on the canvas and in exported images, so a preview always matches the map.
+export const MAP_ICONS = [
+  ['tree','Tree'], ['café','Café'], ['toilets','Toilets'], ['parking','Car park'],
+  ['playground','Playground'], ['school','School'], ['medical','Medical centre'],
+  ['shop','Shop'], ['atm','ATM'], ['train','Sky train'], ['car','Car hire'],
+  ['plane','Airport'], ['checkin','Check-in'], ['baggage','Bag drop'],
+  ['tower','Tower'], ['castle','Castle'], ['museum','Museum'], ['factory','Factory'],
+  ['house','Housing'], ['field','Sports field'], ['tennis','Tennis courts'],
+  ['gym','Outdoor gym'], ['flower','Flowers'], ['pond','Pond'],
+  ['bridge','Bridge'], ['gate','Gate'], ['bus','Bus stop'], ['information','Information'],
+  ['sculpture','Sculpture'], ['food','Canteen'], ['office','Office'], ['reception','Reception'],
+  ['restaurant','Restaurant'], ['picnic','Picnic area'], ['hotel','Hotel'], ['camping','Campsite'],
+  ['warehouse','Warehouse'], ['bank','Bank'], ['post','Post office'], ['library','Library'],
+  ['pharmacy','Pharmacy'], ['hospital','Hospital'], ['police','Police station'], ['fire','Fire station'],
+  ['security','Security'], ['passport','Passport control'], ['customs','Customs'],
+  ['arrival','Arrivals'], ['departure','Departures'], ['ticket','Tickets'], ['ferry','Ferry terminal'],
+  ['rail','Rail station'], ['tram','Tram stop'], ['bike','Bicycle parking'], ['charging','EV charging'],
+  ['petrol','Petrol station'], ['taxi','Taxi rank'], ['walkway','Walkway'], ['stairs','Stairs'],
+  ['lift','Lift'], ['accessible','Accessible entrance'], ['entrance','Entrance'], ['exit','Exit'],
+  ['emergency','Emergency exit'], ['firstaid','First aid'], ['drinking','Drinking water'],
+  ['garden','Garden'], ['forest','Forest'], ['lake','Lake'], ['river','River'], ['beach','Beach'],
+  ['mountain','Mountain'], ['waterfall','Waterfall'], ['fountain','Fountain'], ['bench','Bench'],
+  ['bin','Rubbish bin'], ['notice','Notice board'], ['viewpoint','Viewpoint'], ['maze','Maze'],
+  ['skate','Skateboard ramp'], ['cricket','Cricket pitch'], ['football','Football pitch'],
+  ['basketball','Basketball court'], ['pool','Swimming pool'], ['stadium','Stadium'],
+  ['zoo','Zoo'], ['aquarium','Aquarium'], ['cinema','Cinema'], ['theatre','Theatre'],
+  ['gallery','Gallery'], ['temple','Temple'], ['church','Church'], ['monument','Monument'],
+  ['exhibit','Exhibition'], ['meeting','Meeting room'], ['boardroom','Boardroom'],
+  ['coffee','Coffee room'], ['classroom','Classroom'], ['lab','Laboratory'],
+  ['courtyard','Courtyard'], ['roundabout','Roundabout'], ['north','North arrow'],
+] as const;
+
+export type MapSymbolKey = (typeof MAP_ICONS)[number][0];
+export type MapSymbolCategory = 'nature'|'transport'|'buildings'|'services'|'food'|'leisure'|'education'|'wayfinding';
+export const MAP_SYMBOL_CATEGORIES: {key:MapSymbolCategory;name:string;colour:string;keys:readonly MapSymbolKey[]}[] = [
+  {key:'nature',name:'Nature and water',colour:'#578d78',keys:['tree','flower','pond','garden','forest','lake','river','beach','mountain','waterfall','fountain']},
+  {key:'transport',name:'Roads and transport',colour:'#638596',keys:['parking','train','car','plane','bridge','bus','arrival','departure','ferry','rail','tram','bike','charging','petrol','taxi','walkway','stairs','lift','roundabout']},
+  {key:'buildings',name:'Buildings and work',colour:'#a77860',keys:['shop','tower','castle','factory','house','office','reception','warehouse','bank','post','hotel','camping','courtyard']},
+  {key:'services',name:'Services and safety',colour:'#a36b78',keys:['toilets','medical','atm','information','pharmacy','hospital','police','fire','security','passport','customs','ticket','accessible','emergency','firstaid','drinking','bin']},
+  {key:'food',name:'Food and places to stay',colour:'#a57458',keys:['café','food','restaurant','picnic','coffee']},
+  {key:'leisure',name:'Parks and leisure',colour:'#8b739d',keys:['playground','museum','field','tennis','gym','sculpture','bench','viewpoint','maze','skate','cricket','football','basketball','pool','stadium','zoo','aquarium','cinema','theatre','gallery','temple','church','monument','exhibit']},
+  {key:'education',name:'Learning and rooms',colour:'#887a56',keys:['school','library','meeting','boardroom','classroom','lab']},
+  {key:'wayfinding',name:'Labels and direction',colour:'#647a95',keys:['checkin','baggage','gate','entrance','exit','notice','north']},
+];
+
+// Each path is drawn with a rounded 2.5 px stroke in a 48 × 48 view box.
+// Glyphs use recognisable map pictograms rather than platform-dependent emoji.
+export type MapSymbolGlyph = {paths:readonly string[]; text?:string};
+const GLYPHS:Record<string,MapSymbolGlyph> = {
+  tree:{paths:['M24 39v-13','M16 40h16','M16 26c-4-2-6-6-4-10 2-4 5-5 8-4 2-5 9-6 12-1 5-1 9 3 8 8 3 5-1 10-6 10H17z']},
+  café:{paths:['M10 17h25l-3 16H13z','M35 20h4c6 0 5 8-2 8h-4','M13 39h23','M18 11c0-3 3-3 3-6','M27 11c0-3 3-3 3-6']},
+  toilets:{paths:['M15 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M33 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M10 36V18h10v18','M28 36V18h10v18','M7 26h16','M25 26h16']},
+  playground:{paths:['M8 39 16 11h16l8 28','M16 11v18m16-18v18','M17 29q7 10 15 0','M12 39h8m16 0h7']},
+  building:{paths:['M8 40V20L24 9l16 11v20z','M19 40V28h10v12','M14 23h3m14 0h3']},
+  office:{paths:['M11 40V9h26v31z','M17 16h5m7 0h3m-15 8h5m7 0h3m-15 8h5m7 0h3','M22 40v-6h5v6']},
+  reception:{paths:['M8 30h32v10H8z','M24 24a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M16 30c0-5 4-8 8-8s8 3 8 8']},
+  school:{paths:['M8 40V18L24 8l16 10v22z','M17 22h14v8H17z','M21 40V30h6v10','M14 40h20']},
+  medical:{paths:['M24 7v34M7 24h34','M14 14h20v20H14z']},
+  shop:{paths:['M8 20h32l-3 8H11z','M12 28v12h24V28','M19 40v-8h10v8','M10 17h28']},
+  train:{paths:['M12 9h24v26H12z','M16 15h16v9H16z','M17 30h3m8 0h3','M17 35l-5 7m19-7 5 7']},
+  car:{paths:['M11 28l4-10h18l4 10','M8 28h32v10H8z','M14 38v4m20-4v4','M14 32h3m14 0h3']},
+  plane:{paths:['M24 5l3 18 14 8v5l-15-5-1 10h-2l-1-10-15 5v-5l14-8z']},
+  tower:{paths:['M18 40l3-30h6l3 30z','M15 10h18m-15 30h12','M20 21h8']},
+  castle:{paths:['M8 40V12h7v5h6v-5h6v5h6v-5h7v28z','M20 40V29a4 4 0 0 1 8 0v11','M13 24h4m14 0h4']},
+  museum:{paths:['M6 18l18-10 18 10z','M9 39h30','M13 20v16m11-16v16m11-16v16','M7 42h34']},
+  factory:{paths:['M7 40V21l10 6V17l10 9V14l13 10v16z','M13 33h3m8 0h3m8 0h3']},
+  field:{paths:['M7 11h34v26H7z','M24 11v26','M24 30a6 6 0 1 0 0-12 6 6 0 0 0 0 12z']},
+  gym:{paths:['M7 19v10m5-14v18m5-13v8m14-8v8m5-13v18m5-14v10','M7 24h34']},
+  flower:{paths:['M24 41V26','M24 25c-12 0-9-12-2-10-2-9 10-10 10-2 9-1 10 10 2 11 2 9-11 10-10 1z','M17 36l7-3 7 3']},
+  water:{paths:['M7 22c6-5 11-5 17 0s11 5 17 0','M7 29c6-5 11-5 17 0s11 5 17 0','M7 36c6-5 11-5 17 0s11 5 17 0']},
+  bridge:{paths:['M6 32c9-16 27-16 36 0','M6 36h36','M12 25v11m24-11v11']},
+  walkway:{paths:['M12 37c5-10 12-16 24-25','M10 40h6m19-30h5','M18 26l5 5m4-12 5 5','M9 13h0m8-5h0m15 28h0']},
+  gate:{paths:['M10 40V10h28v30','M10 19h28','M20 40V26h8v14']},
+  checkin:{paths:['M7 30h34v10H7z','M14 30V14h20v16','M18 19h12','M24 26a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']},
+  baggage:{paths:['M12 18h24v22H12z','M19 18v-5h10v5','M18 25v8m12-8v8','M19 40v3m10-3v3']},
+  entrance:{paths:['M8 40V10h31v30','M31 13v24','M12 25h18','M22 18l8 7-8 7']},
+  exit:{paths:['M8 40V10h31v30','M18 13v24','M12 25h18','M23 18l8 7-8 7']},
+  emergency:{paths:['M8 40V10h31v30','M29 13v25','M15 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M15 20l7 4 7-2m-9 2-4 9m4-9 7 9','M32 24h5']},
+  bus:{paths:['M11 10h26v27H11z','M14 15h20v10H14z','M16 33h3m10 0h3','M16 37v4m16-4v4']},
+  sculpture:{paths:['M24 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M24 16v17m-11-10h22m-11 10-8 9m8-9 8 9','M12 43h24']},
+  food:{paths:['M12 8v17m-5-17v12m10-12v12','M7 20q5 8 10 0v20','M34 8v32','M34 8q-10 0-10 16h10']},
+  hotel:{paths:['M8 16v24m0-11h32v11','M12 22h10a5 5 0 0 1 5 5v2','M27 19h7a6 6 0 0 1 6 6v4']},
+  camping:{paths:['M5 39 24 10l19 29z','M24 10v29','M15 39l9-14 9 14']},
+  warehouse:{paths:['M7 40V17l17-9 17 9v23z','M16 40V25h16v15','M18 31h12m-12 5h12']},
+  atm:{paths:['M11 9h26v31H11z','M17 16h14v6H17z','M24 27v8m-4-6c3-3 8-2 8 1s-8 2-8 5 5 3 8 0']},
+  post:{paths:['M7 13h34v25H7z','M7 16l17 13 17-13','M7 38l13-12m21 12L28 26']},
+  library:{paths:['M8 9h16v29H8z','M24 9h16v29H24z','M8 15c5-2 10-2 16 1m0 0c5-3 10-3 16-1','M24 38v4']},
+  shield:{paths:['M24 5l16 6v12c0 10-6 17-16 21C14 40 8 33 8 23V11z','M17 24l5 5 10-11']},
+  fire:{paths:['M24 42c-10 0-15-7-13-15 1-5 7-9 8-16 4 4 4 7 4 9 5-4 5-9 5-14 7 7 11 13 11 21 0 9-6 15-15 15z','M24 40c-5 0-7-4-6-8 1-3 4-5 6-8 3 3 6 6 6 9 0 4-2 7-6 7z']},
+  passport:{paths:['M12 7h24v34H12z','M24 31a8 8 0 1 0 0-16 8 8 0 0 0 0 16z','M16 23h16m-8-8c-5 4-5 12 0 16m0-16c5 4 5 12 0 16']},
+  customs:{paths:['M11 17h26v24H11z','M18 17v-6h12v6','M16 28l5 5 10-10']},
+  ticket:{paths:['M7 17h34v6a4 4 0 0 0 0 8v6H7v-6a4 4 0 0 0 0-8z','M25 17v20']},
+  ferry:{paths:['M9 28h30l-4 10H13z','M18 28V12h12v16','M8 42c5-3 9-3 14 0s9 3 14 0']},
+  bike:{paths:['M12 36a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm24 0a7 7 0 1 0 0-14 7 7 0 0 0 0 14z','M12 29l8-15 8 15h8','M20 14h7m-7 15h8l-6-10']},
+  charging:{paths:['M11 8h22v32H11z','M18 17h8l-5 8h8l-10 11 3-9h-7z','M33 23h4v14h4']},
+  petrol:{paths:['M11 8h19v33H11z','M15 13h11v11H15z','M30 17h4l4 6v13a3 3 0 0 1-6 0v-8','M8 41h25']},
+  stairs:{paths:['M7 39h34V9H29v10H18v10H7z']},
+  lift:{paths:['M10 8h28v32H10z','M24 15v17','M20 19l4-4 4 4m-8 9 4 4 4-4']},
+  accessible:{paths:['M24 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M24 13v12h11','M17 17a16 16 0 1 0 18 15','M23 24h12l4 13']},
+  drinking:{paths:['M12 12h24l-3 28H15z','M12 23h24','M23 8c0-3 3-3 3-6']},
+  beach:{paths:['M24 7c-9 0-16 7-16 16h32C40 14 33 7 24 7z','M24 7v33','M14 40h20','M30 15l-6 8']},
+  mountain:{paths:['M5 39 17 14l8 14 6-9 12 20z','M11 27l6-4 5 4m10 2 5-3']},
+  waterfall:{paths:['M11 8h27v9H11z','M19 17v15m7-15v19m7-19v15','M8 40c5-3 9-3 14 0s9 3 14 0']},
+  fountain:{paths:['M24 12v22','M17 18c-1 5-5 5-7 10m21-10c1 5 5 5 7 10','M11 35h26l-3 7H14z','M24 7h0']},
+  bench:{paths:['M10 23h28v11H10z','M10 15h28v6H10z','M14 34v8m20-8v8']},
+  bin:{paths:['M13 15h22l-2 27H15z','M10 13h28','M18 9h12','M21 20v16m6-16v16']},
+  notice:{paths:['M9 9h30v25H9z','M15 16h18m-18 6h18m-18 6h12','M14 34v8m20-8v8']},
+  viewpoint:{paths:['M7 24c5-8 11-12 17-12s12 4 17 12c-5 8-11 12-17 12S12 32 7 24z','M24 30a6 6 0 1 0 0-12 6 6 0 0 0 0 12z']},
+  maze:{paths:['M8 39V9h32v30H8z','M14 34V15h20v18H20V21h8v6','M8 24h6m20 9v6']},
+  skate:{paths:['M7 30q11 1 15 10h19','M8 38h34','M17 28l5 2m13 10a3 3 0 1 0 0-6m-17 6a3 3 0 1 0 0-6']},
+  basketball:{paths:['M24 40a16 16 0 1 0 0-32 16 16 0 0 0 0 32z','M8 24h32m-16-16v32','M12 13c9 7 9 15 0 22m24-22c-9 7-9 15 0 22']},
+  pool:{paths:['M8 31c6-4 10-4 16 0s10 4 16 0','M8 38c6-4 10-4 16 0s10 4 16 0','M17 24a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M16 26l10-2 8 4']},
+  stadium:{paths:['M6 14h36v21H6z','M12 19h24v11H12z','M12 35v6m24-6v6']},
+  zoo:{paths:['M15 25a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm9-7a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm9 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M12 37c-2-6 4-10 9-9 3-6 8-6 11 0 6 0 9 4 7 9-2 7-10 7-14 2-6 6-13 3-13-2z']},
+  aquarium:{paths:['M8 24c9-12 21-12 29 0-8 12-20 12-29 0z','M37 24l7-8v16z','M17 21h0','M23 28q5-4 0-8']},
+  cinema:{paths:['M8 15h32v25H8z','M8 15l6-8h26v8','M16 7l-6 8m16-8-6 8m16-8-6 8','M19 24l12 6-12 6z']},
+  theatre:{paths:['M8 14q8-6 16 0v18q-8 12-16 0z','M24 14q8-6 16 0v18q-8 12-16 0z','M13 21h6m10 0h6','M14 28q3 3 6 0m9 3q3-3 6 0']},
+  church:{paths:['M12 41V19l12-9 12 9v22z','M24 4v13m-6-7h12','M20 41V29h8v12']},
+  meeting:{paths:['M9 21h30v13H9z','M14 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm20 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M14 34v7m20-7v7']},
+  classroom:{paths:['M8 9h32v19H8z','M11 37h26','M15 32v9m18-9v9','M18 16h12m-12 5h7']},
+  lab:{paths:['M18 7h12m-9 0v15L11 39q-2 4 3 4h20q5 0 3-4L27 22V7','M17 33h14']},
+  courtyard:{paths:['M7 9h34v31H7z','M14 16h20v17H14z','M24 26a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']},
+  roundabout:{paths:['M24 41a17 17 0 1 0 0-34 17 17 0 0 0 0 34z','M24 34a10 10 0 1 0 0-20 10 10 0 0 0 0 20z','M24 3v4m0 34v4M3 24h4m34 0h4']},
+  north:{paths:['M24 5 34 39 24 32 14 39z','M24 5v27']},
+};
+
+const GLYPH_KEY:Record<string,string> = {
+  parking:'parking',house:'building',
+  medical:'medical',pharmacy:'medical',hospital:'medical',firstaid:'medical',
+  train:'train',rail:'train',tram:'train',car:'car',taxi:'car',plane:'plane',arrival:'plane',departure:'plane',
+  field:'field',tennis:'field',cricket:'field',football:'field',
+  pond:'water',lake:'water',river:'water',forest:'tree',garden:'flower',
+  information:'information',notice:'notice',
+  food:'food',restaurant:'food',picnic:'food',coffee:'café',
+  police:'shield',security:'shield',
+  bank:'museum',gallery:'museum',exhibit:'museum',temple:'museum',monument:'sculpture',
+  boardroom:'meeting',library:'library',
+};
+export function mapSymbolGlyph(key:string):MapSymbolGlyph{
+  if(key==='parking')return {paths:['M12 40V8h13c15 0 15 20 0 20H12','M12 28h13']};
+  if(key==='information')return {paths:['M24 42a18 18 0 1 0 0-36 18 18 0 0 0 0 36z','M24 21v13','M24 14h0']};
+  const base=GLYPHS[GLYPH_KEY[key]||key];
+  if(base)return base;
+  // A labelled pin is always preferable to a blank or broken preview for an
+  // unknown imported symbol key from an older document.
+  return {paths:['M24 42s14-14 14-25a14 14 0 1 0-28 0c0 11 14 25 14 25z','M24 23a5 5 0 1 0 0-10 5 5 0 0 0 0 10z']};
+}
+
+const categoryByKey=new Map(MAP_SYMBOL_CATEGORIES.flatMap(c=>c.keys.map(key=>[key,c.key] as const)));
+export const MAP_SYMBOLS=MAP_ICONS.map(([key,name])=>({key,name,category:categoryByKey.get(key)||'wayfinding',glyph:mapSymbolGlyph(key)}));
+export const MAP_SYMBOL_DRAG_TYPE='application/x-elt-map-symbol';
