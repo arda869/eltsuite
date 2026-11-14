@@ -6,7 +6,7 @@ import { isImageFile } from './files';
 import { loadAnyFile } from '../lib/fileStore';
 import { useDesign, loadPicture, ensureFont, type DPage, type El } from './model';
 import { pageBlob } from './tools';
-import { drawPage } from './render';
+import { drawPage, pageCanvas } from './render';
 import { drawnImages, searchPictures, type WebPic } from './assets';
 
 // Designer pictures in a lesson: a page or panel, or a whole story as one strip. The lesson gets
@@ -30,9 +30,27 @@ async function imagesFor(id: string, pages: DPage[], els: El[], accent: string) 
   );
   return imgs;
 }
-export async function designPageImage(id: string, page: DPage, els: El[], accent: string, scale = 1.6) {
+export async function designPageImage(id: string, page: DPage, els: El[], accent: string, scale = 1.6, fitFigures = false) {
   const mine = els.filter((e) => e.page === page.id);
   const imgs = await imagesFor(id, [page], mine, accent);
+  // A chart or map placed in a lesson should fill the chosen picture size. Keep ordinary
+  // Designer pages intact; only trim a page made entirely of editable figures.
+  const visible = mine.filter((e) => !e.hidden);
+  if (fitFigures && visible.length && visible.every((e) => e.t === 'figure' && !(e.rot ?? 0)) && !page.scene) {
+    const pad = Math.min(32, page.w * 0.04, page.h * 0.04);
+    const x = Math.max(0, Math.floor(Math.min(...visible.map((e) => e.x)) - pad));
+    const y = Math.max(0, Math.floor(Math.min(...visible.map((e) => e.y)) - pad));
+    const right = Math.min(page.w, Math.ceil(Math.max(...visible.map((e) => e.x + e.w)) + pad));
+    const bottom = Math.min(page.h, Math.ceil(Math.max(...visible.map((e) => e.y + e.h)) + pad));
+    if (right > x && bottom > y) {
+      const source = pageCanvas(page, els, { imgs, view: 'all', accent }, scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round((right - x) * scale);
+      canvas.height = Math.round((bottom - y) * scale);
+      canvas.getContext('2d')!.drawImage(source, x * scale, y * scale, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+      return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image')), 'image/png'));
+    }
+  }
   return pageBlob(page, els, { imgs, view: 'all', accent }, scale);
 }
 // All the panels of a story as one picture: two to a row, each with its caption under it.
@@ -214,7 +232,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
           )}
           <div className="inline-image-pages">
             {pages.map((p, i) => (
-              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
+              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent, 1.6, true), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
                 {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="inline-image-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
                 <span>{p.name || `${canvasStory ? 'Panel' : 'Page'} ${i + 1}`}</span>
                 {p.caption && <small>{p.caption}</small>}

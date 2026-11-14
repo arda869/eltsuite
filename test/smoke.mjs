@@ -710,6 +710,8 @@ const J = {
     await pictures.getByRole('button', { name: /Insert page 1/i }).click();
     await pictures.waitFor({ state: 'detached' });
     await s.p.locator('.pic-node').first().waitFor();
+    const fitted = await s.p.locator('.pic-node img').first().evaluate(img => ({ width: img.naturalWidth, height: img.naturalHeight }));
+    if (fitted.width <= fitted.height * 1.2) throw Error('Figure-only Designer page kept excessive square-page margins');
     if (!await s.p.locator('.pic-node .pic-l').first().count()) throw Error('Designer visual did not use the selected Large size');
     await s.p.locator('.pic-node').first().click();
     const sizeSettings = s.p.locator('.pic-pop');
