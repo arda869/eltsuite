@@ -22,7 +22,7 @@ export const CHART_PRESETS:FigurePreset[]=[
   {id:'many-pies',name:'Side-by-side pies',about:'Compare shares across years or subjects',figure:chart('pie','Police budget: how the money was spent',['Salaries','Technology','Buildings and transport'],[s('2017',[75,8,17],0),s('2018',[69,14,17],0)])},
   {id:'three-pies',name:'Three pie charts',about:'Compare the same categories in three totals',figure:chart('pie','Nutrients in typical meals',['Breakfast','Lunch','Dinner','Snacks'],[s('Sodium',[14,29,43,14],0),s('Saturated fat',[16,26,37,21],0),s('Added sugar',[16,19,23,42],0)])},
   {id:'table',name:'Data table',about:'A neat table of figures and units',figure:chart('table','Police budget sources',['National government','Local taxes','Other sources','Total'],[s('2017',[175.5,91.2,38,304.7],0),s('2018',[177.8,102.3,38.5,318.6],1)],{unit:'m'})},
-  {id:'change-table',name:'Change table',about:'Compare before and after in a clear grid',figure:chart('table','Export earnings change',['Petroleum products','Engineered goods','Gems and jewellery','Agricultural products','Textiles'],[s('2015',[61,57,43,31,25],0),s('2016',[63,62,41,31.25,31],1)],{unit:' billion'})},
+  {id:'change-table',name:'Percentage change table',about:'Show the rise or fall for each category',figure:chart('table','Percentage change in export values',['Petroleum products','Engineered goods','Gems and jewellery','Agricultural products','Textiles'],[s('2015–2016',[3,8.5,-5.18,.81,15.24],0)],{unit:'%'})},
 ];
 
 export const CHART_COMBINATIONS = [
