@@ -4,6 +4,7 @@ const require=createRequire(new URL('../functions/package.json',import.meta.url)
 const {initializeApp}=require('firebase-admin/app');
 const {getFirestore}=require('firebase-admin/firestore');
 const {GoogleAuth}=require('google-auth-library');
+const WebSocket=require('ws');
 
 initializeApp({projectId:'lesson-lit'});
 const db=getFirestore();
@@ -46,3 +47,17 @@ const apiKey=Buffer.from(access.payload?.data||'','base64').toString('utf8').tri
 if(!apiKey)throw Error('Deployed media worker binding is empty');
 const modelResponse=await fetch('https://api.openai.com/v1/models/gpt-realtime-2.1-mini',{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(30000)});
 console.log('speech_model_check',JSON.stringify({deployedBinding:'enabled',model:'gpt-realtime-2.1-mini',httpStatus:modelResponse.status}));
+await new Promise(resolve=>{
+ const socket=new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1-mini',{headers:{Authorization:`Bearer ${apiKey}`}});
+ const timer=setTimeout(()=>{console.log('speech_session_check',JSON.stringify({result:'timeout'}));socket.terminate();resolve();},12000);
+ let reported=false;
+ const done=result=>{if(reported)return;reported=true;clearTimeout(timer);console.log('speech_session_check',JSON.stringify(result));socket.close();resolve();};
+ socket.on('error',()=>done({result:'connection_error'}));
+ socket.on('close',()=>done({result:'closed_before_session_update'}));
+ socket.on('message',raw=>{
+  let event;try{event=JSON.parse(raw.toString());}catch{return done({result:'invalid_event'});}
+  if(event.type==='session.created')socket.send(JSON.stringify({type:'session.update',session:{type:'realtime',output_modalities:['audio'],instructions:'Read only the supplied words.',audio:{input:{turn_detection:null},output:{format:{type:'audio/pcm',rate:24000},voice:'marin'}}}}));
+  if(event.type==='session.updated')done({result:'session_update_accepted'});
+  if(event.type==='error')done({result:'provider_error',code:event.error?.code??'',type:event.error?.type??'',param:event.error?.param??'',message:String(event.error?.message??'').slice(0,180)});
+ });
+});
