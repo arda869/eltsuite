@@ -583,7 +583,7 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
   const [privateScript,setPrivateScript]=useState<{key:string;lines:ScriptLine[]}|null>(null);
   const [scriptSession,setScriptSession]=useState<{key:string;token:string}|null>(null);
-  const scriptKey=[classId,mediaId,itemId||'',taskId||'',teacher?'teacher':scriptMode].join('/');
+  const scriptKey=[classId,mediaId,itemId||'',taskId||'',qrGrant||'',teacher?'teacher':scriptMode].join('/');
   const classMedia=!!classId&&!classId.includes(':');
   useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
   const script=(teacher||!classMedia)&&e.m?.script?.length?e.m.script:privateScript?.key===scriptKey?privateScript.lines:[];

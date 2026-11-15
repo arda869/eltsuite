@@ -53,6 +53,8 @@ try{
 
   await denies(accessMediaScript(admin,null,input('karaoke')));
   await denies(accessMediaScript(admin,auth(outsiderId),input('karaoke')));
+  await denies(accessMediaScript(admin,{uid:teacherId,token:{proxyBy:'administrator'}},input('karaoke')));
+  await denies(issueMediaQrGrantForTeacher(admin,auth(outsiderId),input('karaoke')));
   assert.deepEqual((await accessMediaScript(admin,auth(learnerId),input('karaoke'))).script,script);
   assert.deepEqual((await accessMediaScript(admin,auth(learnerId),input('button'))).script,script);
   assert.deepEqual((await accessMediaScript(admin,auth(learnerId),input('none'))).script,[]);
@@ -63,12 +65,14 @@ try{
   const started=await accessMediaScript(admin,auth(learnerId),input('after',{action:'start'}),now);
   assert.ok(started.session);
   assert.equal(started.waitMs,2000);
+  await assertFails(getDoc(doc(learner,`mediaScriptSessions/${started.session}`)));
   assert.deepEqual((await accessMediaScript(admin,auth(learnerId),input('after',{session:started.session,scriptMode:'karaoke'}),now+100)).script,[],'a changed requested mode cannot bypass the delay');
   assert.deepEqual((await accessMediaScript(admin,auth(learnerId),input('after',{session:started.session}),now+2100)).script,script);
   await denies(accessMediaScript(admin,auth(outsiderId),input('after',{session:started.session}),now+2100));
 
   const grant=(await issueMediaQrGrantForTeacher(admin,auth(teacherId),input('karaoke'))).grant;
   assert.ok(grant);
+  await assertFails(getDoc(doc(learner,`mediaQrGrants/${grant}`)));
   assert.deepEqual((await accessMediaScript(admin,null,input('karaoke',{grant}))).script,script,'teacher-issued QR releases the saved visible mode');
   await denies(accessMediaScript(admin,null,input('button',{grant})));
   await admin.doc(`classes/${classId}/items/${itemId}/tasks/karaoke`).update({content:node('none')});
@@ -108,6 +112,11 @@ try{
   assert.equal((await legacy.get()).get('script'),undefined);
   assert.deepEqual((await admin.doc(`classes/${classId}/mediaScripts/legacy`).get()).get('script'),script);
   assert.equal(migrate().totals.legacyScripts,0,'migration is idempotent');
+  const malformed=admin.doc(`classes/${classId}/media/legacy-malformed`);
+  await malformed.set({kind:'link',public:true,size:0,script:'Old free-text transcript'});
+  assert.equal(migrate().totals.invalidScripts,1,'unexpected legacy formats are counted, never discarded');
+  assert.throws(()=>migrate('--apply','--expected-legacy-count=1'),'unrecognized transcript blocks destructive migration');
+  assert.equal((await malformed.get()).get('script'),'Old free-text transcript');
   console.log('Class scripts: anonymous and nonmember denial, QR audio and grant, delayed release, revocation, offline payload and migration passed.');
 }finally{
   await admin.terminate();

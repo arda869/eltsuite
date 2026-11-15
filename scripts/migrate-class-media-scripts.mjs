@@ -12,8 +12,8 @@ if(apply&&(!Number.isInteger(expected)||expected<0))throw Error('--apply require
 const projectId=process.env.GCLOUD_PROJECT || 'lesson-lit';
 initializeApp(process.env.FIRESTORE_EMULATOR_HOST?{projectId}:{credential:applicationDefault(),projectId});
 const db=getFirestore();
-const totals={classes:0,media:0,legacyScripts:0,withText:0,migrated:0,alreadyPrivate:0,conflicts:0,errors:0};
-const hasScript=script=>Array.isArray(script)&&script.some(line=>typeof line?.text==='string'&&line.text.trim());
+const totals={classes:0,media:0,legacyScripts:0,withText:0,invalidScripts:0,migrated:0,alreadyPrivate:0,conflicts:0,errors:0};
+const hasScript=script=>Array.isArray(script)&&script.length>0;
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const candidates=[];
 
@@ -25,6 +25,7 @@ for await(const cls of db.collection('classes').select().stream()){
   if(!Object.hasOwn(doc.data(),'script'))continue;
   const script=doc.get('script');
   totals.legacyScripts++;
+  if(!Array.isArray(script)){totals.invalidScripts++;totals.conflicts++;continue;}
   if(hasScript(script))totals.withText++;
   const privateRef=cls.ref.collection('mediaScripts').doc(doc.id);
   try{
