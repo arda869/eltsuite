@@ -52,11 +52,8 @@ function chartFrame(g: CanvasRenderingContext2D, f: ChartFigure) {
   label(g,f.title || 'Chart title',400,38,25,'center',700);
   if (f.footnote) label(g,f.footnote,32,536,13,'left',400,'#69636a');
 }
-function chartLegend(g: CanvasRenderingContext2D, f: ChartFigure, y = 496) {
-  if (f.series.length < 2) return;
-  drawLegendRows(g, f.series.map(s => ({ name:s.name, color:s.color })), y, 14);
-}
-function drawLegendRows(g: CanvasRenderingContext2D, entries: {name:string;color:string}[], startY: number, size: number) {
+type LegendEntry = {name:string;color:string};
+function legendRows(g: CanvasRenderingContext2D, entries: LegendEntry[], size: number) {
   const available = 752, gap = 14, swatch = 16, textOffset = 23;
   g.font = `400 ${size}px ${font}`;
   const widths = entries.map(e => Math.min(available, Math.ceil(g.measureText(e.name).width) + textOffset + 8));
@@ -67,6 +64,20 @@ function drawLegendRows(g: CanvasRenderingContext2D, entries: {name:string;color
     if (row.length && used + gap + widths[i] > available) rows.push([]);
     rows[rows.length-1].push(i);
   }
+  return { rows, widths, gap, textOffset, swatch };
+}
+function legendStart(g: CanvasRenderingContext2D, f: ChartFigure, entries: LegendEntry[], preferred: number, size: number) {
+  const rowCount=legendRows(g,entries,size).rows.length;
+  // Leave the bottom line for a footnote. The chart plot moves up with a longer
+  // legend, so custom series names remain readable in print and downloads.
+  return Math.min(preferred,(f.footnote?514:548)-(rowCount-1)*22);
+}
+function chartLegend(g: CanvasRenderingContext2D, f: ChartFigure, y: number) {
+  if (f.series.length < 2) return;
+  drawLegendRows(g, f.series.map(s => ({ name:s.name, color:s.color })), y, 14);
+}
+function drawLegendRows(g: CanvasRenderingContext2D, entries: LegendEntry[], startY: number, size: number) {
+  const {rows,widths,gap,textOffset,swatch}=legendRows(g,entries,size);
   rows.forEach((row,ri) => {
     const rowWidth = row.reduce((total,i) => total + widths[i] + gap, -gap);
     let x = (800-rowWidth)/2;
@@ -82,13 +93,14 @@ function drawLegendRows(g: CanvasRenderingContext2D, entries: {name:string;color
     });
   });
 }
-function chartAxis(g: CanvasRenderingContext2D, f: ChartFigure, horizontal: boolean) {
+function chartAxis(g: CanvasRenderingContext2D, f: ChartFigure, horizontal: boolean, legendY = 505) {
   const cats=f.categories; const series=f.series; const all=series.flatMap(s=>s.values).filter(Number.isFinite);
   const rawMin=Math.min(0,...all); const rawMax=Math.max(1,...all);
   const lo=Number.isFinite(f.min) ? f.min! : Math.min(0,rawMin);
   const hi=Number.isFinite(f.max) && f.max!>lo ? f.max! : Math.ceil(rawMax/(f.step||10))*(f.step||10);
   const step=f.step&&f.step>0?f.step:(hi-lo)/5;
   const plot=horizontal?{x:245,y:90,w:480,h:Math.min(370,cats.length*44)}:{x:100,y:94,w:620,h:350};
+  if(legendY<505||f.xLabel)plot.h=Math.min(plot.h,Math.max(145,legendY-plot.y-(f.xLabel?80:76)));
   const scale=(v:number)=>clamp((v-lo)/(hi-lo));
   const ticks=Math.min(12,Math.max(1,Math.ceil((hi-lo)/step)));
   for(let t=0;t<=ticks;t++) {
@@ -103,12 +115,15 @@ function chartAxis(g: CanvasRenderingContext2D, f: ChartFigure, horizontal: bool
     line(g,[{x:plot.x,y:plot.y+plot.h},{x:plot.x+plot.w,y:plot.y+plot.h}],ink,2);
     cats.forEach((c,i)=>wrapped(g,c,plot.x+(i+.5)*plot.w/cats.length,plot.y+plot.h+24,plot.w/cats.length-8,15));
   }
-  if(f.xLabel) label(g,f.xLabel,plot.x+plot.w/2,477,16,'center',700);
+  if(f.xLabel) label(g,f.xLabel,plot.x+plot.w/2,Math.min(legendY-27,plot.y+plot.h+53),16,'center',700);
   if(f.yLabel) {g.save();g.translate(23,plot.y+plot.h/2);g.rotate(-Math.PI/2);label(g,f.yLabel,0,0,16,'center',700);g.restore();}
   return {plot,scale};
 }
 function drawBars(g: CanvasRenderingContext2D, f: ChartFigure) {
-  const horizontal=!!f.horizontal; const {plot,scale}=chartAxis(g,f,horizontal);
+  const horizontal=!!f.horizontal;
+  const preferred=horizontal?Math.min(505,90+Math.min(370,f.categories.length*44)+66):505;
+  const legendY=f.series.length>1?legendStart(g,f,f.series,preferred,14):preferred;
+  const {plot,scale}=chartAxis(g,f,horizontal,legendY);
   const n=Math.max(1,f.categories.length), m=Math.max(1,f.series.length);
   const group=(horizontal?plot.h:plot.w)/n; const gap=Math.min(10,group*.12); const bw=(group-2*gap)/m;
   f.series.forEach((s,j)=>f.categories.forEach((_,i)=>{
@@ -117,16 +132,17 @@ function drawBars(g: CanvasRenderingContext2D, f: ChartFigure) {
     if(horizontal){const x=plot.x+plot.w*Math.min(zero,scale(v));const y=plot.y+i*group+gap+j*bw;const w=Math.max(1,Math.abs(scale(v)-zero)*plot.w);g.fillRect(x,y,w,Math.max(2,bw-2));if(f.showValues)label(g,fmt(v),x+w+5,y+bw/2,12);}
     else {const x=plot.x+i*group+gap+j*bw;const y=plot.y+plot.h-plot.h*Math.max(zero,scale(v));const h=Math.max(1,Math.abs(scale(v)-zero)*plot.h);g.fillRect(x,y,Math.max(2,bw-2),h);if(f.showValues)label(g,fmt(v),x+bw/2,y-8,12,'center');}
   }));
-  chartLegend(g,f,horizontal?Math.min(505,plot.y+plot.h+66):505);
+  chartLegend(g,f,legendY);
 }
 function drawLines(g: CanvasRenderingContext2D, f: ChartFigure) {
-  const {plot,scale}=chartAxis(g,f,false); const n=Math.max(1,f.categories.length);
+  const legendY=f.series.length>1?legendStart(g,f,f.series,505,14):505;
+  const {plot,scale}=chartAxis(g,f,false,legendY); const n=Math.max(1,f.categories.length);
   f.series.forEach((s,j)=>{
     const pts=f.categories.map((_,i)=>({x:plot.x+(i+.5)*plot.w/n,y:plot.y+plot.h-plot.h*scale(Number(s.values[i])||0)}));
     line(g,pts,s.color||CHART_PALETTE[j%CHART_PALETTE.length],3,!!s.dashed);
     pts.forEach((p,i)=>{g.beginPath();g.arc(p.x,p.y,5,0,Math.PI*2);g.fillStyle='#fff';g.fill();g.strokeStyle=s.color;g.lineWidth=2.5;g.stroke();if(f.showValues)label(g,fmt(s.values[i]||0),p.x,p.y-13,12,'center');});
   });
-  chartLegend(g,f,505);
+  chartLegend(g,f,legendY);
 }
 function drawPie(g: CanvasRenderingContext2D, f: ChartFigure) {
   const cols=f.series.length===1?1:Math.min(3,f.series.length);
@@ -137,7 +153,8 @@ function drawPie(g: CanvasRenderingContext2D, f: ChartFigure) {
     vals.forEach((v,i)=>{const next=a+v/total*Math.PI*2;const color=f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length];g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,radius,a,next);g.closePath();g.fillStyle=color;g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();if(v/total>.045){const mid=(a+next)/2;label(g,`${Math.round(v/total*100)}%`,cx+Math.cos(mid)*radius*.66,cy+Math.sin(mid)*radius*.66,14,'center',700,darkText(color)?ink:'#fff');}a=next;});
     label(g,s.name,cx,cy+radius+21,17,'center',700);
   });
-  drawLegendRows(g,f.categories.map((name,i)=>({name,color:f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length]})),480,13);
+  const entries=f.categories.map((name,i)=>({name,color:f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length]}));
+  drawLegendRows(g,entries,legendStart(g,f,entries,480,13),13);
 }
 function drawTable(g: CanvasRenderingContext2D, f: ChartFigure) {
   const columns=f.series.length+1;const rows=f.categories.length+1;const x=42,y=92,w=716,h=Math.min(404,rows*46);const rh=h/rows;const first=Math.min(280,w*.4),other=(w-first)/(columns-1||1);
