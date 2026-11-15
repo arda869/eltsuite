@@ -1407,7 +1407,11 @@ service cloud.firestore {
 
     // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
-      allow get: if signedIn() && (teachesClass(resource.data.classId) || memberOf(resource.data.classId) || runsClass(resource.data.classId));
+      // A teacher must be able to check an unused code before reserving it in
+      // the same transaction. Existing codes still expose rosters only to
+      // members and teachers of that class.
+      allow get: if signedIn() && ((resource == null && isTeacher())
+        || (resource != null && (teachesClass(resource.data.classId) || memberOf(resource.data.classId) || runsClass(resource.data.classId))));
       allow list: if false;
       allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId);
       allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId) || runsClass(resource.data.classId))

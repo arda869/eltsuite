@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate, increment, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate, increment, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { assessTaskForLearner, runExamForLearner } from '../functions/learning/assessment.js';
 import { checkSubTaskForLearner } from '../functions/learning/check-subtask.js';
 import { syncClassAccess } from '../functions/learning/class-access.js';
@@ -55,6 +55,62 @@ try {
     boardPages: [{ text: 'Unreleased teacher material' }] });
   await admin.doc('classes/c1/items/i1/tasks/t1').set({ kind: 'task', hidden: false, locked: false, content: { type: 'doc', content: [] } });
   const learner = as('learner', true), other = as('other', true), teacher = as('teacher'), viewer = as('viewer'), outsider = as('outsider');
+  const unusedCode = doc(teacher, 'classCodes/CLS-567');
+  assert.equal((await getDoc(unusedCode)).exists(), false, 'teacher can check an unused class code');
+  await denied('learner cannot probe unused class codes', () => getDoc(doc(learner, 'classCodes/CLS-567')));
+  await denied('unrelated teacher cannot read an occupied class code', () => getDoc(doc(viewer, 'classCodes/CLS-234')));
+  const newClass = doc(teacher, 'classes/created-with-blank-options');
+  await runTransaction(teacher, async tx => {
+    assert.equal((await tx.get(unusedCode)).exists(), false);
+    // The optional class fields are absent, as in the ordinary create flow.
+    tx.set(newClass, { teacherId: 'teacher', name: 'New class', level: 'B1', themeColor: 'teal',
+      kind: 'language', classCode: 'CLS-567', status: 'active', learnerCount: 0,
+      meeting: null, lessonStyle: 'adult', createdAt: serverTimestamp() });
+    tx.set(unusedCode, { classId: newClass.id, teacherId: 'teacher', className: 'New class',
+      roster: [], createdAt: serverTimestamp() });
+  });
+  assert.equal((await getDoc(newClass)).data()?.name, 'New class');
+  assert.equal((await getDoc(unusedCode)).data()?.classId, newClass.id);
+  await admin.doc('orgs/test-pilots').set({ name: 'Test Pilots', teachers: { teacher: {} },
+    adminEmails: [], usage: { classes: 4 }, policy: {} });
+  const orgCode = doc(teacher, 'classCodes/ORG-567');
+  const orgClass = doc(teacher, 'classes/created-in-org-with-blank-options');
+  await runTransaction(teacher, async tx => {
+    assert.equal((await tx.get(orgCode)).exists(), false);
+    const org = await tx.get(doc(teacher, 'orgs/test-pilots'));
+    assert.equal(org.data()?.name, 'Test Pilots');
+    tx.set(orgClass, { teacherId: 'teacher', name: 'Organisation class', level: 'B1',
+      themeColor: 'teal', kind: 'language', classCode: 'ORG-567', status: 'active',
+      learnerCount: 0, meeting: null, org: 'test-pilots', lessonStyle: 'adult', createdAt: serverTimestamp() });
+    tx.set(orgCode, { classId: orgClass.id, teacherId: 'teacher', className: 'Organisation class',
+      roster: [], org: 'test-pilots', createdAt: serverTimestamp() });
+  });
+  assert.equal((await getDoc(orgClass)).data()?.org, 'test-pilots');
+  const nextCode = doc(viewer, 'classCodes/VIE-567');
+  const nextClass = doc(viewer, 'classes/created-after-occupied-code');
+  let attempts = 0;
+  for (const code of [doc(viewer, 'classCodes/CLS-234'), nextCode]) {
+    const available = await runTransaction(viewer, async tx => {
+      let existing;
+      try {
+        existing = await tx.get(code);
+      } catch (error) {
+        if (error.code === 'permission-denied') return false;
+        throw error;
+      }
+      if (existing.exists()) return false;
+      tx.set(nextClass, { teacherId: 'viewer', name: 'Collision recovery', level: 'B1',
+        themeColor: 'teal', kind: 'language', classCode: code.id, status: 'active',
+        learnerCount: 0, meeting: null, lessonStyle: 'adult', createdAt: serverTimestamp() });
+      tx.set(code, { classId: nextClass.id, teacherId: 'viewer', className: 'Collision recovery',
+        roster: [], createdAt: serverTimestamp() });
+      return true;
+    });
+    attempts += 1;
+    if (available) break;
+  }
+  assert.equal(attempts, 2, 'an occupied private code must not stop the next candidate');
+  assert.equal((await getDoc(nextClass)).data()?.classCode, 'VIE-567');
   const shownTopics = await getDocs(query(collection(learner, 'classes/c1/topics'), where('hidden', '==', false)));
   assert.deepEqual(shownTopics.docs.map(d => d.id), ['shown']);
   await denied('learner cannot read hidden topic metadata', () => getDoc(doc(learner, 'classes/c1/topics/secret')));
