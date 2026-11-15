@@ -54,10 +54,33 @@ function chartFrame(g: CanvasRenderingContext2D, f: ChartFigure) {
 }
 function chartLegend(g: CanvasRenderingContext2D, f: ChartFigure, y = 496) {
   if (f.series.length < 2) return;
-  const entries = f.series.map(s => ({...s, width: Math.min(220, g.measureText(s.name).width + 48)}));
-  const total = entries.reduce((a,s) => a+s.width+16, -16);
-  let x = Math.max(24,(800-total)/2);
-  entries.forEach(s => { g.fillStyle=s.color; g.fillRect(x,y-7,16,14); label(g,s.name,x+23,y,15); x += s.width+16; });
+  drawLegendRows(g, f.series.map(s => ({ name:s.name, color:s.color })), y, 14);
+}
+function drawLegendRows(g: CanvasRenderingContext2D, entries: {name:string;color:string}[], startY: number, size: number) {
+  const available = 752, gap = 14, swatch = 16, textOffset = 23;
+  g.font = `400 ${size}px ${font}`;
+  const widths = entries.map(e => Math.min(available, Math.ceil(g.measureText(e.name).width) + textOffset + 8));
+  const rows: number[][] = [[]];
+  for (let i=0;i<entries.length;i++) {
+    const row = rows[rows.length-1];
+    const used = row.reduce((total,j) => total + widths[j] + gap, -gap);
+    if (row.length && used + gap + widths[i] > available) rows.push([]);
+    rows[rows.length-1].push(i);
+  }
+  rows.forEach((row,ri) => {
+    const rowWidth = row.reduce((total,i) => total + widths[i] + gap, -gap);
+    let x = (800-rowWidth)/2;
+    row.forEach(i => {
+      const entry=entries[i];
+      g.fillStyle=entry.color;
+      g.fillRect(x,startY+ri*22-7,swatch,14);
+      g.fillStyle=ink;
+      g.font=`400 ${size}px ${font}`;
+      g.textAlign='left';g.textBaseline='middle';
+      g.fillText(entry.name,x+textOffset,startY+ri*22,widths[i]-textOffset-4);
+      x+=widths[i]+gap;
+    });
+  });
 }
 function chartAxis(g: CanvasRenderingContext2D, f: ChartFigure, horizontal: boolean) {
   const cats=f.categories; const series=f.series; const all=series.flatMap(s=>s.values).filter(Number.isFinite);
@@ -114,7 +137,7 @@ function drawPie(g: CanvasRenderingContext2D, f: ChartFigure) {
     vals.forEach((v,i)=>{const next=a+v/total*Math.PI*2;const color=f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length];g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,radius,a,next);g.closePath();g.fillStyle=color;g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();if(v/total>.045){const mid=(a+next)/2;label(g,`${Math.round(v/total*100)}%`,cx+Math.cos(mid)*radius*.66,cy+Math.sin(mid)*radius*.66,14,'center',700,darkText(color)?ink:'#fff');}a=next;});
     label(g,s.name,cx,cy+radius+21,17,'center',700);
   });
-  let x=60,y=505;f.categories.forEach((c,i)=>{const width=Math.min(180,g.measureText(c).width+32);if(x+width>770){x=60;y+=23;}g.fillStyle=f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length];g.fillRect(x,y-7,13,13);label(g,c,x+19,y,13);x+=width+14;});
+  drawLegendRows(g,f.categories.map((name,i)=>({name,color:f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length]})),480,13);
 }
 function drawTable(g: CanvasRenderingContext2D, f: ChartFigure) {
   const columns=f.series.length+1;const rows=f.categories.length+1;const x=42,y=92,w=716,h=Math.min(404,rows*46);const rh=h/rows;const first=Math.min(280,w*.4),other=(w-first)/(columns-1||1);
