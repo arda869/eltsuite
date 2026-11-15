@@ -145,6 +145,7 @@ export const getDocFromServer = getDoc;
 export function onSnapshot(target: DocRef | Q | CollRef, ...args: unknown[]) {
   const fns = args.filter((a) => typeof a === 'function') as ((s: unknown) => void)[];
   const next = fns[0];
+  const onError = fns[1];
   let last = '';
   let ready = false;
   let active = true;
@@ -156,7 +157,9 @@ export function onSnapshot(target: DocRef | Q | CollRef, ...args: unknown[]) {
     last = key;
     next(s);
   };
-  setTimeout(() => { void beforeOperation(target.type === 'collection' && target.path === 'orgs' ? 'listen-orgs-all' : 'listen', target.path).then(() => { ready = true; fire(); }); }, 0);
+  setTimeout(() => { void beforeOperation(target.type === 'collection' && target.path === 'orgs' ? 'listen-orgs-all' : 'listen', target.path)
+    .then(() => { ready = true; fire(); })
+    .catch((error) => { if (active) onError?.(error); }); }, 0);
   const unsubscribe = subscribe(fire);
   return () => { active = false; unsubscribe(); };
 }
