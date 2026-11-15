@@ -15,7 +15,7 @@ const milliseconds = value => value?.toMillis?.() ?? value?.getTime?.() ?? (Numb
 export function parseAuthEmailRequest(data) {
   const kind = data?.kind;
   const email = typeof data?.email === 'string' ? data.email.trim().toLowerCase() : '';
-  if (!['reset', 'link'].includes(kind) || email.length > 254 || !/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(email)) {
+  if (!['reset', 'link'].includes(kind) || email.length > 254 || !/^[^\s@/<>,;:()"]+@[^\s@/<>,;:()"]+\.[^\s@/<>,;:()"]+$/.test(email)) {
     throw new Error('Enter a valid email address.');
   }
   return { kind, email };
