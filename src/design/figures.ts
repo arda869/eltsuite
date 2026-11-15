@@ -23,6 +23,9 @@ export type Figure = ChartFigure | MapFigure;
 export const CHART_PALETTE = ['#443a40', '#9b86b5', '#6e9aa0', '#d69b68', '#b9c0ad', '#c76d6d'];
 const clamp = (n: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, n));
 const fmt = (v: number) => new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(v);
+// Tables show entered values, including the hundredths used in exam data.
+// Axis ticks stay at their simpler one-decimal precision.
+const fmtTable = (v: number) => new Intl.NumberFormat('en', { maximumFractionDigits: 9 }).format(v);
 const darkText = (hex: string) => { const n=parseInt(hex.slice(1),16);const r=(n>>16)&255,g=(n>>8)&255,b=n&255;return (r*299+g*587+b*114)/1000>150; };
 const ink = '#302e31';
 const grid = '#ddd9de';
@@ -119,7 +122,7 @@ function drawTable(g: CanvasRenderingContext2D, f: ChartFigure) {
   for(let i=0;i<=rows;i++)line(g,[{x,y:y+i*rh},{x:x+w,y:y+i*rh}],grid,i===0||i===rows?2:1);
   for(let i=0;i<=columns;i++){const xx=x+(i===0?0:i===1?first:first+(i-1)*other);line(g,[{x:xx,y},{x:xx,y:y+h}],grid,i===0||i===columns?2:1);}
   label(g,'',x+10,y+rh/2);f.series.forEach((s,j)=>wrapped(g,s.name,x+first+(j+.5)*other,y+rh/2-9,other-12,15));
-  f.categories.forEach((c,i)=>{wrapped(g,c,x+12,y+(i+1)*rh+rh/2-8,first-20,15,'left');f.series.forEach((s,j)=>label(g,fmt(s.values[i]||0)+(f.unit||''),x+first+(j+.5)*other,y+(i+1.5)*rh,15,'center'));});
+  f.categories.forEach((c,i)=>{wrapped(g,c,x+12,y+(i+1)*rh+rh/2-8,first-20,15,'left');f.series.forEach((s,j)=>label(g,fmtTable(s.values[i]||0)+(f.unit||''),x+first+(j+.5)*other,y+(i+1.5)*rh,15,'center'));});
 }
 export function drawChart(g: CanvasRenderingContext2D, f: ChartFigure) {
   chartFrame(g,f);if(f.chart==='bars')drawBars(g,f);else if(f.chart==='lines')drawLines(g,f);else if(f.chart==='pie')drawPie(g,f);else drawTable(g,f);

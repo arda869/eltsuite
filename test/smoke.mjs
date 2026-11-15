@@ -654,6 +654,26 @@ const J = {
     await axe(s.p,'Lesson tools',A11Y_FOUND);return s;
   },
 
+  'AI activity draft explains exhausted voice credit': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.evaluate(({classId,itemId})=>{
+      const id='voice-credit-draft';
+      localStorage.setItem(`lesson-tool:${classId}:${itemId}:next`,JSON.stringify({id,mode:'next',step:'generate',scope:'activity',direction:'Create a listening activity.',minutes:10}));
+      localStorage.setItem('mockLessonToolJobs',JSON.stringify({[id]:{status:'completed',result:{activity:{title:'Lunch before the train',instructions:'Listen to the conversation.'},native:{content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'What did they order?'}]}]},key:{},notes:''}},media:[{id:'audio',title:'Lunch before the train',status:'failed',error:'The voice service has run out of credit. Your draft is saved. Ask an ELT Suite administrator to restore it, then retry this recording.'}]}}));
+    },s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await openPlanning(s.p);
+    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
+    await dialog.getByRole('button',{name:'Check progress'}).click();
+    await dialog.getByRole('alert').getByText(/voice service has run out of credit/).waitFor();
+    const retry=dialog.getByRole('button',{name:'Retry after credit is restored'});
+    await retry.waitFor();
+    if(!await retry.isVisible())throw Error('The retry guidance was hidden');
+    await axe(s.p,'AI voice credit draft',A11Y_FOUND);
+    return s;
+  },
+
   'Designer charts and maps: edit, import visual, reopen and export': async b => {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
@@ -666,6 +686,11 @@ const J = {
     await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'pie');
     await chart.getByLabel('Hong Kong slice colour').fill('#506a8f');
     await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'bars');
+    const decimal = chart.getByLabel('Hong Kong, Fresh coffee');
+    await decimal.fill('');
+    await decimal.pressSequentially('0.81');
+    if (await decimal.inputValue() !== '0.81') throw Error('Chart cell lost a decimal while typing');
+    await decimal.press('Tab');
     const type = chart.getByRole('button', { name: 'Type', exact: true });
     await type.click();
     await axe(design, 'Designer chart dropdown open', A11Y_FOUND);
@@ -704,6 +729,7 @@ const J = {
     const id = new URL(design.url()).pathname.split('/').at(-1);
     const saved = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path]) => path.startsWith(`sharedDocs/${fileId}/dels/`)).map(([, value]) => value), id);
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
+    if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.series[0]?.values[0] === 0.81)) throw Error('Typed chart decimal did not save');
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundFit === 'cover')) throw Error('Map image fit choice did not save');
@@ -788,7 +814,11 @@ const J = {
     });
     if (process.env.MAP_PHONE_SCREENSHOT) await map.screenshot({ path: process.env.MAP_PHONE_SCREENSHOT.replace(/\.png$/, '-fit.png') });
     await map.getByText('Layout and reference image', { exact: true }).click();
-    if (await map.locator('.dz-map-start-list canvas:visible').count() < 6) throw Error('Ready-made map layouts have no visual previews');
+    const starterNames = await map.locator('.dz-map-start-list button b').allTextContents();
+    for (const name of ['Blank map', 'Park or recreation ground', 'Building or factory plan', 'Town plan · now', 'Town before and after', 'Airport plan · now', 'Airport plan', 'Castle or heritage site']) {
+      if (!starterNames.includes(name)) throw Error(`Ready-made map layout is missing: ${name}`);
+    }
+    if (await map.locator('.dz-map-start-list canvas:visible').count() !== starterNames.length) throw Error('A ready-made map layout has no visual preview');
     await map.getByText('Layout and reference image', { exact: true }).click();
     await map.getByText('Add places', { exact: true }).click();
     await map.getByRole('button', { name: 'Building', exact: true }).click();
@@ -2047,6 +2077,9 @@ const J = {
     await picks.first().waitFor();
     const widths = await picks.evaluateAll((els) => els.map((el) => ({ width: el.getBoundingClientRect().width, clipped: el.querySelector('.sel-v').scrollWidth > el.querySelector('.sel-v').clientWidth })));
     if (widths.some((v) => v.clipped || Math.abs(v.width - widths[0].width) > 1)) throw new Error('Lesson dropdowns are clipped or different widths.');
+    if (await picks.first().locator('xpath=..').getAttribute('title')) throw new Error('A browser tooltip covers the lesson dropdown choices.');
+    await picks.first().click();
+    await see(s.p, '.sel-list [role="option"]', 'styled lesson type options without a browser tooltip');
     return s;
   },
 

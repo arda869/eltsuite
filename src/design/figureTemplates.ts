@@ -100,7 +100,7 @@ export const MAP_PRESETS:FigurePreset[]=[
     route('footpath',[[.53,.79],[.32,.82],[.19,.72]]),
     p('roundabout',.53,.53,.4,.44),building(.53,.52,.19,.16,'Great Hall'),
     ...[[.34,.39],[.72,.39],[.34,.68],[.72,.68]].map(([x,y])=>icon(x,y,'','tower')),
-    p('bridge',.2,.72,.1,.06,'Bridge'),p('gate',.53,.31,.05,.06),p('gate',.53,.75,.05,.06),
+    route('bridge',[[.16,.72],[.24,.72]],'Bridge'),p('gate',.53,.31,.05,.06),p('gate',.53,.75,.05,.06),
     p('label',.42,.27,.1,.04,'North gate'),p('label',.42,.87,.1,.04,'South gate'),
     ...[[.2,.43,'A'],[.65,.27,'B'],[.79,.49,'C'],[.27,.74,'D'],[.77,.81,'E'],[.88,.74,'F']].map(([x,y,n])=>marker(Number(x),Number(y),String(n))),compass(.92,.13)
   ])}

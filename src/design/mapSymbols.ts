@@ -124,6 +124,7 @@ const GLYPHS:Record<string,MapSymbolGlyph> = {
   cliff:{paths:['M6 11h24l-4 7 6 5-5 6 5 5-4 7H6','M28 41h14','M33 12l6 9m-5 3 7 6']},
   cave:{paths:['M5 40c1-18 9-31 19-31s18 13 19 31z','M16 40c0-10 3-17 8-17s8 7 8 17','M10 41h28']},
   beachchair:{paths:['M8 12l15 24h18M8 12l7-5 16 26','M20 34l-6 9m23-7 4 7','M23 19l9-6']},
+  shadecanopy:{paths:['M5 17 13 7h22l8 10H5z','M13 17v25m22-25v25','M8 42h32','M16 30h16m-14 0v9m12-9v9','M17 11l-4 6m12-6-4 6m12-6-4 6']},
   footbridge:{paths:['M5 35h38','M10 35V19h28v16','M10 24h28','M15 19v-7m18 7v-7','M5 42h38']},
   crossing:{paths:['M6 10h36M6 39h36','M8 16h9v5H8zM22 16h9v5h-9zM35 16h7v5h-7z','M6 27h7v5H6zM18 27h9v5h-9zM32 27h10v5H32z']},
   ruins:{paths:['M6 42h36','M10 36V19h7v17m7-15v15h7V14h7v22','M10 19l7-4m7 6 7-5m0-2 7-4','M8 36h14m7 0h11']},
@@ -187,7 +188,7 @@ const GLYPHS:Record<string,MapSymbolGlyph> = {
   basketballcourt:{paths:['M5 10h38v28H5z','M24 10v28','M5 24h10m18 0h10','M15 18v12m18-12v12','M15 18c7 0 7 12 0 12m18-12c-7 0-7 12 0 12']},
   rugbypitch:{paths:['M6 10h36v28H6z','M24 10v28','M6 18h7m29 0h-7M6 30h7m29 0h-7','M13 7v9m22-9v9M11 7h4m18 0h4']},
   hockeypitch:{paths:['M6 10h36v28H6z','M24 10v28','M6 24h10m16 0h10','M15 17h7v7m11 7h-7v-7','M12 15h3m18 18h3']},
-  skateramp:{paths:['M5 42h38','M5 15c5 0 7 8 9 14s5 9 10 9 8-3 10-9 4-14 9-14','M24 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M23 14l-4 9 9 4m-9-4-6 7m15-3 7 3','M26 34h10m-7 0a2 2 0 1 0 0 4m5-4a2 2 0 1 0 0 4']},
+  skateramp:{paths:['M4 15v13c0 9 7 14 17 14h6c10 0 17-5 17-14V15','M4 15h8m24 0h8','M12 27c1 6 4 9 9 9h6c5 0 8-3 9-9','M24 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M24 18l-4 8 6 5m-6-5-5 4m11 1 6 2','M18 34h13m-10 3h0m8 0h0']},
   lostproperty:{paths:['M7 16h34v26H7z','M16 16v-6h16v6','M17 24c0-4 3-6 7-6s7 2 7 6c0 4-7 5-7 9','M24 38h0','M7 42h34']},
 };
 

@@ -9,6 +9,14 @@ import './figures.css';
 
 function Field({name,value,onChange,placeholder}:{name:string;value:string;onChange:(s:string)=>void;placeholder?:string}){return <label className="dz-field"><span>{name}</span><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></label>;}
 function NumberField({name,value,onChange}:{name:string;value?:number;onChange:(n:number|undefined)=>void}){return <label className="dz-field"><span>{name}</span><input type="number" value={value??''} onChange={e=>onChange(e.target.value===''?undefined:Number(e.target.value))}/></label>;}
+function ChartValueInput({name,value,onChange}:{name:string;value:number;onChange:(value:number)=>void}){
+  const [draft,setDraft]=useState(String(value));
+  const [editing,setEditing]=useState(false);
+  useEffect(()=>{if(!editing)setDraft(String(value));},[editing,value]);
+  return <input aria-label={name} type="text" inputMode="decimal" value={draft} onFocus={()=>setEditing(true)}
+    onChange={event=>{const next=event.target.value;setDraft(next);if(next.trim()!==''&&Number.isFinite(Number(next)))onChange(Number(next));}}
+    onBlur={()=>{setEditing(false);if(draft.trim()==='')onChange(0);else if(!Number.isFinite(Number(draft)))setDraft(String(value));}}/>;
+}
 
 export function FigureProps({cx,e,set}:{cx:Ctx;e:El;set:(p:Partial<El>,key?:string)=>void}){
   const f=e.figure!;
@@ -28,7 +36,7 @@ export function FigureProps({cx,e,set}:{cx:Ctx;e:El;set:(p:Partial<El>,key?:stri
 function ChartEditor({e,set,onClose}:{e:El;set:(p:Partial<El>,key?:string)=>void;onClose:()=>void}){
   const f=e.figure as ChartFigure;
   const patch=(v:Partial<ChartFigure>,key='chart-edit')=>set({figure:{...f,...v}},key);
-  const cell=(row:number,col:number,v:string)=>{const series=f.series.map((s,i)=>i===col?{...s,values:f.categories.map((_,r)=>r===row?Number(v)||0:s.values[r]||0)}:s);patch({series},'chart-data');};
+  const cell=(row:number,col:number,v:number)=>{const series=f.series.map((s,i)=>i===col?{...s,values:f.categories.map((_,r)=>r===row?v:s.values[r]||0)}:s);patch({series},'chart-data');};
   const renameSeries=(i:number,name:string)=>patch({series:f.series.map((s,j)=>i===j?{...s,name}:s)},'chart-series');
   const preview=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{const g=preview.current?.getContext('2d');if(g)drawFigure(g,f,800,560);},[f]);
@@ -38,7 +46,7 @@ function ChartEditor({e,set,onClose}:{e:El;set:(p:Partial<El>,key?:string)=>void
       <div className="dz-figure-formrow"><Field name="Title" value={f.title} onChange={title=>patch({title},'chart-title')}/><label className="dz-field"><span>Type</span><NSelect value={f.chart} onChange={ev=>patch({chart:ev.target.value as ChartFigure['chart']})}><option value="bars">Bar chart</option><option value="lines">Line graph</option><option value="pie">Pie chart</option><option value="table">Table</option></NSelect></label></div>
       {f.chart==='bars'&&<label className="dz-figure-check"><input type="checkbox" checked={!!f.horizontal} onChange={ev=>patch({horizontal:ev.target.checked})}/> Horizontal bars</label>}
       <h3>Data</h3><p className="dz-figure-help">Edit each value directly. Add rows for categories and columns for series. Pie charts use one series per pie.</p>
-      <div className="dz-figure-data-wrap"><table className="dz-figure-data"><thead><tr><th>Category</th>{f.series.map((s,j)=><th key={j}><input aria-label={`Series ${j+1} name`} value={s.name} onChange={ev=>renameSeries(j,ev.target.value)}/></th>)}<th/></tr></thead><tbody>{f.categories.map((c,i)=><tr key={i}><td><input aria-label={`Category ${i+1}`} value={c} onChange={ev=>patch({categories:f.categories.map((x,r)=>r===i?ev.target.value:x)},'chart-category')}/></td>{f.series.map((s,j)=><td key={j}><input type="number" step="any" aria-label={`${c}, ${s.name}`} value={s.values[i]??0} onChange={ev=>cell(i,j,ev.target.value)}/></td>)}<td><button type="button" onClick={()=>patch({categories:f.categories.filter((_,r)=>r!==i),series:f.series.map(s=>({...s,values:s.values.filter((_,r)=>r!==i)}))})} aria-label={`Remove ${c}`}>×</button></td></tr>)}</tbody></table></div>
+      <div className="dz-figure-data-wrap"><table className="dz-figure-data"><thead><tr><th>Category</th>{f.series.map((s,j)=><th key={j}><input aria-label={`Series ${j+1} name`} value={s.name} onChange={ev=>renameSeries(j,ev.target.value)}/></th>)}<th/></tr></thead><tbody>{f.categories.map((c,i)=><tr key={i}><td><input aria-label={`Category ${i+1}`} value={c} onChange={ev=>patch({categories:f.categories.map((x,r)=>r===i?ev.target.value:x)},'chart-category')}/></td>{f.series.map((s,j)=><td key={j}><ChartValueInput name={`${c}, ${s.name}`} value={s.values[i]??0} onChange={value=>cell(i,j,value)}/></td>)}<td><button type="button" onClick={()=>patch({categories:f.categories.filter((_,r)=>r!==i),series:f.series.map(s=>({...s,values:s.values.filter((_,r)=>r!==i)}))})} aria-label={`Remove ${c}`}>×</button></td></tr>)}</tbody></table></div>
       <div className="dz-figure-actions"><button type="button" onClick={()=>patch({categories:[...f.categories,`Category ${f.categories.length+1}`],series:f.series.map(s=>({...s,values:[...s.values,0]}))})}>+ Category</button><button type="button" onClick={()=>patch({series:[...f.series,{name:`Series ${f.series.length+1}`,values:f.categories.map(()=>0),color:CHART_PALETTE[f.series.length%CHART_PALETTE.length]}]})}>+ Series</button></div>
       <h3>{f.chart==='pie'?'Slice colours':'Series style'}</h3>
       {f.chart==='pie'&&f.categories.map((category,i)=><label key={i} className="dz-figure-series"><input type="color" aria-label={`${category} slice colour`} value={f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length]} onChange={ev=>patch({palette:f.categories.map((_,j)=>j===i?ev.target.value:f.palette?.[j]||CHART_PALETTE[j%CHART_PALETTE.length])},'chart-colour')}/><span>{category}</span></label>)}

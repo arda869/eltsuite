@@ -78,7 +78,7 @@ bin	Rubbish bin	services	lucide:trash-2	Covered waste bin.
 notice	Notice board	wayfinding	lucide:panel-top	Framed information panel.
 viewpoint	Viewpoint	leisure	lucide:binoculars	Twin viewing lenses.
 maze	Maze	leisure	bespoke:maze	Labyrinth path with turns.
-skate	Skateboard ramp	sports	bespoke:skateramp	Large curved ramp with a rider and board.
+skate	Skateboard ramp	sports	bespoke:skateramp	Raised half-pipe with two lips, a rider and a board.
 cricket	Cricket pitch	sports	bespoke:cricketpitch	Cricket ground with central wicket pitch.
 football	Football pitch	sports	bespoke:footballpitch	Football field with goals and centre circle.
 basketball	Basketball court	sports	bespoke:basketballcourt	Basketball court lines and twin key areas.
@@ -114,7 +114,7 @@ canal	Canal	nature	bespoke:canal	Straight parallel banks with water.
 cliff	Cliff	nature	bespoke:cliff	Sheer rock face with drop.
 cave	Cave	nature	bespoke:cave	Arched opening in rock.
 sun	Sunny area	nature	lucide:sun	Radiating sun.
-shade	Shaded area	nature	lucide:cloud-sun	Cloud shading a sun.
+shade	Shaded area	nature	bespoke:shadecanopy	A roof canopy shades a bench, instead of suggesting weather.
 wind	Windy area	nature	lucide:wind	Sweeping wind lines.
 beachchair	Beach chairs	leisure	bespoke:beachchair	Reclining chair with slanted back.
 boatlaunch	Boat launch	transport	bespoke:boatlaunch	Boat beside a sloped launching ramp.

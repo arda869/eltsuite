@@ -14,8 +14,8 @@ test('plain and shaded map symbols retain their chosen colour through the shared
     const pixels = await page.evaluate(() => {
       const canvas = document.querySelector('canvas');
       const ctx = canvas.getContext('2d');
-      const render = (style, color) => {
-        const figure = JSON.parse(JSON.stringify({ kind: 'map', title: '', items: [{ id: 'test', kind: 'icon', icon: 'tree', x: .5, y: .5, w: .1, h: .1, iconStyle: style, iconColor: color }] }));
+      const render = (icon, style, color) => {
+        const figure = JSON.parse(JSON.stringify({ kind: 'map', title: '', items: [{ id: 'test', kind: 'icon', icon, x: .5, y: .5, w: .1, h: .1, iconStyle: style, iconColor: color }] }));
         Figures.drawMap(ctx, figure);
         const image = ctx.getImageData(455, 328, 90, 90).data;
         let warm = 0, cool = 0, tinted = 0;
@@ -27,13 +27,20 @@ test('plain and shaded map symbols retain their chosen colour through the shared
         }
         return { warm, cool, tinted };
       };
-      return { plainRed: render('plain','#c34c4c'), shadedRed: render('shaded','#c34c4c'), plainBlue: render('plain','#305ab6'), shadedBlue: render('shaded','#305ab6') };
+      return Object.fromEntries(['tree', 'shade', 'skate'].map(icon => [icon, {
+        plainRed: render(icon, 'plain', '#c34c4c'),
+        shadedRed: render(icon, 'shaded', '#c34c4c'),
+        plainBlue: render(icon, 'plain', '#305ab6'),
+        shadedBlue: render(icon, 'shaded', '#305ab6'),
+      }]));
     });
-    assert.ok(pixels.plainRed.warm > 30, 'plain symbol must use the selected red');
-    assert.ok(pixels.plainBlue.cool > 30, 'plain symbol must use the selected blue');
-    assert.ok(pixels.shadedRed.tinted > pixels.plainRed.tinted + 1000, `shaded symbol needs a visible tinted background: ${JSON.stringify(pixels)}`);
-    assert.ok(pixels.shadedBlue.tinted > pixels.plainBlue.tinted + 1000, 'shaded background must use the selected colour');
-    assert.ok(pixels.plainRed.tinted < pixels.shadedRed.tinted, 'plain symbol must have no shaded background');
+    for (const [icon, result] of Object.entries(pixels)) {
+      assert.ok(result.plainRed.warm > 30, `${icon}: plain symbol must use the selected red`);
+      assert.ok(result.plainBlue.cool > 30, `${icon}: plain symbol must use the selected blue`);
+      assert.ok(result.shadedRed.tinted > result.plainRed.tinted + 1000, `${icon}: shaded symbol needs a visible tinted background: ${JSON.stringify(result)}`);
+      assert.ok(result.shadedBlue.tinted > result.plainBlue.tinted + 1000, `${icon}: shaded background must use the selected colour`);
+      assert.ok(result.plainRed.tinted < result.shadedRed.tinted, `${icon}: plain symbol must have no shaded background`);
+    }
   } finally { await browser.close(); }
 });
 

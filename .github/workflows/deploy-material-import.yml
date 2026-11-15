@@ -89,9 +89,18 @@ jobs:
           node --input-type=module - <<'JS'
           import fs from 'node:fs';
           const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
-          const actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>r.json());
-          if(actual.build!==expected.build)throw Error('Published build mismatch');
-          console.log('Published importer build:',actual.build);
+          let published=false,last='unavailable';
+          for(let attempt=1;attempt<=20;attempt++){
+            try{
+              const response=await fetch(`https://eltsuite.com/version.json?verify=${Date.now()}-${attempt}`,{cache:'no-store',signal:AbortSignal.timeout(8000)});
+              if(!response.ok)throw Error(`HTTP ${response.status}`);
+              last=String((await response.json()).build??'missing');
+              if(last===String(expected.build)){published=true;console.log(`Published importer build ${last} confirmed on attempt ${attempt}.`);break;}
+              console.log(`Build propagation ${attempt}/20: expected ${expected.build}, received ${last}.`);
+            }catch(error){last=error instanceof Error?error.message:String(error);console.log(`Build propagation ${attempt}/20: ${last}.`);}
+            if(attempt<20)await new Promise(resolve=>setTimeout(resolve,3000));
+          }
+          if(!published)throw Error(`Published build mismatch after 20 checks: expected ${expected.build}, last response ${last}.`);
           JS
       - name: Remove credentials
         if: always()
