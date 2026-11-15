@@ -100,7 +100,15 @@ export async function createClass(teacherId: string, input: { name: string; leve
     const code = makeClassCode(input.name);
     const codeRef = doc(db, 'classCodes', code);
     const ok = await runTransaction(db, async (tx) => {
-      const existing = await tx.get(codeRef);
+      let existing;
+      try {
+        existing = await tx.get(codeRef);
+      } catch (error) {
+        // Another teacher's occupied code is private. Its denied read means
+        // this candidate cannot be reserved, so try a new code instead.
+        if ((error as { code?: string })?.code === 'permission-denied') return false;
+        throw error;
+      }
       // An organisation with a limit of classes counts this one in the same write (see firestore.rules).
       const orgRef = input.org ? doc(db, 'orgs', input.org) : null;
       const count = orgRef ? countOne((await tx.get(orgRef)).data(), 'classes') : null;

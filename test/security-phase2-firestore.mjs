@@ -86,6 +86,31 @@ try {
       roster: [], org: 'test-pilots', createdAt: serverTimestamp() });
   });
   assert.equal((await getDoc(orgClass)).data()?.org, 'test-pilots');
+  const nextCode = doc(viewer, 'classCodes/VIE-567');
+  const nextClass = doc(viewer, 'classes/created-after-occupied-code');
+  let attempts = 0;
+  for (const code of [doc(viewer, 'classCodes/CLS-234'), nextCode]) {
+    const available = await runTransaction(viewer, async tx => {
+      let existing;
+      try {
+        existing = await tx.get(code);
+      } catch (error) {
+        if (error.code === 'permission-denied') return false;
+        throw error;
+      }
+      if (existing.exists()) return false;
+      tx.set(nextClass, { teacherId: 'viewer', name: 'Collision recovery', level: 'B1',
+        themeColor: 'teal', kind: 'language', classCode: code.id, status: 'active',
+        learnerCount: 0, meeting: null, lessonStyle: 'adult', createdAt: serverTimestamp() });
+      tx.set(code, { classId: nextClass.id, teacherId: 'viewer', className: 'Collision recovery',
+        roster: [], createdAt: serverTimestamp() });
+      return true;
+    });
+    attempts += 1;
+    if (available) break;
+  }
+  assert.equal(attempts, 2, 'an occupied private code must not stop the next candidate');
+  assert.equal((await getDoc(nextClass)).data()?.classCode, 'VIE-567');
   const shownTopics = await getDocs(query(collection(learner, 'classes/c1/topics'), where('hidden', '==', false)));
   assert.deepEqual(shownTopics.docs.map(d => d.id), ['shown']);
   await denied('learner cannot read hidden topic metadata', () => getDoc(doc(learner, 'classes/c1/topics/secret')));
