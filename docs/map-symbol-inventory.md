@@ -80,7 +80,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 74 | nature | Fountain (`fountain`) | bespoke:fountain | Water jets above a basin. |
 | 75 | leisure | Bench (`bench`) | bespoke:bench | Park bench with legs and back. |
 | 76 | services | Rubbish bin (`bin`) | lucide:trash-2 | Covered waste bin. |
-| 77 | wayfinding | Notice board (`notice`) | lucide:panel-top | Framed information panel. |
+| 77 | wayfinding | Notice board (`notice`) | bespoke:notice | Two pinned notices inside a framed board. |
 | 78 | leisure | Viewpoint (`viewpoint`) | lucide:binoculars | Twin viewing lenses. |
 | 79 | leisure | Maze (`maze`) | bespoke:maze | Labyrinth path with turns. |
 | 80 | sports | Skateboard ramp (`skate`) | bespoke:skateramp | Raised half-pipe with two lips, a rider and a board. |
@@ -88,7 +88,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 82 | sports | Football pitch (`football`) | bespoke:footballpitch | Football field with goals and centre circle. |
 | 83 | sports | Basketball court (`basketball`) | bespoke:basketballcourt | Basketball court lines and twin key areas. |
 | 84 | sports | Swimming pool (`pool`) | lucide:waves-ladder | Pool ladder over water. |
-| 85 | sports | Stadium (`stadium`) | bespoke:stadium | Tiered spectator seating. |
+| 85 | sports | Stadium (`stadium`) | bespoke:stadium | Oval spectator stands around a marked pitch. |
 | 86 | leisure | Zoo (`zoo`) | lucide:paw-print | Animal paw print. |
 | 87 | leisure | Aquarium (`aquarium`) | lucide:fish | Fish with fin and tail. |
 | 88 | leisure | Cinema (`cinema`) | lucide:clapperboard | Film clapper and screen. |
@@ -100,10 +100,10 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 94 | heritage | Exhibition (`exhibit`) | bespoke:exhibition | Two framed works mounted inside an exhibition booth. |
 | 95 | buildings | Meeting room (`meeting`) | bespoke:meetingroom | Room outline with people facing a table. |
 | 96 | buildings | Boardroom (`boardroom`) | bespoke:boardroomtable | Conference table with chairs around it. |
-| 97 | food | Coffee room (`coffee`) | lucide:coffee | Cup with steam and saucer. |
+| 97 | food | Coffee room (`coffee`) | bespoke:coffeehouse | Steaming cup inside a separate room. |
 | 98 | education | Classroom (`classroom`) | bespoke:classroom | Teaching board and desks. |
 | 99 | education | Laboratory (`lab`) | lucide:flask-conical | Laboratory flask. |
-| 100 | buildings | Courtyard (`courtyard`) | bespoke:courtyard | Buildings enclosing open centre. |
+| 100 | buildings | Courtyard (`courtyard`) | bespoke:courtyard | Four building wings surround an open tree court. |
 | 101 | transport | Roundabout (`roundabout`) | bespoke:roundabout | Circular road with four approaches. |
 | 102 | wayfinding | North arrow (`north`) | bespoke:northarrow | Arrow pointing vertically to a letter N. |
 | 103 | nature | Pine tree (`pine`) | lucide:tree-pine | Triangular evergreen crown. |
@@ -149,8 +149,8 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 143 | heritage | Mosque (`mosque`) | bespoke:mosque | Dome and minaret. |
 | 144 | heritage | Synagogue (`synagogue`) | bespoke:synagogue | Building with Star of David. |
 | 145 | heritage | Shrine (`shrine`) | bespoke:shrine | Small canopied altar. |
-| 146 | services | Visitor centre (`tourism`) | bespoke:visitorcentre | Visitor centre building with map display. |
-| 147 | services | Help desk (`helpdesk`) | lucide:circle-help | Question-mark help point. |
+| 146 | services | Visitor centre (`tourism`) | bespoke:visitorcentre | Visitor centre building with a large information sign. |
+| 147 | services | Help desk (`helpdesk`) | bespoke:helpdesk | Attendant behind a desk beside a question mark. |
 | 148 | services | Lost property (`lostproperty`) | bespoke:lostproperty | Found-property case with a large question mark. |
 | 149 | services | Lockers (`locker`) | bespoke:lockers | Row of three storage lockers with handles. |
 | 150 | services | Baby changing (`babychange`) | lucide:baby | Baby silhouette. |
@@ -162,7 +162,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 156 | services | Currency exchange (`exchange`) | bespoke:currencyexchange | Two different coins with arrows showing exchange in both directions. |
 | 157 | services | Post box (`postbox`) | bespoke:postbox | Upright post box with a letter slot and collection panel. |
 | 158 | services | Parcel collection (`parcel`) | lucide:package | Closed parcel. |
-| 159 | safety | Ambulance bay (`ambulance`) | bespoke:ambulancebay | Medical vehicle parked in a marked bay. |
+| 159 | safety | Ambulance bay (`ambulance`) | bespoke:ambulancebay | Side-view ambulance with cross and marked parking line. |
 | 160 | safety | Defibrillator (`defib`) | bespoke:defibrillator | AED cabinet with heart and electric bolt. |
 | 161 | safety | Vaccination centre (`vaccination`) | bespoke:vaccinationcentre | Medical building with cross and vaccine needle. |
 | 162 | safety | Fire alarm (`firealarm`) | bespoke:firealarm | Wall alarm with bell, pull panel and sound rays. |
@@ -190,8 +190,8 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 184 | food | Grocery shop (`grocery`) | lucide:shopping-basket | Hand basket. |
 | 185 | food | Ice cream kiosk (`icecream`) | lucide:ice-cream-cone | Ice cream cone. |
 | 186 | food | Sandwich shop (`burger`) | lucide:sandwich | Prepared sandwich between bread slices. |
-| 187 | food | Farm shop (`farmshop`) | lucide:carrot | Fresh carrot. |
-| 188 | food | Barbecue area (`barbecue`) | lucide:flame-kindling | Flame over cooking fuel. |
+| 187 | food | Farm shop (`farmshop`) | bespoke:farmshop | Market storefront with a growing produce sprig. |
+| 188 | food | Barbecue area (`barbecue`) | bespoke:barbecue | Smoking barbecue grill with a grate and legs. |
 | 189 | buildings | Apartments (`apartments`) | lucide:building | Stacked apartment windows. |
 | 190 | buildings | Townhouses (`townhouse`) | lucide:house | Single pitched-roof home. |
 | 191 | buildings | Retirement home (`retirement`) | lucide:house-heart | Home with heart. |
@@ -205,7 +205,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 199 | buildings | Barn (`barn`) | bespoke:barn | Barn roof and wide doors. |
 | 200 | buildings | Water treatment (`waterworks`) | bespoke:waterplant | Treatment building with tanks and water. |
 | 201 | buildings | Observatory (`observatory`) | lucide:telescope | Astronomy telescope. |
-| 202 | sports | Golf course (`golf`) | lucide:flag-triangle-right | Flag on a putting green. |
+| 202 | sports | Golf course (`golf`) | bespoke:golfcourse | Flag, hole and ball on a curved putting green. |
 | 203 | sports | Volleyball court (`volleyball`) | bespoke:volleyball | Rectangular court with a central net and service zones. |
 | 204 | sports | Badminton court (`badminton`) | bespoke:badminton | Narrow court with a central net and service boxes. |
 | 205 | sports | Hockey pitch (`hockey`) | bespoke:hockeypitch | Hockey pitch lines and shooting circles. |
