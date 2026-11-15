@@ -86,7 +86,9 @@ teacher one of its teachers. Or an organisation's emailed invitation (`orgInvite
 new profile as `invite`). `firestore.rules` (`users` create, `codeUsedNow`) enforces it: the account, one
 use of the code and the place in the organisation are one write (`loadProfile` in `src/lib/auth.tsx`).
 Without an invitation the new sign-in account is taken back and the sign-in page says why.
-`scripts/mail.mjs` emails a code made for one email.
+`functions/notifications/invitations.js` emails organisation invitations and one-email codes
+through Cloud Scheduler every five minutes. `scripts/mail.mjs` is a claimed fallback in the
+GitHub notification job; both use `invitation-delivery-logic.js` to avoid duplicate sends.
 
 A super admin sets each organisation's limits (`orgs/{id}.limits`: teachers, classes, learners,
 callMinutes a month; space is `limitGb`) in its Plan and limits page (`src/pages/admin/OrgLimits.tsx`);
