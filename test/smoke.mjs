@@ -3354,7 +3354,17 @@ const J = {
       window.dispatchEvent(new ErrorEvent('error', { message: 'FirebaseError: unavailable' }));
     });
     if (await s.p.getByRole('alertdialog').count()) throw Error('A normal connection error triggered cache recovery');
-    await s.p.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' })));
+    await s.p.evaluate(async () => {
+      const { emitFirebaseLog } = await import('/test/mock/app.ts');
+      emitFirebaseLog({ level: 'error', type: '@firebase/auth', message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+      emitFirebaseLog({ level: 'warn', type: '@firebase/firestore', message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+    });
+    if (await s.p.getByRole('alertdialog').count()) throw Error('A non-Firestore log triggered cache recovery');
+    await s.p.evaluate(async () => {
+      const { emitFirebaseLog } = await import('/test/mock/app.ts');
+      // The SDK has caught the throw: only its logged assertion reaches the app.
+      emitFirebaseLog({ level: 'error', type: '@firebase/firestore', message: 'Firestore (11.10.0): FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+    });
     const recovery = s.p.getByRole('alertdialog', { name: 'Your account couldn’t finish loading' });
     await recovery.waitFor();
     await see(s.p, '#firestore-recovery-description:has-text("not been deleted")', 'clear device-work message');
