@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import ts from 'typescript';
@@ -107,18 +107,26 @@ try{
 
   const legacy=admin.doc(`classes/${classId}/media/legacy`);
   await legacy.set({kind:'link',size:0,public:true,script});
-  const migrate=(...args)=>JSON.parse(execFileSync(process.execPath,['scripts/migrate-class-media-scripts.mjs',...args],{env:{...process.env,GCLOUD_PROJECT:projectId},encoding:'utf8',timeout:30000}));
+  const migrate=(...args)=>{
+    const result=spawnSync(process.execPath,['scripts/migrate-class-media-scripts.mjs',...args],{env:{...process.env,GCLOUD_PROJECT:projectId},encoding:'utf8',timeout:30000});
+    if(result.error)throw result.error;
+    return {...JSON.parse(result.stdout),exitCode:result.status};
+  };
   assert.equal(migrate().totals.legacyScripts,1);
   assert.deepEqual((await legacy.get()).get('script'),script,'dry run does not change production-shaped data');
-  assert.throws(()=>migrate('--apply','--expected-legacy-count=2'),'changed preflight count blocks migration');
-  assert.equal(migrate('--apply','--expected-legacy-count=1').totals.migrated,1);
+  assert.equal(migrate('--apply','--expected-legacy-count=2').exitCode,1,'changed preflight count blocks migration');
+  const applied=migrate('--apply','--expected-legacy-count=1');
+  assert.equal(applied.exitCode,0);
+  assert.equal(applied.totals.migrated,1);
   assert.equal((await legacy.get()).get('script'),undefined);
   assert.deepEqual((await admin.doc(`classes/${classId}/mediaScripts/legacy`).get()).get('script'),script);
   assert.equal(migrate().totals.legacyScripts,0,'migration is idempotent');
   const malformed=admin.doc(`classes/${classId}/media/legacy-malformed`);
   await malformed.set({kind:'link',public:true,size:0,script:'Old free-text transcript'});
-  assert.equal(migrate().totals.invalidScripts,1,'unexpected legacy formats are counted, never discarded');
-  assert.throws(()=>migrate('--apply','--expected-legacy-count=1'),'unrecognized transcript blocks destructive migration');
+  const invalid=migrate();
+  assert.equal(invalid.exitCode,1);
+  assert.equal(invalid.totals.invalidScripts,1,'unexpected legacy formats are counted, never discarded');
+  assert.equal(migrate('--apply','--expected-legacy-count=1').exitCode,1,'unrecognized transcript blocks destructive migration');
   assert.equal((await malformed.get()).get('script'),'Old free-text transcript');
   console.log('Class scripts: anonymous and nonmember denial, QR audio and grant, delayed release, revocation, offline payload and migration passed.');
 }finally{
