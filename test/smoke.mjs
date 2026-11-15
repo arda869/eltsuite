@@ -805,6 +805,18 @@ const J = {
     if (await map.getByRole('button', { name: 'Select and move' }).count() !== 1 || await map.getByRole('button', { name: 'Save map' }).count() !== 1) throw Error('Map tools and Save are not immediately available');
     await map.getByRole('status').filter({ hasText: 'No changes to save' }).waitFor();
     if (await map.getByRole('group', { name: 'Symbol appearance' }).getByRole('button', { name: 'Plain' }).getAttribute('aria-pressed') !== 'true') throw Error('New map symbols do not start with the plain background');
+    const categories = map.locator('.dz-symbol-browse-toggle');
+    await categories.click();
+    await map.getByRole('group', { name: 'Symbol categories' }).waitFor();
+    await categories.press('Escape');
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count() || await categories.getAttribute('aria-expanded') !== 'false' || !await categories.evaluate(element => element === document.activeElement)) throw Error('Escape did not close symbol categories and restore keyboard focus');
+    await categories.click();
+    await map.getByRole('group', { name: 'Symbol categories' }).getByRole('button', { name: 'Nature and water' }).click();
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count() || !await categories.evaluate(element => element === document.activeElement)) throw Error('Choosing a symbol category did not return focus to its control');
+    await categories.click();
+    await map.getByRole('button', { name: 'Select and move' }).click();
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count()) throw Error('Symbol categories stayed open after an outside click');
+    await map.getByRole('group', { name: 'Browse map symbols' }).getByRole('button', { name: 'All', exact: true }).click();
     await design.waitForFunction(() => {
       const center = document.querySelector('.dz-map-center');
       const canvas = center?.querySelector('canvas');
