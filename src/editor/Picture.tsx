@@ -4,6 +4,7 @@ import { readStoryboard } from '../storyboard/StoryboardNode';
 import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorClass } from './context';
 import { PIC_QUALITY, uploadPicture, useImageSrc, type PicQuality } from './PackNode';
@@ -64,9 +65,13 @@ export const GRIDS = [
 export type PicTag = { id: string; x: number; y: number; text: string };
 type TagEdit = { onMove: (id: string, x: number, y: number) => void; onText: (id: string, text: string) => void; onDelete: (id: string) => void; focus?: string };
 
-type FrameProps = { w?: number; children?: React.ReactNode; src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string; tags?: PicTag[]; tagEdit?: TagEdit };
-export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint, w, children, tags, tagEdit }: FrameProps) {
+type FrameProps = { w?: number; children?: React.ReactNode; src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string; tags?: PicTag[]; tagEdit?: TagEdit; enlarge?: boolean };
+export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint, w, children, tags, tagEdit, enlarge }: FrameProps) {
   const url = useImageSrc(classId, src);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const opener = useRef<HTMLSpanElement>(null);
+  // Covered pictures must keep their hidden content hidden in teaching and learner views.
+  const canEnlarge = !!enlarge && !!url && !cover && !tagEdit;
   const cs = cropStyles(crop, ar);
   const img = url ? <img src={url} alt={alt ?? ''} draggable={false} style={{ ...cs.img, filter: filterCss(filter) }} /> : <span className="pic-wait" />;
   const inner = (
@@ -85,12 +90,93 @@ export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cov
   );
   const tagged = !!(tags?.length || tagEdit);
   return (
-    <span className={'pic pic-' + (w ? 'w' : size || 'm') + (cover ? ' has-cover' : '') + (tagged ? ' has-tags' : '')} style={w ? { width: w } : undefined}>
+    <span ref={opener} className={'pic pic-' + (w ? 'w' : size || 'm') + (cover ? ' has-cover' : '') + (tagged ? ' has-tags' : '') + (canEnlarge ? ' can-enlarge' : '')} style={w ? { width: w } : undefined} role={canEnlarge ? 'button' : undefined} tabIndex={canEnlarge ? 0 : undefined} aria-label={canEnlarge ? `View ${alt || 'picture'} larger` : undefined} title={canEnlarge ? 'View picture larger' : undefined} onClick={canEnlarge ? (e) => { if ((e.target as HTMLElement).closest('a, button, input')) return; setViewerOpen(true); } : undefined} onKeyDown={canEnlarge ? (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setViewerOpen(true); } } : undefined}>
       {tagged ? <span className="pic-clip">{inner}</span> : inner}
       {(tags ?? []).map((t) => (tagEdit ? <EditTag key={t.id} t={t} edit={tagEdit} /> : <span key={t.id} className="pic-tag" style={{ left: `${t.x}%`, top: `${t.y}%` }}>{t.text}</span>))}
+      {canEnlarge && <span className="pic-enlarge-cue" aria-hidden="true"><UiIcon name="zoomIn" size={17} /><span>View larger</span></span>}
       {children}
+      {canEnlarge && viewerOpen && createPortal(<PictureViewer url={url} alt={alt || 'Picture'} crop={crop} ar={ar} filter={filter} tags={tags} label={label} onClose={() => { setViewerOpen(false); requestAnimationFrame(() => opener.current?.focus()); }} />, document.body)}
     </span>
   );
+}
+
+const PICTURE_ZOOMS = [1, 1.5, 2, 2.5, 3, 4];
+
+function PictureViewer({ url, alt, crop, ar, filter, tags, label, onClose }: { url: string; alt: string; crop?: string; ar?: number; filter?: string; tags?: PicTag[]; label?: string; onClose: () => void }) {
+  const [zoomIndex, setZoomIndex] = useState(() => window.innerWidth <= 640 ? 4 : 0);
+  const [dragging, setDragging] = useState(false);
+  const stage = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLElement>(null);
+  const close = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const cs = cropStyles(crop, ar);
+  const image = <img src={url} alt={alt} draggable={false} style={{ ...cs.img, filter: filterCss(filter) }} />;
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    close.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onCloseRef.current(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = [...(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]') ?? [])];
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = oldOverflow; previous?.focus(); };
+  }, []);
+
+  const zoomTo = (next: number) => {
+    const area = stage.current;
+    const x = area?.scrollWidth ? (area.scrollLeft + area.clientWidth / 2) / area.scrollWidth : .5;
+    const y = area?.scrollHeight ? (area.scrollTop + area.clientHeight / 2) / area.scrollHeight : .5;
+    setZoomIndex(next);
+    requestAnimationFrame(() => {
+      if (!area) return;
+      area.scrollLeft = x * area.scrollWidth - area.clientWidth / 2;
+      area.scrollTop = y * area.scrollHeight - area.clientHeight / 2;
+    });
+  };
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || PICTURE_ZOOMS[zoomIndex] === 1) return;
+    const area = stage.current;
+    if (!area) return;
+    drag.current = { x: e.clientX, y: e.clientY, left: area.scrollLeft, top: area.scrollTop };
+    setDragging(true);
+    area.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = drag.current, area = stage.current;
+    if (!start || !area) return;
+    area.scrollLeft = start.left + start.x - e.clientX;
+    area.scrollTop = start.top + start.y - e.clientY;
+  };
+  const endDrag = () => { drag.current = null; setDragging(false); };
+  return <div className="picture-viewer-backdrop" onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}>
+    <section ref={dialog} className="picture-viewer" role="dialog" aria-modal="true" aria-label={`Enlarged picture: ${alt}`} onClick={(e) => e.stopPropagation()}>
+      <div className="picture-viewer-head"><strong title={alt}>{alt}</strong><button ref={close} type="button" className="icon-tool" aria-label="Close enlarged picture" onClick={onClose}><UiIcon name="videoClose" /></button></div>
+      <div className="picture-viewer-tools" aria-label="Picture size">
+        <button type="button" className="btn" aria-label="Zoom out" disabled={zoomIndex === 0} onClick={() => zoomTo(zoomIndex - 1)}><UiIcon name="zoomOut" /></button>
+        <span className="picture-viewer-percent" aria-live="polite">{Math.round(PICTURE_ZOOMS[zoomIndex] * 100)}%</span>
+        <button type="button" className="btn" aria-label="Zoom in" disabled={zoomIndex === PICTURE_ZOOMS.length - 1} onClick={() => zoomTo(zoomIndex + 1)}><UiIcon name="zoomIn" /></button>
+        <button type="button" className="btn picture-viewer-fit" onClick={() => zoomTo(0)}>Fit picture</button>
+        <span className="picture-viewer-hint">Drag or scroll to see more</span>
+      </div>
+      <div ref={stage} className="picture-viewer-stage" data-dragging={dragging || undefined} data-zoomed={zoomIndex > 0 || undefined} tabIndex={0} aria-label="Enlarged picture; scroll to see more" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+        <div className="picture-viewer-art" style={{ width: `${PICTURE_ZOOMS[zoomIndex] * 100}%` }}>
+          {cs.box ? <span className="pic-crop" style={cs.box}>{image}</span> : image}
+          {label && <span className="pic-label">{label}</span>}
+          {(tags ?? []).map((t) => <span key={t.id} className="pic-tag" style={{ left: `${t.x}%`, top: `${t.y}%` }}>{t.text}</span>)}
+        </div>
+      </div>
+    </section>
+  </div>;
 }
 
 // A label while editing: drag it to move it (it may sit a little outside the picture), type to change it.
