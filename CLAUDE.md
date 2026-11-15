@@ -89,6 +89,12 @@ Without an invitation the new sign-in account is taken back and the sign-in page
 `functions/notifications/invitations.js` emails organisation invitations and one-email codes
 through Cloud Scheduler every five minutes. `scripts/mail.mjs` is a claimed fallback in the
 GitHub notification job; both use `invitation-delivery-logic.js` to avoid duplicate sends.
+An invitation's `mailClaimId` stays held if SMTP delivery or the following Firestore
+write is uncertain. The worker reports `needsReview`; check the email provider's
+delivery record before clearing a held claim. If delivery is confirmed, mark the
+invitation `mailed` and clear `mailClaimId`/`mailClaimedAt`; if it was rejected,
+clear those claim fields so the scheduler can retry. Do not clear a claim merely
+because it is old.
 
 A super admin sets each organisation's limits (`orgs/{id}.limits`: teachers, classes, learners,
 callMinutes a month; space is `limitGb`) in its Plan and limits page (`src/pages/admin/OrgLimits.tsx`);
