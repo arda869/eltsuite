@@ -12,7 +12,7 @@ import { Loader } from '../components/Loader';
 import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor } from '../editor/InstrEditor';
 import { updateLibTask, type LibTask } from '../lib/libtasks';
-import { findUses, loadManifest, replaceSound, soundUrl, useArchive, type ArchiveItem, type Manifest } from '../lib/archive';
+import { findUses, loadManifest, loadTeacherManifest, replaceSound, soundUrl, useArchive, type ArchiveItem, type Manifest } from '../lib/archive';
 import { decodeSound } from '../lib/sound';
 import { SoundEditor, type SavedSound, type SoundSource } from '../media/SoundEditor';
 import { ChainIcon } from './LibraryParts';
@@ -160,7 +160,7 @@ export function SoundStudio() {
     let active = true;
     (async () => {
       try {
-        const m = await loadManifest(classId, mediaId);
+        const m = await loadTeacherManifest(classId, mediaId);
         if (!m) throw Error('missing');
         if (!active) return;
         setManifest(m);

@@ -581,15 +581,22 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
   useEffect(() => { if (!active) e.pause(); }, [active]);
   const [open, setOpen] = useState<boolean|null>(null);
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
+  const [privateScript,setPrivateScript]=useState<{key:string;lines:ScriptLine[]}|null>(null);
   useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
-  const lines = (e.m?.stems ? expandSavedSongScript(e.m.script ?? [], e.m.duration || e.duration || 0).map(line => ({ ...line, who: undefined })) : (e.m?.script ?? [])).filter((l) => l.text.trim());
+  const script=e.m?.script?.length?e.m.script:privateScript?.key===classId+'/'+mediaId?privateScript.lines:[];
+  const lines = (e.m?.stems ? expandSavedSongScript(script, e.m.duration || e.duration || 0).map(line => ({ ...line, who: undefined })) : script).filter((l) => l.text.trim());
   useEffect(()=>{
     let active=true;setScriptRecovery('');
-    if(!teacher||!e.m?.aiGenerated||lines.length||!(editing||scriptMode!=='none'||open))return;
-    setScriptRecovery('Restoring the saved script…');
-    void httpsCallable(getFunctions(app,'us-central1'),'lessonAssistant')({action:'restoreAudioScript',classId,mediaId}).then(()=>{if(active)setScriptRecovery('');}).catch(error=>{if(active)setScriptRecovery(error.message||'The saved script could not be restored. Try again or add it in Recordings.');});
+    if(!teacher||!e.m?.aiGenerated||!(editing||scriptMode!=='none'||open))return;
+    if(!lines.length)setScriptRecovery('Loading the saved script…');
+    void httpsCallable(getFunctions(app,'us-central1'),'lessonAssistant')({action:'restoreAudioScript',classId,mediaId}).then(result=>{
+      if(!active)return;
+      const saved=(result.data as {script?:ScriptLine[]}).script;
+      if(saved?.length)setPrivateScript({key:classId+'/'+mediaId,lines:saved});
+      setScriptRecovery('');
+    }).catch(error=>{if(active)setScriptRecovery(error.message||'The saved script could not be loaded. Try again or add it in Recordings.');});
     return()=>{active=false;};
-  },[classId,mediaId,teacher,editing,scriptMode,e.m?.aiGenerated,lines.length,open,scriptRetry]);
+  },[classId,mediaId,teacher,editing,scriptMode,e.m?.aiGenerated,open,scriptRetry]); // eslint-disable-line react-hooks/exhaustive-deps
   // Pause at the end of each line: for repeating after the speaker, or dictation.
   const [lineStop, setLineStop] = useState(false);
   const timed = lines.filter((l) => l.t !== null).map((l) => l.t as number).sort((a, b) => a - b);

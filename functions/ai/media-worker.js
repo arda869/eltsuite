@@ -24,7 +24,13 @@ export async function savePrepared(db,classId,mediaId,bytes,meta){
   await col.doc(mediaId).set({data:'data:image/jpeg;base64,'+bytes.toString('base64'),type:'image/jpeg',size:bytes.length,public:false,aiGenerated:!meta.credit,...(meta.credit?{credit:meta.credit}: {})});
  }else{
   for(let i=0;i<Math.ceil(bytes.length/PART);i++)await col.doc(`${mediaId}_p${i}`).set({part:i,data:bytes.subarray(i*PART,(i+1)*PART).toString('base64'),size:Math.min(PART,bytes.length-i*PART),public:false});
-  await col.doc(mediaId).set({kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,script:meta.script??preparedScript(meta.lines),public:false,aiGenerated:true});
+  // The manifest and audio parts are readable by class members. Keep the transcript in a
+  // separate teacher-only document; commit both records together so a ready recording
+  // cannot appear without its script.
+  const batch=db.batch();
+  batch.set(db.doc(`classes/${classId}/mediaScripts/${mediaId}`),{script:meta.script??preparedScript(meta.lines),aiGenerated:true,updatedAt:Timestamp.now()});
+  batch.set(col.doc(mediaId),{kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,public:false,aiGenerated:true});
+  await batch.commit();
  }
 }
 export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/jobs/{jobId}/media/{assetId}',region:'us-central1',secrets:[key],timeoutSeconds:540,memory:'512MiB',maxInstances:3,concurrency:1,retry:false},event=>withCosts({uid:event.params.uid,classId:event.data?.after.get('classId')},async()=>{

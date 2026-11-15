@@ -536,10 +536,22 @@ service cloud.firestore {
 
       // Short audio clips (recorded or uploaded by the teacher)
       match /media/{mediaId} {
-        // Sounds and videos (and their scripts) open from a QR code without signing in.
+        // Ordinary resource scripts can accompany public QR playback. AI-generated listening
+        // transcripts are instead stored in mediaScripts, which learners cannot read.
         allow read: if resource.data.get('public', false) == true || viewsClass(classId) || memberOf(classId);
-        allow create: if teachesClass(classId) && hasRoom(classData(classId).teacherId) && request.resource.data.size < 700000;
-        allow update: if teachesClass(classId) && request.resource.data.get('size', 0) < 700000;
+        allow create: if teachesClass(classId) && hasRoom(classData(classId).teacherId) && request.resource.data.size < 700000
+          && (request.resource.data.get('aiGenerated', false) != true || !('script' in request.resource.data));
+        allow update: if teachesClass(classId) && request.resource.data.get('size', 0) < 700000
+          && (request.resource.data.get('aiGenerated', false) != true || !('script' in request.resource.data));
+        allow delete: if teachesClass(classId);
+      }
+
+      match /mediaScripts/{mediaId} {
+        allow read: if teachesClass(classId);
+        allow create, update: if teachesClass(classId)
+          && request.resource.data.keys().hasOnly(['script', 'aiGenerated', 'updatedAt'])
+          && request.resource.data.get('aiGenerated', false) == true
+          && request.resource.data.script is list && request.resource.data.script.size() <= 100;
         allow delete: if teachesClass(classId);
       }
 

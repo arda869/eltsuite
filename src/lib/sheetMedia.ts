@@ -1,6 +1,6 @@
 import { learnOrigin } from './site';
 import { collectMedia, collectPictures, type MediaInfo, type MediaMap, type WsItem } from './worksheet';
-import { loadManifest } from './archive';
+import { loadTeacherManifest } from './archive';
 import { audioUrl } from './media';
 import { bakePicture } from '../editor/PicEdit';
 
@@ -91,7 +91,7 @@ export async function sheetSounds(classId: string, items: WsItem[], accentHex: s
         out[id] = {url,svg,png,title:'Classroom game',video:false,script:[]};
         return;
       }
-      const m = await loadManifest(classId, id).catch(() => null);
+      const m = await loadTeacherManifest(classId, id).catch(() => null);
       if (!m) return;
       const url = `${learnOrigin()}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
       const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };

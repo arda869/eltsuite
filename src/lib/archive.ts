@@ -102,9 +102,11 @@ export async function resourceFolderForClass(uid:string,classId:string,folder=''
 
 // ------------------------------------------------------------------ class media
 
-// Sound files are stored in parts (a Firestore document holds up to 1 MB), with a manifest that
-// carries the script. Manifests and parts can be opened without signing in, through the QR code.
+// Sound files are stored in parts (a Firestore document holds up to 1 MB). Ordinary
+// resource scripts travel with their public manifest; AI listening scripts are kept in
+// a teacher-only class document while the same manifest and parts remain playable.
 const PART = 450 * 1024;
+const generatedScriptRef = (classId: string, id: string) => doc(db, 'classes', classId, 'mediaScripts', id);
 export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
 export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
 export type StemSource = {classId:string;stems:SongStemIds};
@@ -155,11 +157,28 @@ export function useManifest(classId?: string, id?: string) {
 }
 
 // Change the script of media that is not in the archive (it was copied in with a lesson).
-export const setManifestScript = (classId: string, id: string, script: ScriptLine[]) => updateDoc(mediaRef(classId, id), { script });
+export async function setManifestScript(classId: string, id: string, script: ScriptLine[]) {
+  const m = await loadManifest(classId, id);
+  if (!m) throw Error('The recording is no longer available.');
+  if (m.aiGenerated && !classId.includes(':')) {
+    await setDoc(generatedScriptRef(classId, id), { script, aiGenerated: true, updatedAt: Date.now() });
+    return;
+  }
+  await updateDoc(mediaRef(classId, id), { script });
+}
 
 export async function loadManifest(classId: string, id: string): Promise<Manifest | null> {
   const s = await getDoc(mediaRef(classId, id));
   return s.exists() ? (s.data() as Manifest) : null;
+}
+
+// Call only in a teacher workflow. Learners can read the manifest for playback but
+// Firestore rules deny them this separate transcript document.
+export async function loadTeacherManifest(classId: string, id: string): Promise<Manifest | null> {
+  const manifest = await loadManifest(classId, id);
+  if (!manifest?.aiGenerated || classId.includes(':')) return manifest;
+  const script = await getDoc(generatedScriptRef(classId, id)).then(s => s.data()?.script as ScriptLine[] | undefined, () => undefined);
+  return script?.length ? { ...manifest, script } : manifest;
 }
 
 const blobCache = new Map<string, Promise<string>>();
