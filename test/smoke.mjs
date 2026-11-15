@@ -2207,6 +2207,27 @@ const J = {
     const keyboardHighlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').length);
     if (keyboardHighlight !== 1) throw new Error('The menu shows more than one selection highlight.');
     await d.keyboard.press('Escape');
+    await d.setViewportSize({ width: 390, height: 600 });
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    const formatMenu = d.locator('.document-menu-popup');
+    const menuFits = await formatMenu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!menuFits) throw new Error('The document Format menu leaves the phone viewport');
+    await formatMenu.getByRole('menuitem').last().scrollIntoViewIfNeeded();
+    const lastFits = await formatMenu.getByRole('menuitem').last().evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!lastFits) throw new Error('The last document Format action cannot be reached on a phone');
+    await d.keyboard.press('Escape');
+    await d.setViewportSize({ width: 1280, height: 900 });
+    const styleTrigger = d.getByRole('button', { name: 'Paragraph style' });
+    await styleTrigger.focus();
+    await styleTrigger.press('ArrowDown');
+    const styleList = d.getByRole('listbox', { name: 'Paragraph style' });
+    await styleList.waitFor();
+    await d.waitForFunction(() => document.activeElement?.classList.contains('sm-o'));
+    await d.keyboard.press('End');
+    const styleFocus = await styleList.getByRole('option', { name: 'Heading 3' }).evaluate(el => ({ right: document.activeElement === el, active: document.activeElement?.outerHTML.slice(0, 250) }));
+    if (!styleFocus.right) throw new Error('Paragraph style menu did not support keyboard navigation: ' + styleFocus.active);
+    await d.keyboard.press('Escape');
+    await styleList.waitFor({ state: 'hidden' });
     await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
     await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
@@ -2721,6 +2742,24 @@ const J = {
     if (!new URL(s.p.url()).pathname.startsWith('/colleagues')) throw new Error('Message left the Colleagues page');
     return s;
   },
+  'Shared menu stays usable in a short phone viewport': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm-hero', 'the home page');
+    await s.p.setViewportSize({ width: 390, height: 180 });
+    await s.p.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 160 })));
+    const menu = s.p.getByRole('menu');
+    await menu.waitFor();
+    const fits = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!fits) throw new Error('Shared menu leaves a short phone viewport');
+    const last = menu.getByRole('menuitem').last();
+    await last.scrollIntoViewIfNeeded();
+    const lastFits = await last.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!lastFits) throw new Error('Last shared-menu action cannot be reached on a short phone viewport');
+    await s.p.keyboard.press('Escape');
+    await menu.waitFor({ state: 'hidden' });
+    return s;
+  },
   'Super Admin and an organisation': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/admin`);
@@ -2755,7 +2794,7 @@ const J = {
       fs['users/teacher2'] = { role: 'teacher', displayName: 'Sofia Rossi', email: 'sofia@school.org', createdAt: { __ts: now - 9e8 } };
       fs['accounts/teacher2'] = { org: 'o1', usedBytes: 4.8 * 1024 ** 3 };
       fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'o1' };
-      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, perTeacherGb: 5, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' }, teacher2: { name: 'Sofia Rossi', email: 'sofia@school.org', title: 'Senior teacher' } }, tags: { t1: { name: 'Exams team' } }, brand: { color: '#2f6f8f' }, allow: { trainers: true } };
+      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, perTeacherGb: 5, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' }, teacher2: { name: 'Sofia Rossi', email: 'sofia@school.org', title: 'Senior teacher' } }, tags: { t1: { name: 'Exams team' } }, brand: { color: '#2f6f8f' }, allow: { trainers: true }, policy: { profiles: true } };
       fs['orgInvites/i1'] = { org: 'o1', orgName: 'Harbour School', email: 'tom@school.org', name: 'Tom Becker', by: 'teacher1', byName: 'Arda', at: now - 10 * 864e5, status: 'pending', mailed: now - 10 * 864e5 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
@@ -2763,6 +2802,21 @@ const J = {
     await see(s.p, '.hq-ledger:has-text("invitation waiting more than a week")', 'what needs a look');
     await see(s.p, '.hq-ledger:has-text("nearly out of space")', 'a teacher nearly out of space');
     await axe(s.p, 'Organisation admin: overview', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Rules")');
+    await see(s.p, 'h1:has-text("Rules")', 'organisation rules');
+    const profilesSwitch = s.p.getByRole('switch', { name: 'Ask teachers for a profile' });
+    if (await profilesSwitch.getAttribute('aria-checked') === 'false') await profilesSwitch.click();
+    await s.p.setViewportSize({ width: 390, height: 600 });
+    await s.p.getByRole('button', { name: 'Open it anyway' }).click();
+    const iconTrigger = s.p.getByRole('button', { name: /^Icon for / }).last();
+    await iconTrigger.scrollIntoViewIfNeeded();
+    await iconTrigger.click();
+    const iconMenu = s.p.getByRole('listbox', { name: 'Icons' });
+    const iconsFit = await iconMenu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!iconsFit) throw new Error('Organisation icon picker leaves the phone viewport');
+    await iconMenu.getByRole('option', { name: 'flag' }).click();
+    await iconMenu.waitFor({ state: 'hidden' });
+    await s.p.setViewportSize({ width: 1280, height: 900 });
     await s.p.click('.hq-nav-i:has-text("Teachers")');
     await s.p.click('.hq-table tbody tr:has-text("Sofia Rossi") .hq-check');
     await see(s.p, '.hq-bulk:has-text("1 teacher selected")', 'the bar for the selected teachers');
