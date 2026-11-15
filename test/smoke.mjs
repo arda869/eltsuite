@@ -3164,6 +3164,40 @@ const J = {
     if (uses !== 1) throw Error('Retry spent the invitation more than once');
     return s;
   },
+  'Fatal Firestore cache failure offers a temporary connection without deleting saved work': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm', 'teacher home before cache failure');
+    await s.p.evaluate(() => {
+      localStorage.setItem('recovery-work-sentinel', 'saved on device');
+      window.dispatchEvent(new ErrorEvent('error', { message: 'FirebaseError: unavailable' }));
+    });
+    if (await s.p.getByRole('alertdialog').count()) throw Error('A normal connection error triggered cache recovery');
+    await s.p.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' })));
+    const recovery = s.p.getByRole('alertdialog', { name: 'Your account couldn’t finish loading' });
+    await recovery.waitFor();
+    await see(s.p, '#firestore-recovery-description:has-text("not been deleted")', 'clear device-work message');
+    await axe(s.p, 'Firestore cache recovery', A11Y_FOUND);
+    if (process.env.ELT_RECOVERY_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_RECOVERY_SCREENSHOT });
+    await s.p.setViewportSize({ width: 390, height: 760 });
+    await s.p.evaluate(() => { localStorage.setItem('ll.theme', 'dark'); document.documentElement.dataset.theme = 'dark'; });
+    const fitsPhone = await recovery.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!fitsPhone) throw Error('Cache recovery dialog does not fit a phone');
+    await axe(s.p, 'Firestore cache recovery on a dark phone', A11Y_FOUND);
+    if (process.env.ELT_RECOVERY_PHONE_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_RECOVERY_PHONE_SCREENSHOT });
+    await recovery.getByRole('button', { name: 'Open with temporary connection' }).click();
+    await see(s.p, '.hm', 'teacher home after temporary restart');
+    await see(s.p, '.firestore-temporary:has-text("Temporary connection")', 'temporary connection reminder');
+    await axe(s.p, 'Firestore temporary connection', A11Y_FOUND);
+    const preserved = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (preserved.key !== '1' || preserved.work !== 'saved on device') throw Error('Recovery did not preserve the device cache marker');
+    await s.p.getByRole('button', { name: 'Try normal connection' }).click();
+    await see(s.p, '.hm', 'teacher home after returning to normal cache');
+    if (await s.p.locator('.firestore-temporary').count()) throw Error('Temporary connection reminder remained after returning to normal');
+    const restored = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (restored.key || restored.work !== 'saved on device') throw Error('Returning to normal cache removed device-only work');
+    return s;
+  },
   'Teacher onboarding and goal-based guide': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {

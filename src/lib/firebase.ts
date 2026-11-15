@@ -3,6 +3,7 @@ import { browserPopupRedirectResolver, browserSessionPersistence, getAuth, Googl
 import { getDatabase } from 'firebase/database';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
+import { usingTemporaryFirestore } from './firestoreRecovery';
 
 export const app = initializeApp(firebaseConfig);
 // A "view as a learner" tab keeps its sign-in to itself, so the teacher's other tabs stay signed in.
@@ -20,7 +21,7 @@ export const auth = proxyTab ? initializeAuth(app, { persistence: browserSession
 // using its own sign-in. A view-as-learner tab is signed in as someone else, so it keeps a cache of
 // its own; sharing would send the teacher's requests with the learner's sign-in, and they would fail.
 function makeDb() {
-  if (proxyTab) return initializeFirestore(app, { localCache: memoryLocalCache() });
+  if (proxyTab || usingTemporaryFirestore()) return initializeFirestore(app, { localCache: memoryLocalCache() });
   try {
     return initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   } catch {
