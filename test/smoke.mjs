@@ -670,6 +670,7 @@ const J = {
     const retry=dialog.getByRole('button',{name:'Retry after credit is restored'});
     await retry.waitFor();
     if(!await retry.isVisible())throw Error('The retry guidance was hidden');
+    await axe(s.p,'AI voice credit draft',A11Y_FOUND);
     return s;
   },
 
