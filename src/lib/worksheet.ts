@@ -38,7 +38,7 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { caption?: Run[]; src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
+  pic?: { caption?: Run[]; src: string; size: string; w?: number; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
   kw?: boolean; // a key word in a frame, as on screen
   stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
@@ -198,7 +198,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         case 'picture': {
           const mk = String(a.mark ?? '');
           if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
+          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), w: Number.isFinite(Number(a.w)) && Number(a.w) > 0 ? Math.round(Number(a.w)) : undefined, label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
           if (a.credit) out.push({ t: ' ' + String(a.credit) + ' ' });
           break;
         }
@@ -748,7 +748,12 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (r.pic) {
         const m = opts.media?.[r.pic.key ?? r.pic.src];
         if (!m) return [new TextRun({ text: `[picture${r.pic.label ? ' ' + r.pic.label : ''}]`, italics: true, color: '8A847D', font: SANS, size: S(16) })];
-        const maxW = { s: 120, m: 200, l: 300, full: opts.columns === 1 ? 600 : 300 }[r.pic.size as 's' | 'm' | 'l' | 'full'] ?? 200;
+        // A dragged width is measured in screen pixels. Keep the same relative scale as the
+        // presets (300 px on screen is 200 px in Word), then fit it to the printed column.
+        const customW = Number(r.pic.w);
+        const maxW = Number.isFinite(customW) && customW > 0
+          ? Math.min(opts.columns === 1 ? 600 : 300, Math.max(40, Math.round(customW * 2 / 3)))
+          : { s: 120, m: 200, l: 300, full: opts.columns === 1 ? 600 : 300 }[r.pic.size as 's' | 'm' | 'l' | 'full'] ?? 200;
         const w = Math.min(maxW, m.w);
         const h = Math.round((m.h / m.w) * w);
         const type = /^data:image\/png/.test(m.data) ? 'png' : /^data:image\/gif/.test(m.data) ? 'gif' : 'jpg';
