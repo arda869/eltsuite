@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { ensureProfile, NotInvited, setupErrorMessage, withSetupTimeout, type Profile, type TextSize, type Reading } from './teacherProfile';
+import { ensureProfile, retryProfile, NotInvited, profileLoadErrorMessage, withSetupTimeout, type Profile, type TextSize, type Reading } from './teacherProfile';
 export type { Profile, TextSize, Reading } from './teacherProfile';
 export { inviteFields } from './teacherProfile';
 
@@ -19,14 +19,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [notInvited, setNotInvited] = useState('');
   const [profileError, setProfileError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const retryGeneration = useRef(0);
 
   useEffect(() => {
     let generation = 0;
     let disposed = false;
+    const retry = retryGeneration.current;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
         if (disposed) return;
         const current = ++generation;
-        const active = () => !disposed && current === generation && auth.currentUser?.uid === u?.uid;
+        const active = () => !disposed && retry === retryGeneration.current && current === generation && auth.currentUser?.uid === u?.uid;
         setUser(u);
         setProfileError('');
         setProfile(null);
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
             p = null;
-            setProfileError(setupErrorMessage(e));
+            setProfileError(profileLoadErrorMessage(e));
             void load
               .then((late) => { if (active() && late) { setProfile(late); setProfileError(''); setReady(true); } })
               .catch((late) => {
@@ -90,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Joining a game only needs Firebase sign-in. The game service checks class
   // membership itself, so a slow profile read must not block a live round.
   const gameJoinRoute = /^\/game(?:\/|$)/.test(window.location.pathname);
-  if (user && profileError && !gameJoinRoute) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">Let’s finish setting up your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry account setup</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
+  if (user && profileError && !gameJoinRoute) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">We couldn’t open your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { retryGeneration.current += 1; void retryProfile(user).catch(() => {}); setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry loading account</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
   return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
