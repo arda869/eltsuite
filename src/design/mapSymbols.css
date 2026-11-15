@@ -5,13 +5,13 @@
 .dz-symbol-search input{min-width:0;width:100%;height:38px;padding:0;border:0;outline:0;background:transparent;color:var(--dz-ink,#302e31);font:13px var(--sans,Arial,sans-serif)}
 .dz-figure-dialog .dz-symbol-search input[type=search]{min-width:0;height:38px;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent}
 .dz-symbol-search input::placeholder{color:var(--dz-muted,#77717a)}
-.dz-symbol-appearance{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;align-items:center;min-width:0;padding:8px;border:1px solid var(--dz-line,#d8d4da);border-radius:11px;background:color-mix(in srgb,var(--dz-panel,#fff) 92%,var(--dz,#8c6ca7))}
+.dz-symbol-appearance{display:grid;grid-template-columns:minmax(0,1fr) 68px;gap:5px 6px;align-items:center;min-width:0;padding:8px;border:1px solid var(--dz-line,#d8d4da);border-radius:11px;background:color-mix(in srgb,var(--dz-panel,#fff) 92%,var(--dz,#8c6ca7))}
 .dz-symbol-appearance-label{grid-column:1/-1;color:var(--dz-muted,#77717a);font:700 11px/1.2 var(--sans,Arial,sans-serif);letter-spacing:.02em}
 .dz-symbol-style-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0;padding:2px;border:1px solid var(--dz-line,#d8d4da);border-radius:9px;background:var(--dz-panel,#fff)}
 .dz-map-toolgroup .dz-symbol-style-options button{min-width:0;padding:6px 3px;border:0;border-radius:7px;background:transparent;color:var(--dz-muted,#77717a);font:700 11px/1.15 var(--sans,Arial,sans-serif);cursor:pointer}
 .dz-map-toolgroup .dz-symbol-style-options button.is-active{background:color-mix(in srgb,var(--dz,#8c6ca7) 17%,var(--dz-panel,#fff));color:var(--dz-ink,#302e31);box-shadow:0 1px 3px #00000014}
 .dz-symbol-style-options button:focus-visible,.dz-symbol-color:focus-within{outline:2px solid var(--dz,#8c6ca7);outline-offset:2px}
-.dz-symbol-color{display:flex;align-items:center;gap:5px;color:var(--dz-muted,#77717a);font:700 11px/1.15 var(--sans,Arial,sans-serif);cursor:pointer}
+.dz-map-toolgroup .dz-symbol-color{display:flex;flex-direction:row;align-items:center;justify-content:flex-end;gap:5px;white-space:nowrap;color:var(--dz-muted,#77717a);font:700 11px/1.15 var(--sans,Arial,sans-serif);cursor:pointer}
 .dz-figure-dialog .dz-symbol-color input[type=color]{width:26px;height:26px;min-width:26px;margin:0;padding:2px;border:1px solid var(--dz-line,#d8d4da);border-radius:9px;background:var(--dz-panel,#fff);cursor:pointer}
 .dz-symbol-color input[type=color]::-webkit-color-swatch-wrapper{padding:0}
 .dz-symbol-color input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
