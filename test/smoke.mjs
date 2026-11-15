@@ -808,7 +808,11 @@ const J = {
     });
     if (process.env.MAP_PHONE_SCREENSHOT) await map.screenshot({ path: process.env.MAP_PHONE_SCREENSHOT.replace(/\.png$/, '-fit.png') });
     await map.getByText('Layout and reference image', { exact: true }).click();
-    if (await map.locator('.dz-map-start-list canvas:visible').count() < 6) throw Error('Ready-made map layouts have no visual previews');
+    const starterNames = await map.locator('.dz-map-start-list button b').allTextContents();
+    for (const name of ['Blank map', 'Park or recreation ground', 'Building or factory plan', 'Town plan · now', 'Town before and after', 'Airport plan · now', 'Airport plan', 'Castle or heritage site']) {
+      if (!starterNames.includes(name)) throw Error(`Ready-made map layout is missing: ${name}`);
+    }
+    if (await map.locator('.dz-map-start-list canvas:visible').count() !== starterNames.length) throw Error('A ready-made map layout has no visual preview');
     await map.getByText('Layout and reference image', { exact: true }).click();
     await map.getByText('Add places', { exact: true }).click();
     await map.getByRole('button', { name: 'Building', exact: true }).click();
