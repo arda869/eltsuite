@@ -89,6 +89,8 @@ export function checkActivities(value, plan, training=false, taskCreation=false)
       if(taskCreation){
         if(body.inlineElements?.length&&body.questions.length)throw Error('Use native inline elements or simple questions in each activity part, not both.');
         checkImportElements(body.inlineElements??[],training);
+        if((body.inlineElements??[]).some(e=>e.kind==='pq-label'&&e.data.image.trim()||e.kind==='pq-speaking'&&e.data.images.length))
+          throw Error('Attach task pictures through the prepared media plan.');
         if((body.inlineElements??[]).some(e=>e.needs?.length))throw Error('A new activity needs complete content, not missing media or setup.');
         const requirements=importRequirements(body.inlineElements??[]).filter(message=>
           !(message.startsWith('Label the image: attach')&&t.mediaPlan.some(a=>a.kind==='image'))
