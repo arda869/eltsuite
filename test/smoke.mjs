@@ -3376,6 +3376,18 @@ const J = {
   },
   'An unavailable learner lesson link ends loading and offers recovery': async (b) => {
     const s = await session(b, { as: 'Mia' });
+    await s.p.evaluate(async () => {
+      const { doc, getFirestore, onSnapshot } = await import('/test/mock/firestore.ts');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([
+        { op: 'listen', path: 'tests/cancelled-listener', count: 1, code: 'permission-denied' },
+      ]));
+      const stop = onSnapshot(doc(getFirestore(), 'tests', 'cancelled-listener'), () => {});
+      stop();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      const [fault] = JSON.parse(sessionStorage.getItem('mockfs-faults'));
+      if (fault.count !== 1) throw Error('An unsubscribed listener consumed the next active listener’s fault');
+      sessionStorage.removeItem('mockfs-faults');
+    });
     await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
     await see(s.p, '.task-frame .task-title', 'a shared lesson opens normally');
 
