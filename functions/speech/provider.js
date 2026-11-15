@@ -58,7 +58,10 @@ export async function generateSpeech(key, request, { Socket = WebSocket, timeout
         if (event.type === 'response.done') {
           billingResponse=event.response;
           if (event.response?.status !== 'completed' || bytes < 4800 || bytes % 2) return finish(Error('The voice service did not finish this take. Try a shorter line.'));
-          if (transcript && transcriptReadsDirection(transcript, prepared.spoken, prepared.cues)) return finish(Error('The voice read a delivery direction aloud. Create this take again; your script is still here.'));
+          // Audio-only responses should include a transcript. Without it, we cannot
+          // check whether a delivery cue was spoken or whether the take matches the script.
+          if (!transcript.trim()) return finish(Error('The voice service could not check the spoken words. Create this take again; your script is still here.'));
+          if (transcriptReadsDirection(transcript, prepared.spoken, prepared.cues)) return finish(Error('The voice read a delivery direction aloud. Create this take again; your script is still here.'));
           finish(null, { pcm: Buffer.concat(chunks).toString('base64'), rate: 24000, transcript });
         }
       } catch { finish(Error('The voice service returned an unreadable take. Please try again.')); }
