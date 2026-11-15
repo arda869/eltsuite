@@ -36,6 +36,15 @@ if(!attemptCount)console.log('No B-019 lessonAudio cost attempt in interval.');
 
 // Check the exact deployed secret binding and speech model through a non-generating API call.
 const client=await new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']}).getClient();
+for(const group of ['aiCaptures','aiCaptureImages']){
+ try{
+  const url=`https://firestore.googleapis.com/v1/projects/lesson-lit/databases/(default)/collectionGroups/${group}/fields/expireAt`;
+  const {data:field}=await client.request({url});
+  console.log('ttl_policy',JSON.stringify({collectionGroup:group,field:'expireAt',state:field.ttlConfig?.state||'MISSING'}));
+ }catch(error){
+  console.log('ttl_policy',JSON.stringify({collectionGroup:group,field:'expireAt',state:'CHECK_FAILED',httpStatus:error.response?.status||null}));
+ }
+}
 const {data:fn}=await client.request({url:'https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/prepareLessonMedia'});
 const binding=fn.serviceConfig?.secretEnvironmentVariables?.find(value=>value.key==='OPENAI_API_KEY');
 if(!binding?.secret||!binding.version)throw Error('Deployed media worker has no OpenAI binding');
