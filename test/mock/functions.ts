@@ -92,6 +92,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     await addDoc(collection(db, 'invitationRequests'), { ...d, at: Date.now() });
     return { data: { requested: true } };
   }
+  if (name === 'requestAccountEmail') return { data: { accepted: true } };
   if (name === 'submitAnonymousSurvey') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;

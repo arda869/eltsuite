@@ -4,13 +4,12 @@ import { learnReady, live, learnOrigin } from '../lib/site';
 import { Link } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  sendSignInLinkToEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth, googleProvider } from '../lib/firebase';
 import { friendlyAuthError } from '../lib/authErrors';
 import { useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
@@ -19,6 +18,11 @@ import './welcome.css';
 import { InvitationIntro } from '../components/InvitationIntro';
 
 type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
+
+const accountEmail = (kind: 'reset' | 'link', email: string) =>
+  httpsCallable<{ kind: 'reset' | 'link'; email: string }, { accepted: boolean }>(
+    getFunctions(app, 'us-central1'), 'requestAccountEmail',
+  )({ kind, email });
 
 const GOOGLE = (
   <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
@@ -136,21 +140,18 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
       });
     } else if (mode === 'reset') {
       run(async () => {
-        await sendPasswordResetEmail(auth, address);
-        setNotice('If there’s an account for this email, we’ve sent it a reset link.');
+        await accountEmail('reset', address);
+        setNotice('We’ve received your request. If there’s an account for this email, we’ll email a reset link.');
       });
     } else {
       run(async () => {
-        await sendSignInLinkToEmail(auth, address, {
-          url: `${window.location.origin}/auth/link`,
-          handleCodeInApp: true,
-        });
+        await accountEmail('link', address);
         try {
           localStorage.setItem('emailForSignIn', address);
         } catch {
           /* private mode: the finish page will ask for the address again */
         }
-        setNotice(`Check your inbox. We sent a sign-in link to ${address}.`);
+        setNotice('We’ve received your request. If there’s an account for this email, we’ll email a sign-in link.');
       });
     }
   }

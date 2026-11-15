@@ -29,6 +29,8 @@ jobs:
         run: node test/invitation-emails.mjs
       - name: Check scheduled invitation delivery
         run: node test/invitation-delivery.mjs
+      - name: Account email privacy and retry checks
+        run: node --test functions/test/auth-email.mjs
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
       - name: Lesson assistant contract and provider checks

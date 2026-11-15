@@ -16,6 +16,7 @@ export { sharedDocumentAccessChanged, inlineDocumentAccessChanged, sharedClassMe
 export { resolveLearnerSignIn } from './learning/join.js';
 export { mediaScriptAccess, issueMediaScriptQr, clearMediaScriptSessions } from './media/script-access.js';
 export { requestInvitation } from './accounts/invitations.js';
+export { requestAccountEmail, deliverAccountEmail, retryAccountEmails, cleanAccountEmailJobs } from './accounts/auth-email.js';
 export { startCallRoom, endCallRoom } from './learning/call-rooms.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a
