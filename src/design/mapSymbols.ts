@@ -41,7 +41,7 @@ const GLYPHS:Record<string,MapSymbolGlyph> = {
   plane:{paths:['M24 5l3 18 14 8v5l-15-5-1 10h-2l-1-10-15 5v-5l14-8z']},
   arrival:{paths:['M20 7l2 14 10 6v4l-11-3-1 8h-2l-1-8-11 3v-4l10-6z','M38 8v25m-6-6 6 6 6-6']},
   departure:{paths:['M20 7l2 14 10 6v4l-11-3-1 8h-2l-1-8-11 3v-4l10-6z','M38 34V9m-6 6 6-6 6 6']},
-  tower:{paths:['M17 42V14h14v28z','M15 14V9l9-5 9 5v5z','M20 21h8v8h-8z','M21 42v-8h6v8','M12 42h24']},
+  tower:{paths:['M14 42V14h20v28z','M11 14V9l13-5 13 5v5z','M20 21h8v8h-8z','M21 42v-8h6v8','M9 42h30']},
   castle:{paths:['M8 40V12h7v5h6v-5h6v5h6v-5h7v28z','M20 40V29a4 4 0 0 1 8 0v11','M13 24h4m14 0h4']},
   museum:{paths:['M6 18l18-10 18 10z','M9 39h30','M13 20v16m11-16v16m11-16v16','M7 42h34']},
   factory:{paths:['M7 40V21l10 6V17l10 9V14l13 10v16z','M13 33h3m8 0h3m8 0h3']},
