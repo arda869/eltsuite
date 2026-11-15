@@ -994,10 +994,11 @@ const J = {
     await see(s.p, '.hm', 'completed signup stays complete');
     await s.p.evaluate(id => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/' + id, count: 1, code: 'unavailable' }])), uid);
     await s.p.reload();
-    await see(s.p, 'button:has-text("Retry account setup")', 'profile loading can recover without a fabricated account');
+    await see(s.p, 'button:has-text("Retry loading account")', 'profile loading can recover without a fabricated account');
+    await see(s.p, '[role="alert"]:has-text("load your account profile")', 'profile load error explains what failed');
     if (await s.p.locator('.hm,.welcome').count()) throw Error('Teacher content opened with an unconfirmed profile');
     await axe(s.p, 'Teacher account setup recovery', A11Y_FOUND);
-    await s.p.getByRole('button', { name: 'Retry account setup' }).click();
+    await s.p.getByRole('button', { name: 'Retry loading account' }).click();
     await see(s.p, '.hm', 'retry reloads the real teacher profile');
     return s;
   },
@@ -2937,9 +2938,9 @@ const J = {
     await s.p.getByRole('textbox', { name: 'Email', exact: true }).fill('slow-teacher@example.com');
     await s.p.locator('input[type="password"]').fill('test-password-123');
     await s.p.getByRole('button', { name: 'Make my account', exact: true }).click();
-    await see(s.p, 'button:has-text("Retry account setup")', 'slow setup recovery', 25000);
+    await see(s.p, 'button:has-text("Retry loading account")', 'slow setup recovery', 25000);
     if (await s.p.locator('.hm,.welcome').count()) throw Error('A slow setup opened teacher content before its profile existed');
-    await s.p.getByRole('button', { name: 'Retry account setup' }).click();
+    await s.p.getByRole('button', { name: 'Retry loading account' }).click();
     await s.p.waitForURL('**/welcome');
     await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
     await see(s.p, '.hm', 'slow setup completed',60000).catch(async e=>{throw Error(e.message+' · '+(await s.p.locator('body').innerText()).slice(0,1200)+' · '+s.errors.slice(0,3).join('; '));});
