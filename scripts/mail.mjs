@@ -162,8 +162,8 @@ async function postReply(t, text) {
   const snap = await ref.get();
   const at = Date.now();
   if (!snap.exists) await ref.set({ members: [t.teacher, t.learnerId], names: { [t.teacher]: t.teacherName, [t.learnerId]: t.learnerName }, roles: { [t.teacher]: 'teacher', [t.learnerId]: 'learner' }, classId: t.classId, kind: 'dm', createdBy: t.learnerId, at, lastAt: at, seen: {} });
-  await ref.collection('msgs').add({ by: t.learnerId, name: t.learnerName, role: 'learner', at, text, content: { type: 'doc', content: text.split(/\n{2,}/).map((p) => ({ type: 'paragraph', content: p.trim() ? [{ type: 'text', text: p.trim() }] : [] })) }, viaEmail: true, mentions: [] });
-  await ref.update({ lastAt: at, last: { text: text.slice(0, 140), name: t.learnerName, by: t.learnerId, mentions: [] }, emailThread: true, [`seen.${t.learnerId}`]: at, [`mailed.${t.learnerId}`]: at });
+  const message = await ref.collection('msgs').add({ by: t.learnerId, name: t.learnerName, role: 'learner', at, text, content: { type: 'doc', content: text.split(/\n{2,}/).map((p) => ({ type: 'paragraph', content: p.trim() ? [{ type: 'text', text: p.trim() }] : [] })) }, viaEmail: true, mentions: [] });
+  await ref.update({ lastAt: at, last: { id: message.id, text: text.slice(0, 140), name: t.learnerName, by: t.learnerId, mentions: [] }, emailThread: true, [`seen.${t.learnerId}`]: at, [`mailed.${t.learnerId}`]: at });
 }
 // The new part of a reply, without the quoted email under it.
 function fresh(textBody) {
