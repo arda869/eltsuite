@@ -88,6 +88,7 @@ export function LearnerLesson() {
   const learnerId = profile?.role === 'learner' ? profile.learnerId : '';
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null>(null);
+  const [itemLoadState, setItemLoadState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [rawTasks, setTasks] = useState<Task[]>([]);
   const [loadedTaskScope, setLoadedTaskScope] = useState('');
   const [taskLoadError, setTaskLoadError] = useState(false);
@@ -129,10 +130,20 @@ export function LearnerLesson() {
   }, [saves]);
 
   useEffect(() => {
-    if (!classId) return;
+    setItem(null);
+    setItemLoadState(classId && itemId ? 'loading' : 'missing');
+    if (!classId || !itemId) return;
     const u1 = onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }));
-    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => setItem(s.exists() ? { id: s.id, ...(s.data() as Omit<Item, 'id'>) } : null), () => setItem(null));
-    return () => (u1(), u2());
+    const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => {
+      setItem(s.exists() ? { id: s.id, ...(s.data() as Omit<Item, 'id'>) } : null);
+      setItemLoadState(s.exists() ? 'ready' : 'missing');
+    }, () => {
+      setItem(null);
+      setItemLoadState('error');
+    });
+    // A stalled listener must not leave an old lesson link on a loading screen forever.
+    const timeout = window.setTimeout(() => setItemLoadState((state) => state === 'loading' ? 'error' : state), 15000);
+    return () => { window.clearTimeout(timeout); u1(); u2(); };
   }, [classId, itemId]);
 
   useEffect(() => {
@@ -155,7 +166,8 @@ export function LearnerLesson() {
       setLoadedTaskScope(`${classId}:${itemId}`);
     });
   }, [classId, itemId, item?.id, item?.hidden, item?.locked]);
-  const tasksLoading = !item || loadedTaskScope !== `${classId}:${itemId}`;
+  const tasksLoading = itemLoadState === 'loading' || (itemLoadState === 'ready' && loadedTaskScope !== `${classId}:${itemId}`);
+  const itemUnavailable = itemLoadState === 'missing' || itemLoadState === 'error';
 
   // Groups and versions: each learner sees one version of a task, in the main task's place.
   const myLevels = useMyLevels(classId, user?.uid);
@@ -586,7 +598,7 @@ export function LearnerLesson() {
             </div>
             ),
           )}
-          {taskList.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>{tasksLoading ? 'Loading tasks…' : taskLoadError ? 'Tasks could not load. Try refreshing the page.' : 'No tasks available yet.'}</span>}
+          {taskList.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>{itemUnavailable ? 'Lesson unavailable' : tasksLoading ? 'Loading tasks…' : taskLoadError ? 'Tasks could not load. Try refreshing the page.' : 'No tasks available yet.'}</span>}
         </nav>
 
         <div className="center-col">
@@ -820,7 +832,16 @@ export function LearnerLesson() {
               </div>
             </div>
           ) : (
-            tasksLoading ? (
+            itemUnavailable ? (
+              <div className="frame-inner" role="alert">
+                <h1 className="task-title">This lesson is unavailable</h1>
+                <p>{itemLoadState === 'missing' ? 'This lesson may have been removed or is no longer shared with you.' : 'We couldn’t load this lesson. Check your connection, then try again.'}</p>
+                <div className="foot-acts">
+                  <Link className="btn" to="/">Back to class home</Link>
+                  <button className="btn" type="button" onClick={() => window.location.reload()}>Try again</button>
+                </div>
+              </div>
+            ) : tasksLoading ? (
               <div className="frame-loading"><Loader label="Loading tasks" /></div>
             ) : taskLoadError ? (
               <p className="placeholder" style={{ padding: 24 }}>Tasks could not load. Try refreshing the page.</p>

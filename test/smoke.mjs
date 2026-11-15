@@ -3349,6 +3349,29 @@ const J = {
     await axe(s.p, 'Learner home', A11Y_FOUND);
     return s;
   },
+  'An unavailable learner lesson link ends loading and offers recovery': async (b) => {
+    const s = await session(b, { as: 'Mia' });
+    await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(s.p, '.task-frame .task-title', 'a shared lesson opens normally');
+
+    await s.p.goto(`${BASE}/learn/no-longer-shared`);
+    await see(s.p, '.task-frame h1:has-text("This lesson is unavailable")', 'a removed lesson explains why it cannot open');
+    await see(s.p, '.task-frame:has-text("no longer shared")', 'removed lesson guidance');
+    if (await s.p.locator('.frame-loading:has-text("Loading tasks")').count()) throw Error('A missing lesson remained on the loading screen');
+    await s.p.getByRole('link', { name: 'Back to class home' }).click();
+    await s.p.waitForURL(BASE + '/');
+    await see(s.p, 'text=Present perfect', 'the learner can return to class home');
+
+    await s.p.evaluate(({ classId, itemId }) => sessionStorage.setItem('mockfs-faults', JSON.stringify([
+      { op: 'listen', path: `classes/${classId}/items/${itemId}`, count: 1, code: 'permission-denied' },
+    ])), s.demo);
+    await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(s.p, '.task-frame h1:has-text("This lesson is unavailable")', 'a failed item read offers recovery');
+    await see(s.p, '.task-frame:has-text("Check your connection")', 'read failure guidance');
+    await s.p.getByRole('button', { name: 'Try again' }).click();
+    await see(s.p, '.task-frame .task-title:not(:has-text("unavailable"))', 'retry reopens the lesson');
+    return s;
+  },
   'Slow teacher profile setup recovers without opening an unfinished account': async b => {
     const s = await session(b);
     await s.p.evaluate(() => {
