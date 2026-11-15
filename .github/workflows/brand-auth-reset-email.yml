@@ -75,12 +75,19 @@ jobs:
           });
           if (!response.ok) {
             const error = await response.json();
+            const afterFailure = await read();
+            const currentFailure = afterFailure.notification?.sendEmail?.resetPasswordTemplate || {};
             console.error(JSON.stringify({
               updateStatus: response.status,
               errorStatus: error.error?.status || null,
               errorCode: error.error?.code || null,
               errorMessage: error.error?.message?.slice(0, 500) || null,
               fieldViolations: error.error?.details?.flatMap(detail => detail.fieldViolations || []) || [],
+              subjectUnchanged: currentFailure.subject === old.subject,
+              senderDisplayNameUnchanged: currentFailure.senderDisplayName === old.senderDisplayName,
+              bodyUnchanged: currentFailure.body === old.body,
+              callbackPreserved: afterFailure.notification.sendEmail.callbackUri === sendEmail.callbackUri,
+              fromLocalPartPreserved: currentFailure.senderLocalPart === old.senderLocalPart,
             }));
             throw new Error(`Auth reset template update failed (${response.status})`);
           }
