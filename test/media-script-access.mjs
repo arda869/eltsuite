@@ -40,6 +40,7 @@ try{
   });
   await Promise.all(['karaoke','button','none','after'].map(mode=>seedTask(mode,mode)));
   await seedTask('locked','karaoke',{locked:true});
+  await seedTask('hidden-print','karaoke',{hidden:true});
   await admin.doc(`classes/${classId}/media/${mediaId}`).set({kind:'audio',title:'Recording',size:0,public:true,duration:2,parts:1});
   await admin.doc(`classes/${classId}/media/${mediaId}_p0`).set({part:0,data:'YXVkaW8=',size:5,public:true});
   await admin.doc(`classes/${classId}/mediaScripts/${mediaId}`).set({script,aiGenerated:false,updatedAt:Date.now()});
@@ -78,9 +79,19 @@ try{
   await admin.doc(`classes/${classId}/items/${itemId}/tasks/karaoke`).update({content:node('none')});
   assert.deepEqual((await accessMediaScript(admin,null,input('karaoke',{grant}))).script,[],'changing the task to Hidden revokes script access');
   await admin.doc(`classes/${classId}/items/${itemId}`).update({locked:true});
-  await denies(issueMediaQrGrantForTeacher(admin,auth(teacherId),input('button')));
+  const lockedGrant=(await issueMediaQrGrantForTeacher(admin,auth(teacherId),input('button'))).grant;
+  assert.ok(lockedGrant,'a teacher can print a locked lesson before showing it');
+  await denies(accessMediaScript(admin,null,input('button',{grant:lockedGrant})));
   await denies(accessMediaScript(admin,null,input('karaoke',{grant})));
   await admin.doc(`classes/${classId}/items/${itemId}`).update({locked:false});
+  assert.deepEqual((await accessMediaScript(admin,null,input('button',{grant:lockedGrant}))).script,script,'the preprinted code releases its script after the lesson is unlocked');
+  const hiddenGrant=(await issueMediaQrGrantForTeacher(admin,auth(teacherId),input('hidden-print'))).grant;
+  assert.ok(hiddenGrant,'a teacher can print a hidden task before showing it');
+  await denies(accessMediaScript(admin,null,input('hidden-print',{grant:hiddenGrant})));
+  await admin.doc(`classes/${classId}/items/${itemId}/tasks/hidden-print`).update({hidden:false});
+  assert.deepEqual((await accessMediaScript(admin,null,input('hidden-print',{grant:hiddenGrant}))).script,script,'a preprinted code becomes usable only when its task is shown');
+  await admin.doc(`classes/${classId}/items/${itemId}/tasks/hidden-print`).update({hidden:true});
+  await denies(accessMediaScript(admin,null,input('hidden-print',{grant:hiddenGrant})));
   await admin.doc(`classes/${classId}/members/${learnerId}`).delete();
   await denies(accessMediaScript(admin,auth(learnerId),input('button')));
   await admin.doc(`classes/${classId}/members/${learnerId}`).set({learnerId:'L1'});
