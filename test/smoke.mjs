@@ -3351,6 +3351,33 @@ const J = {
     if (restored.key || restored.work !== 'saved on device') throw Error('Returning to normal cache removed device-only work');
     return s;
   },
+  'A stalled profile read offers temporary recovery without discarding saved work': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm', 'teacher account before a stalled profile read');
+    await s.p.evaluate(() => {
+      localStorage.setItem('recovery-work-sentinel', 'saved on device');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/teacher1', count: 1, delay: 30000 }]));
+    });
+    await s.p.reload();
+    await see(s.p, 'button:has-text("Open with temporary connection")', 'profile timeout offers temporary recovery', 25000);
+    await axe(s.p, 'Profile timeout recovery', A11Y_FOUND);
+    await s.p.setViewportSize({ width: 390, height: 760 });
+    const phone = await s.p.locator('.signin .card').evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return { fitsWidth: r.left >= 8 && r.right <= innerWidth - 8 && document.documentElement.scrollWidth <= innerWidth,
+        recoveryVisible: !!el.querySelector('button')?.getBoundingClientRect().width };
+    });
+    if (!phone.fitsWidth || !phone.recoveryVisible) throw Error('Profile recovery does not fit a phone');
+    await axe(s.p, 'Profile timeout recovery on a phone', A11Y_FOUND);
+    if (process.env.ELT_PROFILE_RECOVERY_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_PROFILE_RECOVERY_SCREENSHOT });
+    await s.p.getByRole('button', { name: 'Open with temporary connection' }).click();
+    await see(s.p, '.hm', 'real teacher account after temporary restart');
+    await see(s.p, '.firestore-temporary:has-text("Temporary connection")', 'temporary connection is identified');
+    const state = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (state.key !== '1' || state.work !== 'saved on device') throw Error('Profile recovery discarded saved device work');
+    return s;
+  },
   'Teacher onboarding and goal-based guide': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {
