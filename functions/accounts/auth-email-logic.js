@@ -73,9 +73,11 @@ export function authEmailMessage(kind, link, now = new Date()) {
   return { subject, html, text };
 }
 
-// Firestore events may be delivered more than once. A transactional lease permits
-// one active send at a time; the scheduled sweep retries known failures and claims
-// abandoned by a crashed worker. No action link is written to Firestore.
+// Firestore events may be delivered more than once. Only preparation is retryable.
+// Before SMTP starts, persist a non-retryable `sending` state. SMTP may accept a
+// message even if its acknowledgement or the following Firestore write fails, so
+// neither a sending nor an uncertain job may be sent automatically again.
+// No action link is written to Firestore.
 export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Date() }) {
   let job = null;
   await db.runTransaction(async tx => {
@@ -91,6 +93,7 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
     tx.update(jobRef, { status: 'claimed', claimId: job.claimId, attempts: job.attempts, claimedAt: now, nextAttemptAt: new Date(now.getTime() + CLAIM_LEASE_MS) });
   });
   if (!job) return 'not-due-or-complete';
+  let message;
   try {
     let user;
     try {
@@ -109,7 +112,18 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
     const link = job.kind === 'reset'
       ? await auth.generatePasswordResetLink(job.email)
       : await auth.generateSignInWithEmailLink(job.email, { url: `${SITE}/auth/link`, handleCodeInApp: true });
-    await send({ to: job.email, ...authEmailMessage(job.kind, link, now) });
+    message = { to: job.email, ...authEmailMessage(job.kind, link, now) };
+    // A failed transaction is still before SMTP. The claimed lease will expire
+    // and let a later worker prepare a new action link safely.
+    let ready = false;
+    await db.runTransaction(async tx => {
+      ready = false;
+      const saved = await tx.get(jobRef);
+      if (!saved.exists || saved.get('claimId') !== job.claimId || saved.get('status') !== 'claimed') return;
+      tx.update(jobRef, { status: 'sending', nextAttemptAt: null, sendingAt: new Date() });
+      ready = true;
+    });
+    if (!ready) return 'claim-lost';
   } catch (error) {
     const exhausted = job.attempts >= MAX_ATTEMPTS;
     const retryAt = exhausted ? null : new Date(Date.now() + RETRY_DELAYS_MS[job.attempts - 1]);
@@ -121,9 +135,21 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
     });
     return exhausted ? 'failed-after-retries' : 'retry-scheduled';
   }
-  // If deleting later fails, the scheduler must not re-send a delivered
-  // message. This record contains no link and will be removed by cleanup.
-  await jobRef.update({ status: 'sent', nextAttemptAt: new Date(now.getTime() + 365 * 86400000) });
+  try {
+    await send(message);
+  } catch {
+    // An SMTP error does not prove non-delivery. Leave the job non-retryable
+    // even if this status write also fails; `sending` already blocks a resend.
+    await jobRef.update({ status: 'uncertain', nextAttemptAt: null }).catch(() => {});
+    return 'delivery-uncertain';
+  }
+  // SMTP accepted the message. If this status write fails, `sending` still
+  // prevents another attempt. The short-lived record has no action link.
+  try {
+    await jobRef.update({ status: 'sent', nextAttemptAt: null });
+  } catch {
+    return 'accepted-status-pending';
+  }
   await jobRef.delete().catch(() => {});
   return 'sent';
 }
