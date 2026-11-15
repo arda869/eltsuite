@@ -1798,6 +1798,28 @@ const J = {
     await see(s.p, '.learners table:has-text("Audit Name")', 'one learner successfully added');
     return s;
   },
+  'Training course suggestions keep free typing in the suite menu': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), teacherTrainer: true };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(`${BASE}/classes`);
+    await s.p.getByRole('button', { name: '+ New class' }).first().click();
+    await s.p.getByRole('radio', { name: /Teacher training/ }).click();
+    const course = s.p.getByRole('combobox', { name: 'Course' });
+    await course.click();
+    await see(s.p, '.suggest-list [role="option"]:has-text("Delta Module 2")', 'styled training course suggestions');
+    const bounds = await s.p.locator('.suggest-list').boundingBox();
+    if (!bounds || bounds.x < 0 || bounds.x + bounds.width > 391) throw Error('Course suggestions overflow the phone screen');
+    await s.p.locator('.suggest-list [role="option"]:has-text("Delta Module 2")').click();
+    if (await course.inputValue() !== 'Delta Module 2') throw Error('Course suggestion was not selected');
+    await course.fill('My own teacher programme');
+    if (await course.inputValue() !== 'My own teacher programme') throw Error('Custom course was not kept');
+    return s;
+  },
   'Three-day calendar across themes and screen sizes': async (b) => {
     const s = await session(b);
     for (const width of [390, 1300]) {

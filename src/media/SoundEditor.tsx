@@ -23,6 +23,7 @@ import { askText } from '../lib/ask';
 import { SuiteMark } from '../components/Wordmark';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
+import { SuggestionInput } from '../components/SuggestionInput';
 
 // The Sound editor, laid out like audio software. Voice tracks hold clips: split them (Ctrl B),
 // move them, trim their edges, drag their top corners to fade, and give each its own volume and
@@ -1580,12 +1581,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               </label>
               <label className="field">
                 <span>Speaker (optional)</span>
-                <input aria-label="Speaker" value={pickedLine.who ?? ''} list="sx-speakers" onChange={(e) => setLine(pickedLine.id, { who: e.target.value || undefined }, 'lw' + pickedLine.id)} placeholder="A, B, or a name" />
-                <datalist id="sx-speakers">
-                  {[...new Set(p.lines.map((l) => l.who).filter(Boolean))].map((w) => (
-                    <option key={w} value={w} />
-                  ))}
-                </datalist>
+                <SuggestionInput aria-label="Speaker" value={pickedLine.who ?? ''} suggestions={p.lines.map(l => l.who ?? '')} onChange={(next) => setLine(pickedLine.id, { who: next || undefined }, 'lw' + pickedLine.id)} placeholder="A, B, or a name" />
               </label>
               <span className="daw-row wrap">
                 <button type="button" className="btn small-btn" onClick={() => playFrom(pickedLine.a, pickedLine.b)}>

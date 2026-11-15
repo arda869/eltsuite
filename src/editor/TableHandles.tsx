@@ -218,7 +218,7 @@ function TableMenu({ kind, anchor, s, count, ops, onClose }: { kind: 'row' | 'co
   );
   const row = kind === 'row';
   return createPortal(
-    <div ref={ref} className="menu block-menu" role="menu" style={{ left: Math.min(anchor.left, window.innerWidth - 230), top: Math.min(anchor.bottom + 6, window.innerHeight - 300) }} onMouseDown={(e) => e.stopPropagation()}>
+    <div ref={ref} className="menu block-menu" role="menu" style={{ left: Math.max(8, Math.min(anchor.left, window.innerWidth - Math.min(280, window.innerWidth - 16) - 8)), top: Math.max(8, Math.min(anchor.bottom + 6, window.innerHeight - Math.min(300, window.innerHeight - 16) - 8)) }} onMouseDown={(e) => e.stopPropagation()}>
       <span className="bm-h">{row ? `Row ${i + 1}` : `Column ${i + 1}`}</span>
       {B(row ? 'Add a row above' : 'Add a column to the left', ops.before, '+')}
       {B(row ? 'Add a row below' : 'Add a column to the right', ops.after, '+')}
