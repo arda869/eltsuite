@@ -757,6 +757,7 @@ const J = {
     await design.getByRole('button', { name: 'Edit map and symbols' }).click();
     const map = design.getByRole('dialog', { name: 'Edit map' });
     if (await map.getByRole('button', { name: 'Select and move' }).count() !== 1 || await map.getByRole('button', { name: 'Save map' }).count() !== 1) throw Error('Map tools and Save are not immediately available');
+    await map.getByRole('status').filter({ hasText: 'No changes to save' }).waitFor();
     if (await map.getByRole('group', { name: 'Symbol appearance' }).getByRole('button', { name: 'Plain' }).getAttribute('aria-pressed') !== 'true') throw Error('New map symbols do not start with the plain background');
     await design.waitForFunction(() => {
       const center = document.querySelector('.dz-map-center');
@@ -780,6 +781,7 @@ const J = {
       await canvas.click({ position: { x: bounds.width * x, y: bounds.height * y }, modifiers });
     };
     await clickMap(.32, .48);
+    await map.getByRole('status').filter({ hasText: 'Unsaved changes' }).waitFor();
     await map.getByRole('textbox', { name: 'Name this map object' }).fill('Library');
     await map.getByRole('textbox', { name: 'Name this map object' }).press('Enter');
     await map.getByText('Add places', { exact: true }).click();

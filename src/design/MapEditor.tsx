@@ -122,6 +122,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
   const backgroundDrag = useRef<{ start: Point; x: number; y: number; recorded?: boolean } | null>(null);
   const current = draft.items.find(item => item.id === selected && !item.hidden && !item.locked);
   const naming = draft.items.find(item => item.id === namingId);
+  const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(initial);
 
   useLayoutEffect(() => {
     const target = center.current;
@@ -465,6 +466,6 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
       </> : null}
       <MapLayersPanel items={draft.items} selectedIds={selectedIds} onSelectIds={ids => { chooseTool('select'); selectIds(ids); }} onChangeItems={items => { changeDraft(value => ({ ...value, items })); selectIds(selectedIds.filter(id => items.some(item => item.id === id && !item.hidden && !item.locked))); }} />
     </div></div>
-    <footer><button type="button" onClick={onClose}>Cancel</button><button type="button" className="btn primary" onClick={save}>Save map</button></footer>
+    <footer><span className="dz-map-save-status" role="status">{hasUnsavedChanges ? 'Unsaved changes' : 'No changes to save'}</span><button type="button" onClick={onClose}>Cancel</button><button type="button" className="btn primary" onClick={save}>Save map</button></footer>
   </div></div>;
 }
