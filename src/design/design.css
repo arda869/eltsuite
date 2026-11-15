@@ -32,7 +32,9 @@
   --dz-muted: #c3bdb4;
   --dz-rail: #0e0d0c;
   --dz-soft: color-mix(in srgb, var(--dz) 22%, #22211e);
+  --dz-bg: #302e2b;
 }
+:root[data-theme='dark'] .dz .btn.danger { background: #8f3329; border-color: #8f3329; color: #fff; }
 .dp.k-design { --dp: #6d5bd0; }
 .dp.k-design .dp-main { padding: 0; }
 .dz-msg { display: grid; place-items: center; min-height: 60vh; color: var(--muted); font: 15px var(--sans); }

@@ -854,6 +854,11 @@ const J = {
       await map.locator('.dz-map-inspector').evaluate(element => { element.scrollTop = 0; });
       await map.screenshot({ path: process.env.MAP_SCREENSHOT });
     }
+    if (process.env.MAP_DARK_SCREENSHOT) {
+      await design.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+      await map.screenshot({ path: process.env.MAP_DARK_SCREENSHOT });
+      await axe(design, 'Designer map editing in dark mode', A11Y_FOUND);
+    }
     await map.getByRole('button', { name: 'Hide Café' }).click();
     if (!await map.locator('.dz-layer-main').filter({ hasText: 'Café' }).isDisabled()) throw Error('A hidden symbol can still be selected');
     await map.getByRole('button', { name: 'Show Café' }).click();
