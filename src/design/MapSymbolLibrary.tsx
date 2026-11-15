@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type DragEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type CSSProperties, type DragEvent } from 'react';
 import { MAP_SYMBOL_CATEGORIES, MAP_SYMBOL_DRAG_TYPE, MAP_SYMBOLS, mapSymbolGlyph, type MapSymbolCategory } from './mapSymbols';
 import './mapSymbols.css';
 
@@ -22,6 +22,8 @@ export function MapSymbolIcon({symbolKey,size=34}:{symbolKey:string;size?:number
 export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,draggable=true}:{selectedKey?:string;onSelect:(key:string)=>void;disabled?:boolean;draggable?:boolean}){
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState<Category>('all');
+  const [categoriesOpen,setCategoriesOpen]=useState(false);
+  const categoriesId=useId();
   const [favourites,setFavourites]=useState<string[]>(()=>savedKeys(FAVOURITES_KEY));
   const [recent,setRecent]=useState<string[]>(()=>savedKeys(RECENT_KEY));
   useEffect(()=>{try{localStorage.setItem(FAVOURITES_KEY,JSON.stringify(favourites));}catch{/* Storage can be unavailable in a private window. */}},[favourites]);
@@ -46,11 +48,14 @@ export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,dr
     remember(key);
   };
   return <div className="dz-symbol-library">
-    <label className="dz-symbol-search"><span className="dz-symbol-search-icon" aria-hidden="true">⌕</span><input type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Find a symbol" aria-label="Search map symbols"/></label>
-    <div className="dz-symbol-categories" role="group" aria-label="Symbol categories">
-      {([['all','All'],['recent','Recent'],['favourites','Favourites'],...MAP_SYMBOL_CATEGORIES.map(group=>[group.key,group.name])] as [Category,string][]).map(([key,name])=><button type="button" key={key} aria-pressed={category===key} className={category===key?'is-active':''} onClick={()=>setCategory(key)}>{name}</button>)}
+    <label className="dz-symbol-search"><span className="dz-symbol-search-icon" aria-hidden="true">⌕</span><input type="search" value={query} onChange={event=>{setQuery(event.target.value);if(event.target.value.trim())setCategory('all');}} placeholder="Find a symbol" aria-label="Search map symbols"/></label>
+    <div className="dz-symbol-browse" role="group" aria-label="Browse map symbols">
+      {([['all','All'],['recent','Recent'],['favourites','Favourites']] as [Category,string][]).map(([key,name])=><button type="button" key={key} aria-pressed={category===key} className={category===key?'is-active':''} onClick={()=>{setCategory(key);setCategoriesOpen(false);}}>{name}</button>)}
+      <button type="button" className={`dz-symbol-browse-toggle${MAP_SYMBOL_CATEGORIES.some(group=>group.key===category)?' is-active':''}`} aria-expanded={categoriesOpen} aria-controls={categoriesId} onClick={()=>setCategoriesOpen(open=>!open)}>{MAP_SYMBOL_CATEGORIES.find(group=>group.key===category)?.name||'Categories'} <span aria-hidden="true">⌄</span></button>
     </div>
-    <p className="dz-symbol-hint">{draggable?'Click a symbol, then click the map. Or drag it into place.':'Click a symbol to add it to the map.'}</p>
+    {categoriesOpen&&<div id={categoriesId} className="dz-symbol-categories" role="group" aria-label="Symbol categories">
+      {MAP_SYMBOL_CATEGORIES.map(group=><button type="button" key={group.key} aria-pressed={category===group.key} className={category===group.key?'is-active':''} onClick={()=>{setCategory(group.key);setCategoriesOpen(false);}}>{group.name}</button>)}
+    </div>}
     <div className="dz-symbol-results" role="group" aria-label="Map symbols">
       {matches.map(symbol=>{
         const group=MAP_SYMBOL_CATEGORIES.find(item=>item.key===symbol.category);
