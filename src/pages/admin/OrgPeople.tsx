@@ -478,7 +478,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
     const mailed = list.filter((i) => i.mailed && i.status === 'pending');
     await Promise.all(mailed.map((i) => resendInvite(i.id)));
     if (mailed.length) d.note(`Sent ${plural(mailed.length, 'invitation')} again`, mailed.map((i) => i.name || i.email).join(', '));
-    say(mailed.length ? `Sending ${plural(mailed.length, 'invitation')} again, within 15 minutes.` : 'Those emails haven’t gone out yet. They’ll go within 15 minutes.');
+    say(mailed.length ? `Sending ${plural(mailed.length, 'invitation')} again.` : 'Those emails haven’t gone out yet. They’re queued to send.');
     sel.clear();
   };
   const takeBack = async (list: OrgInvite[]) => {
@@ -491,7 +491,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
     <div className="hq-page">
       <PageHead
         title="Invitations"
-        lede="New teachers get a link to finish their account. Teachers who already have one are asked if they’d like to join. Emails go out within 15 minutes."
+        lede="New teachers get a link to finish their account. Teachers who already have one are asked if they’d like to join. Emails are usually sent within 15 minutes."
         actions={
           <>
             <button type="button" className="btn" disabled={!invites.length} onClick={() => void saveOrgWorkbook(org, d.classes, d.accounts, invites, 'invites')}>
@@ -588,7 +588,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
         </ul>
         <p>And that the admins can see: {ADMIN_SEE}</p>
       </details>
-      {inviting && <InviteSheet d={d} onClose={() => go({ tab: 'invites', f: f === 'waiting' ? '' : f, replace: true })} onSent={(n) => say(`${plural(n, 'invitation')} on the way. Emails go out within 15 minutes.`)} />}
+      {inviting && <InviteSheet d={d} onClose={() => go({ tab: 'invites', f: f === 'waiting' ? '' : f, replace: true })} onSent={(n) => say(`${plural(n, 'invitation')} on the way. Emails are usually sent within 15 minutes.`)} />}
       {toast}
     </div>
   );

@@ -30,6 +30,8 @@ jobs:
         run: node --test test/speech/*.test.mjs
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
+      - name: Invitation template and delivery checks
+        run: node test/invitation-emails.mjs && node test/invitation-delivery.mjs
 
       - name: Feature discovery checks
         run: node --test test/discovery/*.test.mjs
@@ -155,8 +157,8 @@ jobs:
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
         run: |
           trap 'rm -f "$RUNNER_TEMP/smtp-url" "$RUNNER_TEMP/mail-from"' EXIT
-          if [ -z "$SMTP_URL" ]; then echo '::error::SMTP_URL is missing, so unread-message emails cannot be scheduled.'; exit 1; fi
-          if [ -z "$MAIL_FROM" ]; then echo '::error::MAIL_FROM is missing, so unread-message emails cannot be scheduled.'; exit 1; fi
+          if [ -z "$SMTP_URL" ]; then echo '::error::SMTP_URL is missing, so scheduled emails cannot be sent.'; exit 1; fi
+          if [ -z "$MAIL_FROM" ]; then echo '::error::MAIL_FROM is missing, so scheduled emails cannot be sent.'; exit 1; fi
           if ! npx --yes firebase-tools@14 functions:secrets:get SMTP_URL --project lesson-lit --non-interactive >/dev/null 2>&1; then
             printf '%s' "$SMTP_URL" > "$RUNNER_TEMP/smtp-url"
             npx --yes firebase-tools@14 functions:secrets:set SMTP_URL --data-file "$RUNNER_TEMP/smtp-url" --project lesson-lit --non-interactive
@@ -191,7 +193,7 @@ jobs:
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:manageCoachConversation,functions:sendUnreadMessageSummaries,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:manageCoachConversation,functions:sendUnreadMessageSummaries,functions:sendPendingInvitations,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
           node functions/games/check-connection.mjs
