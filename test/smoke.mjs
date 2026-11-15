@@ -1472,6 +1472,16 @@ const J = {
       const read=()=>JSON.parse(localStorage.getItem('mockfs'));
       const verify=(space,id)=>{const prefix=space.startsWith('user:')?'users/'+space.slice(5):space.startsWith('share:')?'shares/'+space.slice(6):'classes/'+space;const data=read(),m=data[prefix+'/media/'+id];if(!m?.stems)throw Error('Song links missing after copy');for(const stem of ['vocals','instrumental']){const key=prefix+'/media/'+m.stems[stem];if(!data[key]||!data[key+'_p0']?.data)throw Error('Copied stem audio is missing');}};
       const carried=await full.carryMedia(classId,'song-carry-target',[{audioId:mediaId}]);verify('song-carry-target',carried[mediaId]);
+      for(const aiGenerated of [false,true]){
+        const sourceId=aiGenerated?'copy-ai-script':'copy-ordinary-script';
+        const target=aiGenerated?'copy-ai-target':'copy-ordinary-target';
+        const script=[{t:0,e:1,text:aiGenerated?'Private AI line.':'Private teacher line.'}];
+        await fire.setDoc(fire.doc({},'classes',classId,'media',sourceId),{kind:'link',url:'https://example.invalid/audio.mp3',title:'Copy test',size:0,public:true,aiGenerated});
+        await fire.setDoc(fire.doc({},'classes',classId,'mediaScripts',sourceId),{script,aiGenerated});
+        const copy=await full.carryMedia(classId,target,[{audioId:sourceId}]);
+        const data=read(),manifest=data[`classes/${target}/media/${copy[sourceId]}`],privateDoc=data[`classes/${target}/mediaScripts/${copy[sourceId]}`];
+        if(!manifest||manifest.script!==undefined||JSON.stringify(privateDoc?.script)!==JSON.stringify(script))throw Error(`${aiGenerated?'AI':'Ordinary'} copied recording lost its private script or exposed it publicly`);
+      }
       await fire.setDoc(fire.doc({},'classes',classId,'items',itemId,'tasks','song-bundle-test'),{kind:'task',order:90,title:'Song',audioId:mediaId});
       const bundle=await full.lessonBundle(classId,itemId),stems=bundle.media[mediaId].stems;if(!bundle.media[stems.vocals]||!bundle.media[stems.instrumental])throw Error('Lesson export omitted stem audio');
       const before=new Set(Object.keys(read()));await full.importBundle('song-bundle-target',bundle,{title:'Song bundle test'});const stored=read();const imported=Object.entries(stored).find(([k,v])=>!before.has(k)&&k.startsWith('classes/song-bundle-target/media/')&&v.stems);if(!imported)throw Error('Imported song manifest missing');verify('song-bundle-target',imported[0].split('/').at(-1));
