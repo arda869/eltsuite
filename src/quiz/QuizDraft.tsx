@@ -65,10 +65,10 @@ function QuizDraftPanel({ gameId, existingCount = 0, onApply }: { gameId: string
       <AiMore summary={classId ? `Context: ${className || 'a class'}${lessonName ? ' · ' + lessonName : ''}` : 'Use a class or lesson for context'}>
         <div className="aik-field-row">
           <AiField label="Class" optional hint="Level and age come from the class.">
-            <NSelect value={classId} disabled={busy} onChange={e => setClassId(e.target.value)}><option value="">No class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
+            <NSelect aria-label="Class" value={classId} disabled={busy} onChange={e => setClassId(e.target.value)}><option value="">No class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
           </AiField>
           {classId && <AiField label="Lesson" optional hint="Questions follow the lesson's language.">
-            <NSelect value={lessonId} disabled={busy} onChange={e => setLessonId(e.target.value)}><option value="">No lesson</option>{lessons.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
+            <NSelect aria-label="Lesson" value={lessonId} disabled={busy} onChange={e => setLessonId(e.target.value)}><option value="">No lesson</option>{lessons.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</NSelect>
           </AiField>}
         </div>
       </AiMore>

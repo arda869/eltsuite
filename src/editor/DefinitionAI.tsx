@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { AiButton } from '../components/AiMark';
 import { AI_ALLOWANCE, AiActions, AiDraft, AiField, AiHeader, AiMore, AiNotice, AiUses, AiWorking } from '../ai/kit';
 import { useAiActivity } from '../components/AiActivity';
@@ -62,7 +63,7 @@ export function DefinitionAI({word,context,existingImage='',onUse,onBusyChange}:
    <AiUses items={[word.trim()?`“${word.trim()}”`:false,classLevel?`Class level ${classLevel}`:`Level ${level}`,'This task’s text',lessonId?'The lesson’s learner-facing content':false]}/>
   </AiHeader>
   {!draft&&<>
-   {!classLevel&&<AiField label="Learner level"><select aria-label="Definition learner level" value={level} disabled={busy} onChange={e=>{setLevel(e.target.value);setDraft(null);}}>{levels.map(v=><option key={v}>{v}</option>)}</select></AiField>}
+   {!classLevel&&<AiField label="Learner level"><NSelect aria-label="Definition learner level" value={level} disabled={busy} onChange={e=>{setLevel(e.target.value);setDraft(null);}}>{levels.map(v=><option key={v}>{v}</option>)}</NSelect></AiField>}
    <AiMore summary={focus.trim()?'Sense to clarify: '+focus.trim().slice(0,40):'Clarify the sense'}>
     <AiField label="Which meaning?" optional hint="Useful when the word has several meanings.">
      <textarea aria-label="Definition extra context (optional)" rows={2} maxLength={1000} value={focus} disabled={busy} onChange={e=>{setFocus(e.target.value);setDraft(null);}} placeholder="For example: bank means the side of a river here."/>

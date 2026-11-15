@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openMenuAt } from '../components/ContextMenu';
 import type { Ctx } from './Editor';
@@ -404,21 +405,21 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
         <>
           <label className="dz-field">
             <span>Who</span>
-            <select value={e.ref} onChange={(ev) => set({ ref: ev.target.value, name: people[ev.target.value]?.name })}>
+            <NSelect value={e.ref} onChange={(ev) => set({ ref: ev.target.value, name: people[ev.target.value]?.name })}>
               {Object.entries(people).map(([k, p]) => <option key={k} value={k}>{p.name}</option>)}
-            </select>
+            </NSelect>
           </label>
           <label className="dz-field">
             <span>Pose</span>
-            <select value={e.pose ?? 'stand'} onChange={(ev) => set({ pose: ev.target.value })}>
+            <NSelect value={e.pose ?? 'stand'} onChange={(ev) => set({ pose: ev.target.value })}>
               {Object.entries(poses).map(([k, p]) => <option key={k} value={k}>{p.name}</option>)}
-            </select>
+            </NSelect>
           </label>
           <label className="dz-field">
             <span>Face</span>
-            <select value={e.face ?? 'happy'} onChange={(ev) => set({ face: ev.target.value })}>
+            <NSelect value={e.face ?? 'happy'} onChange={(ev) => set({ face: ev.target.value })}>
               {Object.entries(faces).map(([k, f]) => <option key={k} value={k}>{f.name}</option>)}
-            </select>
+            </NSelect>
           </label>
         </>
       )}
@@ -443,9 +444,9 @@ function PageProps({ cx }: { cx: Ctx }) {
         <Sec title="Scene">
           <label className="dz-field">
             <span>Backdrop</span>
-            <select value={p.scene ?? 'plain'} onChange={(e) => cx.setScene(e.target.value)} disabled={!cx.canEdit}>
+            <NSelect value={p.scene ?? 'plain'} onChange={(e) => cx.setScene(e.target.value)} disabled={!cx.canEdit}>
               {Object.entries(SCENES).map(([k, sc]) => <option key={k} value={k}>{sc.name}</option>)}
-            </select>
+            </NSelect>
           </label>
           {p.scene && p.scene !== 'plain' && (
             <>
@@ -468,10 +469,10 @@ function PageProps({ cx }: { cx: Ctx }) {
         </label>
         <label className="dz-field">
           <span>Size</span>
-          <select value={size?.k ?? ''} onChange={(e) => { const s = SIZES.find((x) => x.k === e.target.value); if (s) cx.setPage({ w: s.w, h: s.h }); }} disabled={!cx.canEdit}>
+          <NSelect value={size?.k ?? ''} onChange={(e) => { const s = SIZES.find((x) => x.k === e.target.value); if (s) cx.setPage({ w: s.w, h: s.h }); }} disabled={!cx.canEdit}>
             {!size && <option value="">Your own size</option>}
             {imageSizes.map((s) => <option key={s.k} value={s.k}>{s.name} · {s.about}</option>)}
-          </select>
+          </NSelect>
         </label>
         <div className="dz-nums">
           <Num label="W" value={p.w} unit="px" min={64} max={8192} onChange={(v) => cx.setPage({ w: Math.round(v) })} />

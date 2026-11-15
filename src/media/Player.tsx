@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import {getFunctions,httpsCallable} from 'firebase/functions';
 import {app} from '../lib/firebase';
 import { tr } from '../lib/terms';
@@ -727,7 +728,7 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
       <input type="range" aria-label="Position" min={0} max={e.duration||e.m.duration||0} step={0.05} value={e.time} disabled={used||waiting||!e.ready} onChange={ev=>e.seek(Number(ev.target.value))}/>
       <span>{fmtTime(e.time)} / {fmtTime(e.duration||e.m.duration||0)}</span>
     </span>
-    <span className="im-transport"><label>Volume<input type="range" aria-label="Volume" min={0} max={1} step={0.05} value={e.volume} onChange={ev=>e.setVolume(Number(ev.target.value))}/></label><label>Speed<select aria-label="Playback speed" value={e.rate} onChange={ev=>e.setRate(Number(ev.target.value))}>{[.75,1,1.25,1.5].map(r=><option key={r} value={r}>{r}×</option>)}</select></label></span>
+    <span className="im-transport"><label>Volume<input type="range" aria-label="Volume" min={0} max={1} step={0.05} value={e.volume} onChange={ev=>e.setVolume(Number(ev.target.value))}/></label><label>Speed<NSelect aria-label="Playback speed" value={e.rate} onChange={ev=>e.setRate(Number(ev.target.value))}>{[.75,1,1.25,1.5].map(r=><option key={r} value={r}>{r}×</option>)}</NSelect></label></span>
     {e.m?.stems&&<button type="button" className="btn small-btn" aria-pressed={e.vocalsOn} disabled={!e.ready} onClick={()=>e.setVocalsOn?.(!e.vocalsOn)}>{e.vocalsOn?'Vocals on':'Vocals off · sing-along'}</button>}
     {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
     {e.error&&<span className="mp-error">{e.error}</span>}

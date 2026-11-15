@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 
 import { AiProgress } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
@@ -92,10 +93,10 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
     {!draft.plan || editingBrief ? <div className="vx-fields">
       <h3>1. Describe your classroom video</h3>
       <label>Your brief<textarea aria-label="Video brief" rows={5} maxLength={3000} value={draft.brief} disabled={!!busy} onChange={e=>update({brief:e.target.value})} placeholder="A short cartoon about two friends buying fruit. Practise ‘Can I have…?’ Include a moment for learners to answer." /></label>
-      <label>Learners<select value={draft.audience} disabled={!!busy} onChange={e=>update({audience:e.target.value})}>{['Young learners','Teenagers','Adults'].map(x=><option key={x}>{x}</option>)}</select></label>
-      <label>English level<select value={draft.level} disabled={!!busy} onChange={e=>update({level:e.target.value})}>{['Pre-A1','A1','A2','B1','B2','C1','C2'].map(x=><option key={x}>{x}</option>)}</select></label>
-      <label>Approximate length<select value={draft.length} disabled={!!busy} onChange={e=>update({length:Number(e.target.value)})}>{[20,30,40,60].map(x=><option key={x} value={x}>{x} seconds + question cards</option>)}</select></label>
-      <label>Visual style<select value={draft.style} disabled={!!busy} onChange={e=>update({style:e.target.value})}>{VIDEO_STYLES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
+      <label>Learners<NSelect value={draft.audience} disabled={!!busy} onChange={e=>update({audience:e.target.value})}>{['Young learners','Teenagers','Adults'].map(x=><option key={x}>{x}</option>)}</NSelect></label>
+      <label>English level<NSelect value={draft.level} disabled={!!busy} onChange={e=>update({level:e.target.value})}>{['Pre-A1','A1','A2','B1','B2','C1','C2'].map(x=><option key={x}>{x}</option>)}</NSelect></label>
+      <label>Approximate length<NSelect value={draft.length} disabled={!!busy} onChange={e=>update({length:Number(e.target.value)})}>{[20,30,40,60].map(x=><option key={x} value={x}>{x} seconds + question cards</option>)}</NSelect></label>
+      <label>Visual style<NSelect value={draft.style} disabled={!!busy} onChange={e=>update({style:e.target.value})}>{VIDEO_STYLES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</NSelect></label>
       <fieldset disabled={!!busy}><legend>Reuse saved characters (optional)</legend>{assets.filter(a=>a.kind==='character').map(a=><label className="vx-ref" key={a.id}><input type="checkbox" checked={draft.references.includes(a.id)} onChange={e=>update({references:e.target.checked?[...draft.references,a.id].slice(0,12):draft.references.filter(id=>id!==a.id)})}/>{a.name}</label>)}</fieldset>
       <VideoButton icon="videoSparkles" disabled={!plannerEnabled||!!busy||!draft.brief.trim()||!!draft.job} onClick={()=>void plan()}>{draft.plan ? "Suggest a new script" : "Suggest scenes and script"}</VideoButton>
       {draft.plan&&<VideoButton disabled={!!busy} onClick={()=>setEditingBrief(false)}>Return to current script</VideoButton>}
@@ -110,7 +111,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
         <fieldset disabled={!!busy}>
           <label>Visual action<textarea aria-label={`Scene ${i+1} visual action`} value={s.prompt} rows={3} maxLength={2500} onChange={e=>changeScene(i,{prompt:e.target.value,image:'',imageJob:'',video:'',videoJob:'',status:''})}/></label>
           <label>Full spoken script<textarea aria-label={`Scene ${i+1} full spoken script`} value={s.script} rows={3} maxLength={1000} onChange={e=>changeScene(i,{script:e.target.value,audio:''})}/></label>
-          <label>Scene length<select value={s.duration} onChange={e=>changeScene(i,{duration:Number(e.target.value),video:'',videoJob:'',status:''})}><option value={5}>5 seconds · up to 9 words</option><option value={10}>10 seconds · up to 20 words</option></select></label>
+          <label>Scene length<NSelect value={s.duration} onChange={e=>changeScene(i,{duration:Number(e.target.value),video:'',videoJob:'',status:''})}><option value={5}>5 seconds · up to 9 words</option><option value={10}>10 seconds · up to 20 words</option></NSelect></label>
           <label>Pause-and-answer question (optional)<textarea value={s.question} maxLength={500} onChange={e=>changeScene(i,{question:e.target.value})}/></label>
           <label>Suggested answer · teacher only<textarea value={s.answer} maxLength={500} onChange={e=>changeScene(i,{answer:e.target.value})}/></label>
           <label>Interaction / teacher notes<textarea value={s.teacherNotes} maxLength={1000} onChange={e=>changeScene(i,{teacherNotes:e.target.value})}/></label>

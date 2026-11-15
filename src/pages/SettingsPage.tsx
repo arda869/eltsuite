@@ -227,7 +227,7 @@ export function SettingsPage() {
               </Row>
               {prefs.email && (
                 <Row title="When they stay unread for">
-                  <NSelect className="set-select" value={prefs.after} onChange={(e) => saveMsgPrefs(user.uid, { ...prefs, after: Number(e.target.value) })}>
+                  <NSelect aria-label="When unread messages are emailed" className="set-select" value={prefs.after} onChange={(e) => saveMsgPrefs(user.uid, { ...prefs, after: Number(e.target.value) })}>
                     {AFTER.map(([m, l]) => (
                       <option key={m} value={m}>
                         {l}
@@ -486,7 +486,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
         <Toggle label="Email me about unread messages" on={prefs.email} onChange={(v) => void saveMsgPrefs(uid, { ...prefs, email: v })} />
       </Row>}
       {saved && prefs.email && <Row title="When they stay unread for">
-        <NSelect className="set-select" value={prefs.after} onChange={(e) => void saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
+        <NSelect aria-label="When unread messages are emailed" className="set-select" value={prefs.after} onChange={(e) => void saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
           {AFTER.map(([m, l]) => <option key={m} value={m}>{l}</option>)}
         </NSelect>
       </Row>}

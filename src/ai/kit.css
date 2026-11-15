@@ -26,6 +26,8 @@
 .aik-field-label em { font-style: normal; font-weight: 400; color: var(--muted); }
 .aik-field-hint { font: 13px/1.45 var(--sans); color: var(--muted); }
 .aik-field.aik-field > textarea, .aik-field.aik-field > input, .aik-field.aik-field > select { margin: 0; min-height: 0; font: 15px/1.5 var(--sans); padding: 10px 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--paper); color: var(--ink); width: 100%; box-sizing: border-box; }
+.aik-field > .nsel, .aik-field > .nsel > .sel { width: 100%; }
+.aik-field > .nsel > .sel { min-height: 44px; border-radius: 12px; font-size: 15px; }
 .aik-field > textarea { min-height: 76px; resize: vertical; }
 .aik-field > :is(textarea, input, select):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; border-color: var(--accent-text); }
 .aik-field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }

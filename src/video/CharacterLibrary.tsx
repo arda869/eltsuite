@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useAiActivity } from '../components/AiActivity';
 import { AiProgress } from '../components/AiMark';
 import { VideoDialog } from "./VideoDialog";
@@ -136,7 +137,7 @@ export function CharacterLibrary({
       <div className="vx-fields">
         <label>
           Visual style
-          <select
+          <NSelect
             aria-label="Visual style"
             value={visualStyle}
             onChange={(e) => setVisualStyle(e.target.value)}
@@ -146,7 +147,7 @@ export function CharacterLibrary({
                 {s.label}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <p className="vx-help">
           {VIDEO_STYLES.find((s) => s.id === visualStyle)?.detail}

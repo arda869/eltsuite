@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { El } from './model';
@@ -16,7 +17,7 @@ export function FigureProps({cx,e,set}:{cx:Ctx;e:El;set:(p:Partial<El>,key?:stri
   return <section className="dz-sec"><button type="button" className="dz-sec-h" onClick={()=>setOpen(o=>!o)} aria-expanded={open}>{f.kind==='chart'?'Chart':'Map'} settings <span aria-hidden="true">⌄</span></button>
     {open&&<div className="dz-sec-b dz-figure-quick">
       <Field name="Title" value={f.title} onChange={title=>set({figure:{...f,title}},'figure-title')}/>
-      {f.kind==='chart'&&<label className="dz-field"><span>Chart type</span><select value={f.chart} onChange={ev=>set({figure:{...f,chart:ev.target.value as ChartFigure['chart']}},'figure-kind')}><option value="bars">Bars</option><option value="lines">Lines</option><option value="pie">Pie</option><option value="table">Table</option></select></label>}
+      {f.kind==='chart'&&<label className="dz-field"><span>Chart type</span><NSelect value={f.chart} onChange={ev=>set({figure:{...f,chart:ev.target.value as ChartFigure['chart']}},'figure-kind')}><option value="bars">Bars</option><option value="lines">Lines</option><option value="pie">Pie</option><option value="table">Table</option></NSelect></label>}
       <button type="button" className="dz-figure-open" onClick={()=>setOpenEditor(true)}>{f.kind==='chart'?'Edit chart data and style':'Edit map and symbols'} ↗</button>
       <p className="hint">The figure remains sharp in downloads and print.</p>
     </div>}
@@ -34,7 +35,7 @@ function ChartEditor({e,set,onClose}:{e:El;set:(p:Partial<El>,key?:string)=>void
   return <div className="dz-figure-modal" role="dialog" aria-modal="true" aria-label="Edit chart"><div className="dz-figure-dialog">
     <header><span><strong>Edit chart</strong><small>Change the figures and see the finished chart beside them.</small></span><button type="button" onClick={onClose} aria-label="Close chart editor">×</button></header>
     <div className="dz-figure-work"><div className="dz-figure-controls">
-      <div className="dz-figure-formrow"><Field name="Title" value={f.title} onChange={title=>patch({title},'chart-title')}/><label className="dz-field"><span>Type</span><select value={f.chart} onChange={ev=>patch({chart:ev.target.value as ChartFigure['chart']})}><option value="bars">Bar chart</option><option value="lines">Line graph</option><option value="pie">Pie chart</option><option value="table">Table</option></select></label></div>
+      <div className="dz-figure-formrow"><Field name="Title" value={f.title} onChange={title=>patch({title},'chart-title')}/><label className="dz-field"><span>Type</span><NSelect value={f.chart} onChange={ev=>patch({chart:ev.target.value as ChartFigure['chart']})}><option value="bars">Bar chart</option><option value="lines">Line graph</option><option value="pie">Pie chart</option><option value="table">Table</option></NSelect></label></div>
       {f.chart==='bars'&&<label className="dz-figure-check"><input type="checkbox" checked={!!f.horizontal} onChange={ev=>patch({horizontal:ev.target.checked})}/> Horizontal bars</label>}
       <h3>Data</h3><p className="dz-figure-help">Edit each value directly. Add rows for categories and columns for series. Pie charts use one series per pie.</p>
       <div className="dz-figure-data-wrap"><table className="dz-figure-data"><thead><tr><th>Category</th>{f.series.map((s,j)=><th key={j}><input aria-label={`Series ${j+1} name`} value={s.name} onChange={ev=>renameSeries(j,ev.target.value)}/></th>)}<th/></tr></thead><tbody>{f.categories.map((c,i)=><tr key={i}><td><input aria-label={`Category ${i+1}`} value={c} onChange={ev=>patch({categories:f.categories.map((x,r)=>r===i?ev.target.value:x)},'chart-category')}/></td>{f.series.map((s,j)=><td key={j}><input type="number" step="any" aria-label={`${c}, ${s.name}`} value={s.values[i]??0} onChange={ev=>cell(i,j,ev.target.value)}/></td>)}<td><button type="button" onClick={()=>patch({categories:f.categories.filter((_,r)=>r!==i),series:f.series.map(s=>({...s,values:s.values.filter((_,r)=>r!==i)}))})} aria-label={`Remove ${c}`}>×</button></td></tr>)}</tbody></table></div>

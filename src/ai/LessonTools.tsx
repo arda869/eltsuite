@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { teacherPanel } from '../ai/teacherPanel';
 import { AiButton } from '../components/AiMark';
 import { AI_ALLOWANCE, AiActions, AiDraft, AiExamples, AiField, AiHeader, AiMore, AiNotice, AiUses, AiWorking } from './kit';
@@ -73,7 +74,7 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
   {mode==='next'&&<label className="lesson-tool-image-choice"><input type="checkbox" checked={includeImage} disabled={busy||!!pending} onChange={e=>setIncludeImage(e.target.checked)}/><span>Add a picture for learners to use <small>AI can use a suitable picture from your Resources or prepare a new one. You’ll review it before adding the activity.</small></span></label>}
   <AiExamples examples={examples} disabled={busy||!!pending} onPick={setDirection}/>
   <AiMore summary="Options">
-   {mode==='answers'&&<AiField label="Answer-key scope"><select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></AiField>}
+   {mode==='answers'&&<AiField label="Answer-key scope"><NSelect aria-label="Answer-key scope" value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></NSelect></AiField>}
    {mode!=='answers'&&mode!=='edit'&&<AiField label="Activity length (minutes)"><input type="number" min={1} max={60} value={minutes} disabled={busy||!!pending} onChange={e=>setMinutes(Math.max(1,Math.min(60,Number(e.target.value)||10)))}/></AiField>}
   </AiMore>
   {!pending&&!busy&&<AiActions note={mode==='edit'&&!direction.trim()?'Describe the changes you want to preview.':mode!=='answers'&&!selected&&!direction.trim()?'Choose an option or describe your activity to make a draft.':AI_ALLOWANCE}>

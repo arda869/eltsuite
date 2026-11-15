@@ -4,6 +4,7 @@ import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {documentSharing} from './document-sharing.mjs';
 import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
+import {chooseSelect} from './select.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
 import {reviewAi,returnDuringAi,backgroundSongAudit,suiteCohesionAudit} from './cohesion.mjs';
 // Smoke tests: the journeys teachers and learners take most, run in a real browser against the
@@ -490,7 +491,7 @@ const J = {
     await s.p.getByRole('button',{name:'Class actions'}).click();
     await s.p.getByRole('menuitem',{name:'Class settings'}).click();
     const settings=s.p.getByRole('dialog',{name:'Class settings'});
-    await settings.getByLabel('Class spelling spell check').selectOption('off');
+    await chooseSelect(s.p, settings.getByRole('button', { name: 'Class spelling spell check' }), 'off');
     await settings.getByRole('button',{name:'Save changes'}).click();
     await s.p.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+id]?.spelling?.enabled===false,s.demo.classId);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -662,9 +663,25 @@ const J = {
     await design.getByRole('button', { name: 'Edit chart data and style' }).click();
     const chart = design.getByRole('dialog', { name: 'Edit chart' });
     await chart.getByRole('textbox', { name: 'Category 1' }).fill('Hong Kong');
-    await chart.getByRole('combobox', { name: 'Type' }).selectOption('pie');
+    await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'pie');
     await chart.getByLabel('Hong Kong slice colour').fill('#506a8f');
-    await chart.getByRole('combobox', { name: 'Type' }).selectOption('bars');
+    await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'bars');
+    const type = chart.getByRole('button', { name: 'Type', exact: true });
+    await type.click();
+    await axe(design, 'Designer chart dropdown open', A11Y_FOUND);
+    if (process.env.DROPDOWN_SCREENSHOT_DIR) {
+      mkdirSync(process.env.DROPDOWN_SCREENSHOT_DIR, { recursive: true });
+      await design.screenshot({ path: `${process.env.DROPDOWN_SCREENSHOT_DIR}/designer-desktop-light.png` });
+      await type.press('Escape');
+      await design.setViewportSize({ width: 390, height: 844 });
+      await design.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+      await type.click();
+      await design.screenshot({ path: `${process.env.DROPDOWN_SCREENSHOT_DIR}/designer-phone-dark.png` });
+      await type.press('Escape');
+      await design.setViewportSize({ width: 1300, height: 900 });
+      await design.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+    }
+    else await type.press('Escape');
     await axe(design, 'Designer chart editor', A11Y_FOUND);
     await chart.getByRole('button', { name: 'Done' }).click();
     await design.getByRole('tab', { name: 'Maps' }).click();
@@ -1221,7 +1238,7 @@ const J = {
     if (!(await lessons.innerText()).includes('Not explored yet')) throw Error('Reading a guide fabricated feature adoption');
     await axe(s.p, 'Feature discovery usage', A11Y_FOUND);
     await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
-    await s.p.getByLabel('Suggestion frequency', { exact: true }).selectOption('3');
+    await chooseSelect(s.p, s.p.getByRole('button', { name: 'Suggestion frequency', exact: true }), '3');
     await s.p.getByRole('button', { name: 'Pause for 30 days', exact: true }).click();
     await see(s.p, 'text=Resume suggestions', 'suggestion pause');
     await axe(s.p, 'Feature discovery preferences', A11Y_FOUND);
@@ -1229,6 +1246,14 @@ const J = {
       await s.p.setViewportSize({ width, height: 800 });
       const fits = await s.p.locator('#discovery-panel').evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; });
       if (!fits) throw Error('Discovery panel overflows at ' + width);
+      if (width === 390) {
+        const frequency = s.p.getByRole('button', { name: 'Suggestion frequency', exact: true });
+        await frequency.click();
+        const menu = s.p.locator('.sel-list:visible').last();
+        const visible = await menu.evaluate(el => { const r = el.getBoundingClientRect(); const target = document.elementFromPoint(r.left + r.width / 2, r.top + 20); return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 && !!target && el.contains(target); });
+        if (!visible) throw Error('Discovery dropdown is clipped or covered on a phone');
+        await frequency.press('Escape');
+      }
     }
     await s.p.getByRole('button', { name: 'Close feature discovery', exact: true }).click();
     const d = await newFile(s, 'Collab document');
@@ -1240,7 +1265,7 @@ const J = {
     await s.p.reload();
     await launch.click();
     await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
-    if (await s.p.getByLabel('Suggestion frequency', { exact: true }).inputValue() !== '3') throw Error('Frequency preference was not saved');
+    if (!(await s.p.getByLabel('Suggestion frequency', { exact: true }).textContent())?.includes('One every 3 days')) throw Error('Frequency preference was not saved');
     await see(s.p, 'text=Resume suggestions', 'pause survives reload');
     await s.p.getByLabel('Personalise suggestions', { exact: false }).uncheck();
     if (await s.p.getByLabel('Quiet suggestions', { exact: false }).isChecked()) throw Error('Opting out left proactive suggestions enabled');
@@ -1278,6 +1303,14 @@ const J = {
     const box = await panel.boundingBox();
     if (!box || box.x < 0 || box.width > 391 || box.height > 845) throw Error('Phone help overflows the viewport.');
     await axe(s.p, 'Help assistant phone', A11Y_FOUND);
+    await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
+    const category = panel.getByRole('button', { name: 'Category', exact: true });
+    await category.click();
+    const categoryMenu = s.p.locator('.sel-list:visible').last();
+    const categoryVisible = await categoryMenu.evaluate(el => { const r = el.getBoundingClientRect(); const target = document.elementFromPoint(r.left + r.width / 2, r.top + 20); return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 && !!target && el.contains(target); });
+    if (!categoryVisible) throw Error('Help category dropdown is clipped or covered on a phone');
+    await axe(s.p, 'Help category dropdown open on phone', A11Y_FOUND);
+    await category.press('Escape');
     await panel.getByRole('button', { name: 'Close help' }).click();
     await s.p.getByRole('button', { name: 'Help', exact: true }).waitFor();
     await s.p.setViewportSize({ width: 1280, height: 900 });
@@ -2828,7 +2861,7 @@ const J = {
     const s = await session(b, { owner: true });
     await s.p.evaluate(() => {const fs=JSON.parse(localStorage.getItem('mockfs')||'{}');fs['users/allowance-user']={role:'learner',displayName:'Allowance learner',email:'allowance@example.test'};localStorage.setItem('mockfs',JSON.stringify(fs));});
     await s.p.goto(BASE+'/admin?tab=ai');
-    await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).selectOption('testing');
+    await chooseSelect(s.p, s.p.getByRole('button',{name:'Songs release state',exact:true}), 'testing');
     await s.p.getByRole('button',{name:'Save feature states',exact:true}).click();
     await s.p.getByText('Feature states saved. New requests use these settings.',{exact:true}).waitFor();
     await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
@@ -2848,7 +2881,7 @@ const J = {
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).waitFor();
     if(await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).inputValue()!=='0')throw Error('Saved zero limit missing');
     if(!await s.p.getByRole('checkbox',{name:'Songs testing access',exact:true}).isChecked())throw Error('Saved testing access missing');
-    if(await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).inputValue()!=='testing')throw Error('Saved release state missing');
+    if(!(await s.p.getByRole('button',{name:'Songs release state',exact:true}).textContent())?.includes('Testing'))throw Error('Saved release state missing');
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('999');
     await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
     await see(s.p,'[role=alert]:has-text("Test save unavailable")','visible save failure');
