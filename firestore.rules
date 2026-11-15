@@ -1037,6 +1037,8 @@ service cloud.firestore {
       allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invited', 'invitedAt', 'invitedBy']);
     }
     match /invitationRateLimits/{id} { allow read, write: if false; }
+    match /authEmailRateLimits/{id} { allow read, write: if false; }
+    match /authEmailJobs/{id} { allow read, write: if false; }
     // Invitation codes (inviteCodes/{code}): made by a super admin, or by an organisation's admins for
     // their organisation. A new teacher types one in to make their account. A code can be used a set
     // number of times, until a date, and only by one email if it names one.
