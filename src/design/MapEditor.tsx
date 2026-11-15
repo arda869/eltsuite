@@ -4,22 +4,16 @@ import type { Ctx } from './Editor';
 import { blankMap, cloneFigure, makeMapItem, MAP_PRESETS, mapPointFromCanvas } from './figureTemplates';
 import { drawFigure, MAP_ICONS, type MapFigure, type MapItem, type MapItemKind, type Point } from './figures';
 import MapSymbolLibrary from './MapSymbolLibrary';
+import { MapToolIcon } from './MapToolIcons';
 import { MapHistoryToolbar, MapLayersPanel, MapMarkerKey } from './MapLayersPanel';
 
 type MapTool = 'select' | MapItemKind;
-type MapTab = 'layout' | 'places' | 'labels' | 'finish';
 type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 type Dragging = { id: string; item: MapItem; start: Point; mode: 'move' | 'vertex' | 'resize' | 'rotate'; vertex?: number; handle?: Handle; groupItems?: MapItem[]; recorded?: boolean };
 
 const pathKinds: MapItemKind[] = ['road', 'river', 'footpath', 'wall', 'fence', 'bridge'];
 const placeKinds: MapItemKind[] = ['building', 'room', 'zone', 'water', 'roundabout', 'tree', 'gate'];
 const resizableKinds: MapItemKind[] = ['building', 'room', 'zone', 'water', 'roundabout', 'icon'];
-const tabs: { key: MapTab; label: string; help: string }[] = [
-  { key: 'layout', label: '1 Layout', help: 'Start with a plan or trace your own image.' },
-  { key: 'places', label: '2 Places', help: 'Draw paths and place buildings, facilities and landmarks.' },
-  { key: 'labels', label: '3 Labels', help: 'Add letters, names and a north arrow.' },
-  { key: 'finish', label: '4 Finish', help: 'Check the plan before using it in Classes.' },
-];
 const labelOf = (kind: string) => kind.charAt(0).toUpperCase() + kind.slice(1).replace(/([A-Z])/g, ' $1');
 const clamp = (value: number, low = 0, high = 1) => Math.max(low, Math.min(high, value));
 const copyMap = (figure: MapFigure) => cloneFigure(figure) as MapFigure;
@@ -103,9 +97,10 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     setNamingId('');
     updateHistory(value => value + 1);
   };
-  const [activeTab, setActiveTab] = useState<MapTab>(initial.title === 'New map' ? 'layout' : 'places');
   const [tool, setTool] = useState<MapTool>('select');
   const [iconKey, setIconKey] = useState('café');
+  const [symbolStyle, setSymbolStyle] = useState<'plain' | 'shaded'>('shaded');
+  const [symbolColor, setSymbolColor] = useState('#73578f');
   const [namingId, setNamingId] = useState('');
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
@@ -149,7 +144,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     for (const child of target.children) if (child !== drawing) observer.observe(child);
     measure();
     return () => observer.disconnect();
-  }, [activeTab, tool, pendingPath.length, previewSize]);
+  }, [tool, pendingPath.length, previewSize]);
 
   useEffect(() => {
     if (draft.backgroundImage && !background) void loadPicture(cx.d.id, draft.backgroundImage).then(setBackground, () => {});
@@ -248,7 +243,11 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
   }), record);
   const place = (kind: MapItemKind, at: Point, symbol = iconKey) => {
     const item = makeMapItem(kind, at.x, at.y, symbol);
-    if (kind === 'icon') item.label = MAP_ICONS.find(([key]) => key === symbol)?.[1] || 'Place';
+    if (kind === 'icon') {
+      item.label = MAP_ICONS.find(([key]) => key === symbol)?.[1] || 'Place';
+      item.iconStyle = symbolStyle;
+      item.iconColor = symbolColor;
+    }
     if (kind === 'marker') item.label = nextLetter(draft.items);
     changeDraft(value => ({ ...value, items: [...value.items, item] }));
     selectIds([item.id]);
@@ -307,7 +306,7 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
     selectIds(hit ? [hit.id] : []);
     setNamingId('');
     if (!hit) {
-      if (activeTab === 'layout' && draft.backgroundImage && draft.backgroundLocked === false) {
+      if (draft.backgroundImage && draft.backgroundLocked === false) {
         backgroundDrag.current = { start: at, x: draft.backgroundOffsetX || 0, y: draft.backgroundOffsetY || 0 };
         event.currentTarget.setPointerCapture(event.pointerId);
       }
@@ -374,7 +373,16 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
   const chooseTool = (next: MapTool, symbol?: string) => {
     if (pendingPath.length) { setPendingPath([]); setHoverPoint(null); }
     if (symbol) setIconKey(symbol);
+    if (next !== 'select') selectIds([]);
     setTool(next); setNamingId(''); setError('');
+  };
+  const changeSymbolStyle = (style: 'plain' | 'shaded') => {
+    setSymbolStyle(style);
+    if (tool === 'select' && current?.kind === 'icon') modify({ iconStyle: style });
+  };
+  const changeSymbolColor = (color: string) => {
+    setSymbolColor(color);
+    if (tool === 'select' && current?.kind === 'icon') modify({ iconColor: color });
   };
   const choosePreset = (name: string, figure: MapFigure) => {
     const next = { name, figure: copyMap(figure) };
@@ -407,55 +415,44 @@ export default function MapEditor({ cx, e, set, onClose }: { cx: Ctx; e: El; set
 
   return <div className="dz-figure-modal" role="dialog" aria-modal="true" aria-label="Edit map"><div className="dz-figure-dialog dz-map-dialog dz-map-editor">
     <header><span><strong>Edit map</strong><small>Make a clear plan, then use it in a Classes task.</small></span><button type="button" onClick={onClose} aria-label="Close map editor">×</button></header>
-    <div className="dz-map-tabs" role="tablist" aria-label="Map editing steps">{tabs.map(tab => <button type="button" role="tab" key={tab.key} aria-selected={activeTab === tab.key} className={activeTab === tab.key ? 'on' : ''} onClick={() => { setActiveTab(tab.key); chooseTool('select'); }}>{tab.label}</button>)}</div>
     <div className="dz-figure-work"><div className="dz-map-tools">
-      <p className="dz-map-tab-help">{tabs.find(tab => tab.key === activeTab)?.help}</p>
-      {activeTab === 'layout' && <>
+      <div className="dz-map-tools-heading"><strong>Map tools</strong><small>Choose a tool, then click or drag on the map.</small></div>
+      <button type="button" className={tool === 'select' ? 'dz-map-pick on' : 'dz-map-pick'} onClick={() => chooseTool('select')}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 2v15l4-4 3 5 2-1-3-5h6L3 2Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>Select and move</button>
+      <details className="dz-map-tool-section" open><summary>Draw lines</summary><div className="dz-map-tool-grid">{pathKinds.map(kind => <button type="button" key={kind} className={tool === kind ? 'on' : ''} onClick={() => chooseTool(kind)} aria-pressed={tool === kind}><MapToolIcon kind={kind} size={20} /><span>{labelOf(kind)}</span></button>)}</div></details>
+      <details className="dz-map-tool-section dz-map-symbol-section" open><summary>Symbols</summary><div className="dz-map-toolgroup"><MapSymbolLibrary selectedKey={tool === 'icon' ? iconKey : undefined} symbolStyle={tool === 'select' && current?.kind === 'icon' ? current.iconStyle || 'shaded' : symbolStyle} symbolColor={tool === 'select' && current?.kind === 'icon' ? current.iconColor || '#302e31' : symbolColor} onSymbolStyleChange={changeSymbolStyle} onSymbolColorChange={changeSymbolColor} onSelect={key => { chooseTool('icon', key); if (window.innerWidth <= 900) requestAnimationFrame(() => center.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} /></div></details>
+      <details className="dz-map-tool-section"><summary>Add places</summary><div className="dz-map-tool-grid">{placeKinds.map(kind => <button type="button" key={kind} className={tool === kind ? 'on' : ''} onClick={() => chooseTool(kind)} aria-pressed={tool === kind}><MapToolIcon kind={kind} size={20} /><span>{labelOf(kind)}</span></button>)}</div></details>
+      <details className="dz-map-tool-section"><summary>Letters and names</summary><div className="dz-map-toolgroup"><div className="dz-map-tool-grid"><button type="button" className={tool === 'marker' ? 'on' : ''} onClick={() => chooseTool('marker')} aria-pressed={tool === 'marker'}><span className="dz-map-tool-letter">A</span><span>Add next letter ({nextLetter(draft.items)})</span></button><button type="button" className={tool === 'label' ? 'on' : ''} onClick={() => chooseTool('label')} aria-pressed={tool === 'label'}><span className="dz-map-tool-letter">T</span><span>Add text label</span></button><button type="button" className={tool === 'compass' ? 'on' : ''} onClick={() => chooseTool('compass')} aria-pressed={tool === 'compass'}><span className="dz-map-tool-letter">↑</span><span>Add north arrow</span></button></div><MapMarkerKey items={draft.items} onChangeItems={items => changeDraft(value => ({ ...value, items }))} /></div></details>
+      <details className="dz-map-tool-section"><summary>Layout and reference image</summary><div className="dz-map-toolgroup">
         <Field name="Map title" value={draft.title} onChange={title => changeDraft(value => ({ ...value, title }))} />
-        <div className="dz-map-toolgroup"><strong>Start with a layout</strong><div className="dz-map-start-list">
+        <strong>Ready-made layouts</strong><div className="dz-map-start-list">
           <button type="button" onClick={() => choosePreset('Blank map', blankMap())}><MapLayoutThumbnail figure={blankMap()} /><b>Blank map</b><small>Start with an empty plan</small></button>
           {MAP_PRESETS.filter(preset => ['park','site','airport','town-now','town','castle'].includes(preset.id)).map(preset => <button type="button" key={preset.id} onClick={() => choosePreset(preset.name, preset.figure as MapFigure)}><MapLayoutThumbnail figure={preset.figure as MapFigure} /><b>{preset.name}</b><small>{preset.about}</small></button>)}
-        </div><p className="dz-map-muted">For a before-and-after pair, choose the two-map layout in Charts & maps.</p></div>
-        <div className="dz-map-toolgroup"><strong>Trace an existing plan</strong><input ref={upload} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={event => void importImage(event.target.files?.[0])} /><button type="button" onClick={() => upload.current?.click()} disabled={busy}>{busy ? 'Importing…' : 'Import map image'}</button>
-          {draft.backgroundImage && <><label>Fit<select value={draft.backgroundFit || 'contain'} onChange={event => changeDraft(value => ({ ...value, backgroundFit: event.target.value as 'contain' | 'cover' }))}><option value="contain">Show the whole image</option><option value="cover">Fill the map</option></select></label><label>Image opacity <input type="range" min="10" max="100" value={Math.round((draft.backgroundOpacity ?? 1) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOpacity: Number(event.target.value) / 100 }))} /></label><label className="dz-map-check"><input type="checkbox" checked={draft.backgroundLocked !== false} onChange={event => changeDraft(value => ({ ...value, backgroundLocked: event.target.checked }))} /> Lock the reference image</label>{draft.backgroundLocked === false && <><p className="dz-map-muted">Drag the empty map area to move the reference image.</p><label>Move left or right<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetX || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetX: Number(event.target.value) / 100 }))} /></label><label>Move up or down<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetY || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetY: Number(event.target.value) / 100 }))} /></label></>}<button type="button" onClick={() => { changeDraft(value => ({ ...value, backgroundImage: undefined })); setBackground(undefined); }}>Remove image</button></>}
-        </div>
-        <div className="dz-map-toolgroup"><strong>Drawing aid</strong><label className="dz-map-check"><input type="checkbox" checked={showGrid} onChange={event => setShowGrid(event.target.checked)} /> Show grid</label><label className="dz-map-check"><input type="checkbox" checked={snap} onChange={event => setSnap(event.target.checked)} /> Snap to grid</label></div>
-      </>}
-      {activeTab === 'places' && <>
-        <button type="button" className={tool === 'select' ? 'dz-map-pick on' : 'dz-map-pick'} onClick={() => chooseTool('select')}>Select and move</button>
-        <div className="dz-map-toolgroup"><strong>Draw lines</strong><div>{pathKinds.map(kind => <button type="button" key={kind} className={tool === kind ? 'on' : ''} onClick={() => chooseTool(kind)}>{labelOf(kind)}</button>)}</div></div>
-        <div className="dz-map-toolgroup"><strong>Add places</strong><div>{placeKinds.map(kind => <button type="button" key={kind} className={tool === kind ? 'on' : ''} onClick={() => chooseTool(kind)}>{labelOf(kind)}</button>)}</div></div>
-        <div className="dz-map-toolgroup"><strong>Symbols</strong><p className="dz-map-muted">Click a symbol, then click the map. Or drag it onto the map.</p><MapSymbolLibrary selectedKey={tool === 'icon' ? iconKey : undefined} onSelect={key => { chooseTool('icon', key); if (window.innerWidth <= 900) requestAnimationFrame(() => center.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} /></div>
-      </>}
-      {activeTab === 'labels' && <>
-        <div className="dz-map-toolgroup"><strong>Letters and names</strong><p className="dz-map-muted">Pick a marker, then click the map. Its letter can be changed beside the point.</p><button type="button" className={tool === 'marker' ? 'on' : ''} onClick={() => chooseTool('marker')}>Add next letter ({nextLetter(draft.items)})</button><button type="button" className={tool === 'label' ? 'on' : ''} onClick={() => chooseTool('label')}>Add text label</button><button type="button" className={tool === 'compass' ? 'on' : ''} onClick={() => chooseTool('compass')}>Add north arrow</button></div>
-        <div className="dz-map-toolgroup"><strong>Existing labels</strong>{draft.items.filter(item => !!item.label && !item.hidden && !item.locked).map(item => <button type="button" key={item.id} onClick={() => { chooseTool('select'); selectIds([item.id]); setNamingId(item.id); }}>{item.label}</button>)}</div>
-        <MapMarkerKey items={draft.items} onChangeItems={items => changeDraft(value => ({ ...value, items }))} />
-      </>}
-      {activeTab === 'finish' && <>
-        <Field name="Map title" value={draft.title} onChange={title => changeDraft(value => ({ ...value, title }))} />
-        <label className="dz-map-check"><input type="checkbox" checked={draft.showBorder !== false} onChange={event => changeDraft(value => ({ ...value, showBorder: event.target.checked }))} /> Show map border</label>
-        <div className="dz-map-toolgroup"><strong>Preview size</strong><div>{(['class','phone','print'] as const).map(size => <button type="button" key={size} className={previewSize === size ? 'on' : ''} onClick={() => setPreviewSize(size)}>{size === 'class' ? 'Class' : size === 'phone' ? 'Phone' : 'Print'}</button>)}</div><p className="dz-map-muted">The same map is used on screen and on paper. Questions and answers are added in Classes.</p></div>
-        <p className="dz-map-summary">{draft.items.length} map objects · {draft.items.filter(item => item.kind === 'marker').length} letter markers</p>
-      </>}
+        </div><p className="dz-map-muted">For a before-and-after pair, choose the two-map layout in Charts & maps.</p>
+        <strong>Trace your own plan</strong><input ref={upload} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={event => void importImage(event.target.files?.[0])} /><button type="button" onClick={() => upload.current?.click()} disabled={busy}>{busy ? 'Importing…' : 'Import map image'}</button>
+        {draft.backgroundImage && <><label>Fit<select value={draft.backgroundFit || 'contain'} onChange={event => changeDraft(value => ({ ...value, backgroundFit: event.target.value as 'contain' | 'cover' }))}><option value="contain">Show the whole image</option><option value="cover">Fill the map</option></select></label><label>Image opacity <input type="range" min="10" max="100" value={Math.round((draft.backgroundOpacity ?? 1) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOpacity: Number(event.target.value) / 100 }))} /></label><label className="dz-map-check"><input type="checkbox" checked={draft.backgroundLocked !== false} onChange={event => changeDraft(value => ({ ...value, backgroundLocked: event.target.checked }))} /> Lock the reference image</label>{draft.backgroundLocked === false && <><p className="dz-map-muted">Drag an empty map area to move the reference.</p><label>Move left or right<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetX || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetX: Number(event.target.value) / 100 }))} /></label><label>Move up or down<input type="range" min="-100" max="100" value={Math.round((draft.backgroundOffsetY || 0) * 100)} onChange={event => changeDraft(value => ({ ...value, backgroundOffsetY: Number(event.target.value) / 100 }))} /></label></>}<button type="button" onClick={() => { changeDraft(value => ({ ...value, backgroundImage: undefined })); setBackground(undefined); }}>Remove image</button></>}
+        <strong>Drawing aids</strong><label className="dz-map-check"><input type="checkbox" checked={showGrid} onChange={event => setShowGrid(event.target.checked)} /> Show grid</label><label className="dz-map-check"><input type="checkbox" checked={snap} onChange={event => setSnap(event.target.checked)} /> Snap to grid</label><label className="dz-map-check"><input type="checkbox" checked={draft.showBorder !== false} onChange={event => changeDraft(value => ({ ...value, showBorder: event.target.checked }))} /> Show map border</label>
+      </div></details>
       {pendingPreset && <div className="dz-map-confirm" role="alertdialog" aria-label="Replace current map"><strong>Replace the current map?</strong><p>Choosing {pendingPreset.name} removes the objects and reference image in this map. Your saved design stays as it is until you save.</p><div><button type="button" onClick={() => setPendingPreset(null)}>Keep this map</button><button type="button" onClick={() => { changeDraft(pendingPreset.figure); setBackground(undefined); selectIds([]); setPendingPreset(null); }}>Replace map</button></div></div>}
       {error && <p role="alert" className="dz-map-error">{error}</p>}
     </div>
     <div ref={center} className={`dz-map-center dz-map-preview-${previewSize}${zoom > 1 ? ' is-zoomed' : ''}`}>
-      <div className="dz-map-instruction">{isPath(tool) ? `Click to draw a ${tool}. Add bends, then finish the line. Hold Shift for a straight horizontal, vertical or diagonal segment.` : tool === 'select' ? 'Click an object to edit it. Drag its handles to resize or rotate.' : `Click the map to place ${tool === 'icon' ? MAP_ICONS.find(([key]) => key === iconKey)?.[1] : labelOf(tool)}.`}</div>
+      {tool !== 'select' && <div className="dz-map-instruction">{isPath(tool) ? `Click to draw a ${tool}. Add bends, then finish the line. Hold Shift for a straight horizontal, vertical or diagonal segment.` : `Click the map to place ${tool === 'icon' ? MAP_ICONS.find(([key]) => key === iconKey)?.[1] : labelOf(tool)}.`}</div>}
       <MapHistoryToolbar canUndo={history.current.past.length > 0} canRedo={history.current.future.length > 0} onUndo={() => travel('undo')} onRedo={() => travel('redo')} />
       {isPath(tool) && <div className="dz-map-path-actions"><span>{pendingPath.length ? `${pendingPath.length} point${pendingPath.length === 1 ? '' : 's'} placed` : 'Click the starting point'}</span><button type="button" disabled={pendingPath.length < 2} onClick={finishPath}>Finish line</button><button type="button" disabled={!pendingPath.length} onClick={() => { setPendingPath([]); setHoverPoint(null); }}>Cancel line</button></div>}
       <div className="dz-map-zoom"><button type="button" onClick={() => setZoom(value => Math.max(.75, value - .25))} aria-label="Zoom map out">−</button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom(value => Math.min(2.5, value + .25))} aria-label="Zoom map in">+</button></div>
+      <div className="dz-map-view-switch" role="group" aria-label="Preview map at"><span>Preview</span>{(['class','phone','print'] as const).map(size => <button type="button" key={size} className={previewSize === size ? 'on' : ''} aria-pressed={previewSize === size} onClick={() => setPreviewSize(size)}>{size === 'class' ? 'Class' : size === 'phone' ? 'Phone' : 'Print'}</button>)}</div>
       <div ref={canvasWrap} className="dz-map-canvas-wrap" style={{ width: `${(fitWidth || 600) * zoom}px` }} onDragOver={event => { if (Array.from(event.dataTransfer.types).includes('application/x-elt-map-symbol')) event.preventDefault(); }} onDrop={drop}>
         <canvas ref={canvas} width={1000} height={720} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onDoubleClick={() => { if (isPath(tool)) finishPath(); }} aria-label="Editable map canvas" />
         {naming && !naming.points && <input ref={nameInput} className="dz-map-inline-name" aria-label="Name this map object" placeholder="Name or letter" value={naming.label || ''} style={{ left: `${4 + (naming.x ?? .5) * 92}%`, top: `${(88 + (naming.y ?? .5) * 570) / 720 * 100}%` }} onChange={event => modify({ label: event.target.value }, naming.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === 'Escape') { event.preventDefault(); setNamingId(''); } }} />}
       </div>
-      <p>Drag a symbol here, or choose a tool and click the map.</p>
     </div>
     <div className="dz-map-inspector"><strong>{current ? `Selected ${labelOf(current.kind)}` : 'Map layers'}</strong>
       {current ? <>
         <Field name="Name or letter" value={current.label || ''} onChange={label => modify({ label })} />
-        {current.kind === 'icon' && <label className="dz-field"><span>Symbol</span><select value={current.icon} onChange={event => modify({ icon: event.target.value })}>{MAP_ICONS.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>}
+        {current.kind === 'icon' && <>
+          <label className="dz-field"><span>Symbol</span><select value={current.icon} onChange={event => modify({ icon: event.target.value })}>{MAP_ICONS.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
+          <div className="dz-map-icon-appearance" role="group" aria-label="Selected symbol appearance"><span>Symbol background</span><div><button type="button" className={current.iconStyle === 'plain' ? 'on' : ''} aria-pressed={current.iconStyle === 'plain'} onClick={() => changeSymbolStyle('plain')}>Plain</button><button type="button" className={current.iconStyle !== 'plain' ? 'on' : ''} aria-pressed={current.iconStyle !== 'plain'} onClick={() => changeSymbolStyle('shaded')}>Shaded</button></div><label>Colour<input type="color" value={current.iconColor || '#302e31'} onChange={event => changeSymbolColor(event.target.value)} aria-label="Selected symbol colour" /></label></div>
+        </>}
         {!current.points && <details className="dz-map-advanced"><summary>Exact position and size</summary><NumberField name="Across (%)" value={Math.round((current.x ?? .5) * 100)} onChange={value => modify({ x: clamp((value ?? 50) / 100) })} /><NumberField name="Down (%)" value={Math.round((current.y ?? .5) * 100)} onChange={value => modify({ y: clamp((value ?? 50) / 100) })} />{resizableKinds.includes(current.kind) && <><NumberField name="Width (%)" value={Math.round((current.w ?? .1) * 100)} onChange={value => modify({ w: clamp((value ?? 10) / 100, .025, 1) })} /><NumberField name="Height (%)" value={Math.round((current.h ?? .1) * 100)} onChange={value => modify({ h: clamp((value ?? 10) / 100, .025, 1) })} /></>}</details>}
         <NumberField name="Rotation (°)" value={Math.round(current.rotation ?? 0)} onChange={value => {
           const rotation = value ?? 0;

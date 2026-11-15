@@ -95,13 +95,13 @@ export function MapLayersPanel({ items, selectedIds, onSelectIds, onChangeItems 
   };
 
   return <section className="dz-map-layer-panel" aria-label="Map layers">
-    <div className="dz-layer-heading"><div><strong>Layers</strong><span>{items.length}</span></div><p>The top layer sits in front on the map.</p></div>
+    <div className="dz-layer-heading"><div><strong>Layers</strong><span>{items.length}</span></div></div>
     {items.length ? <>
       <div className="dz-layer-list" role="group" aria-label="Map object layers">
         {ordered.map((item, rowIndex) => <div className={`dz-layer-row${selected.has(item.id) ? ' is-selected' : ''}${item.hidden ? ' is-hidden' : ''}`} key={item.id}>
           <label className="dz-layer-check"><input type="checkbox" checked={selected.has(item.id)} disabled={item.locked || item.hidden} onChange={() => selectRow(item.id, rowIndex, true, false)} aria-label={`Select ${labelFor(item)}`} /></label>
-          <button type="button" className="dz-layer-main" disabled={item.locked || item.hidden} onClick={event => selectRow(item.id, rowIndex, event.metaKey || event.ctrlKey, event.shiftKey)} aria-pressed={selected.has(item.id)} title={labelFor(item)}>
-            <LayerPicture item={item} /><span className="dz-layer-words"><span className="dz-layer-name">{labelFor(item)}</span><small>{item.groupId ? 'Grouped · ' : ''}{item.locked ? 'Locked · ' : ''}{kindNames[item.kind]}</small></span>
+          <button type="button" className="dz-layer-main" disabled={item.locked || item.hidden} onClick={event => selectRow(item.id, rowIndex, event.metaKey || event.ctrlKey, event.shiftKey)} aria-pressed={selected.has(item.id)} title={`${labelFor(item)} · ${item.groupId ? 'Grouped · ' : ''}${item.locked ? 'Locked · ' : ''}${kindNames[item.kind]}`}>
+            <LayerPicture item={item} /><span className="dz-layer-name">{labelFor(item)}</span>
           </button>
           <div className="dz-layer-actions">
             <button type="button" onClick={() => setOne(item.id, { hidden: !item.hidden })} aria-label={`${item.hidden ? 'Show' : 'Hide'} ${labelFor(item)}`} title={item.hidden ? 'Show layer' : 'Hide layer'}><ActionIcon name={item.hidden ? 'show' : 'hide'} /></button>

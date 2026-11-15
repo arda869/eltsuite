@@ -23,14 +23,39 @@
 .dz-figure-new strong{display:block;font:700 13px var(--sans)}
 .dz-figure-new small{display:block;margin-top:3px;color:var(--dz-muted);font:12px/1.35 var(--sans)}
 
-/* The map editor keeps the drawing visible while each step shows only its relevant controls. */
+/* Map tools stay available beside the drawing; only their own panel scrolls. */
 .dz-map-editor .dz-figure-work{min-height:0}
-.dz-map-tabs{display:flex;gap:4px;padding:8px 20px;border-bottom:1px solid var(--dz-line);overflow-x:auto;background:var(--dz-panel)}
-.dz-map-tabs button{flex:1;min-width:max-content;border:1px solid transparent;border-radius:9px;padding:9px 13px;background:transparent;color:var(--dz-muted);font:700 13px var(--sans);cursor:pointer}
-.dz-map-tabs button.on{border-color:var(--dz-line);background:color-mix(in srgb,var(--dz) 10%,var(--dz-panel));color:var(--dz-ink)}
-.dz-map-tab-help{margin:0;color:var(--dz-muted);font:13px/1.45 var(--sans)}
-.dz-map-pick{width:100%;min-height:36px;text-align:left;border:1px solid var(--dz-line);border-radius:9px;background:var(--dz-panel);color:var(--dz-ink);padding:8px 10px;font:700 13px var(--sans);cursor:pointer}
+.dz-map-editor .dz-figure-work{grid-template-columns:minmax(210px,250px) minmax(380px,1fr) minmax(245px,280px)}
+.dz-map-editor .dz-map-tools{gap:9px;padding:14px 12px}
+.dz-map-tools-heading{display:grid;gap:2px;padding:1px 2px 3px}.dz-map-tools-heading strong{font:700 15px var(--serif);color:var(--dz-ink)}.dz-map-tools-heading small{font:11px/1.35 var(--sans);color:var(--dz-muted)}
+.dz-map-pick{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;text-align:left;border:1px solid var(--dz-line);border-radius:9px;background:var(--dz-panel);color:var(--dz-ink);padding:7px 10px;font:700 12px var(--sans);cursor:pointer}
+.dz-map-pick svg{width:20px;height:20px;flex:none}
 .dz-map-pick.on{border-color:var(--dz);background:color-mix(in srgb,var(--dz) 12%,var(--dz-panel))}
+.dz-map-tool-section{display:block;flex:none;min-width:0;border:1px solid var(--dz-line);border-radius:11px;background:var(--dz-panel);overflow:clip}
+.dz-map-tool-section>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:37px;list-style:none;cursor:pointer;padding:7px 10px;box-sizing:border-box;color:var(--dz-ink);font:700 12px var(--sans)}
+.dz-map-tool-section>summary::-webkit-details-marker{display:none}
+.dz-map-tool-section>summary::after{content:'⌄';font:700 18px/1 var(--sans);color:var(--dz-muted);transform:rotate(-90deg);transition:transform .12s}
+.dz-map-tool-section[open]>summary::after{transform:rotate(0)}
+.dz-map-tool-section>summary:focus-visible{outline:2px solid var(--dz);outline-offset:-2px;border-radius:9px}
+.dz-map-tool-section>.dz-map-tool-grid,.dz-map-tool-section>.dz-map-toolgroup{padding:0 9px 10px;box-sizing:border-box}
+.dz-map-tool-section .dz-map-toolgroup{display:grid;gap:9px}
+.dz-map-tool-section .dz-map-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.dz-map-tool-grid button{display:flex;align-items:center;gap:5px;min-width:0;min-height:35px;padding:5px!important;text-align:left;border:1px solid var(--dz-line);border-radius:8px;background:var(--dz-panel);color:var(--dz-ink);font:11px/1.15 var(--sans);cursor:pointer}
+.dz-map-tool-grid button>svg{width:20px;height:20px;flex:none}
+.dz-map-tool-grid button>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dz-map-tool-grid button.on{border-color:var(--dz);background:color-mix(in srgb,var(--dz) 13%,var(--dz-panel));color:var(--dz-ink)}
+.dz-map-tool-letter{display:grid;place-items:center;flex:none;width:20px;height:20px;border:1px solid currentColor;border-radius:5px;color:var(--dz);font:700 12px var(--sans)}
+.dz-map-view-switch{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap;color:var(--dz-muted);font:11px var(--sans)}
+.dz-map-view-switch span{margin-right:3px}
+.dz-map-view-switch button{min-height:25px;border:1px solid var(--dz-line);border-radius:7px;background:var(--dz-panel);color:var(--dz-ink);padding:3px 8px;font:700 11px var(--sans);cursor:pointer}
+.dz-map-view-switch button.on{background:color-mix(in srgb,var(--dz) 14%,var(--dz-panel));border-color:var(--dz);color:var(--dz-ink)}
+.dz-map-icon-appearance{display:grid;gap:7px;padding:9px;border:1px solid var(--dz-line);border-radius:9px;background:color-mix(in srgb,var(--dz) 4%,var(--dz-panel));font:12px var(--sans)}
+.dz-map-icon-appearance>span{font-weight:700;color:var(--dz-muted)}
+.dz-map-icon-appearance>div{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.dz-map-icon-appearance button{border:1px solid var(--dz-line);border-radius:7px;background:var(--dz-panel);color:var(--dz-ink);padding:6px;font:700 11px var(--sans);cursor:pointer}
+.dz-map-icon-appearance button.on{border-color:var(--dz);background:color-mix(in srgb,var(--dz) 13%,var(--dz-panel))}
+.dz-map-icon-appearance label{display:flex;align-items:center;justify-content:space-between;color:var(--dz-muted);font:12px var(--sans)}
+.dz-map-icon-appearance input[type=color]{width:33px;height:27px;padding:2px;border:1px solid var(--dz-line);border-radius:7px;background:var(--dz-panel);cursor:pointer}
 .dz-map-start-list{display:grid!important;grid-template-columns:1fr 1fr;gap:7px!important}
 .dz-map-start-list button{display:grid;align-content:start;gap:3px;min-height:56px;text-align:left;padding:9px 10px!important}
 .dz-map-start-list button:first-child{grid-column:1/-1;min-height:36px}
@@ -60,7 +85,7 @@
 .dz-map-summary{border:1px solid var(--dz-line);border-radius:9px;padding:10px;color:var(--dz-muted);font:12px var(--sans)}
 .dz-map-preview-phone .dz-map-canvas-wrap{max-width:min(390px,100%)}
 .dz-map-preview-print .dz-map-canvas-wrap{max-width:min(720px,100%);box-shadow:0 8px 24px #0002;background:#fff;padding:12px;box-sizing:border-box}
-@media(max-width:900px){.dz-map-tabs{padding:7px 12px}.dz-map-tabs button{flex:0 0 auto}.dz-map-editor .dz-map-center{order:-1;height:min(440px,52dvh);flex:none}.dz-map-editor .dz-figure-work{overflow:auto}}
+@media(max-width:900px){.dz-map-editor .dz-map-center{order:-1;height:min(440px,52dvh);flex:none}.dz-map-editor .dz-figure-work{overflow:auto}.dz-map-editor .dz-map-tools{padding:14px 18px}}
 .dz-map-editor .dz-map-center{display:flex;flex-direction:column;align-items:center;align-content:unset;justify-items:unset;overflow:hidden}
 .dz-map-editor .dz-map-center.is-zoomed{overflow:auto}
 .dz-map-editor .dz-map-canvas-wrap{max-width:none}
