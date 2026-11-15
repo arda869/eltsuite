@@ -35,7 +35,7 @@ export function MenuHost() {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useMenuKeys(ref, open, () => setOpen(null), !!open?.kbd);
-  useEffect(() => {
+  useLayoutEffect(() => {
     setter = setOpen;
     // Never the browser's menu: anywhere the app has no menu of its own, this one.
     const fallback = (e: MouseEvent) => {
