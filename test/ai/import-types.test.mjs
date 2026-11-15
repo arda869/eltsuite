@@ -8,6 +8,8 @@ import {checkImportElements} from '../../functions/ai/import-validation.js';
 import {checkRebuild,rebuildSchemaForClass} from '../../functions/ai/material-contract.js';
 import {nativeTask} from '../../functions/ai/activities.js';
 import {splitKey,mergeKey} from '../../functions/ai/import-question-core.js';
+import {questionIds,scoreQuestion} from '../../functions/learning/question-core.js';
+import {scoreAnswer} from '../../functions/quiz/engine.js';
 import {importElements,importTask,importLesson} from './import-types-fixture.mjs';
 test('every native import type validates, renders to native nodes and survives editor key merging',()=>{
  assert.deepEqual(new Set(Object.keys(importElements)),new Set(IMPORT_TYPES.map(t=>t.kind)));
@@ -54,6 +56,35 @@ test('advanced answer keys are private while teacher notes and originals remain 
  for(const secret of ['successful','goes','since','"groups"','"range"','"answers"'])assert.ok(!pub.includes(secret)||secret==='"answers"',secret+' not leaked');
  assert.equal(Object.values(n.key).length,5);assert.ok(!pub.includes('AI-suggested'));
 });
+test('imported questions without a supplied key remain unmarked; supplied answers still score',()=>{
+ const unknown=[
+  {...importElements.gap,data:{answers:[]}},
+  {...importElements.truefalse,data:{answer:''}},
+  {...importElements.match,data:{pairs:[{left:'First place',right:''},{left:'Second place',right:'Library'}],extras:['Office']}},
+  {...importElements['pq-matching'],data:{...importElements['pq-matching'].data,statements:[{text:'Where is the cafe?',answer:-1},{text:'Where is the library?',answer:1}]}},
+ ];
+ const native=nativeTask(importTask(unknown),0,'missing_answers');
+ const refs=questionIds(native.content),entries=refs.map(q=>native.key[q.id]);
+ assert.equal(refs.length,4);
+ assert.deepEqual(entries.map(e=>e.kind),['gap','mcq','match','pack']);
+ assert.deepEqual(entries.map((e,i)=>scoreQuestion(e,['guess',0,[0,e.map?.[1]],[0,1]][i])),[
+  {got:0,max:0},{got:0,max:0},{got:1,max:1},{got:1,max:1}
+ ]);
+ const publicText=JSON.stringify(native.content);
+ assert.ok(!publicText.includes('"map"'),'private match and statement keys stay outside learner content');
+ assert.deepEqual(splitKey(mergeKey(native.content,native.key)).key,native.key);
+ const supplied=nativeTask(importTask([importElements.gap,importElements.truefalse]),0,'supplied_answers');
+ const known=questionIds(supplied.content).map(q=>supplied.key[q.id]);
+ assert.deepEqual(known.map((e,i)=>scoreQuestion(e,['went',0][i])),[{got:1,max:1},{got:1,max:1}]);
+ const slide={qids:[refs[0].id,refs[2].id],poll:false,points:1,seconds:30};
+ const quiz=scoreAnswer(slide,native.key,{score:100,streak:2,got:1,max:1},{responses:{[refs[0].id]:'guess',[refs[2].id]:[0,entries[2].map[1]]},ms:1000});
+ assert.equal(quiz.next.got,2);
+ assert.equal(quiz.next.max,2,'an unknown key cannot lower a learner’s quiz score');
+ const noKeySlide=scoreAnswer({...slide,qids:[refs[0].id]},native.key,{score:100,streak:2,got:1,max:1},{responses:{[refs[0].id]:'guess'},ms:1000});
+ assert.equal(noKeySlide.scored,false);
+ assert.equal(noKeySlide.next.max,1);
+ assert.equal(noKeySlide.next.streak,2,'an unmarked question cannot break a quiz streak');
+});
 test('bad keys, wrong token ranges, malformed gaps, unsafe nodes and incomplete resources cannot silently pass',()=>{
  const bad=[['radio',{answer:'not an option'}],['multi',{answers:['red','missing']}],['pq-fix',{wrong:'g'}],['pq-highlight',{text:'No target markers.'}],['pq-gapped',{removed:['Only one']}],['pq-matching',{statements:[{text:'Who?',answer:99}]}],['pq-odd',{odd:99}],['pq-pairs',{items:[{say:'missing',options:['ship','sheep']}]}],['pq-label',{image:'javascript:alert(1)'}],['speaking',{seconds:90}]];
  for(const [kind,patch] of bad)assert.throws(()=>checkImportElements([{...importElements[kind],data:{...importElements[kind].data,...patch}}],true),kind);
@@ -84,4 +115,5 @@ test('word search preserves every source word over dense lists and many shuffle 
 });
 test('deployed key splitting is generated from the actual editor implementation',()=>{
  execFileSync(process.execPath,['scripts/sync-import-question-core.mjs','--check'],{stdio:'pipe'});
+ execFileSync(process.execPath,['scripts/sync-learning-core.mjs','--check'],{stdio:'pipe'});
 });

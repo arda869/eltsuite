@@ -191,8 +191,8 @@ function Transform({ id, data, value, onChange, result, locked, num, hideAnswers
         {data.before}{' '}
         {result ? (
           <span className="gap-result">
-            <span className={s?.got ? 'ans right' : 'ans wrong'}>{v || '—'}</span>
-            {s?.got ? TICK : !hideAnswers && <span className="fix">{result.k.answers?.[0]}</span>}
+            <span className={s?.max === 0 ? 'ans' : s?.got ? 'ans right' : 'ans wrong'}>{v || '—'}</span>
+            {s?.max === 0 ? <span className="sr-only">No answer key yet. Your teacher can review this answer.</span> : s?.got ? TICK : !hideAnswers && <span className="fix">{result.k.answers?.[0]}</span>}
           </span>
         ) : (
           <input className="gap-input pq-tr-input" aria-label="Your answer" value={v} disabled={locked} placeholder=" " size={Math.max(14, v.length + 1)} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
@@ -460,7 +460,8 @@ function Matching({ id, data, value, onChange, result, locked, num, hideAnswers 
             <span className="pq-mm-opts" role="radiogroup">
               {opts.map((o, k) => {
                 const on = a[i] === k;
-                const cls = !result ? (on ? ' on' : '') : on ? (result.k.map[i] === k ? ' right' : ' wrong') : !hideAnswers && result.k.map[i] === k ? ' missed' : '';
+                const unkeyed = result && (result.k.map[i] === undefined || result.k.map[i] < 0);
+                const cls = !result || unkeyed ? (on ? ' on' : '') : on ? (result.k.map[i] === k ? ' right' : ' wrong') : !hideAnswers && result.k.map[i] === k ? ' missed' : '';
                 return (
                   <button key={k} type="button" role="radio" aria-checked={on} className={'pq-mm-opt' + cls} disabled={locked} onClick={() => onChange?.(a.map((x, j) => (j === i ? (on ? -1 : k) : x)))}>
                     {o}

@@ -407,12 +407,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     return t ? <span className="reveal-ans">{t}</span> : null;
   };
 
-  const resultText = (key: string, id: string, shown: string, right: boolean, fix?: string) => (
-    <span key={key} className="gap-result">
+  const resultText = (key: string, id: string, shown: string, right: boolean | null, fix?: string) => (
+    <span key={key} className="gap-result" data-qid={id}>
       {num(id)}
-      <span className={right ? 'ans right' : 'ans wrong'}>{shown || '—'}</span>
-      <span className="sr-only">{right ? 'Correct.' : 'Not right.'}{!right && !hideAnswers && fix ? ' The answer is' : ''}</span>
-      {right ? TICK : !hideAnswers && fix && <span className="fix">{fix}</span>}
+      <span className={right === null ? 'ans' : right ? 'ans right' : 'ans wrong'}>{shown || '—'}</span>
+      <span className="sr-only">{right === null ? 'No answer key yet. Your teacher can review this answer.' : right ? 'Correct.' : 'Not right.'}{right === false && !hideAnswers && fix ? ' The answer is' : ''}</span>
+      {right === true ? TICK : right === false && !hideAnswers && fix && <span className="fix">{fix}</span>}
     </span>
   );
 
@@ -423,7 +423,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const value = String(responses[id] ?? '');
     const entry = results?.[id];
     if (checkedId(id)) {
-      const right = scoreQuestion(entry, value).got === 1;
+      const score = scoreQuestion(entry, value);
+      const right = score.max === 0 ? null : score.got === score.max;
       return resultText(key, id, value, right, entry?.kind === 'gap' ? entry.answers[0] : undefined);
     }
     if (node.attrs?.letters && node.attrs?.pattern)
@@ -460,6 +461,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
 
   const optionState = (id: string, i: number, chosen: number[], correct: number[]) => {
     if (!checkedId(id)) return chosen.includes(i) ? 'on' : '';
+    if (scoreQuestion(results?.[id], responses[id]).max === 0) return chosen.includes(i) ? 'on' : '';
     if (correct.includes(i) && (!hideAnswers || chosen.includes(i))) return 'right';
     return chosen.includes(i) ? 'wrong' : '';
   };
@@ -612,7 +614,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <ol className="match-left">
           {left.map((l, i) => {
             const c = chosen[i] ?? -1;
-            const ok = checkedId(id) ? map[i] >= 0 && c === map[i] : false;
+            const unkeyed = map[i] < 0 || map[i] === undefined;
+            const ok = checkedId(id) && !unkeyed && c === map[i];
             return (
               <li key={i}>
                 {num(id, i)}
@@ -620,8 +623,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                   <span className="match-l">{l}</span>
                   {checkedId(id) ? (
                     <span className="gap-result">
-                      <span className={ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
-                      <span className="sr-only">{ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && map[i] >= 0 ? ' The answer is' : ''}</span>
+                      <span className={unkeyed ? 'ans' : ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
+                      <span className="sr-only">{unkeyed ? 'No answer key yet. Your teacher can review this answer.' : ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && map[i] >= 0 ? ' The answer is' : ''}</span>
                       {ok ? TICK : !hideAnswers && map[i] >= 0 && <span className="fix">{LETTERS[map[i]]}</span>}
                     </span>
                   ) : (
@@ -657,7 +660,10 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const id = node.attrs!.id as string;
     const value = isAnswered(responses[id]) ? String(responses[id]) : '';
     const entry = results?.[id];
-    if (checkedId(id)) return resultText(key, id, value, scoreQuestion(entry, value).got === 1, entry?.kind === 'drop' ? entry.answer : undefined);
+    if (checkedId(id)) {
+      const score = scoreQuestion(entry, value);
+      return resultText(key, id, value, score.max === 0 ? null : score.got === score.max, entry?.kind === 'drop' ? entry.answer : undefined);
+    }
     return (
       <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}
@@ -740,13 +746,14 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     }
     const entry = results?.[id];
     if (checkedId(id)) {
-      const ok = scoreQuestion(entry, responses[id]).got === 1;
+      const score = scoreQuestion(entry, responses[id]);
+      const ok = score.max > 0 && score.got === score.max;
       return (
         <div key={key} className="order-q" data-qid={id}>
           {num(id)}
-          <span className={ok ? 'ans right' : 'ans wrong'}>{placed.join(' ') || '—'}</span>
-          <span className="sr-only">{ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && entry?.kind === 'order' ? ' The answer is' : ''}</span>
-          {ok ? TICK : !hideAnswers && entry?.kind === 'order' && <span className="fix">{entry.answer}</span>}
+          <span className={score.max === 0 ? 'ans' : ok ? 'ans right' : 'ans wrong'}>{placed.join(' ') || '—'}</span>
+          <span className="sr-only">{score.max === 0 ? 'No answer key yet. Your teacher can review this answer.' : ok ? 'Correct.' : 'Not right.'}{!ok && score.max > 0 && !hideAnswers && entry?.kind === 'order' ? ' The answer is' : ''}</span>
+          {ok ? TICK : score.max > 0 && !hideAnswers && entry?.kind === 'order' && <span className="fix">{entry.answer}</span>}
           {notesFor(node)}
         </div>
       );

@@ -265,24 +265,28 @@ export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: 
   if (!entry) return { got: 0, max: 0 };
   switch (entry.kind) {
     case 'gap':
+      if (!entry.answers.some((a) => a.trim())) return { got: 0, max: 0 };
       return { got: isAnswered(r) && entry.answers.some((a) => (entry.cs ? normaliseKeepCase(a) === normaliseKeepCase(String(r)) : normalise(a) === normalise(String(r)))) ? 1 : 0, max: 1 };
     case 'mcq':
+      if (entry.correct < 0) return { got: 0, max: 0 };
       return { got: isAnswered(r) && Number(r) === entry.correct ? 1 : 0, max: 1 };
     case 'multi': {
       // Partial credit: right picks minus wrong picks, out of the number of right answers.
       const picked = Array.isArray(r) ? (r as number[]) : [];
-      if (!entry.correct.length) return { got: 0, max: 1 };
+      if (!entry.correct.length) return { got: 0, max: 0 };
       const right = picked.filter((x) => entry.correct.includes(x)).length;
       const wrong = picked.length - right;
       return { got: Math.max(0, Math.round(((right - wrong) / entry.correct.length) * 100) / 100), max: 1 };
     }
     case 'match': {
       const arr = Array.isArray(r) ? r : [];
-      return { got: entry.map.filter((m, i) => m >= 0 && arr[i] === m).length, max: entry.map.length };
+      return { got: entry.map.filter((m, i) => m >= 0 && arr[i] === m).length, max: entry.map.filter((m) => m >= 0).length };
     }
     case 'drop':
+      if (!entry.answer.trim()) return { got: 0, max: 0 };
       return { got: isAnswered(r) && normalise(String(r)) === normalise(entry.answer) ? 1 : 0, max: 1 };
     case 'order':
+      if (!entry.answer.trim()) return { got: 0, max: 0 };
       return { got: isAnswered(r) && normalise(String(r)) === normalise(entry.answer) ? 1 : 0, max: 1 };
     case 'writing':
       return { got: 0, max: 0 }; // marked by the teacher

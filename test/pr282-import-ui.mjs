@@ -123,6 +123,26 @@ try {
   const walk = node => [node, ...(node.content ?? []).flatMap(walk)];
   const publicGap = walk(fs[taskPath].content).find(node => node.type === 'gap');
   assert.deepEqual(publicGap?.attrs?.answers, [], 'the saved learner task has no accepted answers in its public content');
+  // The answer-key upload is optional. A listening source without one still
+  // becomes an editable task, and its blank key cannot mark a guess wrong.
+  await page.locator('.task-insert').last().locator('summary').click();
+  await page.getByRole('button', { name: 'Import a task' }).last().click();
+  const noKeyDialog = page.getByRole('dialog', { name: 'Import a task' });
+  await noKeyDialog.getByLabel('Upload existing materials').setInputFiles({ name: 'Listening.txt', mimeType: 'text/plain', buffer: Buffer.from('NOKEY_IMPORT_VERIFICATION\nListen and complete the missing word.') });
+  await noKeyDialog.getByRole('region', { name: 'Selected source' }).getByText('Listening.txt').waitFor();
+  await noKeyDialog.getByLabel('I have permission to use and adapt these materials.').check();
+  await noKeyDialog.getByRole('button', { name: 'Make the task' }).click();
+  await noKeyDialog.getByText('2. Review your rebuilt materials').waitFor({ timeout: 30000 });
+  await noKeyDialog.getByLabel('I’ve checked the content, answer keys and import notes.').check();
+  await noKeyDialog.getByRole('button', { name: 'Add reviewed task' }).click();
+  await noKeyDialog.waitFor({ state: 'detached', timeout: 30000 });
+  const noKeyRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('mockMaterialRequest')));
+  assert.equal(noKeyRequest.source.name, 'Listening.txt');
+  assert.equal(noKeyRequest.source.answerKeyImageStart, undefined);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mockfs')));
+  const noKeyTask = Object.keys(saved).find(path => path.startsWith(`classes/${demo.classId}/items/${demo.itemId}/tasks/`) && saved[path].title === 'Listening without a key');
+  assert.ok(noKeyTask, 'a source without a separate key still becomes an editable task');
+  assert.deepEqual(Object.values(saved[`${noKeyTask}/private/key`] ?? {})[0].answers, [], 'unknown answers stay empty in the private key');
   writeFileSync('outputs/pr282/import-ui-results.json', JSON.stringify({ source: request.source.name, answerKey: 'Invitation key.pdf', scope: request.scope, taskAdded: true, privateKeySaved: true, verification: 'simulated model and Firebase' }, null, 2));
   console.log('Isolated import UI journey passed with separate key PDF; AI and Firebase simulated.');
   await context.close();
