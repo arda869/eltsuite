@@ -15,6 +15,10 @@ on:
         description: 'Check the deployed learning AI bindings and authenticate without generation'
         type: boolean
         default: false
+      diagnose_unread_messages:
+        description: 'Read unread-message scheduler metadata and sanitised logs; do not send mail or write data'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,16 +42,22 @@ jobs:
           printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
           chmod 600 "$RUNNER_TEMP/firebase-sa.json"
       - name: Count legacy public AI transcripts (read only)
+        if: inputs.diagnose_unread_messages != true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: node scripts/migrate-ai-audio-scripts.mjs
       - name: Check deployed learning AI connection without generation
-        if: inputs.check_ai_binding == true
+        if: inputs.check_ai_binding == true && inputs.diagnose_unread_messages != true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: node scripts/check-learning-binding.mjs
+      - name: Read unread-message scheduler and sanitised logs
+        if: inputs.diagnose_unread_messages == true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: node functions/notifications/diagnose-unread-scheduler.mjs
       - name: Copy, verify, then remove legacy public script fields
-        if: inputs.apply == true
+        if: inputs.apply == true && inputs.diagnose_unread_messages != true
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
           EXPECTED_COUNT: ${{ inputs.expected_legacy_count }}
