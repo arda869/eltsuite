@@ -390,6 +390,10 @@
     background: var(--card);
     color: var(--t-ink);
   }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='teen'] .subtask .st-band {
+    background: linear-gradient(180deg, var(--paper-soft), var(--card));
+    color: var(--t-ink);
+  }
 }
 
 /* Frame foot arrows (the same Previous and Next buttons Default has) */
