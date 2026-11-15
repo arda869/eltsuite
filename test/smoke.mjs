@@ -2077,6 +2077,9 @@ const J = {
     await picks.first().waitFor();
     const widths = await picks.evaluateAll((els) => els.map((el) => ({ width: el.getBoundingClientRect().width, clipped: el.querySelector('.sel-v').scrollWidth > el.querySelector('.sel-v').clientWidth })));
     if (widths.some((v) => v.clipped || Math.abs(v.width - widths[0].width) > 1)) throw new Error('Lesson dropdowns are clipped or different widths.');
+    if (await picks.first().locator('xpath=..').getAttribute('title')) throw new Error('A browser tooltip covers the lesson dropdown choices.');
+    await picks.first().click();
+    await see(s.p, '.sel-list [role="option"]', 'styled lesson type options without a browser tooltip');
     return s;
   },
 

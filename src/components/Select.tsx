@@ -297,7 +297,7 @@ export function NSelect({ value, defaultValue, onChange, children, disabled, cla
   const label = rest['aria-label'] || title || labelFromField || prompt?.label || 'Choose';
   const triggerProps = Object.fromEntries(Object.entries(rest).filter(([key]) => key.startsWith('aria-') || key.startsWith('data-'))) as React.ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <span ref={wrap} className="nsel" title={title}>
+    <span ref={wrap} className="nsel">
       <Select
         id={id}
         value={v}
