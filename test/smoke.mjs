@@ -2866,8 +2866,8 @@ const J = {
     await s.p.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 160 })));
     const menu = s.p.getByRole('menu');
     await menu.waitFor();
-    const fits = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
-    if (!fits) throw new Error('Shared menu leaves a short phone viewport');
+    const bounds = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: innerWidth, height: innerHeight, scrollY }; });
+    if (bounds.left < 8 || bounds.right > bounds.width - 8 || bounds.top < 8 || bounds.bottom > bounds.height - 8) throw new Error('Shared menu leaves a short phone viewport: ' + JSON.stringify(bounds));
     const last = menu.getByRole('menuitem').last();
     await last.scrollIntoViewIfNeeded();
     const lastFits = await last.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });

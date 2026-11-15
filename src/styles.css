@@ -5105,7 +5105,7 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .bub-key.on { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
 
 /* Right-click menus */
-.ctx-menu { position: fixed; z-index: 300; min-width: 200px; max-width: 280px; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; padding: 5px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 34px var(--shadow); font: 13.5px var(--sans); display: flex; flex-direction: column; animation: ask-fade .1s ease-out; }
+.ctx-menu { position: fixed; z-index: 300; min-width: 200px; max-width: 280px; max-height: calc(100dvh - 20px); overflow-y: auto; overscroll-behavior: contain; padding: 5px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 34px var(--shadow); font: 13.5px var(--sans); display: flex; flex-direction: column; animation: ask-fade .1s ease-out; }
 .ctx-item { display: flex; flex: none; align-items: center; gap: 9px; min-height: 32px; padding: 0 10px 0 8px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .ctx-item:hover:not(:disabled), .ctx-item:focus-visible { background: color-mix(in srgb, var(--accent) 10%, var(--paper)); outline: none; }
 .ctx-item:disabled { opacity: .45; cursor: default; }
