@@ -31,7 +31,7 @@ try {
     return window.worksheetHtml('Picture worksheet', tasks, {
       lessonStyle: 'exam', header: true, key: false, notes: false, paper: 'Letter',
       columns: 1, accent: '#13579b', className: 'Exam class', origin: location.origin,
-    }).replace('<script>\n(function ()', '<script>HTMLImageElement.prototype.decode = function () { return new Promise(resolve => { window.releasePictureDecode = resolve; }); };</script><script>\n(function ()');
+    }).replace('<script>\n(function ()', '<script>window.pictureDecodePromise = new Promise(resolve => { window.releasePictureDecode = resolve; }); HTMLImageElement.prototype.decode = function () { return window.pictureDecodePromise; };</script><script>\n(function ()');
   }, picture);
   const delayedPage = await browser.newPage();
   await delayedPage.goto(`${base}/test/lesson-style-check.html`);
