@@ -1,0 +1,62 @@
+name: Inspect Firebase Auth email settings
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.head_ref == 'diagnostics/auth-template-nov15'
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+      - name: Read template metadata and IAM permissions
+        env:
+          GOOGLE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          node --input-type=module <<'EOF'
+          const headers = {
+            authorization: `Bearer ${process.env.GOOGLE_ACCESS_TOKEN}`,
+            'content-type': 'application/json',
+          };
+          const configResponse = await fetch('https://identitytoolkit.googleapis.com/admin/v2/projects/lesson-lit/config', { headers });
+          const config = await configResponse.json();
+          const sendEmail = config.notification?.sendEmail || {};
+          const reset = sendEmail.resetPasswordTemplate || {};
+          const callback = sendEmail.callbackUri ? new URL(sendEmail.callbackUri) : null;
+          console.log(JSON.stringify({
+            readStatus: configResponse.status,
+            readError: config.error?.status || null,
+            method: sendEmail.method || null,
+            resetSubject: reset.subject || null,
+            resetSenderName: reset.senderDisplayName || null,
+            resetSenderLocalPart: reset.senderLocalPart || null,
+            resetBodyFormat: reset.bodyFormat || null,
+            resetCustomized: reset.customized ?? null,
+            resetHasLinkPlaceholder: typeof reset.body === 'string' && reset.body.includes('%LINK%'),
+            callback: callback ? `${callback.origin}${callback.pathname}` : null,
+            customDomain: sendEmail.dnsInfo?.customDomain || null,
+            customDomainEnabled: sendEmail.dnsInfo?.useCustomDomain ?? null,
+            customDomainState: sendEmail.dnsInfo?.customDomainState || null,
+          }));
+          const permissionsResponse = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects/lesson-lit:testIamPermissions', {
+            method: 'POST', headers,
+            body: JSON.stringify({ permissions: ['firebaseauth.configs.get', 'firebaseauth.configs.update'] }),
+          });
+          const permissions = await permissionsResponse.json();
+          console.log(JSON.stringify({
+            permissionStatus: permissionsResponse.status,
+            permissionError: permissions.error?.status || null,
+            canRead: permissions.permissions?.includes('firebaseauth.configs.get') || false,
+            canUpdate: permissions.permissions?.includes('firebaseauth.configs.update') || false,
+          }));
+          if (!configResponse.ok || !permissionsResponse.ok) process.exitCode = 1;
+          EOF
