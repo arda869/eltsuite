@@ -4387,7 +4387,6 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
   .chat-editor .toolbar > * { flex: 0 0 auto; }
   .chat-actions { gap: 8px; } .chat-actions .chat-keys { display: none; }
   .chat-actions .btn.small-btn { margin-right: auto; }
-  .msg-set-menu { left: auto; right: 0; width: min(290px, calc(100vw - 40px)); }
 }
 @media (hover: none) { .bub-tools { opacity: 1; } }
 
@@ -4577,6 +4576,12 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 @keyframes tdot { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 .msg-set { position: relative; }
 .msg-set-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: 290px; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 12px 30px var(--shadow); }
+@media (max-width: 640px) {
+  /* The settings button sits between other actions; align its menu to the full sidebar header. */
+  .msg-side-top { position: relative; }
+  .msg-set { position: static; }
+  .msg-set-menu { box-sizing: border-box; left: auto; right: 0; width: min(290px, calc(100vw - 40px)); }
+}
 .msg-set-menu .switch-row { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; font-size: 13px; } .msg-set-menu .switch-row > span { display: flex; flex-direction: column; } .msg-set-menu input[type=checkbox] { accent-color: var(--accent); margin-top: 3px; }
 .msg-after { font-size: 12.5px; }
 .msg-private { margin-top: 80px; }
