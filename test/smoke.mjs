@@ -569,7 +569,8 @@ const J = {
       const layout=await s.p.evaluate(()=>{
         const rect=s=>document.querySelector(s)?.getBoundingClientRect();
         const instruction=rect('.instr-bar'),body=rect('.frame-body'),header=rect('.suite-topbar');
-        return {overlap:instruction&&body&&instruction.bottom>body.top+1,overflow:document.documentElement.scrollWidth>innerWidth+1,headerOverflow:[...document.querySelector('.suite-topbar').children].some(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1;})};
+        const headerOffenders=[...document.querySelector('.suite-topbar').children].flatMap(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1?[`${e.tagName.toLowerCase()}.${String(e.className).replace(/\s+/g,'.')} right=${Math.round(r.right)}`]:[]});
+        return {overlap:instruction&&body&&instruction.bottom>body.top+1,overflow:document.documentElement.scrollWidth>innerWidth+1,headerOverflow:headerOffenders.length>0,headerOffenders};
       });
       if(layout.overlap||layout.overflow||layout.headerOverflow)throw Error(`Editor layout ${theme} ${width}: ${JSON.stringify(layout)}`);
       if(width>700)await s.p.getByRole('textbox',{name:'Task title',exact:true}).click();
