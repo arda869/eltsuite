@@ -1363,9 +1363,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <Pages cx={cx} onMenu={pageMenu} onNew={() => void newPage()} />
           <input ref={frameIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void addPicture(e.target.files[0], { into: frameFor.current, name: e.target.files[0].name.replace(/\.[a-z0-9]+$/i, '') }), (e.target.value = ''))} />
         </main>
-        {canEdit && (!phone || propsOpen) && (
-          <aside className={'dz-props' + (phone ? ' sheet' : '')} aria-label="Settings">
-            {phone && (
+        {canEdit && (
+          <aside className={'dz-props' + (phone ? propsOpen ? ' sheet' : ' is-closed' : '')} aria-label="Settings">
+            {phone && propsOpen && (
               <div className="dz-sheet-head">
                 <strong>Settings</strong>
                 <button type="button" className="dz-ib" onClick={() => setPropsOpen(false)} aria-label="Close">×</button>
@@ -1375,6 +1375,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           </aside>
         )}
       </div>
+      <div className="dz-figure-modal-root" />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 // Native, editable figures. The same canvas renderer is used by the editor,
 // image/PDF downloads and the design picker in Classes.
+import { mapSymbolGlyph } from './mapSymbols';
+export { MAP_ICONS } from './mapSymbols';
 export type ChartKind = 'bars' | 'lines' | 'pie' | 'table';
 export type Series = { name: string; values: number[]; color: string; dashed?: boolean };
 export type ChartFigure = {
@@ -12,43 +14,13 @@ export type Point = { x: number; y: number };
 export type MapItemKind = 'road' | 'river' | 'footpath' | 'wall' | 'fence' | 'zone' | 'building' | 'room' | 'water' | 'roundabout' | 'tree' | 'gate' | 'bridge' | 'compass' | 'icon' | 'marker' | 'label';
 export type MapItem = {
   id: string; kind: MapItemKind; x?: number; y?: number; w?: number; h?: number;
-  points?: Point[]; label?: string; icon?: string; fill?: string; dashed?: boolean;
+  points?: Point[]; label?: string; icon?: string; fill?: string; dashed?: boolean; rotation?: number; hidden?: boolean; locked?: boolean;
+  groupId?: string; iconStyle?: 'plain' | 'shaded'; iconColor?: string;
 };
-export type MapFigure = { kind: 'map'; title: string; items: MapItem[]; ink?: string; paper?: string; showBorder?: boolean; backgroundImage?: string; backgroundOpacity?: number };
+export type MapFigure = { kind: 'map'; title: string; items: MapItem[]; ink?: string; paper?: string; showBorder?: boolean; backgroundImage?: string; backgroundOpacity?: number; backgroundFit?: 'contain'|'cover'; backgroundOffsetX?: number; backgroundOffsetY?: number; backgroundLocked?: boolean };
 export type Figure = ChartFigure | MapFigure;
 
 export const CHART_PALETTE = ['#443a40', '#9b86b5', '#6e9aa0', '#d69b68', '#b9c0ad', '#c76d6d'];
-export const MAP_ICONS = [
-  ['tree','Tree'], ['café','Café'], ['toilets','Toilets'], ['parking','Car park'],
-  ['playground','Playground'], ['school','School'], ['medical','Medical centre'],
-  ['shop','Shop'], ['atm','ATM'], ['train','Sky train'], ['car','Car hire'],
-  ['plane','Airport'], ['checkin','Check-in'], ['baggage','Bag drop'],
-  ['tower','Tower'], ['castle','Castle'], ['museum','Museum'], ['factory','Factory'],
-  ['house','Housing'], ['field','Sports field'], ['tennis','Tennis courts'],
-  ['gym','Outdoor gym'], ['flower','Flowers'], ['pond','Pond'],
-  ['bridge','Bridge'], ['gate','Gate'], ['bus','Bus stop'], ['information','Information'],
-  ['sculpture','Sculpture'], ['food','Canteen'], ['office','Office'], ['reception','Reception'],
-  ['restaurant','Restaurant'], ['picnic','Picnic area'], ['hotel','Hotel'], ['camping','Campsite'],
-  ['warehouse','Warehouse'], ['bank','Bank'], ['post','Post office'], ['library','Library'],
-  ['pharmacy','Pharmacy'], ['hospital','Hospital'], ['police','Police station'], ['fire','Fire station'],
-  ['security','Security'], ['passport','Passport control'], ['customs','Customs'],
-  ['arrival','Arrivals'], ['departure','Departures'], ['ticket','Tickets'], ['ferry','Ferry terminal'],
-  ['rail','Rail station'], ['tram','Tram stop'], ['bike','Bicycle parking'], ['charging','EV charging'],
-  ['petrol','Petrol station'], ['taxi','Taxi rank'], ['walkway','Walkway'], ['stairs','Stairs'],
-  ['lift','Lift'], ['accessible','Accessible entrance'], ['entrance','Entrance'], ['exit','Exit'],
-  ['emergency','Emergency exit'], ['firstaid','First aid'], ['drinking','Drinking water'],
-  ['garden','Garden'], ['forest','Forest'], ['lake','Lake'], ['river','River'], ['beach','Beach'],
-  ['mountain','Mountain'], ['waterfall','Waterfall'], ['fountain','Fountain'], ['bench','Bench'],
-  ['bin','Rubbish bin'], ['notice','Notice board'], ['viewpoint','Viewpoint'], ['maze','Maze'],
-  ['skate','Skateboard ramp'], ['cricket','Cricket pitch'], ['football','Football pitch'],
-  ['basketball','Basketball court'], ['pool','Swimming pool'], ['stadium','Stadium'],
-  ['zoo','Zoo'], ['aquarium','Aquarium'], ['cinema','Cinema'], ['theatre','Theatre'],
-  ['gallery','Gallery'], ['temple','Temple'], ['church','Church'], ['monument','Monument'],
-  ['exhibit','Exhibition'], ['meeting','Meeting room'], ['boardroom','Boardroom'],
-  ['coffee','Coffee room'], ['classroom','Classroom'], ['lab','Laboratory'],
-  ['courtyard','Courtyard'], ['roundabout','Roundabout'], ['north','North arrow'],
-] as const;
-
 const clamp = (n: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, n));
 const fmt = (v: number) => new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(v);
 const darkText = (hex: string) => { const n=parseInt(hex.slice(1),16);const r=(n>>16)&255,g=(n>>8)&255,b=n&255;return (r*299+g*587+b*114)/1000>150; };
@@ -155,41 +127,34 @@ export function drawChart(g: CanvasRenderingContext2D, f: ChartFigure) {
 
 function rounded(g:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r=8){g.beginPath();g.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
 function icon(g:CanvasRenderingContext2D,key:string,x:number,y:number,s:number,color:string){
-  const aliases:Record<string,string>={restaurant:'café',picnic:'food',hotel:'house',camping:'house',warehouse:'factory',bank:'atm',post:'office',library:'school',pharmacy:'medical',hospital:'medical',police:'office',fire:'office',security:'gate',passport:'gate',customs:'gate',arrival:'plane',departure:'plane',ticket:'information',ferry:'bus',rail:'train',tram:'train',bike:'car',charging:'car',petrol:'car',taxi:'car',walkway:'bridge',stairs:'bridge',lift:'train',accessible:'information',entrance:'gate',exit:'gate',emergency:'gate',firstaid:'medical',drinking:'pond',garden:'flower',forest:'tree',lake:'pond',river:'pond',beach:'pond',mountain:'sculpture',waterfall:'pond',fountain:'pond',bench:'information',bin:'information',notice:'information',viewpoint:'information',maze:'playground',skate:'playground',cricket:'field',football:'field',basketball:'tennis',pool:'pond',stadium:'field',zoo:'tree',aquarium:'pond',cinema:'museum',theatre:'museum',gallery:'museum',temple:'castle',church:'castle',monument:'tower',exhibit:'museum',meeting:'office',boardroom:'office',coffee:'café',classroom:'school',lab:'school',courtyard:'house',roundabout:'parking',north:'information'};
-  key=aliases[key]||key;
-  g.save();g.translate(x,y);g.scale(s/48,s/48);g.strokeStyle=color;g.fillStyle=color;g.lineWidth=2.5;g.lineCap='round';g.lineJoin='round';
-  const path=(d:(p:CanvasRenderingContext2D)=>void)=>{g.beginPath();d(g);g.stroke();};
-  switch(key){
-    case 'tree':path(p=>{p.arc(17,20,8,0,7);p.arc(28,16,10,0,7);p.arc(33,25,8,0,7);p.moveTo(24,29);p.lineTo(24,44);p.moveTo(18,44);p.lineTo(30,44)});break;
-    case 'café':case 'food':path(p=>{p.moveTo(8,19);p.lineTo(36,19);p.lineTo(33,34);p.lineTo(13,34);p.closePath();p.moveTo(36,22);p.quadraticCurveTo(47,20,42,28);p.lineTo(35,29);p.moveTo(10,39);p.lineTo(37,39)});break;
-    case 'toilets':path(p=>{p.arc(16,11,4,0,7);p.arc(33,11,4,0,7);p.moveTo(16,17);p.lineTo(16,38);p.moveTo(8,27);p.lineTo(24,27);p.moveTo(33,17);p.lineTo(33,38);p.moveTo(26,29);p.lineTo(40,29)});break;
-    case 'parking':case 'information':label(g,key==='parking'?'P':'i',24,25,34,'center',700,color);break;
-    case 'atm':label(g,'$',24,25,35,'center',700,color);break;
-    case 'playground':path(p=>{p.moveTo(8,38);p.lineTo(16,11);p.lineTo(33,11);p.lineTo(41,38);p.moveTo(16,11);p.lineTo(16,29);p.moveTo(33,11);p.lineTo(33,29);p.moveTo(15,29);p.quadraticCurveTo(24,37,34,29)});break;
-    case 'school':case 'museum':case 'factory':case 'house':case 'office':case 'reception':case 'castle':path(p=>{p.moveTo(7,22);p.lineTo(24,9);p.lineTo(41,22);p.moveTo(10,21);p.lineTo(10,40);p.lineTo(38,40);p.lineTo(38,21);p.moveTo(20,40);p.lineTo(20,28);p.lineTo(28,28);p.lineTo(28,40)});break;
-    case 'medical':path(p=>{p.moveTo(24,8);p.lineTo(24,40);p.moveTo(8,24);p.lineTo(40,24)});break;
-    case 'shop':path(p=>{p.moveTo(8,17);p.lineTo(40,17);p.lineTo(37,25);p.lineTo(11,25);p.closePath();p.moveTo(12,25);p.lineTo(12,40);p.lineTo(36,40);p.lineTo(36,25);p.moveTo(21,40);p.lineTo(21,31)});break;
-    case 'train':case 'bus':case 'car':path(p=>{p.moveTo(9,14);p.lineTo(39,14);p.lineTo(39,35);p.lineTo(9,35);p.closePath();p.moveTo(14,21);p.lineTo(34,21);p.moveTo(15,40);p.lineTo(12,44);p.moveTo(33,40);p.lineTo(36,44)});break;
-    case 'plane':path(p=>{p.moveTo(24,5);p.lineTo(27,25);p.lineTo(42,32);p.lineTo(42,37);p.lineTo(26,33);p.lineTo(25,42);p.lineTo(23,42);p.lineTo(22,33);p.lineTo(6,37);p.lineTo(6,32);p.lineTo(21,25);p.closePath()});break;
-    case 'tower':path(p=>{p.moveTo(15,42);p.lineTo(18,11);p.lineTo(30,11);p.lineTo(33,42);p.closePath();p.moveTo(12,11);p.lineTo(36,11);p.moveTo(20,20);p.lineTo(28,20)});break;
-    case 'field':case 'tennis':path(p=>{p.rect(6,10,36,28);p.moveTo(24,10);p.lineTo(24,38);p.arc(24,24,6,0,7)});break;
-    case 'gym':case 'sculpture':path(p=>{p.arc(24,11,5,0,7);p.moveTo(24,16);p.lineTo(24,31);p.moveTo(11,22);p.lineTo(37,22);p.moveTo(24,31);p.lineTo(15,43);p.moveTo(24,31);p.lineTo(33,43)});break;
-    case 'flower':path(p=>{for(let i=0;i<5;i++){const a=i*2*Math.PI/5;p.ellipse(24+Math.cos(a)*9,20+Math.sin(a)*9,6,4,a,0,7);}p.moveTo(24,29);p.lineTo(24,43)});break;
-    case 'pond':path(p=>{p.ellipse(24,25,20,12,.1,0,7);p.moveTo(14,24);p.quadraticCurveTo(20,20,26,24)});break;
-    case 'bridge':path(p=>{p.moveTo(7,30);p.quadraticCurveTo(24,11,41,30);p.moveTo(7,35);p.lineTo(41,35);p.moveTo(12,26);p.lineTo(12,35);p.moveTo(36,26);p.lineTo(36,35)});break;
-    case 'gate':case 'checkin':case 'baggage':path(p=>{p.moveTo(10,42);p.lineTo(10,11);p.lineTo(38,11);p.lineTo(38,42);p.moveTo(18,42);p.lineTo(18,25);p.lineTo(30,25);p.lineTo(30,42)});break;
-    default:path(p=>{p.arc(24,24,15,0,7);p.moveTo(24,17);p.lineTo(24,32)});
-  }
+  const glyph=mapSymbolGlyph(key);
+  const viewBox=glyph.viewBox||48;
+  g.save();g.translate(x,y);g.scale(s/viewBox,s/viewBox);
+  g.strokeStyle=color;g.fillStyle=color;g.lineWidth=viewBox===24?2:2.5;g.lineCap='round';g.lineJoin='round';
+  for(const d of glyph.paths)g.stroke(new Path2D(d));
+  if(glyph.text){g.font=`800 ${glyph.text.length>1?11:25}px ${font}`;g.textAlign='center';g.textBaseline='middle';g.fillText(glyph.text,24,25);}
   g.restore();
 }
 const mapBox={x:40,y:88,w:920,h:570};
+function symbolColor(value:string|undefined,fallback:string){return value&&/^#[\da-f]{6}$/i.test(value)?value:fallback;}
+function symbolTint(hex:string,alpha:number){const n=parseInt(hex.slice(1),16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`;}
 export function drawMap(g:CanvasRenderingContext2D,f:MapFigure,background?:CanvasImageSource){
   g.fillStyle=f.paper||'#fff';g.fillRect(0,0,1000,720);label(g,f.title||'Map title',500,43,31,'center',700,f.ink||ink);
   const b=mapBox;const C=f.ink||ink;
-  if(background){g.save();g.globalAlpha=f.backgroundOpacity??1;g.drawImage(background,b.x,b.y,b.w,b.h);g.restore();}
+  if(background){
+    g.save();g.globalAlpha=f.backgroundOpacity??1;
+    const source=background as {width?:number;height?:number;naturalWidth?:number;naturalHeight?:number};
+    const sw=source.naturalWidth||source.width||b.w,sh=source.naturalHeight||source.height||b.h;
+    const scale=(f.backgroundFit==='cover'?Math.max:Math.min)(b.w/sw,b.h/sh);
+    const dw=sw*scale,dh=sh*scale;
+    g.beginPath();g.rect(b.x,b.y,b.w,b.h);g.clip();
+    const offsetX=clamp(f.backgroundOffsetX||0,-1,1),offsetY=clamp(f.backgroundOffsetY||0,-1,1);
+    g.drawImage(background,b.x+(b.w-dw)/2+offsetX*Math.abs(b.w-dw)/2,b.y+(b.h-dh)/2+offsetY*Math.abs(b.h-dh)/2,dw,dh);g.restore();
+  }
   if(f.showBorder!==false){g.strokeStyle='#bbb4bd';g.lineWidth=2;g.strokeRect(b.x,b.y,b.w,b.h);}
   const pos=(p:Point)=>({x:b.x+clamp(p.x)*b.w,y:b.y+clamp(p.y)*b.h});
   for(const item of f.items){
+    if(item.hidden)continue;
     const x=b.x+clamp(item.x??.5)*b.w,y=b.y+clamp(item.y??.5)*b.h,w=clamp(item.w??.1,0,1)*b.w,h=clamp(item.h??.1,0,1)*b.h;
     if(item.points?.length){const pts=item.points.map(pos);const widths:{[k:string]:number}={road:31,river:39,footpath:8,wall:14,fence:4,bridge:22};const sw=widths[item.kind]||5;
       if(item.kind==='road'||item.kind==='river'||item.kind==='bridge')line(g,pts,item.kind==='river'?'#a6c6c9':item.kind==='bridge'?'#d5d0d3':'#d5d0d3',sw);
@@ -198,15 +163,35 @@ export function drawMap(g:CanvasRenderingContext2D,f:MapFigure,background?:Canva
       if(item.label){const a=pts[Math.floor((pts.length-1)/2)],c=pts[Math.ceil((pts.length-1)/2)];const q={x:(a.x+c.x)/2,y:(a.y+c.y)/2};g.font=`700 17px ${font}`;const tw=g.measureText(item.label).width;rounded(g,q.x-tw/2-9,q.y-32,tw+18,21,6);g.fillStyle='#ffffffed';g.fill();label(g,item.label,q.x,q.y-21,17,'center',700);}
       continue;
     }
+    const symbolSize=Math.max(36,Math.min(140,Math.sqrt(w*h)));
+    g.save();
+    if(item.rotation){g.translate(x,y);g.rotate(item.rotation*Math.PI/180);g.translate(-x,-y);}
     if(item.kind==='water'){rounded(g,x-w/2,y-h/2,w,h,Math.min(w,h)*.35);g.fillStyle='#e1eff0';g.fill();g.strokeStyle='#5e9198';g.lineWidth=3;g.stroke();}
     else if(item.kind==='roundabout'){g.beginPath();g.arc(x,y,Math.min(w,h)/2,0,7);g.fillStyle='#f2f0f0';g.fill();g.strokeStyle=C;g.lineWidth=5;g.stroke();g.beginPath();g.arc(x,y,Math.min(w,h)*.27,0,7);g.stroke();}
     else if(['building','room','zone'].includes(item.kind)){rounded(g,x-w/2,y-h/2,w,h,item.kind==='zone'?12:2);g.fillStyle=item.fill|| (item.kind==='zone'?'#f1f0f3':'#fff');g.fill();g.strokeStyle=C;g.lineWidth=item.kind==='zone'?2:3;g.stroke();}
     else if(item.kind==='compass'){line(g,[{x,y:y-30},{x,y:y+30}],C,2);line(g,[{x:x-30,y},{x:x+30,y}],C,2);label(g,'N',x,y-42,15,'center',700);label(g,'S',x,y+43,15,'center',700);label(g,'W',x-42,y,15,'center',700);label(g,'E',x+42,y,15,'center',700);}
     else if(item.kind==='marker'){g.beginPath();g.arc(x,y,17,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle=C;g.lineWidth=2;g.stroke();}
-    else if(item.kind==='tree'){icon(g,'tree',x-20,y-20,40,'#56806e');}
+    else if(item.kind==='tree'){icon(g,'tree',x-symbolSize/2,y-symbolSize/2,symbolSize,'#56806e');}
     else if(item.kind==='gate'){line(g,[{x:x-22,y:y-14},{x:x-22,y:y+14}],C,3);line(g,[{x:x+22,y:y-14},{x:x+22,y:y+14}],C,3);}
-    else if(item.kind==='icon'){g.beginPath();g.arc(x,y,27,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#bcb5be';g.lineWidth=2;g.stroke();icon(g,item.icon||'information',x-19,y-19,38,C);}
-    if(item.label)label(g,item.label,x,item.kind==='marker'?y:y+(item.kind==='icon'?42:item.kind==='tree'?30:0),item.kind==='marker'?18:16,'center',item.kind==='marker'?700:500,C);
+    else if(item.kind==='icon'){
+      const color=symbolColor(item.iconColor,C);
+      if(item.iconStyle==='plain'){
+        icon(g,item.icon||'information',x-symbolSize*.46,y-symbolSize*.46,symbolSize*.92,color);
+      }else if(item.iconStyle==='shaded'){
+        g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle=symbolTint(color,.2);g.fill();g.strokeStyle=symbolTint(color,.55);g.lineWidth=2;g.stroke();
+        icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,color);
+      }else{
+        // Older maps keep their original outlined symbol treatment.
+        g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#bcb5be';g.lineWidth=2;g.stroke();
+        icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,color);
+      }
+    }
+    g.restore();
+    if(item.label){
+      if(item.kind==='label'&&item.rotation){g.save();g.translate(x,y);g.rotate(item.rotation*Math.PI/180);g.translate(-x,-y);}
+      label(g,item.label,x,item.kind==='marker'?y:y+(item.kind==='icon'?42:item.kind==='tree'?30:0),item.kind==='marker'?18:16,'center',item.kind==='marker'?700:500,C);
+      if(item.kind==='label'&&item.rotation)g.restore();
+    }
   }
 }
 export function drawFigure(g:CanvasRenderingContext2D,f:Figure,w:number,h:number,background?:CanvasImageSource){g.save();g.scale(w/(f.kind==='chart'?800:1000),h/(f.kind==='chart'?560:720));if(f.kind==='chart')drawChart(g,f);else drawMap(g,f,background);g.restore();}
