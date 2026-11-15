@@ -126,7 +126,15 @@ try {
     profilesWithContact: 0,
     teacherProfilesWithContact: 0,
     learnerProfilesWithContact: 0,
+    contactEmailProfiles: 0,
+    authEmailFallbackProfiles: 0,
     contactLookupUnavailable: 0,
+    recipientChatPairs: 0,
+    otherPersonLastMessageUnreadPairs: 0,
+    otherPersonLastMessageDigestedAtOrAfterPairs: 0,
+    otherPersonLastMessageUnreadAndDigestedPairs: 0,
+    otherPersonLastMessageDigestBoundaryCoveredPairs: 0,
+    otherPersonLastMessageSeenPairs: 0,
     chatsWithUnreadHint: 0,
     chatsWithEligibleUnreadMessages: 0,
     teacherEligibleUnreadChats: 0,
@@ -139,9 +147,14 @@ try {
     const learner = profile.role === 'learner';
     if (learner) counts.learnerProfiles += 1;
     else counts.teacherProfiles += 1;
-    let hasContact = Boolean(String(profile.contactEmail ?? '').trim());
+    const contactEmail = Boolean(String(profile.contactEmail ?? '').trim());
+    let hasContact = contactEmail;
+    if (contactEmail) counts.contactEmailProfiles += 1;
     if (!hasContact && !learner) {
-      try { hasContact = Boolean((await getAuth().getUser(user.id)).email); }
+      try {
+        hasContact = Boolean((await getAuth().getUser(user.id)).email);
+        if (hasContact) counts.authEmailFallbackProfiles += 1;
+      }
       catch { counts.contactLookupUnavailable += 1; }
     }
     if (hasContact) {
@@ -157,6 +170,20 @@ try {
     const chats = await db.collection('chats').where('members', 'array-contains', uid).get();
     for (const chat of chats.docs) {
       const data = chat.data();
+      counts.recipientChatPairs += 1;
+      const lastAt = Number(data.lastAt ?? 0);
+      if (data.last && data.last.by !== uid && lastAt > 0) {
+        const seenAt = Number(data.seen?.[uid] ?? 0);
+        const digestedAt = Number(data.digested?.[uid] ?? 0);
+        if (seenAt < lastAt) counts.otherPersonLastMessageUnreadPairs += 1;
+        if (seenAt >= lastAt) counts.otherPersonLastMessageSeenPairs += 1;
+        if (digestedAt >= lastAt) counts.otherPersonLastMessageDigestedAtOrAfterPairs += 1;
+        if (seenAt < lastAt && digestedAt >= lastAt) counts.otherPersonLastMessageUnreadAndDigestedPairs += 1;
+        if (digestedAt === lastAt && Array.isArray(data.digestedIds?.[uid])
+          && data.digestedIds[uid].includes(data.last.id)) {
+          counts.otherPersonLastMessageDigestBoundaryCoveredPairs += 1;
+        }
+      }
       if ((learner && data.emailThread) || !mayHaveEligibleMessage(data, uid, cutoff)) continue;
       counts.chatsWithUnreadHint += 1;
       const cursor = digestCursor(data, uid);
