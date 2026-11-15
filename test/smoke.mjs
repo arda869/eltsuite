@@ -2636,6 +2636,31 @@ const J = {
     await axe(s.p, 'Messages', A11Y_FOUND);
     return s;
   },
+  'Message settings choices work inside their menu on a phone': async (b) => {
+    const s = await session(b);
+    await s.p.setViewportSize({ width: 320, height: 720 });
+    await s.p.evaluate(() => {
+      localStorage.setItem('ll.theme', 'dark');
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['users/teacher1'] = { ...fs['users/teacher1'], msgPrefs: { email: true, after: 60, receipts: true } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/messages`);
+    await s.p.getByRole('button', { name: 'Message settings' }).click();
+    const delay = s.p.getByRole('button', { name: 'When they stay unread for' });
+    await delay.click();
+    await s.p.getByRole('option', { name: '15 minutes' }).click();
+    await s.p.waitForFunction(() => {
+      const prefs = JSON.parse(localStorage.getItem('mockfs'))['users/teacher1']?.msgPrefs;
+      return prefs?.after === 15;
+    });
+    if (!await s.p.getByRole('menu').filter({ hasText: 'When they stay unread for' }).isVisible()) throw Error('Choosing a delay closed Message settings');
+    if (!await delay.getByText('15 minutes').isVisible()) throw Error('The selected delay did not update');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'Message settings' }).click();
+    await s.p.getByRole('button', { name: 'When they stay unread for' }).getByText('15 minutes').waitFor();
+    return s;
+  },
   'Message document preview fits phone': async (b) => {
     const s = await session(b);
     await s.p.setViewportSize({ width: 390, height: 844 });
