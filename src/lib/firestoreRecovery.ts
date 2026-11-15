@@ -8,8 +8,8 @@ const listeners = new Set<() => void>();
 function messageOf(value: unknown): string {
   if (typeof value === 'string') return value;
   if (!value || typeof value !== 'object') return String(value ?? '');
-  const e = value as { message?: unknown; reason?: unknown; cause?: unknown };
-  return [e.message, e.reason, e.cause].map((part) => typeof part === 'string' ? part : '').join(' ');
+  const e = value as { message?: unknown; reason?: unknown; cause?: unknown; stack?: unknown };
+  return [e.message, e.reason, e.cause, e.stack].map((part) => typeof part === 'string' ? part : '').join(' ');
 }
 
 export function isFatalFirestoreError(value: unknown): boolean {

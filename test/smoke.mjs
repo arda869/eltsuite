@@ -3168,6 +3168,11 @@ const J = {
     const s = await session(b);
     await s.p.goto(BASE + '/');
     await see(s.p, '.hm', 'teacher home before cache failure');
+    const detectsPrecursor = await s.p.evaluate(async () => {
+      const { isFatalFirestoreError } = await import('/src/lib/firestoreRecovery.ts');
+      return isFatalFirestoreError({ message: "Cannot read properties of null (reading 'Pe')", stack: 'at getTargetData' });
+    });
+    if (!detectsPrecursor) throw Error('The fatal Firestore getTargetData precursor was missed');
     await s.p.evaluate(() => {
       localStorage.setItem('recovery-work-sentinel', 'saved on device');
       window.dispatchEvent(new ErrorEvent('error', { message: 'FirebaseError: unavailable' }));
