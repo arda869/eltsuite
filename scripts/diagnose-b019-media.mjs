@@ -71,6 +71,34 @@ await new Promise(resolve=>{
  });
 });
 
+// B-020 uses a separate deployed callable. Verify its exact bound key and
+// realtime session independently, without requesting any speech generation.
+const {data:recordingFn}=await client.request({url:'https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/recordingSpeech'});
+const recordingBinding=recordingFn.serviceConfig?.secretEnvironmentVariables?.find(value=>value.key==='OPENAI_API_KEY');
+if(!recordingBinding?.secret||!recordingBinding.version)throw Error('Deployed recordingSpeech has no OpenAI binding');
+const recordingSecret=`https://secretmanager.googleapis.com/v1/projects/${recordingBinding.projectId||'lesson-lit'}/secrets/${encodeURIComponent(recordingBinding.secret)}/versions/${encodeURIComponent(recordingBinding.version)}`;
+const {data:recordingMetadata}=await client.request({url:recordingSecret});
+if(recordingMetadata.state!=='ENABLED')throw Error('Deployed recordingSpeech binding is disabled');
+const {data:recordingAccess}=await client.request({url:`${recordingSecret}:access`});
+const recordingKey=Buffer.from(recordingAccess.payload?.data||'','base64').toString('utf8').trim();
+if(!recordingKey)throw Error('Deployed recordingSpeech binding is empty');
+const recordingModelResponse=await fetch('https://api.openai.com/v1/models/gpt-realtime-2.1-mini',{headers:{Authorization:`Bearer ${recordingKey}`},signal:AbortSignal.timeout(30000)});
+console.log('recording_speech_model_check',JSON.stringify({deployedBinding:'enabled',model:'gpt-realtime-2.1-mini',httpStatus:recordingModelResponse.status,sameBindingAsMediaWorker:recordingSecret===secret}));
+await new Promise(resolve=>{
+ const socket=new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1-mini',{headers:{Authorization:`Bearer ${recordingKey}`}});
+ const timer=setTimeout(()=>{console.log('recording_speech_session_check',JSON.stringify({result:'timeout'}));socket.terminate();resolve();},12000);
+ let reported=false;
+ const done=result=>{if(reported)return;reported=true;clearTimeout(timer);console.log('recording_speech_session_check',JSON.stringify(result));socket.close();resolve();};
+ socket.on('error',()=>done({result:'connection_error'}));
+ socket.on('close',()=>done({result:'closed_before_session_update'}));
+ socket.on('message',raw=>{
+  let event;try{event=JSON.parse(raw.toString());}catch{return done({result:'invalid_event'});}
+  if(event.type==='session.created')socket.send(JSON.stringify({type:'session.update',session:{type:'realtime',output_modalities:['audio'],instructions:'Read only the supplied words.',audio:{input:{turn_detection:null},output:{format:{type:'audio/pcm',rate:24000},voice:'marin'}}}}));
+  if(event.type==='session.updated')done({result:'session_update_accepted'});
+  if(event.type==='error')done({result:'provider_error',code:event.error?.code??'',type:event.error?.type??'',param:event.error?.param??'',message:String(event.error?.message??'').slice(0,180)});
+ });
+});
+
 // B-030: inspect the existing QR grant for a hidden lesson and ask the deployed
 // callable for the script anonymously. Never print grant IDs, scripts or URLs.
 const qrItemId='zHSqDqT0842sWY40Oanu';
