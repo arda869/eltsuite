@@ -1,8 +1,9 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldPath, getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import nodemailer from 'nodemailer';
 import { frame, pad, h1, small, esc } from './email-layout.js';
+import { collectSummaryBatch, digestCursor, mayHaveEligibleMessage } from './digest-logic.js';
 
 const SITE = 'https://eltsuite.com';
 const FALLBACK_FROM = 'ELT Suite <hello@eltsuite.com>';
@@ -34,26 +35,51 @@ export const sendUnreadMessageSummaries = onSchedule({
     if (!uid) continue;
     const after = Number(profile.msgPrefs?.after ?? 15) * 60000;
     const chats = await db.collection('chats').where('members', 'array-contains', uid).get();
-    const waiting = chats.docs.filter((chat) => {
+    const cutoff = now - after;
+    const waiting = [];
+    for (const chat of chats.docs) {
       const data = chat.data();
-      if (learner && data.emailThread) return false;
-      return data.last && data.last.by !== uid && (data.seen?.[uid] ?? 0) < data.lastAt
-        && now - data.lastAt >= after && (data.digested?.[uid] ?? 0) < data.lastAt;
-    });
+      if ((learner && data.emailThread) || !mayHaveEligibleMessage(data, uid, cutoff)) continue;
+      const cursor = digestCursor(data, uid);
+      const base = chat.ref.collection('msgs').where('at', '<=', cutoff)
+        .orderBy('at', 'asc').orderBy(FieldPath.documentId(), 'asc');
+      let source = base.where('at', cursor.ids ? '>=' : '>', cursor.at);
+      const resume = data.digestedPending?.[uid] === true ? data.digestedScanAfter?.[uid] : null;
+      if (resume && Number.isFinite(Number(resume.at)) && typeof resume.id === 'string') {
+        source = source.startAfter(Number(resume.at), resume.id);
+      }
+      const { processed, marker, count, preview, more, scanAfter } = await collectSummaryBatch(source, cursor, cutoff, uid);
+      if (!processed) {
+        if (data.digestedPending?.[uid]) await chat.ref.update({
+          [`digestedPending.${uid}`]: more,
+          [`digestedScanAfter.${uid}`]: scanAfter,
+        })
+          .catch(() => console.error('Could not clear completed unread-message backlog.'));
+        continue;
+      }
+      if (!count) {
+        await chat.ref.update({
+          [`digested.${uid}`]: marker.at,
+          [`digestedIds.${uid}`]: marker.ids,
+          [`digestedPending.${uid}`]: more,
+          [`digestedScanAfter.${uid}`]: scanAfter,
+        })
+          .catch(() => console.error('Could not record handled messages without email.'));
+        continue;
+      }
+      waiting.push({ chat, data, marker, count, preview, more, scanAfter });
+    }
     if (!waiting.length) continue;
 
     const parts = [];
     let total = 0;
-    for (const chat of waiting) {
-      const data = chat.data();
-      const since = data.seen?.[uid] ?? 0;
-      const messages = await chat.ref.collection('msgs').where('at', '>', since).orderBy('at', 'desc').limit(5).get();
-      const list = messages.docs.map((message) => message.data()).filter((message) => message.by !== uid && !message.deleted).reverse();
-      total += list.length;
+    for (const { chat, data, count, preview } of waiting) {
+      total += count;
       const title = data.kind === 'group' ? data.title || 'Group' : data.names?.[data.members.find((key) => key !== uid)] ?? 'A chat';
       parts.push(`<div style="margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#f7f5f2">
         <div style="font:600 15px Georgia,serif;color:#2b2a28;margin-bottom:6px">${esc(title)}</div>
-        ${list.map((message) => `<div style="font:14px/1.45 Arial,sans-serif;color:#3d3a36;margin:4px 0"><b>${esc((message.name || '').split(' ')[0])}:</b> ${esc((message.text || (message.share ? 'Shared “' + message.share.title + '”' : 'Sent a task element')).slice(0, 200))}</div>`).join('')}
+        ${preview.map((message) => `<div style="font:14px/1.45 Arial,sans-serif;color:#3d3a36;margin:4px 0"><b>${esc((message.name || '').split(' ')[0])}:</b> ${esc((message.text || (message.share ? 'Shared “' + message.share.title + '”' : 'Sent a task element')).slice(0, 200))}</div>`).join('')}
+        ${count > 5 ? small(`And ${count - 5} earlier messages.`) : ''}
         <a href="${learner ? learn : SITE}/messages?c=${chat.id}" style="display:inline-block;margin-top:8px;font:600 13px Arial,sans-serif;color:#b8744e">Open the chat</a>
       </div>`);
     }
@@ -79,8 +105,13 @@ export const sendUnreadMessageSummaries = onSchedule({
       console.error('Could not send one unread-message summary.', error?.code ?? 'unknown');
       continue;
     }
-    for (const chat of waiting) {
-      try { await chat.ref.update({ [`digested.${uid}`]: chat.data().lastAt }); }
+    for (const { chat, marker, more, scanAfter } of waiting) {
+      try { await chat.ref.update({
+        [`digested.${uid}`]: marker.at,
+        [`digestedIds.${uid}`]: marker.ids,
+        [`digestedPending.${uid}`]: more,
+        [`digestedScanAfter.${uid}`]: scanAfter,
+      }); }
       catch { console.error('Could not record one sent unread-message summary.'); }
     }
     console.log(`Sent a summary of ${waiting.length} chats.`);
