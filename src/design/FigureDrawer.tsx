@@ -16,6 +16,8 @@ export function FigureDrawer({cx}:{cx:Ctx}){
   const [tab,setTab]=useState<'charts'|'maps'|'symbols'>('charts');
   const [importing,setImporting]=useState(false);
   const [error,setError]=useState('');
+  const [symbolStyle,setSymbolStyle]=useState<'plain'|'shaded'>('plain');
+  const [symbolColor,setSymbolColor]=useState('#73578f');
   const file=useRef<HTMLInputElement>(null);
   const add=(figure:Figure)=>{
     const w=Math.max(200,Math.min(cx.page.w-72,figure.kind==='chart'?720:800));
@@ -25,8 +27,11 @@ export function FigureDrawer({cx}:{cx:Ctx}){
   const addSymbol=(key:string,name:string)=>{
     const existing=cx.sel.length===1&&cx.sel[0].t==='figure'&&cx.sel[0].figure?.kind==='map'?cx.sel[0]:null;
     const figure:MapFigure=existing?cloneFigure(existing.figure!) as MapFigure:blankMap();
-    figure.items.push(makeMapItem(key==='tree'?'tree':key==='gate'?'gate':key==='bridge'?'bridge':'icon',.5,.5,key));
-    figure.items[figure.items.length-1].label=name;
+    const item=makeMapItem('icon',.5,.5,key);
+    item.label=name;
+    item.iconStyle=symbolStyle;
+    item.iconColor=symbolColor;
+    figure.items.push(item);
     if(existing)cx.patch({[existing.id]:{figure}},'map-symbol');else add(figure);
   };
   const importMap=async(picture?:File)=>{if(!picture)return;setImporting(true);setError('');try{if(!picture.type.startsWith('image/'))throw new Error('Choose a picture of the map.');const {id}=await storePicture(cx.d.id,picture);const f=blankMap();f.title=picture.name.replace(/\.[^.]+$/,'');f.backgroundImage=id;add(f);}catch(err){setError(err instanceof Error?err.message:'Could not import this map.');}finally{setImporting(false);if(file.current)file.current.value='';}};
@@ -42,6 +47,6 @@ export function FigureDrawer({cx}:{cx:Ctx}){
     </div>
     {tab==='charts'&&<><button type="button" className="dz-figure-new" onClick={()=>add(blankChart())} disabled={!cx.canEdit}>+ Start a blank chart</button><p className="dz-figure-sub">Choose a layout, then edit the title, data, axes, series and colours.</p><h3 className="dz-dr-h">Chart collections</h3>{CHART_COMBINATIONS.map(pair=><button type="button" key={pair.id} className="dz-figure-new" onClick={()=>addCombination(pair)} disabled={!cx.canEdit}><strong>+ {pair.name}</strong><small>{pair.about}</small></button>)}<h3 className="dz-dr-h">Single charts</h3><div className="dz-figure-preset-list">{CHART_PRESETS.map(preset)}</div></>}
     {tab==='maps'&&<><button type="button" className="dz-figure-new" onClick={()=>add(blankMap())} disabled={!cx.canEdit}>+ Start a blank map</button><button type="button" className="dz-figure-new" onClick={()=>file.current?.click()} disabled={!cx.canEdit||importing}>{importing?'Importing map…':'↑ Import a map image'}</button><input ref={file} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={e=>void importMap(e.target.files?.[0])}/>{error&&<p role="alert" className="dz-map-error">{error}</p>}<p className="dz-figure-sub">Start with a place or import a plan, then add movable roads, labels and landmarks.</p><h3 className="dz-dr-h">Before and after</h3>{MAP_COMPARISONS.map(pair=><button type="button" key={pair.id} className="dz-figure-new" onClick={()=>addPair(pair)} disabled={!cx.canEdit}>+ {pair.name}</button>)}<h3 className="dz-dr-h">Single maps</h3><div className="dz-figure-preset-list">{MAP_PRESETS.map(preset)}</div></>}
-    {tab==='symbols'&&<><p className="dz-figure-sub">Choose a symbol to add to the selected map. A new map is made if none is selected.</p><MapSymbolLibrary onSelect={key=>{const symbol=MAP_ICONS.find(([value])=>value===key);if(symbol)addSymbol(key,symbol[1]);}} disabled={!cx.canEdit} draggable={false}/></>}
+    {tab==='symbols'&&<><p className="dz-figure-sub">Choose a symbol to add to the selected map. A new map is made if none is selected.</p><MapSymbolLibrary symbolStyle={symbolStyle} symbolColor={symbolColor} onSymbolStyleChange={setSymbolStyle} onSymbolColorChange={setSymbolColor} onSelect={key=>{const symbol=MAP_ICONS.find(([value])=>value===key);if(symbol)addSymbol(key,symbol[1]);}} disabled={!cx.canEdit} draggable={false}/></>}
   </div>;
 }

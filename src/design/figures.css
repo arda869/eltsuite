@@ -38,6 +38,8 @@
 .dz-map-tool-section[open]>summary::after{transform:rotate(0)}
 .dz-map-tool-section>summary:focus-visible{outline:2px solid var(--dz);outline-offset:-2px;border-radius:9px}
 .dz-map-tool-section>.dz-map-tool-grid,.dz-map-tool-section>.dz-map-toolgroup{padding:0 9px 10px;box-sizing:border-box}
+.dz-map-tool-section>.dz-map-tool-grid:has(+ .dz-map-shift-hint){padding-bottom:3px}
+.dz-map-tool-section>.dz-map-shift-hint{padding:0 10px 9px;font-size:10px}
 .dz-map-tool-section .dz-map-toolgroup{display:grid;gap:9px}
 .dz-map-tool-section .dz-map-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
 .dz-map-tool-grid button{display:flex;align-items:center;gap:5px;min-width:0;min-height:35px;padding:5px!important;text-align:left;border:1px solid var(--dz-line);border-radius:8px;background:var(--dz-panel);color:var(--dz-ink);font:11px/1.15 var(--sans);cursor:pointer}

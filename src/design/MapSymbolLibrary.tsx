@@ -25,7 +25,7 @@ export type MapSymbolLibraryProps={
   onSymbolStyleChange?:(style:'plain'|'shaded')=>void;onSymbolColorChange?:(color:string)=>void;
 };
 
-export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,draggable=true,symbolStyle='shaded',symbolColor='#73578f',onSymbolStyleChange,onSymbolColorChange}:MapSymbolLibraryProps){
+export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,draggable=true,symbolStyle='plain',symbolColor='#73578f',onSymbolStyleChange,onSymbolColorChange}:MapSymbolLibraryProps){
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState<Category>('all');
   const [categoriesOpen,setCategoriesOpen]=useState(false);

@@ -676,11 +676,18 @@ const J = {
     await axe(design, 'Designer map editor', A11Y_FOUND);
     await map.getByRole('button', { name: 'Save map' }).click();
     await design.locator('.dz-saved:not(.bad)').waitFor();
+    await design.getByRole('tab', { name: 'Map symbols' }).click();
+    const symbolPicker = design.getByRole('group', { name: 'Symbol appearance' });
+    if (await symbolPicker.getByRole('button', { name: 'Plain' }).getAttribute('aria-pressed') !== 'true') throw Error('Map symbol drawer did not default to plain artwork');
+    await design.getByLabel('Symbol colour', { exact: true }).fill('#286c7d');
+    await design.getByRole('button', { name: 'Café', exact: true }).click();
+    await design.locator('.dz-saved:not(.bad)').waitFor();
     const id = new URL(design.url()).pathname.split('/').at(-1);
     const saved = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path]) => path.startsWith(`sharedDocs/${fileId}/dels/`)).map(([, value]) => value), id);
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
+    if (!saved.some(v => v.figure?.kind === 'map' && v.figure.items.some(item => item.icon === 'café' && item.iconStyle === 'plain' && item.iconColor === '#286c7d'))) throw Error('Map symbol drawer did not save the chosen plain colour');
     await design.reload();
     await design.getByRole('button', { name: 'Download' }).click();
     const [pdf] = await Promise.all([design.waitForEvent('download'), design.getByRole('menuitem', { name: /PDF/ }).click()]);
@@ -750,6 +757,7 @@ const J = {
     await design.getByRole('button', { name: 'Edit map and symbols' }).click();
     const map = design.getByRole('dialog', { name: 'Edit map' });
     if (await map.getByRole('button', { name: 'Select and move' }).count() !== 1 || await map.getByRole('button', { name: 'Save map' }).count() !== 1) throw Error('Map tools and Save are not immediately available');
+    if (await map.getByRole('group', { name: 'Symbol appearance' }).getByRole('button', { name: 'Plain' }).getAttribute('aria-pressed') !== 'true') throw Error('New map symbols do not start with the plain background');
     await design.waitForFunction(() => {
       const center = document.querySelector('.dz-map-center');
       const canvas = center?.querySelector('canvas');
@@ -834,8 +842,9 @@ const J = {
     await hospitalSymbol.click();
     await map.getByRole('group', { name: 'Symbol appearance' }).getByRole('button', { name: 'Shaded' }).click();
     await map.getByLabel('Symbol colour', { exact: true }).fill('#9b6a40');
-    await clickMap(.25, .24);
+    await clickMap(.25, .17);
     await map.getByRole('textbox', { name: 'Name this map object' }).press('Enter');
+    await map.locator('.dz-layer-main').filter({ hasText: 'Café' }).click();
     if (process.env.MAP_SCREENSHOT) {
       await map.getByRole('searchbox', { name: 'Search map symbols' }).fill('');
       await map.getByText('Symbols', { exact: true }).scrollIntoViewIfNeeded();
