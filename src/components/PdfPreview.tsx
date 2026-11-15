@@ -31,19 +31,36 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
   // The browser's back button closes the viewer, as it would a page, instead of leaving the lesson
   // behind it.
   const closeRef = useRef(onClose);
+  const historyKey = useRef(`pdf-${Math.random().toString(36).slice(2)}`);
+  const hasHistoryEntry = useRef(false);
+  const cleanupBack = useRef<number | null>(null);
   closeRef.current = onClose;
   useEffect(() => {
-    history.pushState({ ...(history.state ?? {}), pv: 1 }, '');
+    // StrictMode runs effect cleanup and setup again in development. Keep that
+    // first history entry instead of navigating back and closing the new viewer.
+    if (cleanupBack.current !== null) window.clearTimeout(cleanupBack.current);
+    cleanupBack.current = null;
+    if (!hasHistoryEntry.current) {
+      history.pushState({ ...(history.state ?? {}), pv: historyKey.current }, '');
+      hasHistoryEntry.current = true;
+    }
     let popped = false;
     const pop = () => {
-      if (history.state?.pv) return; // still on the viewer's own step
+      if (history.state?.pv === historyKey.current) return; // still on this viewer's step
       popped = true;
+      hasHistoryEntry.current = false;
       closeRef.current();
     };
     window.addEventListener('popstate', pop);
     return () => {
       window.removeEventListener('popstate', pop);
-      if (!popped && history.state?.pv) history.back();
+      if (!popped && hasHistoryEntry.current) {
+        cleanupBack.current = window.setTimeout(() => {
+          cleanupBack.current = null;
+          if (history.state?.pv === historyKey.current) history.back();
+          hasHistoryEntry.current = false;
+        }, 0);
+      }
     };
   }, []);
   useEffect(() => {
