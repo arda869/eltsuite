@@ -369,6 +369,29 @@
 .task-frame[data-lesson-style='teen'] .frame-foot { border-top: var(--t-line); }
 .task-frame[data-lesson-style='teen'] :is(button, input, textarea):focus-visible { outline: 3px solid var(--t-ink) !important; outline-offset: 2px; box-shadow: 0 0 0 6px var(--t-hl) !important; }
 
+/* Teenagers uses dark ink, white tiles and yellow marker strokes as one paper-like
+   composition. In dark mode keep the authored task on warm paper so its text and
+   controls remain readable; the surrounding app and print styles stay as they are. */
+@media screen {
+  :root[data-theme='dark'] .task-frame[data-lesson-style='teen'] {
+    --paper: #f8f6f0;
+    --paper-soft: #f3efe6;
+    --card: #f8f6f0;
+    --surface: #f0ece2;
+    --ink: var(--t-ink);
+    --muted: var(--t-muted);
+    --hair: rgba(29, 27, 25, .14);
+    --hair-strong: rgba(29, 27, 25, .3);
+    --accent-text: color-mix(in srgb, var(--accent) 55%, #24211e) !important;
+    background: var(--card);
+    color: var(--t-ink);
+  }
+  :root[data-theme='dark'] .task-frame[data-lesson-style='teen'] :is(.frame-head, .frame-body, .frame-foot) {
+    background: var(--card);
+    color: var(--t-ink);
+  }
+}
+
 /* Frame foot arrows (the same Previous and Next buttons Default has) */
 .task-frame[data-lesson-style='exam'] .nav-arrow { background: #fff !important; color: var(--x-ink) !important; border: 1px solid var(--x-ink) !important; border-radius: 2px !important; box-shadow: none !important; }
 [data-lesson-style='teen'] .nav-arrow { background: #fff !important; color: var(--t-ink) !important; border: var(--t-line) !important; box-shadow: var(--t-shadow) !important; }
