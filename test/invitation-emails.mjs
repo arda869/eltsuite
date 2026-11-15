@@ -8,9 +8,16 @@ for (const existing of [false, true]) {
   assert.ok(mail.html.indexOf('class="btn"') < mail.html.indexOf('About Example Academy'));
   assert.ok(mail.text.includes('lessons, files and messages stay yours'));
   assert.ok(mail.text.includes('Hello Mina,'));
+  assert.ok(mail.text.includes('Example Academy’s admins'));
   assert.ok(mail.subject.includes(existing ? 'would like you to join them' : 'your place at'));
   assert.ok(mail.html.includes(existing ? 'See the invitation' : 'Create my account'));
   if (existing) assert.ok(!mail.text.includes('Your account, classes, lessons and files stay yours.'));
+}
+for (const existing of [false, true]) {
+  const mail = organisationInvitation({ ...d, orgName: 'Test Pilots' }, 'safe', existing);
+  assert.ok(mail.text.includes('Test Pilots’ admins'));
+  assert.ok(mail.html.includes('Test Pilots’ admins'));
+  assert.ok(!mail.text.includes('Test Pilots’s admins'));
 }
 const malicious = organisationInvitation({ ...d, name: '<img src=x>', orgName: '<script>alert(1)</script>', email: '\" onclick=\"alert(1)' }, 'safe', false);
 assert.ok(!malicious.html.includes('<script>'));

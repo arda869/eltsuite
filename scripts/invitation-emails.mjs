@@ -5,7 +5,8 @@ const copy = JSON.parse(readFileSync(new URL('./invitation-copy.json', import.me
 const intro = copy.intro;
 const benefits = (full = true) => copy.benefits.map(s => full ? s : s.replace(', and you see their answers as they come in', '').replace(', with a recap for learners afterwards', ''));
 const greeting = (name) => name?.trim() ? `Hello ${name.trim().split(/\s+/)[0]},` : 'Hello,';
-const about = (org) => `Your lessons, files and messages stay yours. ${org}’s admins see your name, email, job title and your class lists, and they can choose some settings for you, such as which apps you have and how much space. The teachers at ${org} become your colleagues.`;
+const possessive = (name) => `${name}${/[sS]$/.test(name.trim()) ? '’' : '’s'}`;
+const about = (org) => `Your lessons, files and messages stay yours. ${possessive(org)} admins see your name, email, job title and your class lists, and they can choose some settings for you, such as which apps you have and how much space. The teachers at ${org} become your colleagues.`;
 const subject = (s) => String(s).replace(/[\r\n]+/g, ' ');
 export function organisationInvitation(d, id, existing) {
   const org = d.orgName || 'your organisation';
