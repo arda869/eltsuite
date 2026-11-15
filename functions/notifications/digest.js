@@ -1,5 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldPath, getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import nodemailer from 'nodemailer';
 import { frame, pad, h1, small, esc } from './email-layout.js';
@@ -41,18 +41,21 @@ export const sendUnreadMessageSummaries = onSchedule({
       const data = chat.data();
       if ((learner && data.emailThread) || !mayHaveEligibleMessage(data, uid, cutoff)) continue;
       const cursor = digestCursor(data, uid);
-      const source = chat.ref.collection('msgs').where('at', '>=', cursor.at)
-        .where('at', '<=', cutoff).orderBy('at', 'asc');
-      const oldIds = data.digestedIds?.[uid];
-      const initialMarker = { at: Number(data.digested?.[uid] ?? 0), ids: Array.isArray(oldIds) ? oldIds : [] };
-      const { processed, marker, count, preview } = await collectSummaryBatch(source, cursor, cutoff, initialMarker, uid);
-      if (!processed) continue;
+      const base = chat.ref.collection('msgs').where('at', '<=', cutoff)
+        .orderBy('at', 'asc').orderBy(FieldPath.documentId(), 'asc');
+      const source = cursor.id ? base.startAfter(cursor.at, cursor.id) : base.where('at', '>', cursor.at);
+      const { processed, marker, count, preview, more } = await collectSummaryBatch(source, cursor, cutoff, uid);
+      if (!processed) {
+        if (data.digestedPending?.[uid]) await chat.ref.update({ [`digestedPending.${uid}`]: false })
+          .catch(() => console.error('Could not clear completed unread-message backlog.'));
+        continue;
+      }
       if (!count) {
-        await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedIds.${uid}`]: marker.ids })
+        await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedId.${uid}`]: marker.id, [`digestedPending.${uid}`]: more })
           .catch(() => console.error('Could not record handled messages without email.'));
         continue;
       }
-      waiting.push({ chat, data, marker, count, preview });
+      waiting.push({ chat, data, marker, count, preview, more });
     }
     if (!waiting.length) continue;
 
@@ -90,8 +93,8 @@ export const sendUnreadMessageSummaries = onSchedule({
       console.error('Could not send one unread-message summary.', error?.code ?? 'unknown');
       continue;
     }
-    for (const { chat, marker } of waiting) {
-      try { await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedIds.${uid}`]: marker.ids }); }
+    for (const { chat, marker, more } of waiting) {
+      try { await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedId.${uid}`]: marker.id, [`digestedPending.${uid}`]: more }); }
       catch { console.error('Could not record one sent unread-message summary.'); }
     }
     console.log(`Sent a summary of ${waiting.length} chats.`);
