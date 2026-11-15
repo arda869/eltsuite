@@ -43,19 +43,31 @@ export const sendUnreadMessageSummaries = onSchedule({
       const cursor = digestCursor(data, uid);
       const base = chat.ref.collection('msgs').where('at', '<=', cutoff)
         .orderBy('at', 'asc').orderBy(FieldPath.documentId(), 'asc');
-      const source = cursor.id ? base.startAfter(cursor.at, cursor.id) : base.where('at', '>', cursor.at);
-      const { processed, marker, count, preview, more } = await collectSummaryBatch(source, cursor, cutoff, uid);
+      let source = base.where('at', cursor.ids ? '>=' : '>', cursor.at);
+      const resume = data.digestedPending?.[uid] === true ? data.digestedScanAfter?.[uid] : null;
+      if (resume && Number.isFinite(Number(resume.at)) && typeof resume.id === 'string') {
+        source = source.startAfter(Number(resume.at), resume.id);
+      }
+      const { processed, marker, count, preview, more, scanAfter } = await collectSummaryBatch(source, cursor, cutoff, uid);
       if (!processed) {
-        if (data.digestedPending?.[uid]) await chat.ref.update({ [`digestedPending.${uid}`]: false })
+        if (data.digestedPending?.[uid]) await chat.ref.update({
+          [`digestedPending.${uid}`]: more,
+          [`digestedScanAfter.${uid}`]: scanAfter,
+        })
           .catch(() => console.error('Could not clear completed unread-message backlog.'));
         continue;
       }
       if (!count) {
-        await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedId.${uid}`]: marker.id, [`digestedPending.${uid}`]: more })
+        await chat.ref.update({
+          [`digested.${uid}`]: marker.at,
+          [`digestedIds.${uid}`]: marker.ids,
+          [`digestedPending.${uid}`]: more,
+          [`digestedScanAfter.${uid}`]: scanAfter,
+        })
           .catch(() => console.error('Could not record handled messages without email.'));
         continue;
       }
-      waiting.push({ chat, data, marker, count, preview, more });
+      waiting.push({ chat, data, marker, count, preview, more, scanAfter });
     }
     if (!waiting.length) continue;
 
@@ -93,8 +105,13 @@ export const sendUnreadMessageSummaries = onSchedule({
       console.error('Could not send one unread-message summary.', error?.code ?? 'unknown');
       continue;
     }
-    for (const { chat, marker, more } of waiting) {
-      try { await chat.ref.update({ [`digested.${uid}`]: marker.at, [`digestedId.${uid}`]: marker.id, [`digestedPending.${uid}`]: more }); }
+    for (const { chat, marker, more, scanAfter } of waiting) {
+      try { await chat.ref.update({
+        [`digested.${uid}`]: marker.at,
+        [`digestedIds.${uid}`]: marker.ids,
+        [`digestedPending.${uid}`]: more,
+        [`digestedScanAfter.${uid}`]: scanAfter,
+      }); }
       catch { console.error('Could not record one sent unread-message summary.'); }
     }
     console.log(`Sent a summary of ${waiting.length} chats.`);
