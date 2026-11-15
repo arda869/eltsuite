@@ -5,7 +5,7 @@ import { db } from './firebase';
 import { keyRef, notesRef, tasksCol } from './tasks';
 import { mediaDoc } from './media';
 import { mediaIds, remap } from './fullcopy';
-import { copySoundStems, archiveAdd, archiveGet, type ArchiveItem } from './archive';
+import { copySoundStems, archiveAdd, archiveGet, loadTeacherManifestStrict, setManifestScript, type ArchiveItem } from './archive';
 import { newId } from './tasks';
 
 // Colleagues and sharing. Teachers connect through an invitation link (never by searching
@@ -89,7 +89,7 @@ async function copyMediaKeep(from: string, to: string, ids: Iterable<string>) {
   for (const id of pending) {
     const m = await getDoc(mediaDoc(from, id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = m.data();
+    const d = from.includes(':') ? m.data() : (await loadTeacherManifestStrict(from,id)) ?? m.data();
     for (let k = 0; k < (d.parts ?? 0); k++) {
       const p = await getDoc(mediaDoc(from, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(to, `${id}_p${k}`), p.data());
@@ -208,7 +208,9 @@ async function carry(space: string, toClass: string, values: unknown[]) {
       if (p?.exists()) await setDoc(doc(db, 'classes', toClass, 'media', `${r.id}_p${k}`), p.data());
     }
     const stems=d.stems?await copySoundStems({classId:space,stems:d.stems},toClass):undefined;
-    await setDoc(r, { ...d, ...(stems?{stems}:{}), createdAt: serverTimestamp() });
+    const {script,...publicManifest}=d;
+    await setDoc(r, { ...publicManifest, ...(stems?{stems}:{}), createdAt: serverTimestamp() });
+    if(Array.isArray(script))await setManifestScript(toClass,r.id,script);
     map[id] = r.id;
   }
   return map;

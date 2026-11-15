@@ -1,0 +1,48 @@
+name: Audit class media script migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply after reviewing a prior dry-run count (default: read only)'
+        type: boolean
+        default: false
+      expected_legacy_count:
+        description: 'Exact legacyScripts count from the reviewed dry run; required for apply'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci --prefix functions --ignore-scripts
+      - name: Prepare existing Firebase credentials
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SERVICE_ACCOUNT"
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          chmod 600 "$RUNNER_TEMP/firebase-sa.json"
+      - name: Count legacy public class scripts (read only)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: node scripts/migrate-class-media-scripts.mjs
+      - name: Copy, verify, then remove legacy public script fields
+        if: inputs.apply == true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+          EXPECTED_COUNT: ${{ inputs.expected_legacy_count }}
+        run: node scripts/migrate-class-media-scripts.mjs --apply "--expected-legacy-count=$EXPECTED_COUNT"
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"

@@ -20,7 +20,7 @@ try{
   await page.locator('main[data-ready=true]').waitFor({timeout:180000});
   try{
    results=await page.evaluate(async()=>{
-  const {flattenWithSections}=await import('/src/lib/worksheet.ts');
+  const {flattenWithSections,collectMedia}=await import('/src/lib/worksheet.ts');
   const {worksheetHtml}=await import('/src/lib/worksheetHtml.ts');
   const {worksheetPdf}=await import('/src/lib/pdfMake.ts');
   const {docBodyHtml,prepareDocumentPrint,EXPORT_DEFAULT}=await import('/src/collab/export.ts');
@@ -77,11 +77,16 @@ try{
   const {doc:setDocRef,setDoc}=await import('/test/mock/firestore.ts');
   const {db}=await import('/src/lib/firebase.ts');
   await setDoc(setDocRef(db,'classes','audit','media','dialogue'),{title:'Holiday plans',script:[{t:0,who:'Alex',text:'Where shall we go?'},{t:2,who:'Sam',text:'Let us go camping.'},{t:4,text:'The train leaves.'},{t:5,who:'Alex',text:'   '}]});
-  const qrItems=flattenWithSections([{title:'Play and listen',content:{type:'doc',content:[{type:'classroomGame',attrs:{sessionId:'saved-game'}},{type:'media',attrs:{media:'dialogue'}}]}}]);
+  const qrItems=flattenWithSections([{id:'qr-task',title:'Play and listen',content:{type:'doc',content:[{type:'classroomGame',attrs:{sessionId:'saved-game'}},{type:'media',attrs:{media:'dialogue'}}]}}]);
   const qrSounds=await sheetSounds('audit',qrItems,'#975f40');
   // Old game blocks are gone (live quizzes are played online), so they print nothing and get no QR.
   if(qrSounds['game:saved-game'])throw Error('An old game block still got a QR code');
   if(JSON.stringify(qrSounds.dialogue.script)!==JSON.stringify(['Alex: Where shall we go?','Sam: Let us go camping.','The train leaves.']))throw Error('Speaker labels missing or invented');
+  const mixed=flattenWithSections([{id:'public-script',title:'Show the script',content:{type:'doc',content:[{type:'media',attrs:{media:'dialogue',scriptMode:'karaoke'}}]}},{id:'hidden-script',title:'Hide the script',content:{type:'doc',content:[{type:'media',attrs:{media:'dialogue',scriptMode:'none'}}]}}]);
+  const selected=collectMedia(mixed).find(entry=>entry.id==='dialogue');
+  if(selected?.mode!=='none'||selected.taskId!=='hidden-script')throw Error('Printed QR ignored the strictest of two media placements.');
+  const grantUnavailable=await sheetSounds('audit',qrItems,'#975f40','locked-item');
+  if(!grantUnavailable.dialogue?.url.includes('/play/')||!grantUnavailable.dialogue?.url.includes('i=locked-item')||grantUnavailable.dialogue.url.includes('g='))throw Error('A failed QR transcript grant blocked the printable audio link.');
   const qrHtml=worksheetHtml('Games and named speakers',qrItems,{...opts,key:true,qr:false,sounds:qrSounds});
   if(qrHtml.includes('Scan to play')||!qrHtml.includes('Alex: Where shall we go?')||!qrHtml.includes('Sam: Let us go camping.'))throw Error('QR or speakers omitted');
   const unconfigured=worksheetHtml('Unconfigured',flattenWithSections([{title:'Game',content:{type:'doc',content:[{type:'classroomGame',attrs:{}}]}}]),opts);

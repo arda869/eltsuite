@@ -1,4 +1,4 @@
-import { copySoundStems } from './archive';
+import { copySoundStems, loadTeacherManifestStrict, setManifestScript } from './archive';
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, writeBatch, type DocumentData } from 'firebase/firestore';
 import { get, ref, set } from 'firebase/database';
 import { db, rtdb } from './firebase';
@@ -52,14 +52,16 @@ export async function carryMedia(fromClass: string, toClass: string, values: unk
   for (const id of ids) {
     const m = await getDoc(mediaDoc(fromClass, id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = m.data();
+    const d = (await loadTeacherManifestStrict(fromClass,id)) ?? m.data();
     const r = doc(mediaCol(toClass));
     for (let k = 0; k < (d.kind === 'audio' || d.kind === 'pdf' ? d.parts ?? 0 : 0); k++) {
       const p = await getDoc(mediaDoc(fromClass, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(toClass, `${r.id}_p${k}`), p.data());
     }
     const stems=d.stems?await copySoundStems({classId:fromClass,stems:d.stems},toClass):undefined;
-    await setDoc(r, {...d,...(stems?{stems}:{})});
+    const {script,...publicManifest}=d;
+    await setDoc(r, {...publicManifest,...(stems?{stems}:{})});
+    if(Array.isArray(script))await setManifestScript(toClass,r.id,script);
     map[id] = r.id;
   }
   return map;
@@ -101,7 +103,7 @@ export async function lessonBundle(classId: string, itemId: string): Promise<Les
   for (const id of ids) {
     const m = await getDoc(doc(db, 'classes', classId, 'media', id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = m.data();
+    const d = (await loadTeacherManifestStrict(classId,id)) ?? m.data();
     if(d.stems){ids.add(d.stems.vocals);ids.add(d.stems.instrumental);}
     if (d.kind === 'audio' || d.kind === 'link') {
       media[id] = strip(d);
@@ -109,7 +111,7 @@ export async function lessonBundle(classId: string, itemId: string): Promise<Les
         const p = await getDoc(doc(db, 'classes', classId, 'media', `${id}_p${k}`)).catch(() => null);
         if (p?.exists()) media[`${id}_p${k}`] = p.data();
       }
-    } else media[id] = { data: d.data, type: d.type, size: d.size };
+    } else media[id] = { data: m.data()?.data, type: m.data()?.type, size: d.size };
   }
   return { format: 'lessonlit-lesson', version: 1, exportedAt: new Date().toISOString(), item, tasks, boards, media };
 }
@@ -140,7 +142,9 @@ export async function importBundle(classId: string, b: LessonBundle, opts: { top
     if (m.kind === 'audio' || m.kind === 'link') {
       const r = doc(collection(db, 'classes', classId, 'media'));
       for (let k = 0; k < (m.parts ?? 0); k++) if (all[`${id}_p${k}`]) await setDoc(doc(db, 'classes', classId, 'media', `${r.id}_p${k}`), all[`${id}_p${k}`]);
-      await setDoc(r, m);
+      const {script,...publicManifest}=m;
+      await setDoc(r, publicManifest);
+      if(Array.isArray(script))await setManifestScript(classId,r.id,script);
       mediaMap[id] = r.id;
       continue;
     }

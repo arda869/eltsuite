@@ -1,5 +1,5 @@
 import { writeNamedFile } from './fileNames';
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { mediaCol, mediaDoc } from './media';
@@ -75,7 +75,18 @@ export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Parti
     await Promise.all(
       places
         .filter(([c, m]) => !seen.has(c + m) && (seen.add(c + m), true))
-        .map(([c, m]) => updateDoc(mediaRef(c, m), { ...(patch.script !== undefined ? { script: patch.script } : {}), ...(patch.name !== undefined ? { title: patch.name } : {}) }).catch(() => {})),
+        .map(async ([c, m]) => {
+          if (patch.script !== undefined) await setManifestScript(c, m, patch.script);
+          if (patch.name !== undefined) {
+            // An older manifest may still carry a public script during rollout.
+            // Clear it first or the new write rule would reject a title-only edit.
+            if (patch.script === undefined) {
+              const current = await loadManifest(c, m);
+              if (current?.script !== undefined) await setManifestScript(c, m, current.script);
+            }
+            await updateDoc(mediaRef(c, m), { title: patch.name });
+          }
+        }),
     );
   }
 }
@@ -102,11 +113,15 @@ export async function resourceFolderForClass(uid:string,classId:string,folder=''
 
 // ------------------------------------------------------------------ class media
 
-// Sound files are stored in parts (a Firestore document holds up to 1 MB). Ordinary
-// resource scripts travel with their public manifest; AI listening scripts are kept in
-// a teacher-only class document while the same manifest and parts remain playable.
+// Audio parts and manifests remain available to learners and worksheet QR codes. Class
+// scripts live separately so a Hidden or After listening script cannot be read there.
 const PART = 450 * 1024;
 const generatedScriptRef = (classId: string, id: string) => doc(db, 'classes', classId, 'mediaScripts', id);
+const isClassSpace = (space: string) => !space.includes(':');
+const classScript = (script: ScriptLine[], aiGenerated = false) => ({ script, aiGenerated, updatedAt: Date.now() });
+async function saveClassScript(classId: string, id: string, script: ScriptLine[], aiGenerated = false) {
+  if (isClassSpace(classId)) await setDoc(generatedScriptRef(classId, id), classScript(script, aiGenerated));
+}
 export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
 export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
 export type StemSource = {classId:string;stems:SongStemIds};
@@ -131,14 +146,17 @@ export async function saveSound(classId: string, blob: Blob, meta: { title: stri
       return setDoc(mediaRef(classId, `${ref.id}_p${k}`), { part: k, data: toBase64(chunk), size: chunk.length, public: true }).then(() => onProgress?.(++done / (parts + 1)));
     }),
   );
-  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, script: meta.script ?? [], duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}) };
+  if (isClassSpace(classId)) await saveClassScript(classId, ref.id, meta.script ?? []);
+  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}) };
   await setDoc(ref, m);
   onProgress?.(1);
   return { mediaId: ref.id, bytes: bytes.length };
 }
 
 export async function saveLink(classId: string, url: string, meta: { title: string; script?: ScriptLine[]; video?: boolean }) {
-  const r = await addDoc(mediaCol(classId), { kind: 'link', url, title: meta.title, size: 0, script: meta.script ?? [], video: !!meta.video, public: true } satisfies Manifest);
+  const r = doc(mediaCol(classId));
+  if (isClassSpace(classId)) await saveClassScript(classId, r.id, meta.script ?? []);
+  await setDoc(r, { kind: 'link', url, title: meta.title, size: 0, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), video: !!meta.video, public: true } satisfies Manifest);
   return r.id;
 }
 
@@ -160,8 +178,11 @@ export function useManifest(classId?: string, id?: string) {
 export async function setManifestScript(classId: string, id: string, script: ScriptLine[]) {
   const m = await loadManifest(classId, id);
   if (!m) throw Error('The recording is no longer available.');
-  if (m.aiGenerated && !classId.includes(':')) {
-    await setDoc(generatedScriptRef(classId, id), { script, aiGenerated: true, updatedAt: Date.now() });
+  if (isClassSpace(classId)) {
+    const batch = writeBatch(db);
+    batch.set(generatedScriptRef(classId, id), classScript(script, !!m.aiGenerated));
+    if (m.script !== undefined) batch.update(mediaRef(classId, id), { script: deleteField() });
+    await batch.commit();
     return;
   }
   await updateDoc(mediaRef(classId, id), { script });
@@ -176,9 +197,21 @@ export async function loadManifest(classId: string, id: string): Promise<Manifes
 // Firestore rules deny them this separate transcript document.
 export async function loadTeacherManifest(classId: string, id: string): Promise<Manifest | null> {
   const manifest = await loadManifest(classId, id);
-  if (!manifest?.aiGenerated || classId.includes(':')) return manifest;
+  if (!manifest || !isClassSpace(classId)) return manifest;
   const script = await getDoc(generatedScriptRef(classId, id)).then(s => s.data()?.script as ScriptLine[] | undefined, () => undefined);
   return script?.length ? { ...manifest, script } : manifest;
+}
+
+// Copy and export must report a failed private read. The player uses the
+// tolerant loader above so a temporary script outage never stops the audio.
+export async function loadTeacherManifestStrict(classId: string, id: string): Promise<Manifest | null> {
+  const manifest = await loadManifest(classId, id);
+  if (!manifest || !isClassSpace(classId)) return manifest;
+  const privateDoc = await getDoc(generatedScriptRef(classId, id));
+  if (!privateDoc.exists()) return manifest; // Older and script-free media have no private document.
+  const script: unknown = privateDoc.data()?.script;
+  if (!Array.isArray(script)) throw Error('The recording script could not be read. Please try again.');
+  return { ...manifest, script: script as ScriptLine[] };
 }
 
 const blobCache = new Map<string, Promise<string>>();
@@ -211,10 +244,12 @@ export async function copySoundStems(source:StemSource,classId:string):Promise<S
  if(source.classId===classId)return source.stems;
  const result:SongStemIds={vocals:'',instrumental:'',...(source.stems.vocalsOff?{vocalsOff:true}:{})};
  for(const key of ['vocals','instrumental'] as const){
-  const id=source.stems[key],m=await loadManifest(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
+  const id=source.stems[key],m=await loadTeacherManifestStrict(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
   const r=doc(mediaCol(classId));
   await Promise.all(Array.from({length:m.parts??1},async(_,i)=>{const part=await getDoc(mediaRef(source.classId,id+'_p'+i));if(!part.exists())throw Error('A saved song track is incomplete.');await setDoc(mediaRef(classId,r.id+'_p'+i),part.data());}));
-  const {stems:_nested,...plain}=m;await setDoc(r,plain);result[key]=r.id;
+  const {stems:_nested,script,...plain}=m;
+  if(isClassSpace(classId))await saveClassScript(classId,r.id,script??[],!!m.aiGenerated);
+  await setDoc(r,{...plain,...(!isClassSpace(classId)?{script}:{} )});result[key]=r.id;
  }
  return result;
 }
@@ -231,7 +266,7 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
     id = r.id;
   } else if (item.home) {
     const from = item.home;
-    const m = await loadManifest(from.classId, from.mediaId);
+    const m = await loadTeacherManifestStrict(from.classId, from.mediaId);
     if (!m) throw new Error('missing');
     const ref = doc(mediaCol(classId));
     await Promise.all(
@@ -241,7 +276,10 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
       }),
     );
     const stems=m.stems?await copySoundStems({classId:from.classId,stems:m.stems},classId):undefined;
-    await setDoc(ref, { ...m, ...(stems?{stems}:{}), title: item.name, script: item.script ?? m.script ?? [] });
+    const {script:_sourceScript,...publicManifest}=m;
+    const script=item.script??m.script??[];
+    if(isClassSpace(classId))await saveClassScript(classId,ref.id,script,!!m.aiGenerated);
+    await setDoc(ref, { ...publicManifest, ...(stems?{stems}:{}), title: item.name, ...(!isClassSpace(classId)?{script}:{}) });
     id = ref.id;
   }
   if (!id) throw new Error('missing');
@@ -357,8 +395,9 @@ export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, m
       }),
     );
     for (let k = parts; k < (old?.parts ?? 0); k++) await deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {});
-    const {stems:_previous,...previous}=old??{};const stems=meta.stemSource?await copySoundStems(meta.stemSource,classId):undefined;
-    await setDoc(mediaRef(classId, mediaId), { ...previous, ...(stems?{stems}:{}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, script: meta.script, public: true, v: Date.now() });
+    const {stems:_previous,script:_oldScript,...previous}=old??{};const stems=meta.stemSource?await copySoundStems(meta.stemSource,classId):undefined;
+    if(isClassSpace(classId))await saveClassScript(classId,mediaId,meta.script,!!old?.aiGenerated);
+    await setDoc(mediaRef(classId, mediaId), { ...previous, ...(stems?{stems}:{}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, ...(!isClassSpace(classId)?{script:meta.script}:{}), public: true, v: Date.now() });
     onProgress?.(++done / total);
   }
   if (item.id) await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });

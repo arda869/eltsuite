@@ -10,7 +10,7 @@ import type { ExportTask } from '../lib/textformat';
 // section as the print engine draws it, with its pictures and QR codes.
 
 export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; show?: string; icon?: string } | null; ylIcon?: string | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
-export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null; lessonStyle?: import('../lib/lessonStyle').LessonStyle };
+export type SheetLook = { classId: string; itemId?: string; accent: string; className?: string; level?: string; cover?: string | null; lessonStyle?: import('../lib/lessonStyle').LessonStyle };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {
   // What prints: sections, and the tasks learners can see, in order.
@@ -30,7 +30,7 @@ export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on:
     if (!on) return;
     let off = false;
     const t = window.setTimeout(() => {
-      Promise.all([sheetPictures(look.classId, items), sheetSounds(look.classId, items, look.accent)]).then(
+      Promise.all([sheetPictures(look.classId, items), sheetSounds(look.classId, items, look.accent, look.itemId)]).then(
         ([m, s]) => !off && setMedia({ media: m, sounds: s }),
         () => {},
       );
@@ -39,7 +39,7 @@ export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on:
       off = true;
       window.clearTimeout(t);
     };
-  }, [on, items, look.classId, look.accent]);
+  }, [on, items, look.classId, look.itemId, look.accent]);
   return useMemo(() => {
     if (!on) return null;
     const p = sheetParts(title, items, { lessonStyle: look.lessonStyle, header: true, key: false, qr: true, paper: 'A4', columns: 1, accent: look.accent, className: look.className ?? '', level: look.level ?? '', cover, origin: location.origin, media: media.media, sounds: media.sounds });

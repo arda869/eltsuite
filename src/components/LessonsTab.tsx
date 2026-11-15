@@ -231,6 +231,8 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
     try {
       await copyLesson(c.id, item.id, c.id, { title, type });
       setMsg(`${done}. The copy is hidden until you show it.`);
+    } catch {
+      setMsg('The copy could not be completed. Your original lesson is unchanged. Please try again.');
     } finally {
       setBusy(false);
     }

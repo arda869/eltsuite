@@ -6,6 +6,7 @@ const base='http://127.0.0.1:5203',server=spawn(process.execPath,['node_modules/
 try{
  for(let i=0;i<120;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);await p.goto(base+'/test/audio-script-fixture.html');await p.waitForLoadState('networkidle');
+ assert.equal(await p.evaluate(async()=>{const {doc,getDoc}=await import('/test/mock/firestore.ts');return (await getDoc(doc({},'classes','script-fixture','media','spoken'))).data()?.script;}),undefined,'the playable manifest must not carry the transcript');
  for(const layout of ['false','true']){
   await p.getByLabel('Player layout').selectOption(layout);
   for(const role of ['teaching','learner']){
