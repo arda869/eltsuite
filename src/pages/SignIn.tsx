@@ -141,7 +141,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
     } else if (mode === 'reset') {
       run(async () => {
         await accountEmail('reset', address);
-        setNotice('If there’s an account for this email, we’ve sent it a reset link.');
+        setNotice('We’ve received your request. If there’s an account for this email, we’ll email a reset link.');
       });
     } else {
       run(async () => {
@@ -151,7 +151,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         } catch {
           /* private mode: the finish page will ask for the address again */
         }
-        setNotice('Check your inbox. If there’s an account for this email, we’ve sent it a sign-in link.');
+        setNotice('We’ve received your request. If there’s an account for this email, we’ll email a sign-in link.');
       });
     }
   }

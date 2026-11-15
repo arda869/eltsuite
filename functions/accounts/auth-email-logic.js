@@ -1,10 +1,16 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { button, esc, frame, h1, p, pad, small } from '../notifications/email-layout.js';
 
 const HOUR = 3600000;
 const SITE = 'https://eltsuite.com';
 const ACCEPTED = Object.freeze({ accepted: true });
+const MAX_ATTEMPTS = 3;
+// Longer than the longest worker timeout, so the sweeper cannot start another
+// send while the original worker is still running.
+const CLAIM_LEASE_MS = 10 * 60_000;
+const RETRY_DELAYS_MS = [60_000, 5 * 60_000];
 const hash = value => createHash('sha256').update(value).digest('hex');
+const milliseconds = value => value?.toMillis?.() ?? value?.getTime?.() ?? (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 export function parseAuthEmailRequest(data) {
   const kind = data?.kind;
@@ -37,7 +43,7 @@ export async function queueAuthEmail(db, data, ip, now = Date.now()) {
     tx.set(ipRef, { count: ipCount + 1, expiresAt });
     tx.set(emailRef, { count: emailCount + 1, expiresAt });
     tx.set(globalRef, { count: globalCount + 1, expiresAt });
-    tx.create(jobRef, { kind, email, status: 'pending', createdAt: new Date(now), expiresAt: new Date(now + 86400000) });
+    tx.create(jobRef, { kind, email, status: 'pending', attempts: 0, createdAt: new Date(now), nextAttemptAt: new Date(now), expiresAt: new Date(now + 86400000) });
   });
   return ACCEPTED;
 }
@@ -67,32 +73,57 @@ export function authEmailMessage(kind, link, now = new Date()) {
   return { subject, html, text };
 }
 
-// Firestore events may be delivered more than once. Claim before generating a link or
-// sending mail, then remove the short-lived job; no action link is written to Firestore.
+// Firestore events may be delivered more than once. A transactional lease permits
+// one active send at a time; the scheduled sweep retries known failures and claims
+// abandoned by a crashed worker. No action link is written to Firestore.
 export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Date() }) {
   let job = null;
   await db.runTransaction(async tx => {
     const saved = await tx.get(jobRef);
-    if (!saved.exists || saved.get('status') !== 'pending') return;
-    job = { kind: saved.get('kind'), email: saved.get('email') };
-    tx.update(jobRef, { status: 'claimed', claimedAt: now });
+    if (!saved.exists || saved.get('status') === 'sent' || milliseconds(saved.get('nextAttemptAt')) > now.getTime()) return;
+    const attempts = saved.get('attempts') || 0;
+    if (attempts >= MAX_ATTEMPTS) {
+      tx.delete(jobRef);
+      return;
+    }
+    if (!['pending', 'retry', 'claimed'].includes(saved.get('status'))) return;
+    job = { kind: saved.get('kind'), email: saved.get('email'), attempts: attempts + 1, claimId: randomUUID() };
+    tx.update(jobRef, { status: 'claimed', claimId: job.claimId, attempts: job.attempts, claimedAt: now, nextAttemptAt: new Date(now.getTime() + CLAIM_LEASE_MS) });
   });
-  if (!job) return 'already-claimed';
+  if (!job) return 'not-due-or-complete';
   try {
     let user;
     try {
       user = await auth.getUserByEmail(job.email);
     } catch (error) {
-      if (error?.code === 'auth/user-not-found') return 'unknown-address';
+      if (error?.code === 'auth/user-not-found') {
+        await jobRef.delete();
+        return 'unknown-address';
+      }
       throw error;
     }
-    if (user.disabled) return 'disabled-account';
+    if (user.disabled) {
+      await jobRef.delete();
+      return 'disabled-account';
+    }
     const link = job.kind === 'reset'
       ? await auth.generatePasswordResetLink(job.email)
       : await auth.generateSignInWithEmailLink(job.email, { url: `${SITE}/auth/link`, handleCodeInApp: true });
     await send({ to: job.email, ...authEmailMessage(job.kind, link, now) });
-    return 'sent';
-  } finally {
-    await jobRef.delete();
+  } catch (error) {
+    const exhausted = job.attempts >= MAX_ATTEMPTS;
+    const retryAt = exhausted ? null : new Date(Date.now() + RETRY_DELAYS_MS[job.attempts - 1]);
+    await db.runTransaction(async tx => {
+      const saved = await tx.get(jobRef);
+      if (!saved.exists || saved.get('claimId') !== job.claimId || saved.get('status') !== 'claimed') return;
+      if (exhausted) tx.delete(jobRef);
+      else tx.update(jobRef, { status: 'retry', nextAttemptAt: retryAt });
+    });
+    return exhausted ? 'failed-after-retries' : 'retry-scheduled';
   }
+  // If deleting later fails, the scheduler must not re-send a delivered
+  // message. This record contains no link and will be removed by cleanup.
+  await jobRef.update({ status: 'sent', nextAttemptAt: new Date(now.getTime() + 86400000) });
+  await jobRef.delete().catch(() => {});
+  return 'sent';
 }

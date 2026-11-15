@@ -28,6 +28,7 @@ export const deliverAccountEmail = onDocumentCreated({
   region: 'us-central1',
   maxInstances: 2,
   concurrency: 10,
+  timeoutSeconds: 120,
   secrets: ['SMTP_URL', 'MAIL_FROM'],
 }, async event => {
   if (!event.data) return;
@@ -38,20 +39,67 @@ export const deliverAccountEmail = onDocumentCreated({
   }
   const mail = nodemailer.createTransport(smtp);
   try {
+    await mail.verify();
     const result = await deliverAuthEmailJob({
       db: getFirestore(),
       auth: getAuth(),
       jobRef: event.data.ref,
-      send: async message => {
-        await mail.verify();
-        await mail.sendMail({ from: process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>', ...message });
-      },
+      send: message => mail.sendMail({ from: process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>', ...message }),
     });
     console.log('Account email delivery:', result);
   } catch (error) {
     // Never log a generated action link, an address or an SMTP diagnostic that
     // could contain either. A new request can be made if this attempt failed.
     console.error('Account email delivery failed:', error?.code || 'unknown');
+  } finally {
+    mail.close();
+  }
+});
+
+// The creation event is fast, while this sweep picks up transient SMTP/Auth
+// failures and jobs stranded by a worker restart. The transaction in
+// deliverAuthEmailJob prevents concurrent sends of the same job.
+export const retryAccountEmails = onSchedule({
+  schedule: '* * * * *',
+  region: 'us-central1',
+  maxInstances: 1,
+  concurrency: 1,
+  timeoutSeconds: 540,
+  secrets: ['SMTP_URL', 'MAIL_FROM'],
+}, async () => {
+  const db = getFirestore();
+  const due = await db.collection('authEmailJobs').where('nextAttemptAt', '<=', new Date()).limit(100).get();
+  if (due.empty) return;
+  const smtp = process.env.SMTP_URL;
+  if (!smtp) {
+    console.error('Account email SMTP secret is not bound.');
+    return;
+  }
+  const mail = nodemailer.createTransport(smtp);
+  try {
+    await mail.verify();
+    const result = { sent: 0, retried: 0, skipped: 0 };
+    for (let start = 0; start < due.size; start += 10) {
+      const batch = due.docs.slice(start, start + 10);
+      await Promise.all(batch.map(async job => {
+        try {
+          const state = await deliverAuthEmailJob({
+            db,
+            auth: getAuth(),
+            jobRef: job.ref,
+            send: message => mail.sendMail({ from: process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>', ...message }),
+          });
+          if (state === 'sent') result.sent += 1;
+          else if (state === 'retry-scheduled') result.retried += 1;
+          else result.skipped += 1;
+        } catch (error) {
+          console.error('Account email retry failed:', error?.code || 'unknown');
+        }
+      }));
+    }
+    console.log('Account email retry sweep:', result);
+  } catch (error) {
+    console.error('Account email retry sweep failed:', error?.code || 'unknown');
   } finally {
     mail.close();
   }

@@ -1507,8 +1507,8 @@ const J = {
     if (await count(p, '.app-err')) throw Error('Sign-in rendered an error');
     await axe(p, 'Teacher sign-in', A11Y_FOUND);
     for(const flow of [
-      ['Forgot password?', 'Send reset link', /sent it a reset link/],
-      ['Email me a sign-in link', 'Email me a link', /Check your inbox/],
+      ['Forgot password?', 'Send reset link', /we’ll email a reset link/i],
+      ['Email me a sign-in link', 'Email me a link', /we’ll email a sign-in link/i],
     ]){
       await p.getByRole('button',{name:flow[0],exact:true}).click();
       await p.getByLabel('Email',{exact:true}).fill('teacher@example.test');
