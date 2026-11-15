@@ -761,8 +761,32 @@ const J = {
     await pictures.getByRole('radio', { name: 'Large' }).click();
     await pictures.getByLabel('Search Designer').fill(title);
     await pictures.locator('.inline-image-list button').filter({ hasText: title }).first().click();
+    await pictures.getByRole('button', { name: /Insert page 1/i }).waitFor();
+    const pagePicker = pictures.getByRole('group', { name: 'Insert Designer page as' });
+    const fitArtwork = pagePicker.getByRole('button', { name: 'Fit artwork' });
+    const wholePage = pagePicker.getByRole('button', { name: 'Whole page' });
+    if (await fitArtwork.getAttribute('aria-pressed') !== 'true') throw Error('Designer page picker did not default to fitting the artwork');
+    await fitArtwork.focus();
+    await fitArtwork.press('Tab');
+    if (!await wholePage.evaluate(el => el === document.activeElement)) throw Error('The whole-page choice is not reachable by keyboard');
+    await wholePage.click();
+    if (await wholePage.getAttribute('aria-pressed') !== 'true') throw Error('The whole-page choice was not selected');
+    await fitArtwork.click();
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+    const cardColours = await pictures.locator('.inline-image-page').first().evaluate(el => {
+      const style = getComputedStyle(el);
+      return { background: style.backgroundColor, text: style.color };
+    });
+    if (cardColours.background === 'rgb(255, 255, 255)' || cardColours.text === cardColours.background) throw Error(`Designer page picker has unreadable dark-mode colours: ${JSON.stringify(cardColours)}`);
+    await pictures.locator('.inline-image-page img').first().waitFor({ timeout: 10000 });
+    if (process.env.DESIGNER_PICKER_SCREENSHOT_DIR) {
+      mkdirSync(process.env.DESIGNER_PICKER_SCREENSHOT_DIR, { recursive: true });
+      await s.p.screenshot({ path: `${process.env.DESIGNER_PICKER_SCREENSHOT_DIR}/designer-page-picker-desktop-dark.png` });
+    }
+    await axe(s.p, 'Designer page picker in dark mode', A11Y_FOUND);
     await pictures.getByRole('button', { name: /Insert page 1/i }).click();
     await pictures.waitFor({ state: 'detached' });
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
     await s.p.locator('.pic-node').first().waitFor();
     const fitted = await s.p.locator('.pic-node img').first().evaluate(img => ({ width: img.naturalWidth, height: img.naturalHeight }));
     if (fitted.width <= fitted.height * 1.2) throw Error('Figure-only Designer page kept excessive square-page margins');

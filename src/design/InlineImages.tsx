@@ -217,9 +217,9 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
               Insert the whole story as a strip
             </button>
           )}
-          <div className="inline-image-fit" role="radiogroup" aria-label="Insert Designer page as">
-            <button type="button" role="radio" aria-checked={pageFit === 'artwork'} className={pageFit === 'artwork' ? 'on' : ''} onClick={() => setPageFit('artwork')}>Fit artwork</button>
-            <button type="button" role="radio" aria-checked={pageFit === 'page'} className={pageFit === 'page' ? 'on' : ''} onClick={() => setPageFit('page')}>Whole page</button>
+          <div className="inline-image-fit" role="group" aria-label="Insert Designer page as">
+            <button type="button" aria-pressed={pageFit === 'artwork'} className={pageFit === 'artwork' ? 'on' : ''} onClick={() => setPageFit('artwork')}>Fit artwork</button>
+            <button type="button" aria-pressed={pageFit === 'page'} className={pageFit === 'page' ? 'on' : ''} onClick={() => setPageFit('page')}>Whole page</button>
           </div>
           <p className="hint">Fit artwork removes empty margins. Whole page keeps the original Designer layout.</p>
           <div className="inline-image-pages">
