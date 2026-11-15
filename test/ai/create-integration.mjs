@@ -105,13 +105,18 @@ await scriptAsset.set({classId,kind:'audio',status:'ready',mediaId,lines:scriptL
 for(let i=0;i<2;i++){await scriptAsset.collection('takes').doc(String(i)).set({parts:1});await scriptAsset.collection('takes').doc(String(i)).collection('parts').doc('0').set({data:Buffer.alloc(48000).toString('base64')});}
 await savePrepared(db,classId,mediaId,wav(Buffer.alloc(108000)),{kind:'audio',title:'Script regression',lines:scriptLines});
 const scriptRef=db.doc(`classes/${classId}/media/${mediaId}`);
-assert.equal((await scriptRef.get()).get('script')[0].text,'Could you help me?');
-await scriptRef.update({script:[]});
-await call({action:'restoreAudioScript',mediaId});
-assert.deepEqual((await scriptRef.get()).get('script'),[{t:0,e:1,who:'A',text:'Could you help me?'},{t:1.25,e:2.25,who:'B',text:'Of course.'}]);
-await scriptRef.update({script:[{t:null,text:'Teacher-reviewed correction'}]});
-await call({action:'restoreAudioScript',mediaId});assert.equal((await scriptRef.get()).get('script')[0].text,'Teacher-reviewed correction');
+const privateScriptRef=db.doc(`classes/${classId}/mediaScripts/${mediaId}`);
+assert.equal((await scriptRef.get()).get('script'),undefined,'learner-readable audio must not carry the teacher script');
+assert.equal((await privateScriptRef.get()).get('script')[0].text,'Could you help me?');
+await privateScriptRef.delete();
+const recovered=await call({action:'restoreAudioScript',mediaId});
+assert.deepEqual(recovered.script,[{t:0,e:1,who:'A',text:'Could you help me?'},{t:1.25,e:2.25,who:'B',text:'Of course.'}]);
+assert.equal((await scriptRef.get()).get('script'),undefined);
+assert.deepEqual((await privateScriptRef.get()).get('script'),recovered.script);
+await privateScriptRef.update({script:[{t:null,text:'Teacher-reviewed correction'}]});
+assert.equal((await call({action:'restoreAudioScript',mediaId})).script[0].text,'Teacher-reviewed correction');
+assert.equal((await scriptRef.get()).get('script'),undefined);
 await assert.rejects(call({action:'restoreAudioScript',classId:'studio-other',mediaId}));
 await assert.rejects(lessonAssistant.run({auth:{uid:'outsider',token:{}},data:{action:'restoreAudioScript',classId,mediaId}}));
 await assert.rejects(lessonAssistant.run({auth:{uid,token:{proxyBy:'admin'}},data:{action:'restoreAudioScript',classId,mediaId}}));
-console.log('PASS: new audio retains script; historical script recovered with exact timings; teacher corrections preserved; cross-class/account/proxy access rejected; no AI generation.');
+console.log('PASS: new audio keeps private script; historical script recovered with exact timings; teacher corrections preserved; cross-class/account/proxy access rejected; no AI generation.');
