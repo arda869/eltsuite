@@ -556,6 +556,39 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
     await axe(s.p,'Same teacher lesson after password sign-in',A11Y_FOUND);return s;
   },
+  'Teaching shortcuts: H hides answers without hiding the task': async (b) => {
+    const s = await session(b);
+    const taskId = 'shortcut-answer-task';
+    await s.p.evaluate(({ classId, itemId, taskId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const root = `classes/${classId}/items/${itemId}/tasks/`;
+      for (const key of Object.keys(fs)) if (key.startsWith(root)) delete fs[key];
+      fs[root + taskId] = {
+        kind: 'task', title: 'Answer shortcut check', instructions: '',
+        content: { type: 'doc', content: [{ type: 'paragraph', content: [
+          { type: 'text', text: 'I ' }, { type: 'gap', attrs: { id: 'one', answers: [] } }, { type: 'text', text: ' at home.' },
+        ] }] },
+        order: 0, hidden: false, locked: false,
+      };
+      fs[root + taskId + '/private/key'] = { one: { kind: 'gap', answers: ['work'] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, { ...s.demo, taskId });
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.locator('.mode-btn').click();
+    await s.p.getByRole('menuitemradio', { name: /Teaching/ }).click();
+    const showAll = s.p.getByRole('button', { name: 'Show all answers (Shift + R)' });
+    await showAll.waitFor();
+    await showAll.click();
+    const liveKey = `classes/${s.demo.classId}/live/state`;
+    const taskKey = `classes/${s.demo.classId}/items/${s.demo.itemId}/tasks/${taskId}`;
+    await s.p.waitForFunction(({ liveKey, taskId }) => JSON.parse(localStorage.getItem('mockfs'))[liveKey]?.revealed?.[taskId] === -1, { liveKey, taskId });
+    await s.p.keyboard.press('h');
+    await s.p.waitForFunction(({ liveKey, taskId }) => JSON.parse(localStorage.getItem('mockfs'))[liveKey]?.revealed?.[taskId] === 0, { liveKey, taskId });
+    if ((await s.p.evaluate((taskKey) => JSON.parse(localStorage.getItem('mockfs'))[taskKey]?.hidden, taskKey)) !== false) throw Error('H hid the task instead of its answers');
+    await s.p.keyboard.press('Shift+H');
+    await s.p.waitForFunction((taskKey) => JSON.parse(localStorage.getItem('mockfs'))[taskKey]?.hidden === true, taskKey);
+    return s;
+  },
   'Lesson editor: compact panels and non-overlapping toolbars': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);

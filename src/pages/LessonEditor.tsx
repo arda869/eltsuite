@@ -589,7 +589,10 @@ export function LessonEditor() {
       else if (e.key === 's' || e.key === 'S') toggleSync();
       else if (e.key === 'R') (revealN < 0 ? hideAnswers() : revealAll());
       else if (e.key === 'r') (revealN < 0 || revealN >= qCount ? hideAnswers() : revealNext());
-      else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
+      else if ((e.key === 'h' || e.key === 'H') && task) {
+        if (e.shiftKey) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
+        else hideAnswers();
+      }
       else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
       else if (e.key === 't' || e.key === 'T') (live?.timer && (live.timer.up || live.timer.endsAt > Date.now()) ? stopTimer() : setTimerMenu(true));
