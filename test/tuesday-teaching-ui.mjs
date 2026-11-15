@@ -19,7 +19,11 @@ for(let attempt=0;attempt<3;attempt++){
  try{await p.getByRole('textbox',{name:'Writing',exact:true}).waitFor({timeout:10000});break;}
  catch(error){if(attempt===2)throw error;await new Promise(r=>setTimeout(r,1000));}
 }
- const writing=p.getByRole('textbox',{name:'Writing',exact:true});await writing.click();await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'the ');assert.equal(await p.getByLabel('Saved plain').textContent(),'the ');await writing.press('Backspace');assert.equal(await writing.inputValue(),'teh');
+ const writing=p.getByRole('textbox',{name:'Writing',exact:true});await writing.click();await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'the ');
+ // The controlled value is committed on React's next render; CI can read the
+ // output before that render even though the field has already corrected.
+ await p.waitForFunction(()=>document.querySelector('[aria-label="Saved plain"]')?.textContent==='the ');
+ await writing.press('Backspace');assert.equal(await writing.inputValue(),'teh');
  await p.getByLabel('Scope spell check').selectOption('off');await p.waitForFunction(()=>JSON.parse(document.querySelector('[data-spelling]').dataset.spelling)[0].enabled===false);await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');await p.waitForFunction(()=>document.querySelector('textarea')?.getAttribute('spellcheck')==='false');assert.equal(await writing.getAttribute('spellcheck'),'false');
  await p.getByLabel('Scope spell check').selectOption('on');await p.getByLabel('Scope autocorrect').selectOption('off');await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');
  await p.getByLabel('Scope English variant').selectOption('en-US');await p.waitForFunction(()=>document.querySelector('[data-spelling]')?.getAttribute('data-spelling')?.includes('en-US'),null,{timeout:120000});await writing.fill('colour');await writing.blur();await writing.focus();await p.getByRole('button',{name:/1 spelling suggestion/}).click({timeout:120000});await p.getByRole('button',{name:'color',exact:true}).click();assert.equal(await writing.inputValue(),'color');assert.equal(await p.getByLabel('Saved plain').textContent(),'color');
