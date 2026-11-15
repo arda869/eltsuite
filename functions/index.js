@@ -1,5 +1,6 @@
 export { deleteAccount, finishAccountDeletion, retryAccountDeletions } from './accounts/index.js';
 export { sendUnreadMessageSummaries } from './notifications/digest.js';
+export { sendPendingInvitations } from './notifications/invitations.js';
 export { deleteLearnerIdentity } from './learners/delete.js';
 export { classroomGameDraft } from './games/index.js';
 export { quizShow } from './quiz/index.js';

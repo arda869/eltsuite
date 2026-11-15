@@ -1,5 +1,5 @@
-import { organisationInvitation, codeInvitation } from './invitation-emails.mjs';
 import { frame as brandedFrame, pad, h1 } from './email-layout.mjs';
+import { deliverPendingInvitations } from '../functions/notifications/invitation-delivery-logic.js';
 // Email for classes (runs every 15 minutes with the other notifications):
 // 1. Announcements a teacher also sends by email go to the learners who added an email.
 // 2. Replies to those emails (when IMAP_URL is set) arrive in the app as messages to the teacher.
@@ -235,42 +235,12 @@ for (const c of threads.docs) {
   console.log('Emailed a reply to', d.names?.[learner]);
 }
 
-// ------------------------------------------------------------------ 4. invitations to an organisation
-// A new teacher gets a link to finish making their account; a teacher who already has one gets an
-// invitation to join, with what the organisation's admins can set and see.
-
-const invites = await db.collection('orgInvites').where('status', '==', 'pending').get();
+// ------------------------------------------------------------------ invitation fallback
+// Cloud Scheduler handles these every five minutes. Keep a GitHub-run fallback;
+// both senders use the same Firestore claim, so overlapping runs do not duplicate mail.
 const { getAuth } = await import('firebase-admin/auth');
-for (const i of invites.docs) {
-  const d = i.data();
-  if (d.mailed) continue;
-  try {
-    const existing = await getAuth().getUserByEmail(d.email).then(() => true).catch(() => false);
-    const message = organisationInvitation(d, i.id, existing);
-    await mail.sendMail({ from: FROM, to: d.email, ...message });
-    await i.ref.update({ mailed: Date.now(), existing });
-    console.log('Invitation emailed for', d.orgName);
-  } catch (e) {
-    console.error('Invitation email failed', i.id, e?.message);
-  }
-}
-
-// ------------------------------------------------------------------ invitation codes for one email
-// ELT Suite is open by invitation for now. A code made for one email (inviteCodes/{code}.email) is
-// sent there, with a link that opens the sign-in page with the code filled in.
-const codes = await db.collection('inviteCodes').get();
-for (const r of codes.docs) {
-  const d = r.data();
-  if (!d.email || d.mailed || d.off || (d.uses ?? 0) >= (d.maxUses ?? 1) || (d.expires && d.expires < Date.now())) continue;
-  try {
-    const message = codeInvitation(d, r.id);
-    await mail.sendMail({ from: FROM, to: d.email, ...message });
-    await r.ref.update({ mailed: Date.now() });
-    console.log('Invitation code emailed');
-  } catch (e) {
-    console.error('Invitation code email failed', e?.message);
-  }
-}
+const invitations = await deliverPendingInvitations({ db, auth: getAuth(), mail, from: FROM });
+console.log('Invitation fallback:', invitations);
 
 // ------------------------------------------------------------------ invitation requests
 // A teacher asked for an invitation on the public homepage (invitationRequests/{id}). The ELT Suite
