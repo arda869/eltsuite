@@ -55,6 +55,16 @@ test('critical places remain in the correct map categories', () => {
   }
 });
 
+test('shaded area and skateboard ramp keep place-specific pictograms', () => {
+  const shade = MAP_SYMBOLS.find(symbol => symbol.key === 'shade');
+  const ramp = MAP_SYMBOLS.find(symbol => symbol.key === 'skate');
+  assert.equal(shade?.name, 'Shaded area');
+  assert.equal(shade?.glyph.source, 'bespoke:shadecanopy');
+  assert.equal(ramp?.name, 'Skateboard ramp');
+  assert.equal(ramp?.glyph.source, 'bespoke:skateramp');
+  assert.notDeepEqual(shade.glyph.paths, ramp.glyph.paths);
+});
+
 test('every named symbol renders as an SVG preview and canvas path', async () => {
   const browser = await chromium.launch({ headless: true });
   try {
