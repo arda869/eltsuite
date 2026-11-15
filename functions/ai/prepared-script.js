@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {HttpsError} from 'firebase-functions/v2/https';
+import {FieldValue,Timestamp} from 'firebase-admin/firestore';
 export function preparedScript(lines,durations){
  let at=0;
  return (lines??[]).map((line,i)=>{const seconds=durations?.[i];const timed=Number.isFinite(seconds)&&seconds>=0;const row={t:timed?at:null,text:String(line.text??'').trim(),...(line.speaker?{who:String(line.speaker)}:{}),...(timed?{e:at+seconds}:{})};if(timed)at+=seconds+.25;return row;}).filter(line=>line.text);
@@ -8,9 +9,23 @@ export function preparedScript(lines,durations){
 // Recover supplied words from the matching saved generation, never transcribe or regenerate audio.
 export async function restorePreparedScript(db,uid,classId,mediaId){
  if(!/^ai_media_[a-f0-9]{32}$/.test(mediaId??''))throw new HttpsError('failed-precondition','This recording has no recoverable generated script. Add its script in Recordings.');
- const ref=db.doc(`classes/${classId}/media/${mediaId}`),m=await ref.get();
+ const ref=db.doc(`classes/${classId}/media/${mediaId}`),privateRef=db.doc(`classes/${classId}/mediaScripts/${mediaId}`);
+ const [m,saved]=await Promise.all([ref.get(),privateRef.get()]);
  if(!m.exists||m.get('kind')!=='audio'||m.get('aiGenerated')!==true)throw new HttpsError('not-found','This generated recording is not available in the class.');
- if(m.get('script')?.some(l=>l.text?.trim()))return {restored:true};
+ // Opportunistically move an older public transcript when a teacher opens it. The bulk
+ // migration handles recordings whose teachers never reopen them.
+ if(m.get('script')?.some(l=>l.text?.trim())){
+  let script;
+  await db.runTransaction(async tx=>{
+   const [current,privateDoc]=await Promise.all([tx.get(ref),tx.get(privateRef)]);
+   if(!current.exists)throw new HttpsError('not-found','The recording was removed.');
+   script=privateDoc.get('script')?.some(l=>l.text?.trim())?privateDoc.get('script'):current.get('script');
+   if(!script?.length)throw new HttpsError('not-found','The saved script is unavailable.');
+   if(current.get('script')?.length){if(!privateDoc.get('script')?.length)tx.set(privateRef,{script,aiGenerated:true,updatedAt:Timestamp.now()});tx.update(ref,{script:FieldValue.delete()});}
+  });
+  return {restored:true,script};
+ }
+ if(saved.get('script')?.some(l=>l.text?.trim()))return {restored:true,script:saved.get('script')};
  let asset;
  // Historical manifests have no source pointer. Match their deterministic ID using only
  // this teacher's job IDs in this class; private job payloads are not loaded or returned.
@@ -37,6 +52,6 @@ export async function restorePreparedScript(db,uid,classId,mediaId){
  }
  const script=preparedScript(lines,durations.length===lines.length?durations:undefined);
  if(!script.length)throw new HttpsError('not-found','This recording has no saved script. Add a transcript in Recordings.');
- await db.runTransaction(async tx=>{const current=await tx.get(ref);if(!current.exists)throw new HttpsError('not-found','The recording was removed.');if(!current.get('script')?.some(l=>l.text?.trim()))tx.update(ref,{script});});
- return {restored:true};
+ const retained=await db.runTransaction(async tx=>{const [current,privateDoc]=await Promise.all([tx.get(ref),tx.get(privateRef)]);if(!current.exists)throw new HttpsError('not-found','The recording was removed.');const existing=privateDoc.get('script');if(!existing?.length)tx.set(privateRef,{script,aiGenerated:true,updatedAt:Timestamp.now()});if(current.get('script')?.length)tx.update(ref,{script:FieldValue.delete()});return existing?.length?existing:script;});
+ return {restored:true,script:retained};
 }

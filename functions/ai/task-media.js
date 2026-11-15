@@ -21,18 +21,24 @@ export async function taskMediaContext({db, uid, cls, tasks, direction, title}) 
   const classMedia = cls.ref.collection('media');
   const referenced = referencedRecordings(tasks);
   const [audio, refs, pictures, files] = await Promise.all([
-    classMedia.where('kind', 'in', ['audio', 'link']).select('kind', 'title', 'script', 'video').limit(100).get(),
-    Promise.all(referenced.map(id => classMedia.where('__name__', '==', id).select('kind', 'title', 'script', 'video').get())),
+    classMedia.where('kind', 'in', ['audio', 'link']).select('kind', 'title', 'script', 'video', 'aiGenerated').limit(100).get(),
+    Promise.all(referenced.map(id => classMedia.where('__name__', '==', id).select('kind', 'title', 'script', 'video', 'aiGenerated').get())),
     db.collection(`users/${uid}/archive`).where('kind', '==', 'image').select('name', 'tags', 'folder', 'home', 'copies', 'deletedAt', 'purgingAt', 'purgeRequestedAt').limit(120).get(),
     db.collection('sharedDocs').where('owner','==',uid).where('kind','==','file').select('title','file','deletedAt').limit(120).get(),
   ]);
   const wanted = terms([direction, title, ...tasks.map(t=>t.title)].join(' '));
   const rank = text => [...terms(text)].filter(t=>wanted.has(t)).length;
   const audioDocs = new Map([...refs.flatMap(r=>r.docs), ...audio.docs].map(s=>[s.id,s]));
+  const candidateAudio=[...audioDocs.values()].filter(s=>!s.get('video') && ['audio','link'].includes(s.get('kind')));
+  const privateScripts=new Map((await Promise.all(candidateAudio.filter(s=>s.get('aiGenerated')===true&&!s.get('script')?.length).map(async s=>{
+    const privateDoc=await cls.ref.collection('mediaScripts').doc(s.id).get();
+    return [s.id,privateDoc.get('script')??[]];
+  }))));
   let remaining = 8000;
-  const recordings = [...audioDocs.values()].filter(s=>!s.get('video') && ['audio','link'].includes(s.get('kind')))
+  const recordings = candidateAudio
     .map(s=>{
-      const lines = (Array.isArray(s.get('script')) ? s.get('script') : []).map(line=>{
+      const source=s.get('script')?.length?s.get('script'):privateScripts.get(s.id);
+      const lines = (Array.isArray(source) ? source : []).map(line=>{
         const words = clean(line?.text, 1500), speaker = clean(line?.who ?? line?.speaker, 60);
         return words && (speaker ? speaker + ': ' + words : words);
       }).filter(Boolean);
