@@ -73,7 +73,17 @@ jobs:
           const response = await fetch(`${url}?updateMask=${encodeURIComponent(mask)}`, {
             method: 'PATCH', headers, body: JSON.stringify(patch),
           });
-          if (!response.ok) throw new Error(`Auth reset template update failed (${response.status})`);
+          if (!response.ok) {
+            const error = await response.json();
+            console.error(JSON.stringify({
+              updateStatus: response.status,
+              errorStatus: error.error?.status || null,
+              errorCode: error.error?.code || null,
+              errorMessage: error.error?.message?.slice(0, 500) || null,
+              fieldViolations: error.error?.details?.flatMap(detail => detail.fieldViolations || []) || [],
+            }));
+            throw new Error(`Auth reset template update failed (${response.status})`);
+          }
           const after = await read();
           const current = after.notification?.sendEmail?.resetPasswordTemplate || {};
           assert.equal(current.subject, subject);
