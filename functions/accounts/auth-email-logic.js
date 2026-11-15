@@ -123,7 +123,7 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
   }
   // If deleting later fails, the scheduler must not re-send a delivered
   // message. This record contains no link and will be removed by cleanup.
-  await jobRef.update({ status: 'sent', nextAttemptAt: new Date(now.getTime() + 86400000) });
+  await jobRef.update({ status: 'sent', nextAttemptAt: new Date(now.getTime() + 365 * 86400000) });
   await jobRef.delete().catch(() => {});
   return 'sent';
 }

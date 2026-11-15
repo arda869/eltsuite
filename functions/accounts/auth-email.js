@@ -116,7 +116,7 @@ export const cleanAccountEmailJobs = onSchedule({
   const db = getFirestore();
   let removed = 0;
   for (const collectionName of ['authEmailJobs', 'authEmailRateLimits']) {
-    for (let page = 0; page < 10; page += 1) {
+    for (let page = 0; page < 30; page += 1) {
       const expired = await db.collection(collectionName).where('expiresAt', '<=', new Date()).limit(400).get();
       if (expired.empty) break;
       const batch = db.batch();
