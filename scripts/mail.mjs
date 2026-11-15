@@ -1,8 +1,9 @@
 import { frame as brandedFrame, pad, h1 } from './email-layout.mjs';
 import { deliverPendingInvitations } from '../functions/notifications/invitation-delivery-logic.js';
+import { freshReply, postEmailReply, replyMessageId, replySenderMatches, replyToken } from './mail-replies.mjs';
 // Email for classes (runs every 15 minutes with the other notifications):
 // 1. Announcements a teacher also sends by email go to the learners who added an email.
-// 2. Replies to those emails (when IMAP_URL is set) arrive in the app as messages to the teacher.
+// 2. Replies to those emails (when IMAP_URL and MAIL_REPLY are set) arrive in the app as messages to the teacher.
 // 3. When the teacher answers in the app, the learner gets the answer by email.
 // Needs: GOOGLE_APPLICATION_CREDENTIALS, SMTP_URL, MAIL_FROM. For replies: IMAP_URL (the mailbox
 // replies go to, imaps://user:password@host:993) and MAIL_REPLY (that mailbox's address).
@@ -19,6 +20,8 @@ if (!SMTP) {
 const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
 const REPLY = process.env.MAIL_REPLY || '';
 const IMAP = process.env.IMAP_URL || '';
+const replyEnabled = Boolean(REPLY && IMAP);
+if (Boolean(REPLY) !== Boolean(IMAP)) console.warn('Email replies are off until both MAIL_REPLY and IMAP_URL are configured.');
 const SITE = 'https://eltsuite.com';
 // The learners' own address, once it answers (set up in Firebase Hosting); until then eltsuite.com.
 const LEARN = await fetch('https://learn.eltsuite.com/version.json', { signal: AbortSignal.timeout(8000) }).then((r) => (r.ok ? 'https://learn.eltsuite.com' : SITE), () => SITE);
@@ -114,7 +117,7 @@ async function thread(info) {
   await db.collection('mailThreads').doc(token).set({ ...info, at: now });
   return token;
 }
-const replyTo = (token) => (REPLY ? REPLY.replace('@', `+${token}@`) : undefined);
+const replyTo = (token) => (replyEnabled ? REPLY.replace('@', `+${token}@`) : undefined);
 
 // ------------------------------------------------------------------ 1. announcements by email
 
@@ -141,7 +144,7 @@ for (const o of out.docs) {
         to: x.contactEmail,
         replyTo: replyTo(token),
         subject: `${a.email.subject} [#${token}]`,
-        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${REPLY ? 'Reply to this email and your teacher gets it in ELT Suite.' : `Open <a href="${LEARN}" style="color:#b8744e">ELT Suite</a> to reply.`}`),
+        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${replyEnabled ? 'Reply to this email and your teacher gets it in ELT Suite.' : `Open <a href="${LEARN}" style="color:#b8744e">ELT Suite</a> to reply.`}`),
       });
       sent++;
     }
@@ -155,27 +158,7 @@ for (const o of out.docs) {
 
 // ------------------------------------------------------------------ 2. replies into the app
 
-const dmId = (a, b) => 'dm_' + [a, b].sort().join('_');
-async function postReply(t, text) {
-  const id = dmId(t.teacher, t.learnerId);
-  const ref = db.collection('chats').doc(id);
-  const snap = await ref.get();
-  const at = Date.now();
-  if (!snap.exists) await ref.set({ members: [t.teacher, t.learnerId], names: { [t.teacher]: t.teacherName, [t.learnerId]: t.learnerName }, roles: { [t.teacher]: 'teacher', [t.learnerId]: 'learner' }, classId: t.classId, kind: 'dm', createdBy: t.learnerId, at, lastAt: at, seen: {} });
-  const message = await ref.collection('msgs').add({ by: t.learnerId, name: t.learnerName, role: 'learner', at, text, content: { type: 'doc', content: text.split(/\n{2,}/).map((p) => ({ type: 'paragraph', content: p.trim() ? [{ type: 'text', text: p.trim() }] : [] })) }, viaEmail: true, mentions: [] });
-  await ref.update({ lastAt: at, last: { id: message.id, text: text.slice(0, 140), name: t.learnerName, by: t.learnerId, mentions: [] }, emailThread: true, [`seen.${t.learnerId}`]: at, [`mailed.${t.learnerId}`]: at });
-}
-// The new part of a reply, without the quoted email under it.
-function fresh(textBody) {
-  const lines = String(textBody ?? '').replace(/\r/g, '').split('\n');
-  const outLines = [];
-  for (const l of lines) {
-    if (/^>/.test(l) || /^On .+wrote:\s*$/i.test(l) || /^-{2,}\s*Original Message/i.test(l) || /^From:\s/.test(l) || /^Sent from my /i.test(l)) break;
-    outLines.push(l);
-  }
-  return outLines.join('\n').trim().slice(0, 4000);
-}
-if (IMAP) {
+if (replyEnabled) {
   try {
     const { ImapFlow } = await import('imapflow');
     const { simpleParser } = await import('mailparser');
@@ -186,13 +169,16 @@ if (IMAP) {
     try {
       for await (const m of client.fetch({ seen: false }, { source: true, uid: true })) {
         const p = await simpleParser(m.source);
-        const where = [p.to?.text ?? '', p.headers.get('delivered-to') ?? '', p.subject ?? ''].join(' ');
-        const token = /\+([0-9a-f]{12})@/.exec(where)?.[1] ?? /\[#([0-9a-f]{12})\]/.exec(where)?.[1];
+        const token = replyToken(p);
         const t = token ? (await db.collection('mailThreads').doc(token).get()).data() : null;
-        if (t) {
-          const text = fresh(p.text);
-          if (text) await postReply(t, text);
-          console.log('Reply from', t.learnerName);
+        if (!t?.learnerUid) continue;
+        const learner = (await db.collection('users').doc(t.learnerUid).get()).data();
+        if (learner?.learnerId !== t.learnerId || learner?.classId !== t.classId || !replySenderMatches(p, learner)) continue;
+        const text = freshReply(p.text);
+        if (text) {
+          const messageId = replyMessageId(token, p, m.uid, client.mailbox?.uidValidity);
+          const posted = await postEmailReply(db, t, text, messageId);
+          if (posted) console.log('Reply delivered to class chat.');
         }
         await client.messageFlagsAdd({ uid: m.uid }, ['\\Seen'], { uid: true });
       }
@@ -201,7 +187,7 @@ if (IMAP) {
       await client.logout();
     }
   } catch (e) {
-    console.error('Reading replies failed:', e?.message);
+    console.error('Reading replies failed:', e?.code ?? 'unknown');
   }
 }
 
@@ -229,7 +215,7 @@ for (const c of threads.docs) {
     to: email,
     replyTo: replyTo(token),
     subject: `${name} replied to you [#${token}]`,
-    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${REPLY ? 'Reply to this email to answer, or open' : 'Open'} <a href="${LEARN}/messages?c=${c.id}" style="color:#b8744e">the chat in ELT Suite</a>.`),
+    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${replyEnabled ? 'Reply to this email to answer, or open' : 'Open'} <a href="${LEARN}/messages?c=${c.id}" style="color:#b8744e">the chat in ELT Suite</a>.`),
   });
   await c.ref.update({ [`mailed.${learner}`]: Date.now() });
   console.log('Emailed a reply to', d.names?.[learner]);

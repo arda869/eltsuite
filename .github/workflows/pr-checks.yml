@@ -27,6 +27,8 @@ jobs:
           node --test test/speech/*.test.mjs
       - name: Invitation template checks
         run: node test/invitation-emails.mjs
+      - name: Class email reply boundaries
+        run: node --test test/mail-replies.mjs
       - name: Check scheduled invitation delivery
         run: node test/invitation-delivery.mjs
       - name: Account email privacy and retry checks
