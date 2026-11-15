@@ -742,7 +742,7 @@ const J = {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
     const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
-    if (process.env.MAP_PHONE_SCREENSHOT) await design.setViewportSize({ width: 390, height: 844 });
+    await design.setViewportSize(process.env.MAP_PHONE_SCREENSHOT ? { width: 390, height: 844 } : { width: 1280, height: 800 });
     await design.getByRole('button', { name: 'Charts & maps' }).click();
     await design.getByRole('tab', { name: 'Maps' }).click();
     await design.getByRole('button', { name: /Start a blank map/ }).click();
@@ -757,6 +757,7 @@ const J = {
       const outer = center.getBoundingClientRect(), inner = canvas.getBoundingClientRect();
       return inner.left >= outer.left - 1 && inner.right <= outer.right + 1 && inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1 && center.scrollHeight <= center.clientHeight + 2;
     });
+    if (process.env.MAP_PHONE_SCREENSHOT) await map.screenshot({ path: process.env.MAP_PHONE_SCREENSHOT.replace(/\.png$/, '-fit.png') });
     if (await map.locator('.dz-map-start-list canvas').count() < 6) throw Error('Ready-made map layouts have no visual previews');
     await map.getByRole('tab', { name: '2 Places' }).click();
     await map.getByRole('button', { name: 'Building', exact: true }).click();
@@ -787,6 +788,11 @@ const J = {
     if (await map.locator('[aria-label="Map marker A"]').count()) throw Error('Undo did not remove the letter marker');
     await map.getByRole('button', { name: 'Redo map change' }).click();
     await map.locator('[aria-label="Map marker A"]').waitFor();
+    await map.getByRole('button', { name: 'Add text label' }).click();
+    await canvas.click({ position: { x: box.width * .7, y: box.height * .23 } });
+    await map.getByRole('textbox', { name: 'Name this map object' }).fill('North gate');
+    await map.getByRole('textbox', { name: 'Name this map object' }).press('Enter');
+    await map.getByRole('spinbutton', { name: 'Rotation (°)' }).fill('15');
     await map.getByRole('tab', { name: '2 Places' }).click();
     await map.getByRole('button', { name: 'Footpath', exact: true }).click();
     await canvas.click({ position: { x: box.width * .13, y: box.height * .29 } });
@@ -796,6 +802,7 @@ const J = {
     await map.getByRole('checkbox', { name: 'Select Library' }).check();
     await map.getByRole('checkbox', { name: 'Select Road' }).check();
     await map.getByRole('button', { name: 'Group selected' }).click();
+    await canvas.scrollIntoViewIfNeeded();
     const groupBox = await canvas.boundingBox();
     if (!groupBox) throw Error('Map canvas disappeared');
     await design.mouse.move(groupBox.x + groupBox.width * .32, groupBox.y + groupBox.height * .48);
@@ -812,13 +819,19 @@ const J = {
     else await cafeSymbol.dragTo(canvas, { targetPosition: { x: groupBox.width * .72, y: groupBox.height * .53 } });
     await map.getByRole('textbox', { name: 'Name this map object' }).press('Enter');
     await map.getByRole('spinbutton', { name: 'Rotation (°)' }).fill('30');
+    if (process.env.MAP_SCREENSHOT) {
+      await map.getByRole('searchbox', { name: 'Search map symbols' }).fill('');
+      await map.getByText('Symbols', { exact: true }).scrollIntoViewIfNeeded();
+      await map.locator('.dz-symbol-results').evaluate(element => { element.scrollTop = 0; });
+      await map.locator('.dz-map-inspector').evaluate(element => { element.scrollTop = 0; });
+      await map.screenshot({ path: process.env.MAP_SCREENSHOT });
+    }
     await map.getByRole('button', { name: 'Hide Café' }).click();
     if (!await map.locator('.dz-layer-main').filter({ hasText: 'Café' }).isDisabled()) throw Error('A hidden symbol can still be selected');
     await map.getByRole('button', { name: 'Show Café' }).click();
     await map.getByRole('button', { name: 'Lock Road' }).click();
     if (!await map.locator('.dz-layer-main').filter({ hasText: 'Road' }).isDisabled()) throw Error('A locked road can still be selected');
     await map.getByRole('button', { name: 'Unlock Road' }).click();
-    if (process.env.MAP_SCREENSHOT) await map.screenshot({ path: process.env.MAP_SCREENSHOT });
     if (process.env.MAP_PHONE_SCREENSHOT) await map.screenshot({ path: process.env.MAP_PHONE_SCREENSHOT });
     await map.getByRole('tab', { name: '4 Finish' }).click();
     await map.getByRole('button', { name: 'Phone', exact: true }).click();
@@ -831,7 +844,7 @@ const J = {
       const library = value.figure.items.find(item => item.label === 'Library');
       const road = value.figure.items.find(item => item.kind === 'road');
       const footpath = value.figure.items.find(item => item.kind === 'footpath');
-      return library?.w >= .24 && library.rotation === 20 && library.x > .34 && library.groupId && road?.points?.length === 3 && road.points[0].x > .2 && road.rotation === 40 && road.groupId === library.groupId && footpath?.points?.length === 2 && Math.abs(footpath.points[0].y - footpath.points[1].y) < .002 && value.figure.items.some(item => item.kind === 'marker' && item.label === 'A') && value.figure.items.some(item => item.kind === 'icon' && item.icon === 'café' && item.rotation === 30) && value.figure.items.every(item => !Object.hasOwn(item, 'keyText'));
+      return library?.w >= .24 && library.rotation === 20 && library.x > .34 && library.groupId && road?.points?.length === 3 && road.points[0].x > .2 && road.rotation === 40 && road.groupId === library.groupId && footpath?.points?.length === 2 && Math.abs(footpath.points[0].y - footpath.points[1].y) < .002 && value.figure.items.some(item => item.kind === 'marker' && item.label === 'A') && value.figure.items.some(item => item.kind === 'label' && item.label === 'North gate' && item.rotation === 15) && value.figure.items.some(item => item.kind === 'icon' && item.icon === 'café' && item.rotation === 30) && value.figure.items.every(item => !Object.hasOwn(item, 'keyText'));
     }), id);
     const savedMap = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path, value]) => path.startsWith(`sharedDocs/${fileId}/dels/`) && value.figure?.kind === 'map').map(([, value]) => value)[0], id);
     await design.reload();
@@ -846,6 +859,10 @@ const J = {
     const reopened = design.getByRole('dialog', { name: 'Edit map' });
     await reopened.locator('.dz-layer-main').filter({ hasText: 'Library' }).waitFor();
     await reopened.getByRole('button', { name: 'Cancel' }).click();
+    await design.getByRole('button', { name: 'Download' }).click();
+    const [pdf] = await Promise.all([design.waitForEvent('download'), design.getByRole('menuitem', { name: /PDF/ }).click()]);
+    if (!pdf.suggestedFilename().endsWith('.pdf') || readFileSync(await pdf.path()).length < 10000) throw Error('Saved map did not export as a usable PDF');
+    if (process.env.MAP_PDF) await pdf.saveAs(process.env.MAP_PDF);
     return s;
   },
   'Designer keeps a failed element edit through reload and retry': async b => {
