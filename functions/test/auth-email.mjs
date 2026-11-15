@@ -157,7 +157,8 @@ test('an ambiguous SMTP failure is never retried even after the claim lease', as
   };
   assert.equal(await deliverAuthEmailJob(options), 'delivery-uncertain');
   assert.equal(jobs(db)[0][1].status, 'uncertain');
-  assert.equal(jobs(db)[0][1].nextAttemptAt, null);
+  assert.ok(jobs(db)[0][1].nextAttemptAt.getTime() > Date.now() + 364 * 86400000,
+    'non-retryable jobs must stay out of the due-job query');
   assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(Date.now() + 11 * 60_000) }), 'not-due-or-complete');
   assert.equal(sends, 1);
   assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);
@@ -180,7 +181,8 @@ test('a failed post-send status write cannot make a delivered email retryable', 
   };
   assert.equal(await deliverAuthEmailJob(options), 'accepted-status-pending');
   assert.equal(jobs(db)[0][1].status, 'sending');
-  assert.equal(jobs(db)[0][1].nextAttemptAt, null);
+  assert.ok(jobs(db)[0][1].nextAttemptAt.getTime() > Date.now() + 364 * 86400000,
+    'a failed status write must not put the job back in the due-job query');
   assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(Date.now() + 11 * 60_000) }), 'not-due-or-complete');
   assert.equal(sends, 1);
   assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);

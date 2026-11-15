@@ -9,6 +9,9 @@ const MAX_ATTEMPTS = 3;
 // send while the original worker is still running.
 const CLAIM_LEASE_MS = 10 * 60_000;
 const RETRY_DELAYS_MS = [60_000, 5 * 60_000];
+// These records are removed by the daily expiry sweep. A far-future timestamp
+// also keeps them out of the due-job query even if cleanup is delayed.
+const NON_RETRYABLE_DELAY_MS = 365 * 86400000;
 const hash = value => createHash('sha256').update(value).digest('hex');
 const milliseconds = value => value?.toMillis?.() ?? value?.getTime?.() ?? (Number.isFinite(Number(value)) ? Number(value) : 0);
 
@@ -120,7 +123,7 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
       ready = false;
       const saved = await tx.get(jobRef);
       if (!saved.exists || saved.get('claimId') !== job.claimId || saved.get('status') !== 'claimed') return;
-      tx.update(jobRef, { status: 'sending', nextAttemptAt: null, sendingAt: new Date() });
+      tx.update(jobRef, { status: 'sending', nextAttemptAt: new Date(now.getTime() + NON_RETRYABLE_DELAY_MS), sendingAt: new Date() });
       ready = true;
     });
     if (!ready) return 'claim-lost';
@@ -140,13 +143,13 @@ export async function deliverAuthEmailJob({ db, auth, jobRef, send, now = new Da
   } catch {
     // An SMTP error does not prove non-delivery. Leave the job non-retryable
     // even if this status write also fails; `sending` already blocks a resend.
-    await jobRef.update({ status: 'uncertain', nextAttemptAt: null }).catch(() => {});
+    await jobRef.update({ status: 'uncertain', nextAttemptAt: new Date(now.getTime() + NON_RETRYABLE_DELAY_MS) }).catch(() => {});
     return 'delivery-uncertain';
   }
   // SMTP accepted the message. If this status write fails, `sending` still
   // prevents another attempt. The short-lived record has no action link.
   try {
-    await jobRef.update({ status: 'sent', nextAttemptAt: null });
+    await jobRef.update({ status: 'sent', nextAttemptAt: new Date(now.getTime() + NON_RETRYABLE_DELAY_MS) });
   } catch {
     return 'accepted-status-pending';
   }
