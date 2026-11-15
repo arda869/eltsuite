@@ -95,6 +95,8 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.information-gap.emulators.json --project demo-information-gap "node test/information-gap-rules.mjs && node scripts/test-information-gap.mjs"
       - name: Lesson and Collab PDF exports (Firebase simulated)
         run: node test/inline-pdf-audit.mjs
+      - name: Multi-page worksheet PDF and Designer figure exports
+        run: node test/worksheet-multipage.mjs && node test/worksheet-picture-width.mjs
       - name: Saved coaching history and pinned panel (AI and Firebase simulated)
         run: node test/coach-history-ui.mjs
 

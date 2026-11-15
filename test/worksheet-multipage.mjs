@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from '@napi-rs/canvas';
 
-const base = process.env.STYLE_BASE || 'http://localhost:5184';
-const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
+const base = process.env.STYLE_BASE || 'http://127.0.0.1:5280';
+const server = process.env.STYLE_BASE ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', '5280', '--strictPort', '--host', '127.0.0.1'], { stdio: 'inherit' });
+let browser;
 try {
+  if (server) {
+    let ready = false;
+    for (let i = 0; i < 120; i++) {
+      if (await fetch(base).then((r) => r.ok, () => false)) { ready = true; break; }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    assert(ready, 'The worksheet test page did not start');
+  }
+  browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
   const page = await browser.newPage();
   await page.goto(`${base}/test/lesson-style-check.html`);
   await page.waitForFunction(() => !!window.worksheetPdf && !!window.exportFixture);
@@ -84,4 +95,4 @@ try {
     }
     console.log(`PASS: all ${pdf.numPages} PDF pages contain the worksheet image`);
   } finally { await pdf.destroy(); }
-} finally { await browser.close(); }
+} finally { await browser?.close(); server?.kill('SIGTERM'); }
