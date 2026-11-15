@@ -1183,7 +1183,7 @@ function MsgSettings({ uid }: { uid: string }) {
               {prefs.email && (
                 <label className="field msg-after">
                   When they stay unread for
-                  <NSelect value={prefs.after} onChange={(e) => saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
+                  <NSelect aria-label="When they stay unread for" value={prefs.after} onChange={(e) => saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
                     {AFTER.map(([m, l]) => (
                       <option key={m} value={m}>
                         {l}
