@@ -4,9 +4,9 @@ import type { JSONContent } from '@tiptap/react';
 // A downloadable lesson is one readable file. If the same recording has mixed
 // settings in that file, use the most private placement everywhere in it.
 const rank: Record<string, number> = { none: 0, after: 1, button: 2, karaoke: 2 };
-export function offlineMediaModes(tasks: { content?: JSONContent; instrDoc?: JSONContent }[], space: string): Map<string, string> {
+export function offlineMediaModes(tasks: { content?: JSONContent | null; instrDoc?: JSONContent | null }[], space: string): Map<string, string> {
   const modes = new Map<string, string>();
-  const visit = (node?: JSONContent) => {
+  const visit = (node?: JSONContent | null) => {
     if (!node) return;
     if ((node.type === 'media' || node.type === 'inlineMedia') && node.attrs?.media) {
       const key = `${String(node.attrs.space || space)}/${String(node.attrs.media)}`;
