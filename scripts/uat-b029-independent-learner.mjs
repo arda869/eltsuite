@@ -40,7 +40,9 @@ try {
   assert(taskSnap.get('hidden') === false && taskSnap.get('locked') === false, 'B-029 task is not available to a normal learner.');
   assert(scriptSnap.get('aiGenerated') === true && Array.isArray(scriptSnap.get('script')) && scriptSnap.get('script').length > 0, 'B-029 private AI script is missing.');
   assert(!Object.hasOwn(mediaSnap.data(), 'script'), 'B-029 public media contains a transcript.');
-  assert(mediaSnap.get('public') === true && mediaSnap.get('kind') === 'audio', 'B-029 audio is not publicly playable.');
+  // AI audio is intentionally class-only. A normal class member must still be
+  // able to read its manifest and parts; anonymous public access is not needed.
+  assert(mediaSnap.get('kind') === 'audio', 'B-029 fixture is not saved audio.');
   const content = taskSnap.get('content');
   const modes = [];
   const visit = node => {
@@ -132,6 +134,34 @@ try {
   const result = await callable.json();
   assert(callable.status === 200 && result.result?.mode === 'none' && Array.isArray(result.result.script) && result.result.script.length === 0, 'Callable did not enforce the saved private-script mode.');
   console.log('B-029: deployed callable returned mode none and zero transcript lines to independent learner.');
+
+  // B-033: inspect the same copied Teenagers task as this independent learner,
+  // using the published stylesheet at laptop and phone CSS widths.
+  await page.evaluate(() => localStorage.setItem('ll.theme', 'dark'));
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  const band = page.locator('.task-frame[data-lesson-style="teen"] .subtask .st-band').first();
+  await band.waitFor({ state: 'visible', timeout: 45000 });
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const style = await band.evaluate(element => {
+      const bandStyle = getComputedStyle(element);
+      const instruction = element.querySelector('.task-instr');
+      const textStyle = instruction ? getComputedStyle(instruction) : null;
+      const rect = element.getBoundingClientRect();
+      return {
+        theme: document.documentElement.dataset.theme,
+        background: bandStyle.backgroundImage,
+        text: textStyle?.color,
+        instruction: instruction?.textContent?.trim().length ?? 0,
+        fits: rect.left >= -1 && rect.right <= window.innerWidth + 1,
+      };
+    });
+    assert(style.theme === 'dark' && style.instruction > 0, `B-033 ${width}px dark-mode task did not load.`);
+    assert(/rgb\(243, 239, 230\)/.test(style.background) && style.text === 'rgb(93, 88, 82)', `B-033 ${width}px instruction band still has poor contrast.`);
+    assert(style.fits, `B-033 ${width}px instruction band overflows the viewport.`);
+    if (process.env.B029_SCREENSHOT) await page.screenshot({ path: process.env.B029_SCREENSHOT.replace(/\.png$/, `-dark-${width}.png`), fullPage: false });
+    console.log(`B-033: independent learner Teenagers dark instruction band legible and within ${width}px viewport.`);
+  }
 } finally {
   if (browser) await browser.close().catch(() => {});
   if (wasRevealed) {

@@ -64,7 +64,7 @@ jobs:
         if: always() && inputs.live_pin_uat == true
         with:
           name: b029-independent-learner-${{ github.run_id }}
-          path: ${{ runner.temp }}/b029-learner.png
+          path: ${{ runner.temp }}/b029-*.png
           if-no-files-found: ignore
       - name: Copy, verify, then remove legacy public script fields
         if: inputs.apply == true
