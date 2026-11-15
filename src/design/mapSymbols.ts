@@ -190,6 +190,10 @@ const GLYPHS:Record<string,MapSymbolGlyph> = {
   hockeypitch:{paths:['M6 10h36v28H6z','M24 10v28','M6 24h10m16 0h10','M15 17h7v7m11 7h-7v-7','M12 15h3m18 18h3']},
   skateramp:{paths:['M4 15v13c0 9 7 14 17 14h6c10 0 17-5 17-14V15','M4 15h8m24 0h8','M12 27c1 6 4 9 9 9h6c5 0 8-3 9-9','M24 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M24 18l-4 8 6 5m-6-5-5 4m11 1 6 2','M18 34h13m-10 3h0m8 0h0']},
   lostproperty:{paths:['M7 16h34v26H7z','M16 16v-6h16v6','M17 24c0-4 3-6 7-6s7 2 7 6c0 4-7 5-7 9','M24 38h0','M7 42h34']},
+  outdoorgym:{paths:['M7 43V8m34 35V8M7 13h34','M24 25a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M24 29v9m-7-21 7 8 7-8m-13 26 6-5 6 5','M4 43h8m24 0h8']},
+  currencyexchange:{paths:['M22 14a8 8 0 1 0-16 0 8 8 0 0 0 16 0z','M42 34a8 8 0 1 0-16 0 8 8 0 0 0 16 0z','M14 8v12m4-9c-2-2-8-2-8 1 0 3 8 2 8 5s-6 4-8 1','M38 31c-4-4-9-2-9 3s5 7 9 3m-10-5h7m-7 4h7','M25 11h17m-5-5 5 5-5 5','M23 37H6m5-5-5 5 5 5']},
+  postbox:{paths:['M14 42V15a10 10 0 0 1 20 0v27z','M17 19h14v5H17z','M19 29h10v8H19z','M22 32h4m-14 10h24','M18 12h12']},
+  securitycheckpoint:{paths:['M5 42V8h26v34M10 42V13h16v29','M18 27a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M18 29v8m-5-7 5 3 5-3m-5 7-4 5m4-5 4 5','M33 27h10v11H33z','M32 42h12m-8-10h4']},
 };
 
 const sourceByKey=new Map(MAP_SYMBOL_INVENTORY.map(([key,, ,source])=>[key,source] as const));
