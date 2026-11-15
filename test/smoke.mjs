@@ -666,6 +666,11 @@ const J = {
     await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'pie');
     await chart.getByLabel('Hong Kong slice colour').fill('#506a8f');
     await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'bars');
+    const decimal = chart.getByLabel('Hong Kong, Fresh coffee');
+    await decimal.fill('');
+    await decimal.pressSequentially('0.81');
+    if (await decimal.inputValue() !== '0.81') throw Error('Chart cell lost a decimal while typing');
+    await decimal.press('Tab');
     const type = chart.getByRole('button', { name: 'Type', exact: true });
     await type.click();
     await axe(design, 'Designer chart dropdown open', A11Y_FOUND);
@@ -704,6 +709,7 @@ const J = {
     const id = new URL(design.url()).pathname.split('/').at(-1);
     const saved = await design.evaluate(fileId => Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([path]) => path.startsWith(`sharedDocs/${fileId}/dels/`)).map(([, value]) => value), id);
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
+    if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.series[0]?.values[0] === 0.81)) throw Error('Typed chart decimal did not save');
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundFit === 'cover')) throw Error('Map image fit choice did not save');
