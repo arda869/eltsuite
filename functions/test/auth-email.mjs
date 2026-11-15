@@ -37,6 +37,7 @@ const jobs = db => [...db.docs.entries()].filter(([path]) => path.startsWith('au
 test('requests validate the address and type without looking up an account', async () => {
   assert.deepEqual(parseAuthEmailRequest({ kind: 'reset', email: ' Teacher@Example.com ' }), { kind: 'reset', email: 'teacher@example.com' });
   assert.throws(() => parseAuthEmailRequest({ kind: 'link', email: 'wrong address' }));
+  assert.throws(() => parseAuthEmailRequest({ kind: 'link', email: 'teacher,other@example.com' }));
   assert.throws(() => parseAuthEmailRequest({ kind: 'verify', email: 'teacher@example.com' }));
   const db = fakeDb();
   assert.deepEqual(await queueAuthEmail(db, { kind: 'reset', email: 'nobody@example.com' }, '127.0.0.1', 1_800_000), { accepted: true });
