@@ -10,6 +10,13 @@ const LEGACY_KEYS = ['tree', 'café', 'toilets', 'parking', 'playground', 'schoo
 const source = await readFile('src/design/mapSymbolInventory.tsv', 'utf8');
 const inventory = source.trim().split('\n').slice(1).filter(line => line && !line.startsWith('#')).map(line => line.split('\t'));
 
+test('the reviewed symbol inventory stays in sync with its documentation', async () => {
+  const documentation = await readFile('docs/map-symbol-inventory.md', 'utf8');
+  for (const [index, [key, name, category, glyph, feature]] of inventory.entries()) {
+    assert.ok(documentation.includes(`| ${index + 1} | ${category} | ${name} (\`${key}\`) | ${glyph} | ${feature} |`), `${key} documentation is stale`);
+  }
+});
+
 // The entire named catalogue must resolve to its own, printable vector artwork.
 test('all map symbols have unique keys, explicit pictograms and one valid category', () => {
   assert.ok(MAP_SYMBOLS.length >= 200);

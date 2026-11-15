@@ -25,7 +25,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 19 | buildings | Housing (`house`) | lucide:houses | Cluster of homes. |
 | 20 | sports | Sports field (`field`) | bespoke:field | Marked rectangular field and centre circle. |
 | 21 | sports | Tennis courts (`tennis`) | bespoke:teniscourt | Tennis court rectangle with net and service boxes. |
-| 22 | sports | Outdoor gym (`gym`) | lucide:dumbbell | Weight lifting dumbbell. |
+| 22 | sports | Outdoor gym (`gym`) | bespoke:outdoorgym | Outdoor exercise frame with a person using its pull-up bar. |
 | 23 | nature | Flowers (`flower`) | lucide:flower-2 | Petalled flower on stem. |
 | 24 | nature | Pond (`pond`) | bespoke:pond | Small oval pool beside three cattail reeds. |
 | 25 | transport | Bridge (`bridge`) | lucide:bridge | Curved bridge span. |
@@ -83,7 +83,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 77 | wayfinding | Notice board (`notice`) | lucide:panel-top | Framed information panel. |
 | 78 | leisure | Viewpoint (`viewpoint`) | lucide:binoculars | Twin viewing lenses. |
 | 79 | leisure | Maze (`maze`) | bespoke:maze | Labyrinth path with turns. |
-| 80 | sports | Skateboard ramp (`skate`) | bespoke:skateramp | Large curved ramp with a rider and board. |
+| 80 | sports | Skateboard ramp (`skate`) | bespoke:skateramp | Raised half-pipe with two lips, a rider and a board. |
 | 81 | sports | Cricket pitch (`cricket`) | bespoke:cricketpitch | Cricket ground with central wicket pitch. |
 | 82 | sports | Football pitch (`football`) | bespoke:footballpitch | Football field with goals and centre circle. |
 | 83 | sports | Basketball court (`basketball`) | bespoke:basketballcourt | Basketball court lines and twin key areas. |
@@ -118,7 +118,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 112 | nature | Cliff (`cliff`) | bespoke:cliff | Sheer rock face with drop. |
 | 113 | nature | Cave (`cave`) | bespoke:cave | Arched opening in rock. |
 | 114 | nature | Sunny area (`sun`) | lucide:sun | Radiating sun. |
-| 115 | nature | Shaded area (`shade`) | lucide:cloud-sun | Cloud shading a sun. |
+| 115 | nature | Shaded area (`shade`) | bespoke:shadecanopy | A roof canopy shades a bench, instead of suggesting weather. |
 | 116 | nature | Windy area (`wind`) | lucide:wind | Sweeping wind lines. |
 | 117 | leisure | Beach chairs (`beachchair`) | bespoke:beachchair | Reclining chair with slanted back. |
 | 118 | transport | Boat launch (`boatlaunch`) | bespoke:boatlaunch | Boat beside a sloped launching ramp. |
@@ -159,8 +159,8 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 153 | services | Wi-Fi (`wifi`) | lucide:wifi | Wireless signal arcs. |
 | 154 | services | Public telephone (`phone`) | lucide:phone | Telephone handset. |
 | 155 | services | Recycling point (`recycle`) | lucide:recycle | Three circular recycling arrows. |
-| 156 | services | Currency exchange (`exchange`) | lucide:arrow-left-right | Two opposite currency arrows. |
-| 157 | services | Post box (`postbox`) | lucide:mail | Envelope for posted mail. |
+| 156 | services | Currency exchange (`exchange`) | bespoke:currencyexchange | Two different coins with arrows showing exchange in both directions. |
+| 157 | services | Post box (`postbox`) | bespoke:postbox | Upright post box with a letter slot and collection panel. |
 | 158 | services | Parcel collection (`parcel`) | lucide:package | Closed parcel. |
 | 159 | safety | Ambulance bay (`ambulance`) | bespoke:ambulancebay | Medical vehicle parked in a marked bay. |
 | 160 | safety | Defibrillator (`defib`) | bespoke:defibrillator | AED cabinet with heart and electric bolt. |
@@ -170,7 +170,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 164 | safety | Life jackets (`lifejacket`) | bespoke:lifejacket | Wearable vest with collar and fasteners. |
 | 165 | safety | Lifeguard (`lifeguard`) | bespoke:lifeguard | Raised lifeguard chair. |
 | 166 | safety | First-aid post (`firstaidpost`) | lucide:briefcase-medical | Medical briefcase. |
-| 167 | safety | Security checkpoint (`checkpoint`) | lucide:scan-line | Scanning frame. |
+| 167 | safety | Security checkpoint (`checkpoint`) | bespoke:securitycheckpoint | Walk-through security scanner beside an inspection tray. |
 | 168 | safety | CCTV (`cctv`) | lucide:cctv | Surveillance camera. |
 | 169 | wayfinding | Fence (`fence`) | bespoke:fence | Repeating posts with rails. |
 | 170 | wayfinding | Signpost (`signpost`) | lucide:signpost | Two directional arrows on a post. |
