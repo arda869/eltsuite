@@ -1,3 +1,4 @@
+import {chooseSelect} from './select.mjs';
 // Full browser admin journey with Firebase/provider data simulated.
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
@@ -41,7 +42,7 @@ try{
  const open=p.getByRole('button',{name:'Open it anyway',exact:true});
  await open.waitFor({state:'visible',timeout:15000}).catch(()=>{});
  if(await open.isVisible())await open.click();
- await p.getByLabel('Admin section',{exact:true}).selectOption('ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
+ await chooseSelect(p, p.getByRole('button',{name:'Admin section',exact:true}), 'ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
  await p.evaluate(()=>localStorage.setItem('mockCostEmpty','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByText(/No AI costs recorded in this range/).waitFor();
  await p.evaluate(()=>localStorage.setItem('mockCostFailure','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByRole('alert').filter({hasText:'Could not load costs'}).waitFor();
  assert.deepEqual(crashes,[]);console.log('PASS: 21 features, optional proposals blank, save/reload, inline invalid price, 75% margin, learner attribution, empty/error states, desktop/mobile and accessibility. Firebase/provider data simulated.');

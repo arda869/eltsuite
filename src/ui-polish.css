@@ -53,6 +53,7 @@
 /* Fields inside dialogs: a little larger, a calm focus ring rather than a hard black edge. */
 :root .dialog :is(.field input, .field select, .field textarea, input[type='text'], input[type='email'], input[type='url'], input[type='search'], input[type='number'], input[type='date'], input[type='time'], select, textarea):not([type='checkbox']):not([type='radio']) { border-radius: 11px; }
 :root .dialog .field :is(input, select) { height: 42px; font-size: 14.5px; }
+:root .dialog .field .nsel > .sel { height: 42px; min-height: 42px; border-radius: 11px; font-size: 14.5px; }
 :root .dialog .field textarea { padding: 10px 12px; border: 1px solid var(--hair-strong); border-radius: 11px; background: var(--paper); line-height: 1.55; font-weight: 400; resize: vertical; }
 :root :is(.dialog, .field, .card) :is(input, select, textarea):not([type='checkbox']):not([type='radio']):focus-visible,
 :root .field :is(input, select, textarea):focus {
@@ -83,6 +84,7 @@
   :root .dialog > .row-between:last-child > span:has(> .btn) { flex: 1 1 auto; }
   :root .dialog > .row-between:last-child .btn { flex: 1 1 0; height: 46px; }
   :root .dialog .field :is(input, select) { height: 46px; font-size: 16px; } /* 16px stops iOS zooming in */
+  :root .dialog .field .nsel > .sel { height: 46px; min-height: 46px; font-size: 16px; }
   :root .dialog .field textarea, :root .dialog input, :root .dialog textarea { font-size: 16px; }
 }
 

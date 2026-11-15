@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { AiMark } from '../components/AiMark';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
 import { doc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
@@ -1282,16 +1283,16 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                       </button>
                     ))}
                   </span>
-                  <select className="dz-float-sel" value={one.pose ?? 'stand'} aria-label="Pose" onChange={(e) => patch({ [one.id]: { pose: e.target.value } })}>
+                  <NSelect className="dz-float-sel" value={one.pose ?? 'stand'} aria-label="Pose" onChange={(e) => patch({ [one.id]: { pose: e.target.value } })}>
                     {Object.entries(POSES).map(([k, p]) => (
                       <option key={k} value={k}>{p.name}</option>
                     ))}
-                  </select>
-                  <select className="dz-float-sel" value={one.face ?? 'happy'} aria-label="Expression" onChange={(e) => patch({ [one.id]: { face: e.target.value } })}>
+                  </NSelect>
+                  <NSelect className="dz-float-sel" value={one.face ?? 'happy'} aria-label="Expression" onChange={(e) => patch({ [one.id]: { face: e.target.value } })}>
                     {Object.entries(FACES).map(([k, f]) => (
                       <option key={k} value={k}>{f.name}</option>
                     ))}
-                  </select>
+                  </NSelect>
                 </>
               )}
               {one.t === 'art' && one.art === 'thing' && (THINGS[one.ref ?? '']?.views?.length ?? 0) > 1 && (

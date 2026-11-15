@@ -161,7 +161,7 @@ function Plan({ v, set, ro, stagesFrom }: { v: Data; set: (k: string, x: string)
                 {cols.map(([k, , r]) => (
                   <td key={k} className={'c-' + k}>
                     {k === 'int' && !ro ? (
-                      <NSelect value={v[`s${i}.${k}`] ?? ''} onChange={(e) => set(`s${i}.${k}`, e.target.value)}>
+                      <NSelect aria-label={`Interaction for stage ${i + 1}`} value={v[`s${i}.${k}`] ?? ''} onChange={(e) => set(`s${i}.${k}`, e.target.value)}>
                         <option value="">—</option>
                         {INTERACTION.map((x) => (
                           <option key={x}>{x}</option>

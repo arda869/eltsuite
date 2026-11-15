@@ -7,8 +7,13 @@ import { createPortal } from 'react-dom';
 
 export type Option<T extends string> = { v: T; label: string; hint?: string; icon?: string };
 
+// Keep the menu in the same visual workspace so local light/dark palettes apply.
+// A modal takes priority so its menu stays above the modal scrim.
+const menuHost = (trigger: HTMLElement | null) =>
+  trigger?.closest('dialog, [role="dialog"]') ?? trigger?.closest('.dz, .vx') ?? document.body;
+
 // search: type to narrow the list (a combobox); on by default for long lists.
-export function Select<T extends string>({ value, options: all, onChange, label, placeholder = 'Choose…', className = '', disabled, search, id }: { value: T; options: Option<T>[]; onChange: (v: T) => void; label: string; placeholder?: string; className?: string; disabled?: boolean; search?: boolean; id?: string }) {
+export function Select<T extends string>({ value, options: all, onChange, label, placeholder = 'Choose…', className = '', disabled, search, id, triggerProps }: { value: T; options: Option<T>[]; onChange: (v: T) => void; label: string; placeholder?: string; className?: string; disabled?: boolean; search?: boolean; id?: string; triggerProps?: React.ButtonHTMLAttributes<HTMLButtonElement> }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const typing = search ?? all.length > 7;
@@ -103,7 +108,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
   };
   return (
     <>
-      <button ref={btn} id={id} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)} onKeyDown={key}>
+      <button {...triggerProps} ref={btn} id={id} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)} onKeyDown={key}>
         {cur?.icon && <UiIcon name={cur.icon} size={16} />}<span className={'sel-v' + (cur ? '' : ' empty')}>{cur?.label ?? placeholder}</span>
         <svg className="sel-chev" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -118,7 +123,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
             {typing && !options.length && <span className="sel-none">Nothing matches.</span>}
             <div id={uid + '-list'} role="listbox" aria-label={label}>
             {options.map((o, i) => (
-              <button key={o.v} id={`${uid}-o${i}`} type="button" tabIndex={-1} role="option" aria-selected={o.v === value} className={'sel-o' + (i === hi ? ' hi' : '') + (o.v === value ? ' on' : '')} onMouseMove={() => mouse.current && i !== hi && setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o.v)}>
+              <button key={o.v} id={`${uid}-o${i}`} type="button" tabIndex={-1} role="option" aria-selected={o.v === value} data-value={o.v} className={'sel-o' + (i === hi ? ' hi' : '') + (o.v === value ? ' on' : '')} onMouseMove={() => mouse.current && i !== hi && setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o.v)}>
                 <span className="sel-tick" aria-hidden="true">
                   {o.icon ? <UiIcon name={o.icon} size={16} /> : o.v === value && (
                     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -135,7 +140,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
             ))}
             </div>
           </div>,
-          btn.current?.closest('dialog') ?? document.body,
+          menuHost(btn.current),
         )}
     </>
   );
@@ -252,7 +257,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
             )}
             {foot && <span className="sel-foot hint">{foot}</span>}
           </div>,
-          btn.current?.closest('dialog') ?? document.body,
+          menuHost(btn.current),
         )}
     </>
   );
@@ -260,28 +265,39 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
 
 // The browser's <select>, drawn as our own drop-down: the same props and <option> children,
 // so any select in the app can use it as it is. onChange gets { target: { value } } as before.
-type NOpt = { v: string; label: string; disabled?: boolean };
+type NOpt = { v: string; label: string; disabled?: boolean; group?: string };
 const textOf = (n: React.ReactNode): string =>
   typeof n === 'string' || typeof n === 'number' ? String(n) : Array.isArray(n) ? n.map(textOf).join('') : n && typeof n === 'object' && 'props' in (n as object) ? textOf((n as React.ReactElement<{ children?: React.ReactNode }>).props.children) : '';
-function optionsOf(children: React.ReactNode, out: NOpt[] = []): NOpt[] {
+function optionsOf(children: React.ReactNode, out: NOpt[] = [], group?: string): NOpt[] {
   React.Children.forEach(children, (c) => {
     if (!React.isValidElement(c)) return;
-    const el = c as React.ReactElement<{ value?: string | number; children?: React.ReactNode; disabled?: boolean }>;
-    if (el.type === 'option') out.push({ v: String(el.props.value ?? textOf(el.props.children)), label: textOf(el.props.children), disabled: el.props.disabled });
-    else optionsOf(el.props.children, out);
+    const el = c as React.ReactElement<{ value?: string | number; children?: React.ReactNode; disabled?: boolean; label?: string }>;
+    if (el.type === 'option') out.push({ v: String(el.props.value ?? textOf(el.props.children)), label: textOf(el.props.children), disabled: el.props.disabled, group });
+    else optionsOf(el.props.children, out, el.type === 'optgroup' ? el.props.label : group);
   });
   return out;
 }
 export function NSelect({ value, defaultValue, onChange, children, disabled, className, title, id, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement> & { 'aria-label'?: string }) {
   const all = optionsOf(children);
   const [own, setOwn] = useState(String(defaultValue ?? all[0]?.v ?? ''));
+  const wrap = useRef<HTMLSpanElement>(null);
+  const [labelFromField, setLabelFromField] = useState('');
+  useLayoutEffect(() => {
+    if (rest['aria-label'] || title) return;
+    const field = wrap.current?.closest('label');
+    if (!field) return;
+    const copy = field.cloneNode(true) as HTMLLabelElement;
+    copy.querySelectorAll('.nsel, input, textarea, button').forEach((node) => node.remove());
+    setLabelFromField(copy.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+  }, [rest['aria-label'], title]);
   const v = value !== undefined ? String(value) : own;
   // A disabled option with no value is the prompt shown before anything is chosen.
   const prompt = all.find((o) => o.disabled && (o.v === '' || o.v === v));
-  const options = all.filter((o) => !o.disabled).map((o) => ({ v: o.v, label: o.label }));
-  const label = rest['aria-label'] || title || prompt?.label || 'Choose';
+  const options = all.filter((o) => !o.disabled).map((o) => ({ v: o.v, label: o.label, hint: o.group }));
+  const label = rest['aria-label'] || title || labelFromField || prompt?.label || 'Choose';
+  const triggerProps = Object.fromEntries(Object.entries(rest).filter(([key]) => key.startsWith('aria-') || key.startsWith('data-'))) as React.ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <span className="nsel" title={title}>
+    <span ref={wrap} className="nsel" title={title}>
       <Select
         id={id}
         value={v}
@@ -289,6 +305,7 @@ export function NSelect({ value, defaultValue, onChange, children, disabled, cla
         label={label}
         placeholder={prompt?.label ?? 'Choose…'}
         className={className}
+        triggerProps={triggerProps}
         disabled={disabled}
         onChange={(nv) => {
           setOwn(nv);

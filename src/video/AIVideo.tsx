@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 
 import { useAiActivity } from '../components/AiActivity';
 import { VideoBrief, type ReadyScene } from "./VideoBrief";
@@ -262,7 +263,7 @@ export function AIVideo({
             <div className="vx-fields">
               <label>
                 Visual style
-                <select
+                <NSelect
                   aria-label={`Visual style for scene ${i + 1}`}
                   value={s.visualStyle || "3d-cartoon"}
                   disabled={s.status === "working"}
@@ -275,7 +276,7 @@ export function AIVideo({
                       {style.label}
                     </option>
                   ))}
-                </select>
+                </NSelect>
               </label>
               <label>
                 What happens
@@ -292,7 +293,7 @@ export function AIVideo({
               </label>
               <label>
                 Length
-                <select
+                <NSelect
                   value={s.duration}
                   disabled={s.status === "working"}
                   onChange={(e) =>
@@ -301,7 +302,7 @@ export function AIVideo({
                 >
                   <option value={5}>5 seconds</option>
                   <option value={10}>10 seconds</option>
-                </select>
+                </NSelect>
               </label>
             </div>
             <fieldset disabled={s.status === "working"}>
@@ -331,7 +332,7 @@ export function AIVideo({
             </fieldset>
             <label className="vx-fields">
               Starting picture / background
-              <select
+              <NSelect
                 value={s.background || ""}
                 disabled={s.status === "working"}
                 onChange={(e) =>
@@ -346,7 +347,7 @@ export function AIVideo({
                       {a.name}
                     </option>
                   ))}
-              </select>
+              </NSelect>
             </label>
             {image && (
               <div className="vx-scene-image">

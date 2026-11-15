@@ -336,7 +336,7 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
 .hq-pf-move { display: inline-flex; }
 .hq-pf-gap { width: 28px; }
 .hq-pf-add { align-self: flex-start; margin-top: 4px; }
-.hq-icons { position: fixed; z-index: 210; display: grid; grid-template-columns: repeat(8, 32px); gap: 4px; padding: 8px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 36px rgba(20, 18, 16, .2); }
+.hq-icons { position: fixed; z-index: 210; display: grid; grid-template-columns: repeat(auto-fit, minmax(32px, 1fr)); gap: 4px; box-sizing: border-box; width: min(300px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 36px rgba(20, 18, 16, .2); }
 .hq-icons button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
 .hq-icons button:hover, .hq-icons button.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 

@@ -63,6 +63,11 @@
   color: var(--studio-ink);
   padding: 6px 8px;
 }
+.vx .nsel > .sel { min-width: 0; border-color: #61564c; background: #211f1c; color: var(--studio-ink); }
+.vx .sel-list { border: 1px solid #61564c; background: #292623; color: var(--studio-ink); }
+.vx .sel-list .sel-o { color: var(--studio-ink); }
+.vx .sel-list .sel-o.hi, .vx .sel-list .sel-o:focus-visible { background: #4b4036; }
+.vx .sel-list .sel-q { border-color: #61564c; background: #211f1c; color: var(--studio-ink); }
 .vx input[type="checkbox"] {
   accent-color: var(--accent);
   width: auto;

@@ -28,7 +28,7 @@ function BankLinkView({ node, updateAttributes, deleteNode, editor, getPos, sele
         </button>
       </div>
       <div className="bl-edit">
-        <NSelect value={node.attrs.entryId ?? ''} onChange={(e) => updateAttributes({ entryId: e.target.value, title: list.find((p) => p.id === e.target.value)?.title ?? '' })}>
+        <NSelect aria-label="Bank page" value={node.attrs.entryId ?? ''} onChange={(e) => updateAttributes({ entryId: e.target.value, title: list.find((p) => p.id === e.target.value)?.title ?? '' })}>
           <option value="">Choose a page…</option>
           {list.map((p) => (
             <option key={p.id} value={p.id}>

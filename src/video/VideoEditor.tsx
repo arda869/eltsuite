@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { StudioDivider, useStudioPanels } from "./StudioPanels";
 import { UiIcon } from "../components/UiIcon";
 import { VideoDialog } from "./VideoDialog";
@@ -896,7 +897,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 </p>
                 <label>
                   Open a saved project
-                  <select
+                  <NSelect
                     value=""
                     disabled={dirty || locked}
                     onChange={(e) => {
@@ -910,7 +911,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                         {x.title}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
                 <div className="vx-asset-grid">
                   {assets
@@ -994,7 +995,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
             </output>
             <label>
               Canvas
-              <select
+              <NSelect
                 value={`${p.width}x${p.height}`}
                 disabled={locked}
                 onChange={(e) => {
@@ -1005,7 +1006,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 <option>1280x720</option>
                 <option>720x1280</option>
                 <option>720x720</option>
-              </select>
+              </NSelect>
             </label>
             <label>
               Background
@@ -1176,7 +1177,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 <>
                   <label>
                     Playback speed
-                    <select
+                    <NSelect
                       value={picked.speed || 1}
                       disabled={locked}
                       onChange={(e) =>
@@ -1192,7 +1193,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                           {v}×
                         </option>
                       ))}
-                    </select>
+                    </NSelect>
                   </label>
                   <label>
                     Volume · {Math.round(picked.gain * 100)}%
@@ -1213,7 +1214,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
               {pickedTrack?.kind === "video" && (
                 <label>
                   Frame
-                  <select
+                  <NSelect
                     value={picked.fit}
                     disabled={locked}
                     onChange={(e) =>
@@ -1222,7 +1223,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                   >
                     <option value="contain">Fit whole picture</option>
                     <option value="cover">Crop to fill</option>
-                  </select>
+                  </NSelect>
                 </label>
               )}
               <details className="vx-inspector-more">
@@ -1280,7 +1281,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 />
                 <label>
                   Move to track
-                  <select
+                  <NSelect
                     value={pickedTrack?.id}
                     disabled={locked}
                     onChange={(e) => {
@@ -1304,7 +1305,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                           {t.name}
                         </option>
                       ))}
-                  </select>
+                  </NSelect>
                 </label>
               </details>
             </div>

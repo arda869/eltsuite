@@ -1051,6 +1051,7 @@ const STYLES = [
 function StyleMenu({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const focusOption = (index: number) => requestAnimationFrame(() => ref.current?.querySelectorAll<HTMLButtonElement>('.sm-o')[index]?.focus());
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
@@ -1068,12 +1069,20 @@ function StyleMenu({ editor }: { editor: Editor }) {
   };
   return (
     <span className="sm" ref={ref}>
-      <button type="button" className="sm-btn" aria-haspopup="listbox" aria-expanded={open} aria-label="Paragraph style" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="sm-btn" aria-haspopup="listbox" aria-expanded={open} aria-label="Paragraph style" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((v) => !v)} onKeyDown={(e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); setOpen(true); focusOption(e.key === 'ArrowUp' ? STYLES.length - 1 : 0); }
+      }}>
         <span>{STYLES.find((x) => x.k === cur)?.label}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
       </button>
       {open && (
-        <span className="sm-list" role="listbox" aria-label="Paragraph style">
+        <span className="sm-list" role="listbox" aria-label="Paragraph style" onKeyDown={(e) => {
+          if (e.key === 'Tab') { setOpen(false); return; }
+          const options = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('.sm-o')];
+          const current = options.indexOf(document.activeElement as HTMLButtonElement);
+          const next = e.key === 'ArrowDown' ? (current + 1) % options.length : e.key === 'ArrowUp' ? (current - 1 + options.length) % options.length : e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : -1;
+          if (next >= 0) { e.preventDefault(); e.stopPropagation(); options[next].focus(); }
+        }}>
           {STYLES.map((x) => (
             <button key={x.k} type="button" role="option" aria-selected={cur === x.k} className={'sm-o ' + x.cls + (cur === x.k ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(x.k)}>
               {x.label}
