@@ -172,7 +172,7 @@ function drawPie(g: CanvasRenderingContext2D, f: ChartFigure) {
     label(g,s.name,cx,cy+radius+21,17,'center',700);
   });
   const entries=f.categories.map((name,i)=>({name,color:f.palette?.[i]||CHART_PALETTE[i%CHART_PALETTE.length]}));
-  drawLegendRows(g,entries,legendStart(g,f,entries,480,13),13);
+  drawLegendRows(g,entries,legendStart(g,f,entries,480,17),17);
 }
 function drawTable(g: CanvasRenderingContext2D, f: ChartFigure) {
   const columns=f.series.length+1;const rows=f.categories.length+1;const x=42,y=92,w=716,h=Math.min(404,rows*46);const rh=h/rows;const first=Math.min(280,w*.4),other=(w-first)/(columns-1||1);
