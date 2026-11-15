@@ -1313,6 +1313,10 @@ const J = {
     if (!categoryVisible) throw Error('Help category dropdown is clipped or covered on a phone');
     await axe(s.p, 'Help category dropdown open on phone', A11Y_FOUND);
     await category.press('Escape');
+    await category.click();
+    const chosenCategory = (await categoryMenu.getByRole('option').nth(1).innerText()).trim();
+    await categoryMenu.getByRole('option').nth(1).click();
+    if (!(await category.innerText()).includes(chosenCategory)) throw Error('Help category dropdown did not keep the chosen category');
     await panel.getByRole('button', { name: 'Close help' }).click();
     await s.p.getByRole('button', { name: 'Help', exact: true }).waitFor();
     await s.p.setViewportSize({ width: 1280, height: 900 });
