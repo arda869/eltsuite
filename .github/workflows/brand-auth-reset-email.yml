@@ -1,0 +1,95 @@
+name: Brand Firebase Auth password reset email
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    if: github.head_ref == 'ops/auth-reset-email-nov15' && github.event.pull_request.head.repo.full_name == 'arda869/eltsuite'
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+      - name: Update only the password reset template and verify readback
+        env:
+          GOOGLE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+
+          const url = 'https://identitytoolkit.googleapis.com/admin/v2/projects/lesson-lit/config';
+          const headers = {
+            authorization: `Bearer ${process.env.GOOGLE_ACCESS_TOKEN}`,
+            'content-type': 'application/json',
+          };
+          const read = async () => {
+            const response = await fetch(url, { headers });
+            if (!response.ok) throw new Error(`Auth config read failed (${response.status})`);
+            return response.json();
+          };
+          const before = await read();
+          const sendEmail = before.notification?.sendEmail || {};
+          const old = sendEmail.resetPasswordTemplate || {};
+          assert.equal(sendEmail.method, 'DEFAULT');
+          assert.equal(old.senderLocalPart, 'noreply');
+          assert.equal(old.bodyFormat, 'HTML');
+          assert.ok(
+            old.subject === 'Reset your password for %APP_NAME%' ||
+            old.subject === 'Reset your ELT Suite password',
+            'Reset subject changed since the audit; review before updating',
+          );
+
+          const subject = 'Reset your ELT Suite password';
+          const senderDisplayName = 'ELT Suite';
+          const body = [
+            '<p>We received a request to reset your ELT Suite password.</p>',
+            '<p>Choose a new password using the link below.</p>',
+            '<p><a href="%LINK%">Reset password</a></p>',
+            '<p>If the button doesn’t work, open this link: <a href="%LINK%">%LINK%</a></p>',
+            '<p>If you didn’t request this, you can ignore this email.</p>',
+          ].join('');
+          assert.equal((body.match(/%LINK%/g) || []).length, 3);
+          const patch = {
+            name: 'projects/lesson-lit/config',
+            notification: {
+              sendEmail: {
+                resetPasswordTemplate: { subject, senderDisplayName, body },
+              },
+            },
+          };
+          const mask = [
+            'notification.sendEmail.resetPasswordTemplate.subject',
+            'notification.sendEmail.resetPasswordTemplate.senderDisplayName',
+            'notification.sendEmail.resetPasswordTemplate.body',
+          ].join(',');
+          const response = await fetch(`${url}?updateMask=${encodeURIComponent(mask)}`, {
+            method: 'PATCH', headers, body: JSON.stringify(patch),
+          });
+          if (!response.ok) throw new Error(`Auth reset template update failed (${response.status})`);
+          const after = await read();
+          const current = after.notification?.sendEmail?.resetPasswordTemplate || {};
+          assert.equal(current.subject, subject);
+          assert.equal(current.senderDisplayName, senderDisplayName);
+          assert.equal(current.body, body);
+          assert.equal(current.bodyFormat, old.bodyFormat);
+          assert.equal(current.senderLocalPart, old.senderLocalPart);
+          assert.equal(after.notification.sendEmail.callbackUri, sendEmail.callbackUri);
+          assert.equal(after.notification.sendEmail.method, sendEmail.method);
+          console.log(JSON.stringify({
+            result: 'Password reset template updated and read back',
+            subject: current.subject,
+            senderDisplayName: current.senderDisplayName,
+            bodyMatchesApprovedCopy: current.body === body,
+            callbackPreserved: after.notification.sendEmail.callbackUri === sendEmail.callbackUri,
+            fromLocalPartPreserved: current.senderLocalPart === old.senderLocalPart,
+            sendMethodPreserved: after.notification.sendEmail.method === sendEmail.method,
+          }));
+          EOF
