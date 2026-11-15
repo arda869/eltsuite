@@ -11,6 +11,10 @@ on:
         description: 'Exact legacyScripts count from the reviewed dry run; required for apply'
         type: string
         required: false
+      check_ai_binding:
+        description: 'Check the deployed learning AI bindings and authenticate without generation'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -37,6 +41,11 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: node scripts/migrate-ai-audio-scripts.mjs
+      - name: Check deployed learning AI connection without generation
+        if: inputs.check_ai_binding == true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: node scripts/check-learning-binding.mjs
       - name: Copy, verify, then remove legacy public script fields
         if: inputs.apply == true
         env:
