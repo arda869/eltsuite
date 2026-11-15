@@ -37,6 +37,10 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: node scripts/migrate-ai-audio-scripts.mjs
+      - name: Inspect B-019 media job (read only)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: node scripts/diagnose-b019-media.mjs
       - name: Copy, verify, then remove legacy public script fields
         if: inputs.apply == true
         env:
