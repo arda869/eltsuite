@@ -14,6 +14,7 @@ export function WelcomePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const saving = useRef(false);
+  const retrying = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [review]);
   const path = TEACHER_PATHS.find(p => p.id === selected);
@@ -23,11 +24,12 @@ export function WelcomePage() {
     setBusy(true); setError('');
     try {
       try { sessionStorage.setItem('teacher-goal:' + user.uid, selected); } catch { /* private browser */ }
-      await saveTeacherGoal(user, selected);
+      await saveTeacherGoal(user, selected, retrying.current);
       try { sessionStorage.removeItem('teacher-goal:' + user.uid); } catch { /* private browser */ }
+      retrying.current = false;
       setOnboardingLocal(selected);
       navigate(to, { replace: true });
-    } catch (e) { setError(setupErrorMessage(e)); }
+    } catch (e) { retrying.current = true; setError(setupErrorMessage(e)); }
     finally { saving.current = false; setBusy(false); }
   }
   return <main className="welcome">
