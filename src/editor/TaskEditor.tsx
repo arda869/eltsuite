@@ -662,8 +662,13 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     let content = clip.content;
     const to = classRef.current;
     if (to && clip.space && clip.space !== to) {
-      const map = await carryMedia(clip.space, to, [content]).catch(() => ({}) as Record<string, string>);
-      content = remap(content, map) as JSONContent[];
+      try {
+        const map = await carryMedia(clip.space, to, [content]);
+        content = remap(content, map) as JSONContent[];
+      } catch {
+        void tell('The recording in this selection could not be copied. Your task is unchanged. Please try again.');
+        return;
+      }
     }
     ed.chain().focus().insertContent(content.map(freshIds)).run();
   }

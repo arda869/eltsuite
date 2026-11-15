@@ -3,6 +3,8 @@ import { collectMedia, collectPictures, type MediaInfo, type MediaMap, type WsIt
 import { loadTeacherManifest } from './archive';
 import { audioUrl } from './media';
 import { bakePicture } from '../editor/PicEdit';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from './firebase';
 
 // Pictures and QR codes for a printed worksheet, used by the PDF export and the worksheet view in the
 // lesson editor, so both print the same thing.
@@ -76,14 +78,14 @@ export async function sheetPictures(classId: string, items: WsItem[]): Promise<M
 }
 
 // Sounds and videos: a QR code to the page that plays them, and their scripts for the key.
-export async function sheetSounds(classId: string, items: WsItem[], accentHex: string): Promise<Record<string, MediaInfo>> {
+export async function sheetSounds(classId: string, items: WsItem[], accentHex: string, itemId = ''): Promise<Record<string, MediaInfo>> {
   const list = collectMedia(items);
   if (!list.length) return {};
   const QR = await import('qrcode');
   const accent = accentHex.replace('#', '');
   const out: Record<string, MediaInfo> = {};
   await Promise.all(
-    list.map(async ({ id, mode }) => {
+    list.map(async ({ id, mode, taskId }) => {
       if (mode === 'game' && id.startsWith('game:')) {
         const url = `${learnOrigin()}/game/${encodeURIComponent(id.slice(5))}`;
         const look = { margin: 4, errorCorrectionLevel: 'M' as const, color: { dark: '#000000', light: '#ffffff' } };
@@ -93,7 +95,13 @@ export async function sheetSounds(classId: string, items: WsItem[], accentHex: s
       }
       const m = await loadTeacherManifest(classId, id).catch(() => null);
       if (!m) return;
-      const url = `${learnOrigin()}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
+      let grant='';
+      if(!classId.includes(':')&&itemId&&taskId&&mode!=='none'){
+        try{grant=(await httpsCallable<{classId:string;itemId:string;taskId:string;mediaId:string},{grant:string}>(getFunctions(app,'us-central1'),'issueMediaScriptQr')({classId,itemId,taskId,mediaId:id})).data.grant;}
+        catch{ /* The printed QR still opens its audio when a task is locked or this call fails. */ }
+      }
+      const params = new URLSearchParams({c:accent,...(mode !== 'karaoke'?{s:mode}:{}),...(itemId&&taskId?{i:itemId,t:taskId}:{}),...(grant?{g:grant}:{})});
+      const url = `${learnOrigin()}/play/${classId}/${id}?${params}`;
       const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };
       const [svg, png] = await Promise.all([QR.toString(url, { ...look, type: 'svg' }), QR.toDataURL(url, { ...look, margin: 1, width: 320 })]);
       out[id] = { url, svg, png, title: m.title || 'Listening', video: !!m.video, script: (m.script ?? []).filter(l => l.text.trim()).map(l => l.who?.trim() ? `${l.who.trim()}: ${l.text.trim()}` : l.text.trim()) };

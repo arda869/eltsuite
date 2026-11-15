@@ -727,6 +727,8 @@ export function LearnerLesson() {
                   shared={shared}
                   classmates={classmates}
                   classId={classId}
+                  itemId={itemId}
+                  taskId={task.id}
                   selfId={learnerId}
                   received={received}
                   boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, itemId, uid: user.uid, name: profile.displayName, selfId: learnerId, people: classmates } : undefined}

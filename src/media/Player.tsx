@@ -2,7 +2,7 @@ import {getFunctions,httpsCallable} from 'firebase/functions';
 import {app} from '../lib/firebase';
 import { tr } from '../lib/terms';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { loadManifest, soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
+import { loadManifest, loadTeacherManifest, soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
 import { expandSavedSongScript } from '../lib/songScript';
 import { UiIcon } from '../components/UiIcon';
 import { decodeSound, fmtTime, peaks as peaksOf, toMono } from '../lib/sound';
@@ -575,28 +575,62 @@ function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e:
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
 // see, so the script follows the setting and the teacher opens it with a button.
-export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline, active = true }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean; active?:boolean }) {
+export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline, active = true }: { classId: string; mediaId: string; itemId?: string; taskId?: string; qrGrant?: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean; active?:boolean }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
   useEffect(() => { if (!active) e.pause(); }, [active]);
   const [open, setOpen] = useState<boolean|null>(null);
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
   const [privateScript,setPrivateScript]=useState<{key:string;lines:ScriptLine[]}|null>(null);
+  const [scriptSession,setScriptSession]=useState<{key:string;token:string}|null>(null);
+  const scriptKey=[classId,mediaId,itemId||'',taskId||'',qrGrant||'',teacher?'teacher':scriptMode].join('/');
+  const classMedia=!!classId&&!classId.includes(':');
   useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
-  const script=e.m?.script?.length?e.m.script:privateScript?.key===classId+'/'+mediaId?privateScript.lines:[];
+  const script=(teacher||!classMedia)&&e.m?.script?.length?e.m.script:privateScript?.key===scriptKey?privateScript.lines:[];
   const lines = (e.m?.stems ? expandSavedSongScript(script, e.m.duration || e.duration || 0).map(line => ({ ...line, who: undefined })) : script).filter((l) => l.text.trim());
   useEffect(()=>{
     let active=true;setScriptRecovery('');
-    if(!teacher||!e.m?.aiGenerated||!(editing||scriptMode!=='none'||open))return;
+    if(!teacher||!classMedia||!e.m||privateScript?.key===scriptKey||!(editing||scriptMode!=='none'||open))return;
     if(!lines.length)setScriptRecovery('Loading the saved script…');
-    void httpsCallable(getFunctions(app,'us-central1'),'lessonAssistant')({action:'restoreAudioScript',classId,mediaId}).then(result=>{
+    void loadTeacherManifest(classId,mediaId).then(async savedManifest=>{
+      if(savedManifest?.script?.length)return savedManifest.script;
+      if(!e.m?.aiGenerated)return [];
+      const result=await httpsCallable(getFunctions(app,'us-central1'),'lessonAssistant')({action:'restoreAudioScript',classId,mediaId});
+      return (result.data as {script?:ScriptLine[]}).script||[];
+    }).then(saved=>{
       if(!active)return;
-      const saved=(result.data as {script?:ScriptLine[]}).script;
-      if(saved?.length)setPrivateScript({key:classId+'/'+mediaId,lines:saved});
+      if(saved?.length)setPrivateScript({key:scriptKey,lines:saved});
       setScriptRecovery('');
     }).catch(error=>{if(active)setScriptRecovery(error.message||'The saved script could not be loaded. Try again or add it in Recordings.');});
     return()=>{active=false;};
-  },[classId,mediaId,teacher,editing,scriptMode,e.m?.aiGenerated,open,scriptRetry]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[classId,mediaId,teacher,editing,scriptMode,!!e.m,e.m?.aiGenerated,open,scriptRetry,scriptKey,classMedia]); // eslint-disable-line react-hooks/exhaustive-deps
+  const scriptAccess=useCallback((action:'read'|'start',session='')=>httpsCallable<{classId:string;mediaId:string;itemId?:string;taskId?:string;action:string;session:string;grant?:string},{mode:string;script?:ScriptLine[];session?:string;waitMs?:number}>(getFunctions(app,'us-central1'),'mediaScriptAccess')({classId,mediaId,itemId,taskId,action,session,grant:qrGrant}),[classId,mediaId,itemId,taskId,qrGrant]);
+  // The server reads the mode saved in the task. A changed URL or a changed React prop
+  // cannot turn a Hidden or After listening script into an immediately readable one.
+  useEffect(()=>{
+    if(teacher||!classMedia||!e.m||!itemId||!taskId||!['karaoke','button'].includes(scriptMode)||privateScript?.key===scriptKey)return;
+    let active=true;
+    void scriptAccess('read').then(({data})=>{if(active&&data.script?.length)setPrivateScript({key:scriptKey,lines:data.script});}).catch(()=>{});
+    return()=>{active=false;};
+  },[teacher,classMedia,e.m,itemId,taskId,scriptMode,scriptKey,privateScript?.key,scriptAccess]);
+  useEffect(()=>{
+    if(teacher||!classMedia||!e.m||!itemId||!taskId||scriptMode!=='after'||!e.playing||scriptSession?.key===scriptKey)return;
+    let active=true;
+    void scriptAccess('start').then(({data})=>{if(active&&data.session)setScriptSession({key:scriptKey,token:data.session});}).catch(()=>{});
+    return()=>{active=false;};
+  },[teacher,classMedia,e.m,itemId,taskId,scriptMode,scriptKey,e.playing,scriptSession,scriptAccess]);
+  useEffect(()=>{
+    if(teacher||!classMedia||!e.m||scriptMode!=='after'||e.ends===0||scriptSession?.key!==scriptKey||privateScript?.key===scriptKey)return;
+    let active=true,timer:ReturnType<typeof setTimeout>|undefined;
+    setScriptRecovery('Loading the script…');
+    void scriptAccess('read',scriptSession.token).then(({data})=>{
+      if(!active)return;
+      if(data.script?.length){setPrivateScript({key:scriptKey,lines:data.script});setScriptRecovery('');}
+      else if(data.waitMs){setScriptRecovery('The script will appear shortly.');timer=setTimeout(()=>setScriptRetry(n=>n+1),Math.max(1000,data.waitMs));}
+      else setScriptRecovery('No transcript has been added to this recording.');
+    }).catch(()=>{if(active)setScriptRecovery('The script could not load. Try again.');});
+    return()=>{active=false;if(timer)clearTimeout(timer);};
+  },[teacher,classMedia,e.m,scriptMode,e.ends,scriptSession,scriptKey,privateScript?.key,scriptRetry,scriptAccess]);
   // Pause at the end of each line: for repeating after the speaker, or dictation.
   const [lineStop, setLineStop] = useState(false);
   const timed = lines.filter((l) => l.t !== null).map((l) => l.t as number).sort((a, b) => a - b);

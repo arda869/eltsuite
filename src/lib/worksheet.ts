@@ -69,7 +69,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { id?: string; variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -676,7 +676,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   }
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
   const icon = lessonStyle === 'young' ? youngIcon(t.print?.icon && t.print.icon !== 'same' ? t.print.icon : t.ylIcon, t.content) : null;
-  return { ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(t.id ? {id:t.id} : {}), ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
@@ -1028,20 +1028,21 @@ export function saveBlob(name: string, blob: Blob) {
 }
 
 // Every sound and video the worksheet uses.
-export function collectMedia(items: WsItem[]): { id: string; mode: string }[] {
-  const out = new Map<string, string>();
-  const walk = (bs: Block[]) =>
+export function collectMedia(items: WsItem[]): { id: string; mode: string; taskId?: string }[] {
+  const out = new Map<string, {mode:string;taskId?:string}>();
+  const rank=(mode:string)=>mode==='none'?0:mode==='after'?1:2;
+  const walk = (bs: Block[],taskId?:string) =>
     bs.forEach((b) => {
-      if (b.kind === 'media' && !out.has(b.id)) out.set(b.id, b.mode);
-      if (b.kind === 'callout' || b.kind === 'subtask') walk(b.blocks);
-      if (b.kind === 'diagram') b.cells.forEach(cell => walk(cell.blocks));
+      if (b.kind === 'media' && (!out.has(b.id)||rank(b.mode)<rank(out.get(b.id)!.mode))) out.set(b.id, {mode:b.mode,taskId});
+      if (b.kind === 'callout' || b.kind === 'subtask') walk(b.blocks,taskId);
+      if (b.kind === 'diagram') b.cells.forEach(cell => walk(cell.blocks,taskId));
     });
   items.forEach(it => {
     if (it.kind !== 'task') return;
-    walk(it.task.blocks);
-    it.task.cutouts?.forEach(set => set.cards.forEach(card => walk(card.blocks)));
+    walk(it.task.blocks,it.task.id);
+    it.task.cutouts?.forEach(set => set.cards.forEach(card => walk(card.blocks,it.task.id)));
   });
-  return [...out].map(([id, mode]) => ({ id, mode }));
+  return [...out].map(([id, {mode,taskId}]) => ({ id, mode, taskId }));
 }
 
 // A picture with its crop and colour, as one key.

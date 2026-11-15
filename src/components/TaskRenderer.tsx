@@ -93,6 +93,8 @@ type Props = {
   selfId?: string;
   received?: SentFeedback[]; // peer feedback other learners sent to this learner
   classId?: string; // for audio clips
+  itemId?: string; // saved lesson, used to enforce a recording's script setting
+  taskId?: string;
   boardMe?: BoardMe; // who is posting on message boards
   teacherMarks?: Record<string, { score: number | null; comment: string; crit?: Record<string, number | null> }>; // teacher's marks on long answers
   writingReview?: { anns: Annotation[]; corrections: Record<string, Correction>; codes: Code[]; onResubmit: (qid: string) => void };
@@ -201,7 +203,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, itemId, taskId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
   const citationStyle = useCiteStyle();
   const citationSources = useMemo(() => {
     const seen = new Map<string, Source>();
@@ -1209,11 +1211,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'speakingPractice':
         return <SpeakingActivity key={key} config={node.attrs as SpeakingConfig} classId={classId ?? ''} teacher={!!teacher} classmates={classmates} disabled={locked} />;
       case 'inlineMedia':
-        return node.attrs?.media ? <span key={key} className={'inline-media im-' + (node.attrs.size || 'm')}><MediaPlayer inline classId={classId || node.attrs.space || ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode || 'none'} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} /></span> : null;
+        return node.attrs?.media ? <span key={key} className={'inline-media im-' + (node.attrs.size || 'm')}><MediaPlayer inline classId={classId || node.attrs.space || ''} mediaId={String(node.attrs.media)} itemId={itemId} taskId={taskId} title={node.attrs.title} scriptMode={node.attrs.scriptMode || 'none'} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} /></span> : null;
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">
-            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} below={node.attrs.notes && classId && training ? (e) => <TimeNotes classId={classId} noteKey={String(node.attrs!.media)} time={e.time} seek={(t) => (e.seek(t), e.play())} teacher={teacher} /> : undefined} />
+            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} itemId={itemId} taskId={taskId} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} below={node.attrs.notes && classId && training ? (e) => <TimeNotes classId={classId} noteKey={String(node.attrs!.media)} time={e.time} seek={(t) => (e.seek(t), e.play())} teacher={teacher} /> : undefined} />
           </div>
         ) : null;
       case 'linkCard':

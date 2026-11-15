@@ -914,7 +914,7 @@ export function LessonEditor() {
         .map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t.content && sheetKeys[t.id] ? { ...t, content: mergeKey(t.content, sheetKeys[t.id]) } : t)),
     [tasks, liveId, liveDraft, sheetKeys], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover, lessonStyle: lessonStyleOf(c) }, sheet && mode === 'edit');
+  const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, itemId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover, lessonStyle: lessonStyleOf(c) }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
   const editFrame = task && draft && editorKey.startsWith(task.id + ':') ? (

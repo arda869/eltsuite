@@ -569,7 +569,8 @@ const J = {
       const layout=await s.p.evaluate(()=>{
         const rect=s=>document.querySelector(s)?.getBoundingClientRect();
         const instruction=rect('.instr-bar'),body=rect('.frame-body'),header=rect('.suite-topbar');
-        return {overlap:instruction&&body&&instruction.bottom>body.top+1,overflow:document.documentElement.scrollWidth>innerWidth+1,headerOverflow:[...document.querySelector('.suite-topbar').children].some(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1;})};
+        const headerOffenders=[...document.querySelector('.suite-topbar').children].flatMap(e=>{const r=e.getBoundingClientRect();return r.width&&r.right>innerWidth+1?[`${e.tagName.toLowerCase()}.${String(e.className).replace(/\s+/g,'.')} right=${Math.round(r.right)}`]:[]});
+        return {overlap:instruction&&body&&instruction.bottom>body.top+1,overflow:document.documentElement.scrollWidth>innerWidth+1,headerOverflow:headerOffenders.length>0,headerOffenders};
       });
       if(layout.overlap||layout.overflow||layout.headerOverflow)throw Error(`Editor layout ${theme} ${width}: ${JSON.stringify(layout)}`);
       if(width>700)await s.p.getByRole('textbox',{name:'Task title',exact:true}).click();
@@ -1471,11 +1472,48 @@ const J = {
       const read=()=>JSON.parse(localStorage.getItem('mockfs'));
       const verify=(space,id)=>{const prefix=space.startsWith('user:')?'users/'+space.slice(5):space.startsWith('share:')?'shares/'+space.slice(6):'classes/'+space;const data=read(),m=data[prefix+'/media/'+id];if(!m?.stems)throw Error('Song links missing after copy');for(const stem of ['vocals','instrumental']){const key=prefix+'/media/'+m.stems[stem];if(!data[key]||!data[key+'_p0']?.data)throw Error('Copied stem audio is missing');}};
       const carried=await full.carryMedia(classId,'song-carry-target',[{audioId:mediaId}]);verify('song-carry-target',carried[mediaId]);
+      for(const aiGenerated of [false,true]){
+        const sourceId=aiGenerated?'copy-ai-script':'copy-ordinary-script';
+        const target=aiGenerated?'copy-ai-target':'copy-ordinary-target';
+        const script=[{t:0,e:1,text:aiGenerated?'Private AI line.':'Private teacher line.'}];
+        await fire.setDoc(fire.doc({},'classes',classId,'media',sourceId),{kind:'link',url:'https://example.invalid/audio.mp3',title:'Copy test',size:0,public:true,aiGenerated});
+        await fire.setDoc(fire.doc({},'classes',classId,'mediaScripts',sourceId),{script,aiGenerated});
+        const copy=await full.carryMedia(classId,target,[{audioId:sourceId}]);
+        const data=read(),manifest=data[`classes/${target}/media/${copy[sourceId]}`],privateDoc=data[`classes/${target}/mediaScripts/${copy[sourceId]}`];
+        if(!manifest||manifest.script!==undefined||JSON.stringify(privateDoc?.script)!==JSON.stringify(script))throw Error(`${aiGenerated?'AI':'Ordinary'} copied recording lost its private script or exposed it publicly`);
+      }
+      const scriptFreeId='copy-no-script';
+      await fire.setDoc(fire.doc({},'classes',classId,'media',scriptFreeId),{kind:'link',url:'https://example.invalid/plain.mp3',title:'No transcript',size:0,public:true});
+      const scriptFreeCopy=await full.carryMedia(classId,'copy-no-script-target',[{audioId:scriptFreeId}]);
+      if(!read()[`classes/copy-no-script-target/media/${scriptFreeCopy[scriptFreeId]}`])throw Error('A recording without a script could not be copied');
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([{op:'get',path:`classes/${classId}/mediaScripts/copy-ordinary-script`,count:1,code:'unavailable'}]));
+      let copyFailed=false;
+      try{await full.carryMedia(classId,'copy-fault-target',[{audioId:'copy-ordinary-script'}]);}catch(e){copyFailed=String(e?.code||e).includes('unavailable');}
+      finally{sessionStorage.removeItem('mockfs-faults');}
+      if(!copyFailed||Object.keys(read()).some(k=>k.startsWith('classes/copy-fault-target/media/')))throw Error('A failed private-script read silently copied an incomplete recording');
       await fire.setDoc(fire.doc({},'classes',classId,'items',itemId,'tasks','song-bundle-test'),{kind:'task',order:90,title:'Song',audioId:mediaId});
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([{op:'get',path:`classes/${classId}/mediaScripts/${mediaId}`,count:1,code:'unavailable'}]));
+      let exportFailed=false;
+      try{await full.lessonBundle(classId,itemId);}catch(e){exportFailed=String(e?.code||e).includes('unavailable');}
+      finally{sessionStorage.removeItem('mockfs-faults');}
+      if(!exportFailed)throw Error('Lesson export silently omitted a recording script after a private read failure');
       const bundle=await full.lessonBundle(classId,itemId),stems=bundle.media[mediaId].stems;if(!bundle.media[stems.vocals]||!bundle.media[stems.instrumental])throw Error('Lesson export omitted stem audio');
       const before=new Set(Object.keys(read()));await full.importBundle('song-bundle-target',bundle,{title:'Song bundle test'});const stored=read();const imported=Object.entries(stored).find(([k,v])=>!before.has(k)&&k.startsWith('classes/song-bundle-target/media/')&&v.stems);if(!imported)throw Error('Imported song manifest missing');verify('song-bundle-target',imported[0].split('/').at(-1));
       const archive={id:'song-shared',kind:'audio',name:'Shared song',folder:'',tags:[],size:0,createdAt:Date.now(),home:{classId,mediaId}},spec={kind:'media',owner:'teacher1',ownerName:'Teacher',title:'Shared song',mode:'link',people:[],src:{},archive,notes:false};
       const sharedId=await share.createShare(spec);verify('share:'+sharedId,mediaId);const own=await share.copyMediaToArchive({...spec,id:sharedId},'teacher1');const resource=read()['users/teacher1/archive/'+own];verify(resource.home.classId,resource.home.mediaId);
+      const copy=await import('/src/lib/copy.ts'),sourceTask=`classes/${classId}/items/${itemId}/tasks/private-copy-check`;
+      await fire.setDoc(fire.doc({},sourceTask),{kind:'task',order:91,title:'Keep original',content:{type:'doc',content:[{type:'media',attrs:{media:'copy-ordinary-script'}}]}});
+      const fault={op:'get',path:`classes/${classId}/mediaScripts/copy-ordinary-script`,count:1,code:'unavailable'};
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([fault]));
+      let taskCopyFailed=false;
+      try{await copy.copyTask(classId,itemId,'private-copy-check','copy-failure-task-target','lesson');}catch(e){taskCopyFailed=String(e?.code||e).includes('unavailable');}
+      finally{sessionStorage.removeItem('mockfs-faults');}
+      if(!taskCopyFailed||!read()[sourceTask]||Object.keys(read()).some(k=>k.startsWith('classes/copy-failure-task-target/items/')))throw Error('A failed task copy changed the source or created an incomplete task');
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([fault]));
+      let lessonCopyFailed=false;
+      try{await copy.copyLesson(classId,itemId,'copy-failure-lesson-target');}catch(e){lessonCopyFailed=String(e?.code||e).includes('unavailable');}
+      finally{sessionStorage.removeItem('mockfs-faults');}
+      if(!lessonCopyFailed||!read()[sourceTask]||Object.keys(read()).some(k=>k.startsWith('classes/copy-failure-lesson-target/items/')))throw Error('A failed lesson copy changed the source or created an incomplete lesson');
     },{...s.demo,mediaId:copied});
     await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=player&class='+s.demo.classId+'&media='+copied);await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Play',exact:true}).click();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).click();await s.p.getByRole('button',{name:'Vocals on',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals on',exact:true}).click();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await axe(s.p,'Copied song vocals-off player',A11Y_FOUND);return s;}finally{await s.ctx.tracing.stop({path:'outputs/song-stems-trace.zip'});}
   },
