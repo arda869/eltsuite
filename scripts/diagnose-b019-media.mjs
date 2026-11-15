@@ -138,7 +138,8 @@ console.log('qr_summary',JSON.stringify({mediaPlacements:qrMediaCount,existingGr
 
 // Find the existing B-029 migrated AI recording fixture without printing any
 // lesson titles, learner details, transcripts or audio bytes.
-const classItems=await cls.collection('items').get();
+const classRef=db.doc(`classes/${classId}`);
+const classItems=await classRef.collection('items').get();
 let migratedAiFixtures=0;
 for(const classItem of classItems.docs){
  const tasks=await classItem.ref.collection('tasks').get();
@@ -149,10 +150,10 @@ for(const classItem of classItems.docs){
   const visit=node=>{if(!node||typeof node!=='object')return;if(['media','inlineMedia'].includes(node.type)&&typeof node.attrs?.media==='string')mediaIds.add(node.attrs.media);if(Array.isArray(node.content))node.content.forEach(visit);};
   visit(content);
   for(const mediaId of mediaIds){
-   const privateScript=await cls.collection('mediaScripts').doc(mediaId).get();
+   const privateScript=await classRef.collection('mediaScripts').doc(mediaId).get();
    if(privateScript.get('aiGenerated')!==true)continue;
    migratedAiFixtures++;
-   const publicMedia=await cls.collection('media').doc(mediaId).get();
+   const publicMedia=await classRef.collection('media').doc(mediaId).get();
    console.log('migrated_ai_fixture',JSON.stringify({itemId:classItem.id,taskId:taskSnap.id,mediaId,itemHidden:classItem.get('hidden')===true,taskHidden:task.hidden===true,scriptLines:Array.isArray(privateScript.get('script'))?privateScript.get('script').length:0,publicMediaExists:publicMedia.exists,publicMediaContainsScript:publicMedia.data()&&Object.hasOwn(publicMedia.data(),'script')||false}));
   }
  }
