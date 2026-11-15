@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import nodemailer from 'nodemailer';
 import { frame, pad, h1, small, esc } from './email-layout.js';
+import { newUnreadSince, shouldSummarize } from './digest-logic.js';
 
 const SITE = 'https://eltsuite.com';
 const FALLBACK_FROM = 'ELT Suite <hello@eltsuite.com>';
@@ -37,8 +38,7 @@ export const sendUnreadMessageSummaries = onSchedule({
     const waiting = chats.docs.filter((chat) => {
       const data = chat.data();
       if (learner && data.emailThread) return false;
-      return data.last && data.last.by !== uid && (data.seen?.[uid] ?? 0) < data.lastAt
-        && now - data.lastAt >= after && (data.digested?.[uid] ?? 0) < data.lastAt;
+      return shouldSummarize(data, uid, now, after);
     });
     if (!waiting.length) continue;
 
@@ -46,7 +46,7 @@ export const sendUnreadMessageSummaries = onSchedule({
     let total = 0;
     for (const chat of waiting) {
       const data = chat.data();
-      const since = data.seen?.[uid] ?? 0;
+      const since = newUnreadSince(data, uid);
       const messages = await chat.ref.collection('msgs').where('at', '>', since).orderBy('at', 'desc').limit(5).get();
       const list = messages.docs.map((message) => message.data()).filter((message) => message.by !== uid && !message.deleted).reverse();
       total += list.length;
