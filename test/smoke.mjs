@@ -691,6 +691,7 @@ const J = {
     await map.getByText('Layout and reference image', { exact: true }).click();
     await map.locator('input[type=file]').setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') });
     await map.getByRole('button', { name: 'Remove image' }).waitFor();
+    await chooseSelect(design, map.getByRole('button', { name: 'Fit', exact: true }), 'cover');
     await axe(design, 'Designer map editor', A11Y_FOUND);
     await map.getByRole('button', { name: 'Save map' }).click();
     await design.locator('.dz-saved:not(.bad)').waitFor();
@@ -705,6 +706,7 @@ const J = {
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
+    if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundFit === 'cover')) throw Error('Map image fit choice did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.items.some(item => item.icon === 'café' && item.iconStyle === 'plain' && item.iconColor === '#286c7d'))) throw Error('Map symbol drawer did not save the chosen plain colour');
     await design.reload();
     await design.getByRole('button', { name: 'Download' }).click();
