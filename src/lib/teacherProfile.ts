@@ -68,6 +68,12 @@ export function ensureProfile(user: User): Promise<Profile | null> {
   void promise.finally(() => { if (loads.get(user.uid) === promise) loads.delete(user.uid); }).catch(() => {});
   return promise;
 }
+// A timed-out Firestore read may stay pending indefinitely. An explicit retry must
+// make a new read; the old request can still finish, but must not evict the new one.
+export function retryProfile(user: User): Promise<Profile | null> {
+  loads.delete(user.uid);
+  return ensureProfile(user);
+}
 export function withSetupTimeout<T>(promise: Promise<T>, ms = 15000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(Object.assign(new Error('Account setup timed out'), { code: 'deadline-exceeded' })), ms);
@@ -87,5 +93,15 @@ export function setupErrorMessage(e: unknown) {
     case 'permission-denied': case 'unauthenticated':
       return 'We couldn’t confirm your account access. Sign in again, then retry your saved choice.';
     default: return 'Your account setup hasn’t finished. Your choice is kept; please retry in a moment.';
+  }
+}
+
+export function profileLoadErrorMessage(e: unknown) {
+  switch ((e as { code?: string })?.code) {
+    case 'deadline-exceeded': case 'unavailable': case 'network-request-failed':
+      return 'We couldn’t load your account profile. Check your connection, then retry.';
+    case 'permission-denied': case 'unauthenticated':
+      return 'We couldn’t confirm your account access. Sign in again, then retry.';
+    default: return 'We couldn’t load your account profile. Please retry.';
   }
 }
