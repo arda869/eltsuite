@@ -3,6 +3,7 @@ import {createRequire} from 'node:module';
 const require=createRequire(new URL('../functions/package.json',import.meta.url));
 const {initializeApp}=require('firebase-admin/app');
 const {getFirestore}=require('firebase-admin/firestore');
+const {GoogleAuth}=require('google-auth-library');
 
 initializeApp({projectId:'lesson-lit'});
 const db=getFirestore();
@@ -27,3 +28,17 @@ for(const job of jobs.docs){
  }
 }
 if(!found)console.log('No matching recent B-019 taskTools job in last 35 jobs.');
+
+// Check the exact deployed secret binding and speech model through a non-generating API call.
+const client=await new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']}).getClient();
+const {data:fn}=await client.request({url:'https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/prepareLessonMedia'});
+const binding=fn.serviceConfig?.secretEnvironmentVariables?.find(value=>value.key==='OPENAI_API_KEY');
+if(!binding?.secret||!binding.version)throw Error('Deployed media worker has no OpenAI binding');
+const secret=`https://secretmanager.googleapis.com/v1/projects/${binding.projectId||'lesson-lit'}/secrets/${encodeURIComponent(binding.secret)}/versions/${encodeURIComponent(binding.version)}`;
+const {data:metadata}=await client.request({url:secret});
+if(metadata.state!=='ENABLED')throw Error('Deployed media worker binding is disabled');
+const {data:access}=await client.request({url:`${secret}:access`});
+const apiKey=Buffer.from(access.payload?.data||'','base64').toString('utf8').trim();
+if(!apiKey)throw Error('Deployed media worker binding is empty');
+const modelResponse=await fetch('https://api.openai.com/v1/models/gpt-realtime-2.1-mini',{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(30000)});
+console.log('speech_model_check',JSON.stringify({deployedBinding:'enabled',model:'gpt-realtime-2.1-mini',httpStatus:modelResponse.status}));
