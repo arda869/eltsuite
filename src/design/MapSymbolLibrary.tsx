@@ -19,7 +19,13 @@ export function MapSymbolIcon({symbolKey,size=34}:{symbolKey:string;size?:number
   </svg>;
 }
 
-export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,draggable=true}:{selectedKey?:string;onSelect:(key:string)=>void;disabled?:boolean;draggable?:boolean}){
+export type MapSymbolLibraryProps={
+  selectedKey?:string;onSelect:(key:string)=>void;disabled?:boolean;draggable?:boolean;
+  symbolStyle?:'plain'|'shaded';symbolColor?:string;
+  onSymbolStyleChange?:(style:'plain'|'shaded')=>void;onSymbolColorChange?:(color:string)=>void;
+};
+
+export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,draggable=true,symbolStyle='shaded',symbolColor='#73578f',onSymbolStyleChange,onSymbolColorChange}:MapSymbolLibraryProps){
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState<Category>('all');
   const [categoriesOpen,setCategoriesOpen]=useState(false);
@@ -49,6 +55,14 @@ export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,dr
   };
   return <div className="dz-symbol-library">
     <label className="dz-symbol-search"><span className="dz-symbol-search-icon" aria-hidden="true">⌕</span><input type="search" value={query} onChange={event=>{setQuery(event.target.value);if(event.target.value.trim())setCategory('all');}} placeholder="Find a symbol" aria-label="Search map symbols"/></label>
+    <div className="dz-symbol-appearance" role="group" aria-label="Symbol appearance">
+      <span className="dz-symbol-appearance-label">Symbol look</span>
+      <div className="dz-symbol-style-options" role="group" aria-label="Symbol background">
+        <button type="button" aria-pressed={symbolStyle==='plain'} className={symbolStyle==='plain'?'is-active':''} onClick={()=>onSymbolStyleChange?.('plain')} disabled={disabled||!onSymbolStyleChange}>Plain</button>
+        <button type="button" aria-pressed={symbolStyle==='shaded'} className={symbolStyle==='shaded'?'is-active':''} onClick={()=>onSymbolStyleChange?.('shaded')} disabled={disabled||!onSymbolStyleChange}>Shaded</button>
+      </div>
+      <label className="dz-symbol-color" title="Choose symbol colour"><span>Colour</span><input type="color" value={/^#[\da-f]{6}$/i.test(symbolColor)?symbolColor:'#73578f'} onChange={event=>onSymbolColorChange?.(event.target.value)} disabled={disabled||!onSymbolColorChange} aria-label="Symbol colour"/></label>
+    </div>
     <div className="dz-symbol-browse" role="group" aria-label="Browse map symbols">
       {([['all','All'],['recent','Recent'],['favourites','Favourites']] as [Category,string][]).map(([key,name])=><button type="button" key={key} aria-pressed={category===key} className={category===key?'is-active':''} onClick={()=>{setCategory(key);setCategoriesOpen(false);}}>{name}</button>)}
       <button type="button" className={`dz-symbol-browse-toggle${MAP_SYMBOL_CATEGORIES.some(group=>group.key===category)?' is-active':''}`} aria-expanded={categoriesOpen} aria-controls={categoriesId} onClick={()=>setCategoriesOpen(open=>!open)}>{MAP_SYMBOL_CATEGORIES.find(group=>group.key===category)?.name||'Categories'} <span aria-hidden="true">⌄</span></button>
@@ -59,9 +73,9 @@ export default function MapSymbolLibrary({selectedKey,onSelect,disabled=false,dr
     <div className="dz-symbol-results" role="group" aria-label="Map symbols">
       {matches.map(symbol=>{
         const group=MAP_SYMBOL_CATEGORIES.find(item=>item.key===symbol.category);
-        return <div className="dz-symbol-tile" key={symbol.key} style={{'--symbol-accent':group?.colour||'#758793'} as CSSProperties}>
+        return <div className="dz-symbol-tile" key={symbol.key} style={{'--symbol-accent':symbolColor||group?.colour||'#758793'} as CSSProperties}>
           <button type="button" className={`dz-symbol-choice${selectedKey===symbol.key?' is-selected':''}`} onClick={()=>select(symbol.key)} onDragStart={event=>startDrag(event,symbol.key)} draggable={!disabled&&draggable} disabled={disabled} aria-pressed={selectedKey===symbol.key} aria-label={`${symbol.name}${draggable?', drag onto map or click to select':''}`}>
-            <span className="dz-symbol-art"><MapSymbolIcon symbolKey={symbol.key}/></span><span className="dz-symbol-name">{symbol.name}</span>
+            <span className={`dz-symbol-art dz-symbol-art--${symbolStyle}`}><MapSymbolIcon symbolKey={symbol.key}/></span><span className="dz-symbol-name">{symbol.name}</span>
           </button>
           <button type="button" className={`dz-symbol-star${favourites.includes(symbol.key)?' is-favourite':''}`} onClick={()=>toggleFavourite(symbol.key)} aria-label={`${favourites.includes(symbol.key)?'Remove':'Add'} ${symbol.name} ${favourites.includes(symbol.key)?'from':'to'} favourites`} aria-pressed={favourites.includes(symbol.key)} title={favourites.includes(symbol.key)?'Remove from favourites':'Add to favourites'}>{favourites.includes(symbol.key)?'★':'☆'}</button>
         </div>;

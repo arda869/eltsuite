@@ -15,7 +15,7 @@ export type MapItemKind = 'road' | 'river' | 'footpath' | 'wall' | 'fence' | 'zo
 export type MapItem = {
   id: string; kind: MapItemKind; x?: number; y?: number; w?: number; h?: number;
   points?: Point[]; label?: string; icon?: string; fill?: string; dashed?: boolean; rotation?: number; hidden?: boolean; locked?: boolean;
-  groupId?: string;
+  groupId?: string; iconStyle?: 'plain' | 'shaded'; iconColor?: string;
 };
 export type MapFigure = { kind: 'map'; title: string; items: MapItem[]; ink?: string; paper?: string; showBorder?: boolean; backgroundImage?: string; backgroundOpacity?: number; backgroundFit?: 'contain'|'cover'; backgroundOffsetX?: number; backgroundOffsetY?: number; backgroundLocked?: boolean };
 export type Figure = ChartFigure | MapFigure;
@@ -136,6 +136,8 @@ function icon(g:CanvasRenderingContext2D,key:string,x:number,y:number,s:number,c
   g.restore();
 }
 const mapBox={x:40,y:88,w:920,h:570};
+function symbolColor(value:string|undefined,fallback:string){return value&&/^#[\da-f]{6}$/i.test(value)?value:fallback;}
+function symbolTint(hex:string,alpha:number){const n=parseInt(hex.slice(1),16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`;}
 export function drawMap(g:CanvasRenderingContext2D,f:MapFigure,background?:CanvasImageSource){
   g.fillStyle=f.paper||'#fff';g.fillRect(0,0,1000,720);label(g,f.title||'Map title',500,43,31,'center',700,f.ink||ink);
   const b=mapBox;const C=f.ink||ink;
@@ -171,7 +173,19 @@ export function drawMap(g:CanvasRenderingContext2D,f:MapFigure,background?:Canva
     else if(item.kind==='marker'){g.beginPath();g.arc(x,y,17,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle=C;g.lineWidth=2;g.stroke();}
     else if(item.kind==='tree'){icon(g,'tree',x-symbolSize/2,y-symbolSize/2,symbolSize,'#56806e');}
     else if(item.kind==='gate'){line(g,[{x:x-22,y:y-14},{x:x-22,y:y+14}],C,3);line(g,[{x:x+22,y:y-14},{x:x+22,y:y+14}],C,3);}
-    else if(item.kind==='icon'){g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#bcb5be';g.lineWidth=2;g.stroke();icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,C);}
+    else if(item.kind==='icon'){
+      const color=symbolColor(item.iconColor,C);
+      if(item.iconStyle==='plain'){
+        icon(g,item.icon||'information',x-symbolSize*.46,y-symbolSize*.46,symbolSize*.92,color);
+      }else if(item.iconStyle==='shaded'){
+        g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle=symbolTint(color,.2);g.fill();g.strokeStyle=symbolTint(color,.55);g.lineWidth=2;g.stroke();
+        icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,color);
+      }else{
+        // Older maps keep their original outlined symbol treatment.
+        g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#bcb5be';g.lineWidth=2;g.stroke();
+        icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,color);
+      }
+    }
     g.restore();
     if(item.label){
       if(item.kind==='label'&&item.rotation){g.save();g.translate(x,y);g.rotate(item.rotation*Math.PI/180);g.translate(-x,-y);}
