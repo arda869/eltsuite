@@ -3296,6 +3296,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 /* Pictures in tasks: side by side in a line, with an optional label in the top-right corner */
 .pic { position: relative; display: inline-block; vertical-align: top; margin: 4px 10px 8px 0; border-radius: 12px; overflow: hidden; line-height: 0; }
 .pic img { display: block; width: 100%; height: auto; }
+/* The editor's general image limit is for loose images, not resizable task pictures. */
+.doc .ProseMirror .pic img { max-width: 100%; margin: 0; }
 .pic-s { width: 180px; max-width: 100%; } .pic-m { width: 300px; max-width: 100%; } .pic-l { width: 460px; max-width: 100%; } .pic-full { width: 100%; margin-right: 0; }
 .pic-node:has(.pic-full) { display: block; }
 .pic-wait { display: block; aspect-ratio: 4 / 3; background: var(--page, #f4f4f5); }
