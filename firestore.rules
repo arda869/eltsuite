@@ -551,7 +551,7 @@ service cloud.firestore {
         allow create, update: if teachesClass(classId)
           && request.resource.data.keys().hasOnly(['script', 'aiGenerated', 'updatedAt'])
           && request.resource.data.get('aiGenerated', false) == true
-          && request.resource.data.script is list && request.resource.data.script.size() <= 100;
+          && request.resource.data.script is list && request.resource.data.script.size() <= 2000;
         allow delete: if teachesClass(classId);
       }
 

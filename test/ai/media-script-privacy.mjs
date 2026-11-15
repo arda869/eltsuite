@@ -44,6 +44,10 @@ try{
  await assertFails(setDoc(doc(teacher,mediaPath('new_ai_manifest')),{kind:'audio',aiGenerated:true,script,size:0,public:false}));
  await assertFails(updateDoc(doc(teacher,mediaPath(aiId)),{script}));
  await assertFails(setDoc(doc(learner,scriptPath('learner-write')),{script,aiGenerated:true,updatedAt:Date.now()}));
+ const longTeacherEdit=Array.from({length:150},(_,index)=>({t:null,text:`Line ${index+1} for a long teacher-edited transcript.`}));
+ await assertSucceeds(setDoc(doc(teacher,scriptPath(aiId)),{script:longTeacherEdit,aiGenerated:true,updatedAt:Date.now()}));
+ assert.equal((await getDoc(doc(teacher,scriptPath(aiId)))).data().script.length,150);
+ await assertFails(getDoc(doc(learner,scriptPath(aiId))));
 
  // A previously generated recording is copied to private storage before its public
  // transcript is removed; the authorized teacher can still retrieve the same words.
