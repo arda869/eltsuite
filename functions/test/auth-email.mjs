@@ -119,7 +119,33 @@ test('an unknown address gets no link, and sign-in links retain the existing ret
   assert.equal(jobs(db).length, 0);
 });
 
-test('a transient SMTP failure is retried later without saving a link or sending concurrently', async () => {
+test('a pre-send Auth failure is retried later without saving an action link', async () => {
+  const db = fakeDb();
+  await queueAuthEmail(db, { kind: 'reset', email: 'teacher@example.com' }, '127.0.0.1');
+  const jobRef = db.doc(jobs(db)[0][0]);
+  let generations = 0;
+  let sends = 0;
+  const options = {
+    db, jobRef,
+    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => {
+      generations += 1;
+      if (generations === 1) throw new Error('Temporary Auth failure');
+      return 'https://example.com/reset?token=secret';
+    } },
+    send: async () => { sends += 1; },
+  };
+  assert.equal(await deliverAuthEmailJob(options), 'retry-scheduled');
+  assert.equal(jobs(db)[0][1].status, 'retry');
+  assert.equal(jobs(db)[0][1].attempts, 1);
+  assert.equal(await deliverAuthEmailJob(options), 'not-due-or-complete');
+  assert.equal(sends, 0);
+  assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(jobs(db)[0][1].nextAttemptAt.getTime() + 1) }), 'sent');
+  assert.equal(sends, 1);
+  assert.equal(jobs(db).length, 0);
+  assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);
+});
+
+test('an ambiguous SMTP failure is never retried even after the claim lease', async () => {
   const db = fakeDb();
   await queueAuthEmail(db, { kind: 'reset', email: 'teacher@example.com' }, '127.0.0.1');
   const jobRef = db.doc(jobs(db)[0][0]);
@@ -127,16 +153,36 @@ test('a transient SMTP failure is retried later without saving a link or sending
   const options = {
     db, jobRef,
     auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => 'https://example.com/reset?token=secret' },
-    send: async () => { sends += 1; if (sends === 1) throw new Error('SMTP failure'); },
+    send: async () => { sends += 1; throw new Error('SMTP accepted then acknowledgement was lost'); },
   };
-  assert.equal(await deliverAuthEmailJob(options), 'retry-scheduled');
-  assert.equal(jobs(db)[0][1].status, 'retry');
-  assert.equal(jobs(db)[0][1].attempts, 1);
-  assert.equal(await deliverAuthEmailJob(options), 'not-due-or-complete');
+  assert.equal(await deliverAuthEmailJob(options), 'delivery-uncertain');
+  assert.equal(jobs(db)[0][1].status, 'uncertain');
+  assert.equal(jobs(db)[0][1].nextAttemptAt, null);
+  assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(Date.now() + 11 * 60_000) }), 'not-due-or-complete');
   assert.equal(sends, 1);
-  assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(jobs(db)[0][1].nextAttemptAt.getTime() + 1) }), 'sent');
-  assert.equal(sends, 2);
-  assert.equal(jobs(db).length, 0);
+  assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);
+});
+
+test('a failed post-send status write cannot make a delivered email retryable', async () => {
+  const db = fakeDb();
+  await queueAuthEmail(db, { kind: 'link', email: 'teacher@example.com' }, '127.0.0.1');
+  const jobRef = db.doc(jobs(db)[0][0]);
+  const update = jobRef.update;
+  jobRef.update = async data => {
+    if (data.status === 'sent') throw new Error('Firestore acknowledgement lost');
+    return update(data);
+  };
+  let sends = 0;
+  const options = {
+    db, jobRef,
+    auth: { getUserByEmail: async () => ({ disabled: false }), generateSignInWithEmailLink: async () => 'https://example.com/signin?token=secret' },
+    send: async () => { sends += 1; },
+  };
+  assert.equal(await deliverAuthEmailJob(options), 'accepted-status-pending');
+  assert.equal(jobs(db)[0][1].status, 'sending');
+  assert.equal(jobs(db)[0][1].nextAttemptAt, null);
+  assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(Date.now() + 11 * 60_000) }), 'not-due-or-complete');
+  assert.equal(sends, 1);
   assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);
 });
 
@@ -162,14 +208,14 @@ test('two overlapping workers claim one job only once', async () => {
   assert.equal(sends, 1);
 });
 
-test('failed jobs stop after three attempts', async () => {
+test('failed pre-send preparation stops after three attempts', async () => {
   const db = fakeDb();
   await queueAuthEmail(db, { kind: 'reset', email: 'teacher@example.com' }, '127.0.0.1');
   const jobRef = db.doc(jobs(db)[0][0]);
   const options = {
     db, jobRef,
-    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => 'https://example.com/reset' },
-    send: async () => { throw new Error('SMTP failure'); },
+    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => { throw new Error('Temporary Auth failure'); } },
+    send: async () => { assert.fail('SMTP must never start when preparation fails'); },
   };
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const now = attempt === 1 ? new Date() : new Date(jobs(db)[0][1].nextAttemptAt.getTime() + 1);

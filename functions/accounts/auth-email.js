@@ -46,7 +46,11 @@ export const deliverAccountEmail = onDocumentCreated({
       jobRef: event.data.ref,
       send: message => mail.sendMail({ from: process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>', ...message }),
     });
-    console.log('Account email delivery:', result);
+    if (['delivery-uncertain', 'accepted-status-pending'].includes(result)) {
+      // The job ID is safe to log; its stored record contains no action link.
+      // This needs reconciliation, never an automatic second send.
+      console.error('Account email needs delivery reconciliation:', event.params.jobId, result);
+    } else console.log('Account email delivery:', result);
   } catch (error) {
     // Never log a generated action link, an address or an SMTP diagnostic that
     // could contain either. A new request can be made if this attempt failed.
@@ -57,8 +61,8 @@ export const deliverAccountEmail = onDocumentCreated({
 });
 
 // The creation event is fast, while this sweep picks up transient SMTP/Auth
-// failures and jobs stranded by a worker restart. The transaction in
-// deliverAuthEmailJob prevents concurrent sends of the same job.
+// preparation failures and jobs stranded before SMTP starts. Once sending
+// begins, the job is non-retryable even if SMTP acknowledgement is ambiguous.
 export const retryAccountEmails = onSchedule({
   schedule: '* * * * *',
   region: 'us-central1',
@@ -91,7 +95,9 @@ export const retryAccountEmails = onSchedule({
           });
           if (state === 'sent') result.sent += 1;
           else if (state === 'retry-scheduled') result.retried += 1;
-          else result.skipped += 1;
+          else if (['delivery-uncertain', 'accepted-status-pending'].includes(state)) {
+            console.error('Account email needs delivery reconciliation:', job.id, state);
+          } else result.skipped += 1;
         } catch (error) {
           console.error('Account email retry failed:', error?.code || 'unknown');
         }
