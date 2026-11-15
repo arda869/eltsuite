@@ -13,7 +13,7 @@ car	Car hire	transport	bespoke:carhire	Passenger car with a key above the roof.
 plane	Airport	transport	bespoke:airportterminal	Aircraft silhouette above runway markings.
 checkin	Check-in	wayfinding	lucide:clipboard-check	Checked registration clipboard.
 baggage	Bag drop	wayfinding	lucide:luggage	Suitcase with handle and wheels.
-tower	Tower	buildings	lucide:radio-tower	Tapering communications tower.
+tower	Tower	buildings	bespoke:tower	Stone observation tower with a roof, window and doorway.
 castle	Castle	heritage	lucide:castle	Battlements and a central gate.
 museum	Museum	heritage	lucide:landmark	Classical portico with columns.
 factory	Factory	buildings	lucide:factory	Industrial roof and chimneys.
@@ -135,7 +135,7 @@ loading	Loading bay	transport	bespoke:loadingbay	Warehouse loading door, parcel 
 delivery	Delivery point	transport	lucide:package-open	Open delivery parcel.
 shipping	Shipping area	transport	lucide:container	Freight container.
 landmark	Landmark	heritage	lucide:map-pinned	Map with distinguished location pin.
-historicsite	Historic site	heritage	lucide:scroll-text	Historic scroll document.
+historicsite	Historic site	heritage	bespoke:historicsite	Ancient columned landmark inside a location pin.
 archaeology	Archaeological site	heritage	lucide:pickaxe	Excavation pickaxe.
 ruins	Ruins	heritage	bespoke:ruins	Broken columns and fallen stone.
 statue	Statue	heritage	bespoke:statue	Bust on pedestal.
@@ -161,7 +161,7 @@ parcel	Parcel collection	services	lucide:package	Closed parcel.
 ambulance	Ambulance bay	safety	bespoke:ambulancebay	Medical vehicle parked in a marked bay.
 defib	Defibrillator	safety	bespoke:defibrillator	AED cabinet with heart and electric bolt.
 vaccination	Vaccination centre	safety	bespoke:vaccinationcentre	Medical building with cross and vaccine needle.
-firealarm	Fire alarm	safety	lucide:alarm-smoke	Alarm and smoke.
+firealarm	Fire alarm	safety	bespoke:firealarm	Wall alarm with bell, pull panel and sound rays.
 firehydrant	Fire hydrant	safety	bespoke:firehydrant	Hydrant barrel with side nozzles.
 lifejacket	Life jackets	safety	bespoke:lifejacket	Wearable vest with collar and fasteners.
 lifeguard	Lifeguard	safety	bespoke:lifeguard	Raised lifeguard chair.

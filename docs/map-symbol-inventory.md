@@ -18,7 +18,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 12 | transport | Airport (`plane`) | bespoke:airportterminal | Aircraft silhouette above runway markings. |
 | 13 | wayfinding | Check-in (`checkin`) | lucide:clipboard-check | Checked registration clipboard. |
 | 14 | wayfinding | Bag drop (`baggage`) | lucide:luggage | Suitcase with handle and wheels. |
-| 15 | buildings | Tower (`tower`) | lucide:radio-tower | Tapering communications tower. |
+| 15 | buildings | Tower (`tower`) | bespoke:tower | Stone observation tower with a roof, window and doorway. |
 | 16 | heritage | Castle (`castle`) | lucide:castle | Battlements and a central gate. |
 | 17 | heritage | Museum (`museum`) | lucide:landmark | Classical portico with columns. |
 | 18 | buildings | Factory (`factory`) | lucide:factory | Industrial roof and chimneys. |
@@ -139,7 +139,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 133 | transport | Delivery point (`delivery`) | lucide:package-open | Open delivery parcel. |
 | 134 | transport | Shipping area (`shipping`) | lucide:container | Freight container. |
 | 135 | heritage | Landmark (`landmark`) | lucide:map-pinned | Map with distinguished location pin. |
-| 136 | heritage | Historic site (`historicsite`) | lucide:scroll-text | Historic scroll document. |
+| 136 | heritage | Historic site (`historicsite`) | bespoke:historicsite | Ancient columned landmark inside a location pin. |
 | 137 | heritage | Archaeological site (`archaeology`) | lucide:pickaxe | Excavation pickaxe. |
 | 138 | heritage | Ruins (`ruins`) | bespoke:ruins | Broken columns and fallen stone. |
 | 139 | heritage | Statue (`statue`) | bespoke:statue | Bust on pedestal. |
@@ -165,7 +165,7 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 159 | safety | Ambulance bay (`ambulance`) | bespoke:ambulancebay | Medical vehicle parked in a marked bay. |
 | 160 | safety | Defibrillator (`defib`) | bespoke:defibrillator | AED cabinet with heart and electric bolt. |
 | 161 | safety | Vaccination centre (`vaccination`) | bespoke:vaccinationcentre | Medical building with cross and vaccine needle. |
-| 162 | safety | Fire alarm (`firealarm`) | lucide:alarm-smoke | Alarm and smoke. |
+| 162 | safety | Fire alarm (`firealarm`) | bespoke:firealarm | Wall alarm with bell, pull panel and sound rays. |
 | 163 | safety | Fire hydrant (`firehydrant`) | bespoke:firehydrant | Hydrant barrel with side nozzles. |
 | 164 | safety | Life jackets (`lifejacket`) | bespoke:lifejacket | Wearable vest with collar and fasteners. |
 | 165 | safety | Lifeguard (`lifeguard`) | bespoke:lifeguard | Raised lifeguard chair. |
