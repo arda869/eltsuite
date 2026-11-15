@@ -160,6 +160,23 @@ try {
     assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 't1' }),
   ]);
   assert.equal((await admin.doc('classes/c1/answers/t1_learner').get()).get('attempts'), 1, 'concurrent checks must count once');
+  await admin.doc('classes/c1/items/i1/tasks/tunknown').set({
+    kind: 'task', hidden: false, locked: false, afterCheck: 'retry',
+    content: { type: 'doc', content: [{ type: 'gap', attrs: { id: 'known' } }, { type: 'gap', attrs: { id: 'unknown' } }] },
+  });
+  await admin.doc('classes/c1/items/i1/tasks/tunknown/private/key').set({
+    known: { kind: 'gap', answers: ['Saturday'] }, unknown: { kind: 'gap', answers: [] },
+  });
+  await admin.doc('classes/c1/answers/tunknown_learner').set({
+    learnerUid: 'learner', learnerId: 'one', itemId: 'i1', taskId: 'tunknown',
+    responses: { known: 'Saturday', unknown: 'Tuesday' }, checked: false,
+  });
+  await assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 'tunknown' });
+  const unknownChecked = (await admin.doc('classes/c1/answers/tunknown_learner').get()).data();
+  assert.equal(unknownChecked.score, 1);
+  assert.equal(unknownChecked.total, 1, 'a blank key must not count against the learner');
+  const unknownReset = await assessTaskForLearner(admin, { uid: 'learner' }, { classId: 'c1', itemId: 'i1', taskId: 'tunknown', action: 'reset' });
+  assert.deepEqual(unknownReset.responses, { known: 'Saturday', unknown: 'Tuesday' }, 'retrying wrong answers must preserve unmarked responses');
   await admin.doc('classes/c1/items/i1/tasks/tparts').set({
     kind: 'task', hidden: false, locked: false,
     content: { type: 'doc', content: [

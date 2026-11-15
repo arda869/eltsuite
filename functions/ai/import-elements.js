@@ -12,8 +12,10 @@ export function importRequirements(elements=[]){
   const missingKey=['gap','shortAnswer','lettergap','wordform'].includes(e.kind)&&!d.answers?.some(a=>a.trim())
    ||['radio','dropdown','truefalse','notgiven','drop'].includes(e.kind)&&!String(d.answer??'').trim()
    ||e.kind==='multi'&&!d.answers?.length
-   ||e.kind==='dialogue'&&d.turns?.some(turn=>turn.answers.some(a=>!a.trim()))
-   ||e.kind==='table'&&[d.headers,...d.rows].flat().join('\n').includes('___')&&d.answers?.some(a=>!a.trim());
+   ||e.kind==='match'&&d.pairs?.some(pair=>!pair.right.trim())
+   ||e.kind==='pq-matching'&&d.statements?.some(statement=>statement.answer<0)
+   ||e.kind==='dialogue'&&d.turns?.some(turn=>{const gaps=(turn.text.match(/___/g)||[]).length;return gaps>0&&(turn.answers.length!==gaps||turn.answers.some(a=>!a.trim()));})
+   ||e.kind==='table'&&(()=>{const gaps=[d.headers,...d.rows].flat().join('\n').split('___').length-1;return gaps>0&&(d.answers?.length!==gaps||d.answers.some(a=>!a.trim()));})();
   if(missingKey)explicit.push('Add the missing answer key before making this task visible.');
   if(e.kind==='picture'&&!e.data.asset)return [...explicit,'Recreate and review the source illustration before making this task visible.'];
   if(e.kind==='pq-label'&&e.data.image.startsWith('picture:'))return [...explicit,'Check label positions on the recreated illustration in the task editor before making it visible.'];
@@ -61,7 +63,7 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
    const speakers=[...new Set(d.turns.map(turn=>turn.speaker.trim()))];
    nodes=[...paragraphs(e.prompt),{type:'dialogue',attrs:{speakers,layout:d.layout},content:d.turns.map((turn,turnIndex)=>{
     const pieces=turn.text.split('___');
-    const content=pieces.flatMap((part,gapIndex)=>gapIndex?[{type:'gap',attrs:{id:id+'_gap'+turnIndex+'_'+(gapIndex-1),answers:[turn.answers[gapIndex-1]],feedback:e.feedback||''}},...textNodes(part)]:textNodes(part));
+    const content=pieces.flatMap((part,gapIndex)=>gapIndex?[{type:'gap',attrs:{id:id+'_gap'+turnIndex+'_'+(gapIndex-1),answers:[turn.answers[gapIndex-1]??''],feedback:e.feedback||''}},...textNodes(part)]:textNodes(part));
     return {type:'dialogueLine',attrs:{who:speakers.indexOf(turn.speaker.trim())},content};
    })}];
   }

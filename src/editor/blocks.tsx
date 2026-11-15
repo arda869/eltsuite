@@ -198,6 +198,14 @@ function MatchView(props: NodeViewProps) {
               enterKeyHint="next"
               autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
               onChange={(e) => setPair(i, { right: e.target.value })}
+              onBlur={(e) => {
+                const match = e.currentTarget.value.trim();
+                const option = extras.findIndex((value) => value === match);
+                if (option < 0) return;
+                const remaining = extras.filter((_, index) => index !== option);
+                setExtraText(remaining.join(', '));
+                updateAttributes({ extras: remaining });
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -215,10 +223,10 @@ function MatchView(props: NodeViewProps) {
         </button>
       </div>
       <label className="inline-field">
-        Extra answers
-        <input aria-label="Answers that match nothing, separated by commas"
+        Unpaired right-side options
+        <input aria-label="Unpaired right-side options, separated by commas"
           value={extraText}
-          placeholder="Answers that match nothing, separated by commas"
+          placeholder="Options or distractors, separated by commas"
           onChange={(e) => setExtraText(e.target.value)}
           onBlur={() => updateAttributes({ extras: extraText.split(',').map((x) => x.trim()).filter(Boolean) })}
         />

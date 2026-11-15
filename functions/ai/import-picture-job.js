@@ -27,6 +27,7 @@ export async function rebuildPicture(req,{db,uid,cls,apiKey,model}){
  if(j.get('createdItemId'))throw new HttpsError('failed-precondition','This import was already added. Recreate a picture from a new import.');
  const source=await readImportSource(job),original=source?.images[spec.sourceImage-1];
  if(!original)throw new HttpsError('invalid-argument','That source picture preview is unavailable. Choose a supplied page image.');
+ if(source.answerKeyImageStart!==undefined&&spec.sourceImage>source.answerKeyImageStart)throw new HttpsError('invalid-argument','Choose an illustration from the worksheet, not an answer-key page.');
  const policy=await usageContext(db,req.auth),month=new Date().toISOString().slice(0,7),budget=db.doc((policy.isAdmin?'aiAdminBudgets/':'aiBudgets/')+month),deadline=Date.now()+350000;
  const acquired=await db.runTransaction(async tx=>{
   const [p,b,c,u,a,g]=await Promise.all([tx.get(ref),tx.get(budget),tx.get(cls.ref),tx.get(db.doc(`users/${uid}`)),tx.get(db.doc(`accounts/${uid}`)),tx.get(db.doc(`aiPilot/${uid}`))]);

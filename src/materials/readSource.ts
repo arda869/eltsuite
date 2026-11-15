@@ -1,5 +1,5 @@
 import { unzipSync,strFromU8 } from 'fflate';
-export type MaterialSource={name:string;text:string;images:string[];imageLabels?:string[];warnings:string[]};
+export type MaterialSource={name:string;text:string;images:string[];imageLabels?:string[];answerKeyImageStart?:number;warnings:string[]};
 export const ACCEPT='.pdf,.docx,.pptx,.xlsx,.txt,.md,.csv,.html,.htm,.png,.jpg,.jpeg,.webp';
 const MAX=20*1024*1024;
 function checkText(text:string){if(text.length>30000)throw Error('These materials contain more than 30,000 characters. Choose fewer pages or paste the task you need.');return text;}

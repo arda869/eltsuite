@@ -426,9 +426,10 @@ export function scorePack(e: PackKey, r: any): { got: number; max: number } {
     case 'gapped':
     case 'matching': {
       const a = arr(r);
-      return { got: k.map.filter((m: number, i: number) => a[i] === m && m >= 0).length, max: k.map.length };
+      return { got: k.map.filter((m: number, i: number) => a[i] === m && m >= 0).length, max: k.map.filter((m: number) => m >= 0).length };
     }
     case 'transform': {
+      if (!(k.answers ?? []).some((answer: string) => answer.trim())) return { got: 0, max: 0 };
       const v = norm(r ?? '');
       return { got: v && (k.answers ?? []).some((a: string) => norm(a) === v) ? 1 : 0, max: 1 };
     }
@@ -450,12 +451,13 @@ export function scorePack(e: PackKey, r: any): { got: number; max: number } {
     case 'speaking':
       return { got: 0, max: 0 };
     case 'dictation': {
+      if (!String(k.sentence ?? '').trim()) return { got: 0, max: 0 };
       const d = diffWords(k.sentence ?? '', typeof r === 'string' ? r : '');
       return { got: d.got, max: d.max };
     }
     case 'pairs': {
       const a = arr(r);
-      return { got: (k.map ?? []).filter((m: number, i: number) => a[i] === m && m >= 0).length, max: (k.map ?? []).length };
+      return { got: (k.map ?? []).filter((m: number, i: number) => a[i] === m && m >= 0).length, max: (k.map ?? []).filter((m: number) => m >= 0).length };
     }
     case 'crossword': {
       // r: letters per cell, keyed "row,col"

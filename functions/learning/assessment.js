@@ -66,7 +66,7 @@ export async function assessTaskForLearner(db, auth, data, now = Date.now()) {
       const kept = {};
       if (!all) for (const q of questions) {
         const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
-        if ((score.max > 0 && score.got === score.max) || q.type === 'writing')
+        if (score.max === 0 || score.got === score.max || q.type === 'writing')
           if (Object.hasOwn(responses, q.id)) kept[q.id] = responses[q.id];
       }
       tx.update(answerRef, { responses: kept, checked: false, checkedParts: [], score: FieldValue.delete(), total: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() });
