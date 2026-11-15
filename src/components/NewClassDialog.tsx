@@ -5,6 +5,7 @@ import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { classDefaults, currentOrg, isTrainerIn, useAccount, type Account } from '../lib/admin';
 import { LimitError } from '../lib/limitError';
 import { LevelPicker } from './LevelPicker';
+import { SuggestionInput } from './SuggestionInput';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
@@ -64,12 +65,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
         ) : (
           <label className="field">
             Course
-            <input value={course} onChange={(e) => {setCourse(e.target.value);setTrainingProfile(profileFromClass(null,e.target.value));}} list="tt-courses" placeholder="For example: CELTA, Delta Module 2, in-service training" />
-            <datalist id="tt-courses">
-              {['CELTA', 'CertTESOL', 'Delta Module 1', 'Delta Module 2', 'Delta Module 3', 'DipTESOL', 'TKT', 'In-service training', 'MA TESOL'].map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            <SuggestionInput value={course} onChange={(next) => {setCourse(next);setTrainingProfile(profileFromClass(null,next));}} suggestions={['CELTA', 'CertTESOL', 'Delta Module 1', 'Delta Module 2', 'Delta Module 3', 'DipTESOL', 'TKT', 'In-service training', 'MA TESOL']} placeholder="For example: CELTA, Delta Module 2, in-service training" aria-label="Course" />
           </label>
         )}
 <details open={kind==='training'}><summary>{kind==='training'?'Training profile':'Learning profile'}</summary>{kind==='training'?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setCourse(v.programme);}}/>:<ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}</details>
