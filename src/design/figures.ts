@@ -173,7 +173,11 @@ export function drawMap(g:CanvasRenderingContext2D,f:MapFigure,background?:Canva
     else if(item.kind==='gate'){line(g,[{x:x-22,y:y-14},{x:x-22,y:y+14}],C,3);line(g,[{x:x+22,y:y-14},{x:x+22,y:y+14}],C,3);}
     else if(item.kind==='icon'){g.beginPath();g.arc(x,y,symbolSize*.55,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#bcb5be';g.lineWidth=2;g.stroke();icon(g,item.icon||'information',x-symbolSize*.4,y-symbolSize*.4,symbolSize*.8,C);}
     g.restore();
-    if(item.label)label(g,item.label,x,item.kind==='marker'?y:y+(item.kind==='icon'?42:item.kind==='tree'?30:0),item.kind==='marker'?18:16,'center',item.kind==='marker'?700:500,C);
+    if(item.label){
+      if(item.kind==='label'&&item.rotation){g.save();g.translate(x,y);g.rotate(item.rotation*Math.PI/180);g.translate(-x,-y);}
+      label(g,item.label,x,item.kind==='marker'?y:y+(item.kind==='icon'?42:item.kind==='tree'?30:0),item.kind==='marker'?18:16,'center',item.kind==='marker'?700:500,C);
+      if(item.kind==='label'&&item.rotation)g.restore();
+    }
   }
 }
 export function drawFigure(g:CanvasRenderingContext2D,f:Figure,w:number,h:number,background?:CanvasImageSource){g.save();g.scale(w/(f.kind==='chart'?800:1000),h/(f.kind==='chart'?560:720));if(f.kind==='chart')drawChart(g,f);else drawMap(g,f,background);g.restore();}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { El } from './model';
 import type { Ctx } from './Editor';
 import { CHART_PALETTE, drawFigure, type ChartFigure } from './figures';
@@ -19,7 +20,7 @@ export function FigureProps({cx,e,set}:{cx:Ctx;e:El;set:(p:Partial<El>,key?:stri
       <button type="button" className="dz-figure-open" onClick={()=>setOpenEditor(true)}>{f.kind==='chart'?'Edit chart data and style':'Edit map and symbols'} ↗</button>
       <p className="hint">The figure remains sharp in downloads and print.</p>
     </div>}
-    {editorOpen&&(f.kind==='chart'?<ChartEditor e={e} set={set} onClose={()=>setOpenEditor(false)}/>:<MapEditor cx={cx} e={e} set={set} onClose={()=>setOpenEditor(false)}/>)}
+    {editorOpen&&createPortal(f.kind==='chart'?<ChartEditor e={e} set={set} onClose={()=>setOpenEditor(false)}/>:<MapEditor cx={cx} e={e} set={set} onClose={()=>setOpenEditor(false)}/>,document.querySelector('.dz-figure-modal-root')||document.body)}
   </section>;
 }
 
