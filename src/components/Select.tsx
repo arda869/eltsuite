@@ -93,7 +93,21 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       e.stopPropagation();
       setOpen(false);
       btn.current?.focus();
-    } else if (e.key === 'Tab' && open) setOpen(false);
+    } else if (e.key === 'Tab' && open) {
+      // The choices live in a portal, away from the trigger in DOM order.
+      // Continue through the fields beside the trigger when leaving the menu.
+      const trigger = btn.current;
+      const scope = trigger?.closest('dialog, [role="dialog"]') ?? document;
+      const fields = Array.from(scope.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]'))
+        .filter((field) => field.tabIndex >= 0 && !field.matches(':disabled') && !field.closest('[inert]') && !list.current?.contains(field) && field.getClientRects().length > 0 && getComputedStyle(field).visibility !== 'hidden');
+      const index = trigger ? fields.indexOf(trigger) : -1;
+      const next = fields[index + (e.shiftKey ? -1 : 1)];
+      setOpen(false);
+      if (next) {
+        e.preventDefault();
+        next.focus();
+      }
+    }
     else if (!typing && e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
       // Short lists: type the first letters to jump, as in the browser's own drop-down.
       const now = Date.now();
