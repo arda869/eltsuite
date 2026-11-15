@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { generateSpeech } from '../speech/provider.js';
 import { canPlan } from './contract.js';
 import { mediaReservation, sameWords, wav } from './media-contract.js';
+import { mediaFailureMessage } from './media-error.js';
 const key=defineSecret('OPENAI_API_KEY');
 const PART=450*1024;
 export async function savePrepared(db,classId,mediaId,bytes,meta){
@@ -93,6 +94,6 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
   await ref.update({status:'ready',mediaId,completedAt:Timestamp.now(),error:''});
  }catch(error){
   markCostFailure();
-  await ref.update({status:'failed',error:error instanceof Error && error.code==='resource-exhausted'?error.message:String(error.message).includes('allowance')?'Monthly AI allowance reached.':String(error.message).includes('script')?'Audio did not match the script. Retry this recording.':'Media could not be prepared. Retry this asset.',failedAt:Timestamp.now()});
+  await ref.update({status:'failed',error:mediaFailureMessage(error),failedAt:Timestamp.now()});
  }
 }));
