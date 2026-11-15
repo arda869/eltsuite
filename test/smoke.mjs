@@ -1161,6 +1161,23 @@ const J = {
     await axe(s.p, 'Teacher account setup recovery', A11Y_FOUND);
     await s.p.getByRole('button', { name: 'Retry loading account' }).click();
     await see(s.p, '.hm', 'retry reloads the real teacher profile');
+    // The optional blank goal uses the same profile loader. Its first read can
+    // time out while the shared request remains pending; the next click must
+    // start a fresh read and still save the blank choice.
+    await s.p.goto(BASE + '/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).waitFor();
+    await s.p.evaluate(async id => {
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/' + id, count: 1, delay: 20000 }]));
+      const [{ ensureProfile }, { auth }] = await Promise.all([import('/src/lib/teacherProfile.ts'), import('/src/lib/firebase.ts')]);
+      void ensureProfile(auth.currentUser).catch(() => {});
+    }, uid);
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '[role="alert"]:has-text("Your choice is kept")', 'blank choice remains available after profile read timeout', 25000);
+    if (await s.p.locator('.hm').count()) throw Error('Timed-out blank goal opened home before its profile was confirmed');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'blank goal retry starts a fresh profile read', 15000);
+    const blankGoal = await s.p.evaluate(id => JSON.parse(localStorage.getItem('mockfs'))['users/' + id]?.teacherGoal, uid);
+    if (blankGoal !== '') throw Error('Retry lost the optional blank teacher goal');
     return s;
   },
   'Feature discovery is optional, private and based on completed workflows': async (b) => {
