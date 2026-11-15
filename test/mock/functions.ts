@@ -5,7 +5,23 @@ import { ref, set } from 'firebase/database';
 import { db, rtdb } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
+const mediaScriptSessions = new Map<string,number>();
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'mediaScriptAccess') {
+    const script = (await getDoc(doc(db,'classes',d.classId,'mediaScripts',d.mediaId))).data()?.script ?? [];
+    if (d.action === 'start') {
+      const duration = (await getDoc(doc(db,'classes',d.classId,'media',d.mediaId))).data()?.duration ?? 4;
+      const waitMs = Number(duration)*1000;
+      const session = crypto.randomUUID();
+      mediaScriptSessions.set(session,Date.now()+waitMs);
+      return {data:{mode:'after',session,waitMs}};
+    }
+    if (d.session) {
+      const waitMs = Math.max(0,(mediaScriptSessions.get(d.session) ?? Infinity)-Date.now());
+      return {data:{mode:'after',script:waitMs?[]:script,waitMs}};
+    }
+    return {data:{mode:'button',script}};
+  }
   if (name === 'manageCoachConversation') {
     const { getAuth } = await import('./auth');
     const uid = getAuth().currentUser?.uid;

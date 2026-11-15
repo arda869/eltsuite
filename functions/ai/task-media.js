@@ -30,7 +30,7 @@ export async function taskMediaContext({db, uid, cls, tasks, direction, title}) 
   const rank = text => [...terms(text)].filter(t=>wanted.has(t)).length;
   const audioDocs = new Map([...refs.flatMap(r=>r.docs), ...audio.docs].map(s=>[s.id,s]));
   const candidateAudio=[...audioDocs.values()].filter(s=>!s.get('video') && ['audio','link'].includes(s.get('kind')));
-  const privateScripts=new Map((await Promise.all(candidateAudio.filter(s=>s.get('aiGenerated')===true&&!s.get('script')?.length).map(async s=>{
+  const privateScripts=new Map((await Promise.all(candidateAudio.filter(s=>!s.get('script')?.length).map(async s=>{
     const privateDoc=await cls.ref.collection('mediaScripts').doc(s.id).get();
     return [s.id,privateDoc.get('script')??[]];
   }))));

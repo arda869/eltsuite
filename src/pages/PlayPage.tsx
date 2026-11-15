@@ -22,7 +22,7 @@ export function PlayPage() {
         ) : (
           <>
             {m?.title && <h1 className="play-title">{m.title}</h1>}
-            <MediaPlayer bare classId={classId} mediaId={mediaId} manifest={m} scriptMode={s && ['karaoke', 'after', 'button', 'none'].includes(s) ? s : 'karaoke'} />
+            <MediaPlayer bare classId={classId} mediaId={mediaId} itemId={q.get('i') || undefined} taskId={q.get('t') || undefined} qrGrant={q.get('g') || undefined} manifest={m} scriptMode={s && ['karaoke', 'after', 'button', 'none'].includes(s) ? s : 'karaoke'} />
           </>
         )}
       </main>

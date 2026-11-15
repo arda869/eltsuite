@@ -536,13 +536,13 @@ service cloud.firestore {
 
       // Short audio clips (recorded or uploaded by the teacher)
       match /media/{mediaId} {
-        // Ordinary resource scripts can accompany public QR playback. AI-generated listening
-        // transcripts are instead stored in mediaScripts, which learners cannot read.
+        // Audio/video metadata and chunks are readable for learners and printed QR codes.
+        // Scripts are stored separately and released according to the saved task's setting.
         allow read: if resource.data.get('public', false) == true || viewsClass(classId) || memberOf(classId);
         allow create: if teachesClass(classId) && hasRoom(classData(classId).teacherId) && request.resource.data.size < 700000
-          && (request.resource.data.get('aiGenerated', false) != true || !('script' in request.resource.data));
+          && !('script' in request.resource.data);
         allow update: if teachesClass(classId) && request.resource.data.get('size', 0) < 700000
-          && (request.resource.data.get('aiGenerated', false) != true || !('script' in request.resource.data));
+          && !('script' in request.resource.data);
         allow delete: if teachesClass(classId);
       }
 
@@ -550,8 +550,8 @@ service cloud.firestore {
         allow read: if teachesClass(classId);
         allow create, update: if teachesClass(classId)
           && request.resource.data.keys().hasOnly(['script', 'aiGenerated', 'updatedAt'])
-          && request.resource.data.get('aiGenerated', false) == true
-          && request.resource.data.script is list && request.resource.data.script.size() <= 100;
+          && request.resource.data.get('aiGenerated', false) is bool
+          && request.resource.data.script is list && request.resource.data.script.size() <= 2000;
         allow delete: if teachesClass(classId);
       }
 
@@ -724,6 +724,10 @@ service cloud.firestore {
     }
     // Copies of AI requests for the side-by-side model test: server only (functions/ai/capture.js).
     match /aiCaptures/{id=**} { allow read, write: if false; }
+    // A callable controls release of After listening scripts. The session is never
+    // client-readable or writable, including by a class member.
+    match /mediaScriptSessions/{id} { allow read, write: if false; }
+    match /mediaQrGrants/{id} { allow read, write: if false; }
     match /callReservationLimits/{id} { allow read, write: if false; }
     match /callActiveReservations/{id} { allow read, write: if false; }
     // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list

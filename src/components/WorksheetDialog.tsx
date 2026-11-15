@@ -116,7 +116,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     if (cls) coverMarkup(cls.cover, classId).then(setCover, () => setCover(''));
   }, [cls, classId]);
   const pictures = (items: WsItem[]) => sheetPictures(classId, items);
-  const sounds = (items: WsItem[]) => sheetSounds(classId, items, theme(cls?.themeColor).accent);
+  const sounds = (items: WsItem[]) => sheetSounds(classId, items, theme(cls?.themeColor).accent, itemId);
   const hasMedia = !!lesson && JSON.stringify(lesson.tasks).includes('"type":"media"');
   const print = async () => {
     const tasks = chosen();
