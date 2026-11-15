@@ -71,6 +71,21 @@ try {
   });
   assert.equal((await getDoc(newClass)).data()?.name, 'New class');
   assert.equal((await getDoc(unusedCode)).data()?.classId, newClass.id);
+  await admin.doc('orgs/test-pilots').set({ name: 'Test Pilots', teachers: { teacher: {} },
+    adminEmails: [], usage: { classes: 4 }, policy: {} });
+  const orgCode = doc(teacher, 'classCodes/ORG-567');
+  const orgClass = doc(teacher, 'classes/created-in-org-with-blank-options');
+  await runTransaction(teacher, async tx => {
+    assert.equal((await tx.get(orgCode)).exists(), false);
+    const org = await tx.get(doc(teacher, 'orgs/test-pilots'));
+    assert.equal(org.data()?.name, 'Test Pilots');
+    tx.set(orgClass, { teacherId: 'teacher', name: 'Organisation class', level: 'B1',
+      themeColor: 'teal', kind: 'language', classCode: 'ORG-567', status: 'active',
+      learnerCount: 0, meeting: null, org: 'test-pilots', lessonStyle: 'adult', createdAt: serverTimestamp() });
+    tx.set(orgCode, { classId: orgClass.id, teacherId: 'teacher', className: 'Organisation class',
+      roster: [], org: 'test-pilots', createdAt: serverTimestamp() });
+  });
+  assert.equal((await getDoc(orgClass)).data()?.org, 'test-pilots');
   const shownTopics = await getDocs(query(collection(learner, 'classes/c1/topics'), where('hidden', '==', false)));
   assert.deepEqual(shownTopics.docs.map(d => d.id), ['shown']);
   await denied('learner cannot read hidden topic metadata', () => getDoc(doc(learner, 'classes/c1/topics/secret')));
