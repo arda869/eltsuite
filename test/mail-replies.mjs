@@ -34,6 +34,7 @@ test('permanently invalid mail is marked seen, but a temporary database failure 
     message: parsed, uid: 10, uidValidity: 1,
     getThread: async () => ({ teacher: 't', learnerId: 'l', learnerUid: 'u', classId: 'c' }),
     getLearner: async () => learner,
+    getClass: async () => ({ teacherId: 't', status: 'active' }),
     post: async () => { posted++; return true; },
     markSeen: async () => { seen++; },
     ...overrides,
@@ -44,6 +45,7 @@ test('permanently invalid mail is marked seen, but a temporary database failure 
   assert.equal(seen, 3);
   assert.equal(posted, 0);
   await assert.rejects(route({ getThread: async () => { throw Error('Firestore unavailable'); } }), /Firestore unavailable/);
+  await assert.rejects(route({ getClass: async () => { throw Error('Class read unavailable'); } }), /Class read unavailable/);
   await assert.rejects(route({ post: async () => { throw Error('Write unavailable'); } }), /Write unavailable/);
   assert.equal(seen, 3);
   assert.equal(await route({}), 'posted');
@@ -51,8 +53,27 @@ test('permanently invalid mail is marked seen, but a temporary database failure 
   assert.equal(posted, 1);
 });
 
+test('a removed teacher cannot receive an old email thread even when teacherIds is stale', async () => {
+  let seen = 0, posted = 0;
+  const route = cls => handleIncomingReply({
+    message: parsed, uid: 10, uidValidity: 1,
+    getThread: async () => ({ teacher: 't', learnerId: 'l', learnerUid: 'u', classId: 'c' }),
+    getLearner: async () => learner,
+    getClass: async () => cls,
+    post: async () => { posted++; return true; },
+    markSeen: async () => { seen++; },
+  });
+  for (const cls of [null, { teacherId: 'other', teacherIds: ['t'], coTeachers: {} },
+    { teacherId: 'other', teacherIds: ['t'], coTeachers: { t: { role: 'viewer' } } },
+    { teacherId: 't', status: 'deleted' }]) assert.equal(await route(cls), 'ignored');
+  assert.equal(seen, 4);
+  assert.equal(posted, 0);
+  assert.equal(await route({ teacherId: 'other', coTeachers: { t: { role: 'co' } } }), 'posted');
+  assert.equal(posted, 1);
+});
+
 test('reprocessing after an IMAP flag failure does not duplicate the chat message', async () => {
-  const records = new Map();
+  const records = new Map([['classes/c', { teacherId: 't', status: 'active' }]]);
   const ref = path => ({ id: path.split('/').at(-1), path, collection: name => ({ doc: id => ref(path + '/' + name + '/' + id) }) });
   const db = {
     collection: name => ({ doc: id => ref(name + '/' + id) }),
@@ -73,6 +94,9 @@ test('reprocessing after an IMAP flag failure does not duplicate the chat messag
   assert.equal(await postEmailReply(db, thread, 'Tuesday works for me.', id, 101), false);
   assert.equal([...records.keys()].filter(path => path.includes('/msgs/')).length, 1);
   assert.equal(records.get('chats/dm_l_t').last.id, id);
+  records.set('classes/c', { teacherId: 'other', teacherIds: ['t'], coTeachers: {} });
+  assert.equal(await postEmailReply(db, thread, 'New reply', replyMessageId(token, { ...parsed, messageId: '<reply-2@example.com>' }, 11, 1)), false);
+  records.set('classes/c', { teacherId: 't', status: 'active' });
   records.set('chats/dm_l_t', { ...records.get('chats/dm_l_t'), classId: 'other' });
   await assert.rejects(postEmailReply(db, thread, 'New reply', replyMessageId(token, { ...parsed, messageId: '<reply-2@example.com>' }, 11, 1)), /no longer matches/);
 });

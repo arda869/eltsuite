@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 
 const address = value => String(value ?? '').trim().toLowerCase();
 const dmId = (a, b) => 'dm_' + [a, b].sort().join('_');
+const teacherStillTeaches = (cls, teacher) => Boolean(cls && cls.status !== 'deleted' &&
+  (cls.teacherId === teacher || cls.coTeachers?.[teacher]?.role === 'co'));
 
 // A reply must belong to one thread. Some mail servers retain the plus address,
 // while others deliver to the base mailbox and leave only the subject token.
@@ -38,7 +40,7 @@ export function replyMessageId(token, message, uid, uidValidity) {
 
 // Permanently invalid mail is handled once in the dedicated reply mailbox.
 // A database or post failure leaves it unread so the next run can retry it.
-export async function handleIncomingReply({ message, uid, uidValidity, getThread, getLearner, post, markSeen }) {
+export async function handleIncomingReply({ message, uid, uidValidity, getThread, getLearner, getClass, post, markSeen }) {
   const token = replyToken(message);
   const thread = token ? await getThread(token) : null;
   if (!thread?.learnerUid) {
@@ -47,6 +49,11 @@ export async function handleIncomingReply({ message, uid, uidValidity, getThread
   }
   const learner = await getLearner(thread.learnerUid);
   if (learner?.learnerId !== thread.learnerId || learner?.classId !== thread.classId || !replySenderMatches(message, learner)) {
+    await markSeen();
+    return 'ignored';
+  }
+  const cls = await getClass(thread.classId);
+  if (!teacherStillTeaches(cls, thread.teacher)) {
     await markSeen();
     return 'ignored';
   }
@@ -62,8 +69,11 @@ export async function postEmailReply(db, thread, text, messageId, at = Date.now(
   const id = dmId(thread.teacher, thread.learnerId);
   const ref = db.collection('chats').doc(id), messageRef = ref.collection('msgs').doc(messageId);
   return db.runTransaction(async tx => {
-    const [chat, existing] = await Promise.all([tx.get(ref), tx.get(messageRef)]);
+    const [chat, existing, classSnap] = await Promise.all([tx.get(ref), tx.get(messageRef), tx.get(db.collection('classes').doc(thread.classId))]);
     if (existing.exists) return false;
+    if (!classSnap.exists || !teacherStillTeaches({
+      teacherId: classSnap.get('teacherId'), coTeachers: classSnap.get('coTeachers'), status: classSnap.get('status'),
+    }, thread.teacher)) return false;
     if (chat.exists && (chat.get('classId') !== thread.classId ||
       !chat.get('members')?.includes(thread.teacher) || !chat.get('members')?.includes(thread.learnerId))) {
       throw Error('The email thread no longer matches this chat.');

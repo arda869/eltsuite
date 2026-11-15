@@ -173,6 +173,7 @@ if (replyEnabled) {
           message: p, uid: m.uid, uidValidity: client.mailbox?.uidValidity,
           getThread: async token => (await db.collection('mailThreads').doc(token).get()).data(),
           getLearner: async uid => (await db.collection('users').doc(uid).get()).data(),
+          getClass: async id => (await db.collection('classes').doc(id).get()).data(),
           post: (thread, text, messageId) => postEmailReply(db, thread, text, messageId),
           markSeen: () => client.messageFlagsAdd({ uid: m.uid }, ['\\Seen'], { uid: true }),
         });
