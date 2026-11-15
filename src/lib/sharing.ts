@@ -5,7 +5,7 @@ import { db } from './firebase';
 import { keyRef, notesRef, tasksCol } from './tasks';
 import { mediaDoc } from './media';
 import { mediaIds, remap } from './fullcopy';
-import { copySoundStems, archiveAdd, archiveGet, loadTeacherManifest, setManifestScript, type ArchiveItem } from './archive';
+import { copySoundStems, archiveAdd, archiveGet, loadTeacherManifestStrict, setManifestScript, type ArchiveItem } from './archive';
 import { newId } from './tasks';
 
 // Colleagues and sharing. Teachers connect through an invitation link (never by searching
@@ -89,7 +89,7 @@ async function copyMediaKeep(from: string, to: string, ids: Iterable<string>) {
   for (const id of pending) {
     const m = await getDoc(mediaDoc(from, id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = from.includes(':') ? m.data() : (await loadTeacherManifest(from,id)) ?? m.data();
+    const d = from.includes(':') ? m.data() : (await loadTeacherManifestStrict(from,id)) ?? m.data();
     for (let k = 0; k < (d.parts ?? 0); k++) {
       const p = await getDoc(mediaDoc(from, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(to, `${id}_p${k}`), p.data());

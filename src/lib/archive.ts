@@ -202,6 +202,18 @@ export async function loadTeacherManifest(classId: string, id: string): Promise<
   return script?.length ? { ...manifest, script } : manifest;
 }
 
+// Copy and export must report a failed private read. The player uses the
+// tolerant loader above so a temporary script outage never stops the audio.
+export async function loadTeacherManifestStrict(classId: string, id: string): Promise<Manifest | null> {
+  const manifest = await loadManifest(classId, id);
+  if (!manifest || !isClassSpace(classId)) return manifest;
+  const privateDoc = await getDoc(generatedScriptRef(classId, id));
+  if (!privateDoc.exists()) return manifest; // Older and script-free media have no private document.
+  const script: unknown = privateDoc.data()?.script;
+  if (!Array.isArray(script)) throw Error('The recording script could not be read. Please try again.');
+  return { ...manifest, script: script as ScriptLine[] };
+}
+
 const blobCache = new Map<string, Promise<string>>();
 export function soundUrl(classId: string, id: string, m: Manifest) {
   const k = classId + '/' + id + '/' + (m.v ?? 0);
@@ -232,7 +244,7 @@ export async function copySoundStems(source:StemSource,classId:string):Promise<S
  if(source.classId===classId)return source.stems;
  const result:SongStemIds={vocals:'',instrumental:'',...(source.stems.vocalsOff?{vocalsOff:true}:{})};
  for(const key of ['vocals','instrumental'] as const){
-  const id=source.stems[key],m=await loadTeacherManifest(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
+  const id=source.stems[key],m=await loadTeacherManifestStrict(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
   const r=doc(mediaCol(classId));
   await Promise.all(Array.from({length:m.parts??1},async(_,i)=>{const part=await getDoc(mediaRef(source.classId,id+'_p'+i));if(!part.exists())throw Error('A saved song track is incomplete.');await setDoc(mediaRef(classId,r.id+'_p'+i),part.data());}));
   const {stems:_nested,script,...plain}=m;
@@ -254,7 +266,7 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
     id = r.id;
   } else if (item.home) {
     const from = item.home;
-    const m = await loadTeacherManifest(from.classId, from.mediaId);
+    const m = await loadTeacherManifestStrict(from.classId, from.mediaId);
     if (!m) throw new Error('missing');
     const ref = doc(mediaCol(classId));
     await Promise.all(

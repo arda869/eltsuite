@@ -1,4 +1,4 @@
-import { copySoundStems, loadTeacherManifest, setManifestScript } from './archive';
+import { copySoundStems, loadTeacherManifestStrict, setManifestScript } from './archive';
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, writeBatch, type DocumentData } from 'firebase/firestore';
 import { get, ref, set } from 'firebase/database';
 import { db, rtdb } from './firebase';
@@ -52,7 +52,7 @@ export async function carryMedia(fromClass: string, toClass: string, values: unk
   for (const id of ids) {
     const m = await getDoc(mediaDoc(fromClass, id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = (await loadTeacherManifest(fromClass,id)) ?? m.data();
+    const d = (await loadTeacherManifestStrict(fromClass,id)) ?? m.data();
     const r = doc(mediaCol(toClass));
     for (let k = 0; k < (d.kind === 'audio' || d.kind === 'pdf' ? d.parts ?? 0 : 0); k++) {
       const p = await getDoc(mediaDoc(fromClass, `${id}_p${k}`)).catch(() => null);
@@ -103,7 +103,7 @@ export async function lessonBundle(classId: string, itemId: string): Promise<Les
   for (const id of ids) {
     const m = await getDoc(doc(db, 'classes', classId, 'media', id)).catch(() => null);
     if (!m?.exists()) continue;
-    const d = (await loadTeacherManifest(classId,id)) ?? m.data();
+    const d = (await loadTeacherManifestStrict(classId,id)) ?? m.data();
     if(d.stems){ids.add(d.stems.vocals);ids.add(d.stems.instrumental);}
     if (d.kind === 'audio' || d.kind === 'link') {
       media[id] = strip(d);

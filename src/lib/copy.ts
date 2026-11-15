@@ -30,7 +30,7 @@ async function rewriteCollab<T>(content: T, mode: CollabCopy): Promise<T> {
 
 // Pictures and sounds belong to a class, so a copy into another class takes copies of them.
 async function withMedia(fromClass: string, toClass: string, data: DocumentData, key: DocumentData) {
-  const map = await carryMedia(fromClass, toClass, [data.content, key]).catch(() => ({}) as Record<string, string>);
+  const map = await carryMedia(fromClass, toClass, [data.content, key]);
   if (!Object.keys(map).length) return { data, key };
   return { data: { ...data, content: remap(data.content, map) }, key: remap(key, map) as DocumentData };
 }
@@ -65,6 +65,14 @@ export async function copyLesson(fromClass: string, itemId: string, toClass: str
   const data = item.data() as DocumentData;
   const newRef = doc(collection(db, 'classes', toClass, 'items'));
   const tasks = await getDocs(query(tasksCol(fromClass, itemId), orderBy('order')));
+  // Prepare every task before creating the lesson. If private media cannot be
+  // read, the copy stops with a visible error and no incomplete lesson appears.
+  const prepared: { data: DocumentData; key: DocumentData; notes?: DocumentData }[] = [];
+  for (const t of tasks.docs) {
+    const [k, n] = await Promise.all([getDoc(keyRef(fromClass, itemId, t.id)), getDoc(notesRef(fromClass, itemId, t.id))]);
+    const { data: d0, key } = await withMedia(fromClass, toClass, t.data(), k.exists() ? k.data() : {});
+    prepared.push({ data: { ...d0, content: await rewriteCollab(d0.content, opts.collab ?? 'same') }, key, ...(n.exists() ? { notes: n.data() } : {}) });
+  }
   const batch = writeBatch(db);
   batch.set(newRef, {
     ...data,
@@ -77,15 +85,12 @@ export async function copyLesson(fromClass: string, itemId: string, toClass: str
     createdAt: serverTimestamp(),
   });
   await batch.commit();
-  for (const t of tasks.docs) {
-    const [k, n] = await Promise.all([getDoc(keyRef(fromClass, itemId, t.id)), getDoc(notesRef(fromClass, itemId, t.id))]);
+  for (const { data, key, notes } of prepared) {
     const b = writeBatch(db);
     const tr = doc(tasksCol(toClass, newRef.id));
-    const { data: d0, key } = await withMedia(fromClass, toClass, t.data(), k.exists() ? k.data() : {});
-    const data: DocumentData = { ...d0, content: await rewriteCollab(d0.content, opts.collab ?? "same") };
     b.set(tr, { ...data, createdAt: serverTimestamp() });
     b.set(keyRef(toClass, newRef.id, tr.id), key);
-    if (n.exists()) b.set(notesRef(toClass, newRef.id, tr.id), n.data());
+    if (notes) b.set(notesRef(toClass, newRef.id, tr.id), notes);
     await b.commit();
   }
   return newRef.id;
