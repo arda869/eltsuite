@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {validateSpeech,prepareSpeechScript,speechInstructions} from '../../functions/speech/contract.js';
 import {generateSpeech,transcriptReadsDirection} from '../../functions/speech/provider.js';
+import {mediaFailureMessage,voiceCreditMessage} from '../../functions/ai/media-error.js';
 import {validateAudio,transcriptSegments} from '../../functions/speech/transcribe.js';
 import {validateActivity,selectFocus,roleplayInstructions,validateTurns,feedbackInstructions} from '../../functions/speaking/contract.js';
 const request={text:'I was— no, Friday.',voice:'marin',accent:'British English',direction:'Hesitate, then repair.'};
@@ -31,6 +32,10 @@ test('a take without a transcript is not returned to the teacher',async()=>{awai
 test('a take that speaks a parenthetical direction is not returned to the teacher',async()=>{await assert.rejects(generateSpeech('test',{...request,text:'(softly) Hello.'},{Socket:socketWithTranscript('Softly, hello.')}),/read a delivery direction aloud/);});
 test('premature connection closure rejects without a partial take',async()=>{class Broken extends Socket{send(){queueMicrotask(()=>this.emit('close'));}}await assert.rejects(generateSpeech('test',request,{Socket:Broken}),/before the take/);});
 test('incomplete generation never returns truncated audio',async()=>{class Incomplete extends Socket{send(raw){if(JSON.parse(raw).type==='session.update')queueMicrotask(()=>this.emit('message',Buffer.from('{"type":"response.done","response":{"status":"incomplete"}}')));}}await assert.rejects(generateSpeech('test',request,{Socket:Incomplete}),/did not finish/);});
+test('an exhausted provider balance keeps the draft and gives a useful retry condition',async()=>{
+ class NoCredit extends Socket{send(raw){const event=JSON.parse(raw);if(event.type==='session.update')queueMicrotask(()=>this.emit('message',Buffer.from('{"type":"session.updated"}')));if(event.type==='response.create')queueMicrotask(()=>this.emit('message',Buffer.from(JSON.stringify({type:'error',error:{code:'credit_balance_exhausted',type:'insufficient_quota',message:'Provider account details'}}))));}}
+ await assert.rejects(generateSpeech('test',request,{Socket:NoCredit}),error=>{assert.equal(error.code,'voice-credit-exhausted');assert.equal(mediaFailureMessage(error),voiceCreditMessage);assert.doesNotMatch(mediaFailureMessage(error),/Provider account details/);return true;});
+});
 test('timeout disconnects the provider',async()=>{class Silent extends EventEmitter{close(){this.closed=true;}}await assert.rejects(generateSpeech('test',request,{Socket:Silent,timeout:5}),/timed out/);});
 test('transcription bounds, malformed timestamps and silence',()=>{assert.throws(()=>validateAudio({audio:'file://private',duration:10}));assert.throws(()=>validateAudio({audio:'A'.repeat(100),duration:1201}));assert.deepEqual(transcriptSegments({segments:[{text:'Hello',speaker:'A',start:-1,end:2},{text:'late',start:9,end:99},{text:'bad',start:NaN,end:2},{text:'',start:0,end:1}]},10),[{text:'Hello',speaker:'A',start:0,end:2},{text:'late',speaker:'A',start:9,end:10}]);});
 const config={title:'Make a plan',scenario:'Agree on a trip.',focus:'Ask for clarification.',learnerRole:'Friend',partnerRole:'Friend',level:'B1',seconds:120};

@@ -54,7 +54,14 @@ export async function generateSpeech(key, request, { Socket = WebSocket, timeout
           chunks.push(chunk);
         }
         if (event.type === 'response.output_audio_transcript.done') transcript = event.transcript ?? '';
-        if (event.type === 'error') return finish(Error('The voice service rejected this take. Please try again later.'));
+        if (event.type === 'error') {
+          if (event.error?.code === 'credit_balance_exhausted' || event.error?.type === 'insufficient_quota') {
+            const failure = Error('The voice service has run out of credit.');
+            failure.code = 'voice-credit-exhausted';
+            return finish(failure);
+          }
+          return finish(Error('The voice service rejected this take. Please try again later.'));
+        }
         if (event.type === 'response.done') {
           billingResponse=event.response;
           if (event.response?.status !== 'completed' || bytes < 4800 || bytes % 2) return finish(Error('The voice service did not finish this take. Try a shorter line.'));
