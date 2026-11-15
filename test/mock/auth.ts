@@ -50,7 +50,7 @@ export const isSignInWithEmailLink = () => false;
 export async function signInWithEmailLink() {
   throw new Error('not in mock');
 }
-export async function sendSignInLinkToEmail() {}
+export async function sendSignInLinkToEmail() { throw new Error('Use the branded account email service.'); }
 export async function signInWithPopup() {
   throw new Error('not in mock');
 }
@@ -68,7 +68,7 @@ export function mockSignInTeacher(name = 'Arda') {
   }
   sessionStorage.setItem('mockuid', t.uid);
 }
-export async function sendPasswordResetEmail() {}
+export async function sendPasswordResetEmail() { throw new Error('Use the branded account email service.'); }
 export async function updateProfile(u: User, p: { displayName?: string }) {
   const delay = Number(sessionStorage.getItem('mockauth-profile-delay') || 0);
   if (delay) await new Promise((r) => setTimeout(r, delay));
