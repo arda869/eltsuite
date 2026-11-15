@@ -15,6 +15,7 @@ const app=initializeApp({projectId});
 const admin=getFirestore(app);
 const {savePrepared}=await import('../../functions/ai/media-worker.js');
 const {restorePreparedScript}=await import('../../functions/ai/prepared-script.js');
+const {taskMediaContext}=await import('../../functions/ai/task-media.js');
 const classId='privacy-class',teacherId='privacy-teacher',learnerId='privacy-learner';
 const aiId='ai_media_1234567890abcdef1234567890abcdef';
 const teacher=env.authenticatedContext(teacherId).firestore();
@@ -48,6 +49,8 @@ try{
  await assertSucceeds(setDoc(doc(teacher,scriptPath(aiId)),{script:longTeacherEdit,aiGenerated:true,updatedAt:Date.now()}));
  assert.equal((await getDoc(doc(teacher,scriptPath(aiId)))).data().script.length,150);
  await assertFails(getDoc(doc(learner,scriptPath(aiId))));
+ const catalogue=await taskMediaContext({db:admin,uid:teacherId,cls:await admin.doc(`classes/${classId}`).get(),tasks:[],direction:'listen',title:'Privacy test'});
+ assert.ok(catalogue.recordings.some(item=>item.ref===`recording:${aiId}`&&item.script.includes('Line 1 for a long teacher-edited transcript.')),'teacher AI task creator must receive the private script');
 
  // A previously generated recording is copied to private storage before its public
  // transcript is removed; the authorized teacher can still retrieve the same words.
