@@ -49,7 +49,25 @@ function wrapped(g: CanvasRenderingContext2D, s: string, x: number, y: number, w
 }
 function chartFrame(g: CanvasRenderingContext2D, f: ChartFigure) {
   g.fillStyle = '#fff'; g.fillRect(0,0,800,560);
-  label(g,f.title || 'Chart title',400,38,25,'center',700);
+  const title = (f.title || 'Chart title').trim();
+  let size = 25;
+  let rows: string[] = [];
+  // Leave clear margins around long titles from imported worksheets. Keep every
+  // word visible, including when a teacher enters the original exam heading.
+  for (const candidate of [25, 23, 21, 19, 17]) {
+    g.font = `700 ${candidate}px ${font}`;
+    const next: string[] = [];
+    let row = '';
+    for (const word of title.split(/\s+/)) {
+      const joined = row ? `${row} ${word}` : word;
+      if (row && g.measureText(joined).width > 736) { next.push(row); row = word; }
+      else row = joined;
+    }
+    if (row) next.push(row);
+    size = candidate; rows = next;
+    if (rows.length <= 2) break;
+  }
+  rows.forEach((row, index) => label(g,row,400,rows.length === 1 ? 38 : 26 + index * 27,size,'center',700));
   if (f.footnote) label(g,f.footnote,32,536,13,'left',400,'#69636a');
 }
 type LegendEntry = {name:string;color:string};
