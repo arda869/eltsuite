@@ -47,9 +47,16 @@ jobs:
             customDomainEnabled: sendEmail.dnsInfo?.useCustomDomain ?? null,
             customDomainState: sendEmail.dnsInfo?.customDomainState || null,
           }));
+          const projectResponse = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects/lesson-lit', { headers });
+          const project = await projectResponse.json();
+          console.log(JSON.stringify({
+            projectStatus: projectResponse.status,
+            projectError: project.error?.status || null,
+            projectDisplayName: project.name || null,
+          }));
           const permissionsResponse = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects/lesson-lit:testIamPermissions', {
             method: 'POST', headers,
-            body: JSON.stringify({ permissions: ['firebaseauth.configs.get', 'firebaseauth.configs.update'] }),
+            body: JSON.stringify({ permissions: ['firebaseauth.configs.get', 'firebaseauth.configs.update', 'resourcemanager.projects.update'] }),
           });
           const permissions = await permissionsResponse.json();
           console.log(JSON.stringify({
@@ -57,6 +64,7 @@ jobs:
             permissionError: permissions.error?.status || null,
             canRead: permissions.permissions?.includes('firebaseauth.configs.get') || false,
             canUpdate: permissions.permissions?.includes('firebaseauth.configs.update') || false,
+            canRenameProject: permissions.permissions?.includes('resourcemanager.projects.update') || false,
           }));
-          if (!configResponse.ok || !permissionsResponse.ok) process.exitCode = 1;
+          if (!configResponse.ok || !projectResponse.ok || !permissionsResponse.ok) process.exitCode = 1;
           EOF
