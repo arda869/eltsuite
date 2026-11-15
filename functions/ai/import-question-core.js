@@ -342,9 +342,10 @@ function splitKey(content) {
       } else if (n.type === "match") {
         const pairs = (a.pairs ?? []).filter((p) => p.left.trim() || p.right.trim());
         const extras = (a.extras ?? []).filter((x) => x.trim());
-        const rights = shuffle2([...pairs.map((p) => p.right), ...extras], id);
+        const rights = shuffle2([...pairs.map((p) => p.right).filter((r) => r.trim()), ...extras], id);
         const used = /* @__PURE__ */ new Set();
         const map = pairs.map((p) => {
+          if (!p.right.trim()) return -1;
           const i = rights.findIndex((r, k) => r === p.right && !used.has(k));
           used.add(i);
           return i;

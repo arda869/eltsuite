@@ -9,6 +9,8 @@ import {rebuilt} from './material-fixture.mjs';
 const input={rightsAccepted:true,rightsVersion:RIGHTS_VERSION,creationType:'homework',scope:'item',source:{name:'Worksheet',text:'Which day?',images:[]}};
 test('source-only import accepts blank optional instructions but enforces consent, format, bounds and no remote images',()=>{
  assert.equal(materialSource(input).instructions,'');
+ assert.equal(materialSource({...input,source:{...input.source,answerKeyImageStart:0}}).answerKeyImageStart,0);
+ for(const badStart of [-1,1,0.5,'0'])assert.throws(()=>materialSource({...input,source:{...input.source,answerKeyImageStart:badStart}}));
  for(const patch of [{rightsAccepted:false},{rightsVersion:'old'},{creationType:'code'},{scope:'replace'}, {instructions:'x'.repeat(2001)},{source:{...input.source,text:'x'.repeat(30001)}},{source:{...input.source,text:'',images:[]}},{source:{...input.source,images:['https://private.example/image.jpg']}}])assert.throws(()=>materialSource({...input,...patch}));
 });
 test('rebuilt output has valid native tasks and private keys; validates review edits',()=>{

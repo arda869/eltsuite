@@ -79,9 +79,12 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
       } else if (n.type === 'match') {
         const pairs: { left: string; right: string }[] = (a.pairs ?? []).filter((p: { left: string; right: string }) => p.left.trim() || p.right.trim());
         const extras: string[] = (a.extras ?? []).filter((x: string) => x.trim());
-        const rights = shuffle([...pairs.map((p) => p.right), ...extras], id);
+        // A source worksheet can list the options without supplying its key. Keep
+        // those options visible, but never turn a blank match into a scored guess.
+        const rights = shuffle([...pairs.map((p) => p.right).filter((r) => r.trim()), ...extras], id);
         const used = new Set<number>();
         const map = pairs.map((p) => {
+          if (!p.right.trim()) return -1;
           const i = rights.findIndex((r, k) => r === p.right && !used.has(k));
           used.add(i);
           return i;
@@ -275,7 +278,7 @@ export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: 
     }
     case 'match': {
       const arr = Array.isArray(r) ? r : [];
-      return { got: entry.map.filter((m, i) => arr[i] === m).length, max: entry.map.length };
+      return { got: entry.map.filter((m, i) => m >= 0 && arr[i] === m).length, max: entry.map.length };
     }
     case 'drop':
       return { got: isAnswered(r) && normalise(String(r)) === normalise(entry.answer) ? 1 : 0, max: 1 };

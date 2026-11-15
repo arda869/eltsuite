@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { build } from 'esbuild';
 import { IMPORT_TYPES, newImportElement } from '../ai/import-types.js';
 import { nativeImportedElements } from '../ai/import-elements.js';
 import { checkImportElements } from '../ai/import-validation.js';
@@ -73,9 +74,54 @@ test('a supplied answer key remains private and does not trigger a missing-key w
   assert.ok(!JSON.stringify(result.content).includes('nine'));
 });
 
+test('unknown listening answers survive validation without becoming guessed keys', () => {
+  const drop = newImportElement('drop', 'The booking is for ___.');
+  drop.data.answer = '';
+  drop.needs = ['recording'];
+  const table = newImportElement('table');
+  table.data = { headers: ['Item', 'Price'], rows: [['Tea', '___'], ['Cake', '___']], answers: [] };
+  table.needs = ['recording'];
+  const dialogue = newImportElement('dialogue');
+  dialogue.data = { layout: 'stacked', turns: [{ speaker: 'Guest', text: 'I would like ___, please.', answers: [] }, { speaker: 'Server', text: 'Of course.', answers: [] }] };
+  dialogue.needs = ['recording'];
+  const match = newImportElement('match', 'Match each person to a room.');
+  match.data = { pairs: [{ left: 'Alice', right: '' }, { left: 'Ben', right: '' }], extras: ['Room A', 'Room B'] };
+  match.needs = ['recording'];
+  const statements = newImportElement('pq-matching');
+  statements.data = { options: ['A', 'B'], names: [], statements: [{ text: 'The guest orders tea.', answer: -1 }] };
+  statements.needs = ['recording'];
+  const elements = [drop, table, dialogue, match, statements];
+  const required = checkImportElements(elements, false);
+  assert.ok(required.some(x => x.includes('missing answer key')));
+  assert.ok(required.some(x => x.includes('original recording')));
+  const result = nativeImportedElements(elements, 'unknown');
+  assert.equal(result.key.unknown_e0.answer, '');
+  assert.deepEqual([result.key.unknown_e1_cell0.answers, result.key.unknown_e1_cell1.answers], [[], []]);
+  assert.deepEqual(result.key.unknown_e2_gap0_0.answers, []);
+  assert.deepEqual(result.key.unknown_e3.map, [-1, -1]);
+  assert.deepEqual(result.key.unknown_e4.k.map, [-1]);
+  const matchNode = result.content.find(node => node.type === 'match');
+  assert.deepEqual(new Set(matchNode.attrs.right), new Set(['Room A', 'Room B']));
+  assert.ok(!JSON.stringify(result.content).includes('answer:'));
+});
+
+test('a separate worksheet and answer-key file stay labelled and within import limits', async () => {
+  const built = await build({ entryPoints: [new URL('../../src/materials/combineSource.ts', import.meta.url).pathname], bundle: true, platform: 'node', format: 'esm', write: false });
+  const { combineMaterialSources } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'));
+  const worksheet = { name: 'Listening.pdf', text: 'What did the guest order?', images: ['data:image/jpeg;base64,/9j/'], imageLabels: ['PDF page 1'], warnings: [] };
+  const key = { name: 'Key.pdf', text: '1. Tea', images: ['data:image/jpeg;base64,/9j/'], imageLabels: ['PDF page 2'], warnings: [] };
+  const joined = combineMaterialSources(worksheet, key);
+  assert.equal(joined.name, 'Listening.pdf');
+  assert.match(joined.text, /\[Answer key: Key.pdf\][\s\S]*1\. Tea/);
+  assert.deepEqual(joined.imageLabels, ['PDF page 1', 'Answer key · Key.pdf · PDF page 2']);
+  assert.deepEqual(joined.images, [worksheet.images[0], key.images[0]]);
+  assert.equal(joined.answerKeyImageStart, 1, 'worksheet image indices remain before key pages');
+  assert.throws(() => combineMaterialSources({ ...worksheet, images: Array(6).fill(worksheet.images[0]) }, key), /six pages/);
+});
+
 test('new element checks', () => {
   const table = newImportElement('table');
-  table.data = { headers: ['A'], rows: [['___']], answers: [] };
+  table.data = { headers: ['A'], rows: [['___'], ['___']], answers: ['one'] };
   assert.throws(() => checkImportElements([table], false));
   const link = newImportElement('linkcard');
   link.data = { url: 'http://example.com', title: 'x', note: '' };

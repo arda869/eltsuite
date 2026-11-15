@@ -612,7 +612,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <ol className="match-left">
           {left.map((l, i) => {
             const c = chosen[i] ?? -1;
-            const ok = checkedId(id) ? c === map[i] : false;
+            const ok = checkedId(id) ? map[i] >= 0 && c === map[i] : false;
             return (
               <li key={i}>
                 {num(id, i)}
