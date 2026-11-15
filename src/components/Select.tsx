@@ -185,6 +185,22 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     }
   };
   const listKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      // The options live in a portal. Move to the next field beside the trigger,
+      // rather than tabbing through the detached list or returning to the trigger.
+      const trigger = btn.current;
+      const scope = trigger?.closest('dialog, [role="dialog"]') ?? document;
+      const fields = Array.from(scope.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]'))
+        .filter((field) => field.tabIndex >= 0 && !field.matches(':disabled') && !field.closest('[inert]') && !list.current?.contains(field) && field.getClientRects().length > 0 && getComputedStyle(field).visibility !== 'hidden');
+      const index = trigger ? fields.indexOf(trigger) : -1;
+      const next = fields[index + (e.shiftKey ? -1 : 1)];
+      setOpen(false);
+      if (next) {
+        e.preventDefault();
+        next.focus();
+      }
+      return;
+    }
     const l = opts();
     const i = l.indexOf(document.activeElement as HTMLElement);
     const go = (j: number) => (e.preventDefault(), l[(j + l.length) % l.length]?.focus());
@@ -199,7 +215,6 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     else if (e.key === 'Home') go(0);
     else if (e.key === 'End') go(-1);
     else if (e.key === 'Escape') (e.preventDefault(), e.stopPropagation(), setOpen(false), btn.current?.focus());
-    else if (e.key === 'Tab') (e.preventDefault(), setOpen(false), btn.current?.focus());
   };
   useEffect(() => {
     if (!open) return;
