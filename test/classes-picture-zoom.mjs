@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 import test from 'node:test';
 import { chromium } from 'playwright';
 
@@ -35,6 +36,7 @@ test('Classes pictures open at a readable size without widening the phone page',
       const dialog = page.getByRole('dialog', { name: 'Enlarged picture: Map of the park' });
       await dialog.waitFor();
       assert.equal(await dialog.getByRole('img', { name: 'Map of the park' }).count(), 1);
+      await dialog.getByRole('img', { name: 'Map of the park' }).evaluate(image => image.decode());
       assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
       assert.equal(await dialog.getByLabel('Close enlarged picture').evaluate(element => element === document.activeElement), true);
       await page.keyboard.press('Shift+Tab');
@@ -43,6 +45,8 @@ test('Classes pictures open at a readable size without widening the phone page',
       assert.equal(await dialog.getByLabel('Close enlarged picture').evaluate(element => element === document.activeElement), true);
       assert.equal((await dialog.locator('.picture-viewer-percent').innerText()).trim(), width === 390 ? '300%' : '100%');
       if (width === 390) {
+        await mkdir('test-artifacts', { recursive: true });
+        await page.screenshot({ path: 'test-artifacts/classes-picture-zoom-390-teacher.png' });
         const dimensions = await dialog.locator('.picture-viewer-stage').evaluate(element => ({ scroll: element.scrollWidth, frame: element.clientWidth }));
         assert.ok(dimensions.scroll > dimensions.frame * 2, `the image must enlarge inside its own scroll area: ${JSON.stringify(dimensions)}`);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'the overall page must not scroll sideways');
@@ -66,7 +70,9 @@ test('Classes pictures open at a readable size without widening the phone page',
       await opener.click();
       await dialog.waitFor();
       assert.equal(await dialog.getByRole('img', { name: 'Map of the park' }).count(), 1, 'the learner also sees the enlarged map');
+      await dialog.getByRole('img', { name: 'Map of the park' }).evaluate(image => image.decode());
       assert.ok(await dialog.evaluate(element => getComputedStyle(element).backgroundColor !== 'rgb(255, 255, 255)'), 'viewer follows dark mode');
+      if (width === 390) await page.screenshot({ path: 'test-artifacts/classes-picture-zoom-390-learner-dark.png' });
       await dialog.getByRole('button', { name: 'Close enlarged picture' }).click();
       assert.equal(await dialog.count(), 0);
       await page.evaluate(src => window.setFixture({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt: 'Hidden park map', size: 'full', w: 560, cover: 'tap', pid: 'hidden-map' } }] }] }), image);

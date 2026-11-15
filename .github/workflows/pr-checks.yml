@@ -89,6 +89,13 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Designer and Classes visual regression checks
         run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/classes-picture-zoom.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
+      - name: Save Classes picture zoom screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: classes-picture-zoom
+          path: test-artifacts/classes-picture-zoom-390-*.png
+          if-no-files-found: ignore
       - name: Designer reference figures retain visible artwork and exact data
         run: node --test test/figure-reference-fidelity.mjs
       - name: The Information Gap publication and access journeys (Firebase simulated)
