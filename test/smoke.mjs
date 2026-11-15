@@ -654,6 +654,25 @@ const J = {
     await axe(s.p,'Lesson tools',A11Y_FOUND);return s;
   },
 
+  'AI activity draft explains exhausted voice credit': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.evaluate(({classId,itemId})=>{
+      const id='voice-credit-draft';
+      localStorage.setItem(`lesson-tool:${classId}:${itemId}:next`,JSON.stringify({id,mode:'next',step:'generate',scope:'activity',direction:'Create a listening activity.',minutes:10}));
+      localStorage.setItem('mockLessonToolJobs',JSON.stringify({[id]:{status:'completed',result:{activity:{title:'Lunch before the train',instructions:'Listen to the conversation.'},native:{content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'What did they order?'}]}]},key:{},notes:''}},media:[{id:'audio',title:'Lunch before the train',status:'failed',error:'The voice service has run out of credit. Your draft is saved. Ask an ELT Suite administrator to restore it, then retry this recording.'}]}}));
+    },s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await openPlanning(s.p);
+    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
+    await dialog.getByRole('button',{name:'Check progress'}).click();
+    await dialog.getByRole('alert').getByText(/voice service has run out of credit/).waitFor();
+    const retry=dialog.getByRole('button',{name:'Retry after credit is restored'});
+    await retry.waitFor();
+    if(!await retry.isVisible())throw Error('The retry guidance was hidden');
+    return s;
+  },
+
   'Designer charts and maps: edit, import visual, reopen and export': async b => {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
