@@ -69,6 +69,9 @@ test('Classes pictures open at a readable size without widening the phone page',
       assert.ok(await dialog.evaluate(element => getComputedStyle(element).backgroundColor !== 'rgb(255, 255, 255)'), 'viewer follows dark mode');
       await dialog.getByRole('button', { name: 'Close enlarged picture' }).click();
       assert.equal(await dialog.count(), 0);
+      await page.evaluate(src => window.setFixture({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt: 'Hidden park map', size: 'full', w: 560, cover: 'tap', pid: 'hidden-map' } }] }] }), image);
+      await page.locator('.pic.has-cover').waitFor();
+      assert.equal(await page.getByRole('button', { name: 'View Hidden park map larger' }).count(), 0, 'covered pictures cannot bypass the cover through the viewer');
       assert.deepEqual(errors, []);
       await page.close();
     }
