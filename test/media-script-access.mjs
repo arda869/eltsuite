@@ -90,11 +90,14 @@ try{
 
   const offlineSource=readFileSync('src/offline/scriptPolicy.ts','utf8');
   const compiled=ts.transpileModule(offlineSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-  const {offlineLearnerScript}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+  const {offlineLearnerScript,offlineMediaModes}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
   assert.deepEqual(offlineLearnerScript('none',script),[],'offline Hidden payload contains no script');
   assert.deepEqual(offlineLearnerScript('after',script),[],'offline After payload contains no script before playback');
   assert.deepEqual(offlineLearnerScript('karaoke',script),script,'intentionally visible karaoke still works offline');
   assert.deepEqual(offlineLearnerScript('unexpected',script),[],'unknown offline modes fail closed');
+  const mixed=offlineMediaModes([{content:node('karaoke')},{content:node('none')}],classId);
+  assert.equal(mixed.get(`${classId}/${mediaId}`),'none','a Hidden placement keeps the same recording out of the whole offline payload');
+  assert.deepEqual(offlineLearnerScript(mixed.get(`${classId}/${mediaId}`),script),[]);
   await admin.doc('shares/teacher-share').set({owner:teacherId,mode:'link',people:[],kind:'media',title:'Shared recording'});
   await admin.doc('shares/teacher-share/media/recording').set({kind:'audio',public:true,size:0,script});
   await assertFails(getDoc(doc(learner,'shares/teacher-share/media/recording')));
