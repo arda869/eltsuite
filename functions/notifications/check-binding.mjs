@@ -9,6 +9,7 @@ for (const [functionName, interval, validSchedules] of [
   ['sendUnreadMessageSummaries', '15-minute', ['every 15 minutes', '*/15 * * * *']],
   ['sendPendingInvitations', '5-minute', ['every 5 minutes', '*/5 * * * *']],
   ['deliverAccountEmail', null, null],
+  ['retryAccountEmails', '1-minute', ['* * * * *']],
 ]) {
   const name = `projects/lesson-lit/locations/us-central1/functions/${functionName}`;
   const { data: fn } = await client.request({ url: `https://cloudfunctions.googleapis.com/v2/${name}` });

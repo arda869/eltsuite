@@ -5,7 +5,11 @@ import { authEmailMessage, deliverAuthEmailJob, parseAuthEmailRequest, queueAuth
 function fakeDb() {
   const docs = new Map();
   let nextId = 0;
-  const ref = path => ({ path, delete: async () => docs.delete(path) });
+  const ref = path => ({
+    path,
+    delete: async () => docs.delete(path),
+    update: async data => docs.set(path, { ...docs.get(path), ...data }),
+  });
   const snap = path => ({
     exists: docs.has(path),
     get: key => docs.get(path)?.[key],
@@ -22,6 +26,7 @@ function fakeDb() {
         docs.set(item.path, data);
       },
       update: (item, data) => docs.set(item.path, { ...docs.get(item.path), ...data }),
+      delete: item => docs.delete(item.path),
     }),
   };
   return db;
@@ -77,7 +82,7 @@ test('the worker sends a reset link once and removes the short-lived job', async
   };
   const request = { db, auth, jobRef, send: async mail => sent.push(mail) };
   assert.equal(await deliverAuthEmailJob(request), 'sent');
-  assert.equal(await deliverAuthEmailJob(request), 'already-claimed');
+  assert.equal(await deliverAuthEmailJob(request), 'not-due-or-complete');
   assert.equal(generated, 1);
   assert.equal(sent.length, 1);
   assert.equal(sent[0].to, 'teacher@example.com');
@@ -113,16 +118,61 @@ test('an unknown address gets no link, and sign-in links retain the existing ret
   assert.equal(jobs(db).length, 0);
 });
 
-test('an SMTP failure does not persist a generated link or re-send on a repeated event', async () => {
+test('a transient SMTP failure is retried later without saving a link or sending concurrently', async () => {
+  const db = fakeDb();
+  await queueAuthEmail(db, { kind: 'reset', email: 'teacher@example.com' }, '127.0.0.1');
+  const jobRef = db.doc(jobs(db)[0][0]);
+  let sends = 0;
+  const options = {
+    db, jobRef,
+    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => 'https://example.com/reset?token=secret' },
+    send: async () => { sends += 1; if (sends === 1) throw new Error('SMTP failure'); },
+  };
+  assert.equal(await deliverAuthEmailJob(options), 'retry-scheduled');
+  assert.equal(jobs(db)[0][1].status, 'retry');
+  assert.equal(jobs(db)[0][1].attempts, 1);
+  assert.equal(await deliverAuthEmailJob(options), 'not-due-or-complete');
+  assert.equal(sends, 1);
+  assert.equal(await deliverAuthEmailJob({ ...options, now: new Date(jobs(db)[0][1].nextAttemptAt.getTime() + 1) }), 'sent');
+  assert.equal(sends, 2);
+  assert.equal(jobs(db).length, 0);
+  assert.equal([...db.docs.values()].some(data => JSON.stringify(data).includes('token=secret')), false);
+});
+
+test('two overlapping workers claim one job only once', async () => {
+  const db = fakeDb();
+  await queueAuthEmail(db, { kind: 'link', email: 'teacher@example.com' }, '127.0.0.1');
+  const jobRef = db.doc(jobs(db)[0][0]);
+  let beginSend;
+  const sending = new Promise(resolve => { beginSend = resolve; });
+  let release;
+  const waiting = new Promise(resolve => { release = resolve; });
+  let sends = 0;
+  const options = {
+    db, jobRef,
+    auth: { getUserByEmail: async () => ({ disabled: false }), generateSignInWithEmailLink: async () => 'https://example.com/signin' },
+    send: async () => { sends += 1; beginSend(); await waiting; },
+  };
+  const first = deliverAuthEmailJob(options);
+  await sending;
+  assert.equal(await deliverAuthEmailJob(options), 'not-due-or-complete');
+  release();
+  assert.equal(await first, 'sent');
+  assert.equal(sends, 1);
+});
+
+test('failed jobs stop after three attempts', async () => {
   const db = fakeDb();
   await queueAuthEmail(db, { kind: 'reset', email: 'teacher@example.com' }, '127.0.0.1');
   const jobRef = db.doc(jobs(db)[0][0]);
   const options = {
     db, jobRef,
-    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => 'https://example.com/reset?token=secret' },
+    auth: { getUserByEmail: async () => ({ disabled: false }), generatePasswordResetLink: async () => 'https://example.com/reset' },
     send: async () => { throw new Error('SMTP failure'); },
   };
-  await assert.rejects(deliverAuthEmailJob(options), /SMTP failure/);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const now = attempt === 1 ? new Date() : new Date(jobs(db)[0][1].nextAttemptAt.getTime() + 1);
+    assert.equal(await deliverAuthEmailJob({ ...options, now }), attempt === 3 ? 'failed-after-retries' : 'retry-scheduled');
+  }
   assert.equal(jobs(db).length, 0);
-  assert.equal(await deliverAuthEmailJob(options), 'already-claimed');
 });
