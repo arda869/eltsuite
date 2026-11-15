@@ -1,5 +1,7 @@
 import { SpellingAssistant } from './spelling/SpellingAssistant';
 import { AppError, watchChunkErrors } from './components/AppError';
+import { FirestoreRecovery } from './components/FirestoreRecovery';
+import { watchFirestoreCacheFailures } from './lib/firestoreRecovery';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
@@ -208,9 +210,11 @@ stopPinchZoom();
 startAutogrow();
 startOutsideClose();
 watchChunkErrors();
+watchFirestoreCacheFailures();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <FirestoreRecovery />
     <AuthProvider>
       <BrowserRouter>
         <SpellingAssistant />

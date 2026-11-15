@@ -7542,6 +7542,19 @@ label > .nsel > .sel { width: 100%; min-height: 38px; }
 .ttb { width: 100%; box-sizing: border-box; }
 .app-err { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; background: var(--bg); }
 .app-err strong { font: 500 22px var(--serif); }
+
+/* A broken Firestore cache needs a way back in without deleting device-only work. */
+.firestore-recovery-backdrop { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 20px; background: rgba(20, 18, 16, .65); }
+.firestore-recovery { box-sizing: border-box; width: min(100%, 580px); max-height: calc(100dvh - 40px); overflow-y: auto; padding: clamp(24px, 5vw, 42px); border: 1px solid var(--hair); border-radius: 24px; background: var(--paper); color: var(--ink); box-shadow: 0 30px 80px rgba(0, 0, 0, .2); font-size: 15px; }
+.firestore-recovery-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--accent); color: #fff; font: 700 24px var(--sans); }
+.firestore-recovery h1 { margin: 18px 0 12px; font: 500 clamp(26px, 5vw, 38px)/1.15 var(--serif); }
+.firestore-recovery p { margin: 0 0 14px; line-height: 1.55; color: var(--muted); }
+.firestore-recovery p[role='alert'] { color: var(--danger, #a23d35); }
+.firestore-recovery-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.firestore-temporary { position: fixed; z-index: 9999; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; box-sizing: border-box; width: min(720px, calc(100vw - 24px)); padding: 10px 12px; border: 1px solid var(--hair); border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 12px 32px var(--shadow); font: 13px/1.4 var(--sans); }
+.firestore-temporary span { flex: 1 1 250px; color: var(--muted); }
+.firestore-temporary .btn { flex: none; }
+@media (max-width: 500px) { .firestore-recovery-actions .btn { width: 100%; } }
 /* Toolbar settings: every tool the same size, lined up */
 .tbs-bar .tbs-chip { height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 .tbs-face { height: 32px; align-items: center; justify-content: center; }
