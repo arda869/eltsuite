@@ -9,7 +9,8 @@ try {
   await page.goto('http://127.0.0.1:5198/account', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Join free' }).click();
   await page.getByLabel('Your name').fill('Test Writer');
-  await page.getByLabel('Email').fill(`writer-${Date.now()}@example.test`);
+  const email = `writer-${Date.now()}@example.test`;
+  await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('testPass123!');
   await page.getByRole('button', { name: 'Make my account' }).click();
   await page.getByRole('link', { name: 'My writing' }).last().waitFor();
@@ -52,6 +53,19 @@ try {
   await page.getByRole('button', { name: 'Send idea' }).click();
   await page.getByRole('heading', { name: 'My writing' }).waitFor();
   await page.getByText('A piece about wait time').waitFor();
+  await page.goto('http://127.0.0.1:5198/account', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.waitForURL('http://127.0.0.1:5198/');
+  await page.goto('http://127.0.0.1:5198/write', { waitUntil: 'domcontentloaded' });
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill('testPass123!');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('link', { name: 'New article' }).waitFor();
+  await Promise.all([
+    page.waitForURL('**/write/new'),
+    page.getByRole('link', { name: 'New article' }).click(),
+  ]);
+  await page.getByRole('heading', { name: 'New article' }).waitFor();
   assert.deepEqual(errors, []);
-  console.log('PASS signup, draft, submit, conversation, reply, pitch');
+  console.log('PASS signup, draft, submit, conversation, reply, pitch, sign-in return to writing');
 } finally { await browser.close(); }

@@ -52,7 +52,7 @@ function Account({ user }: { user: User | null }) {
   }
   async function google() {
     setBusy(true); setError('');
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); go('/account'); }
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch { setError('Google sign-in did not finish. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -64,7 +64,6 @@ function Account({ user }: { user: User | null }) {
         await updateProfile(result.user, { displayName: displayName.trim() });
         await saveProfile(result.user.uid, displayName.trim(), '');
       } else await signInWithEmailAndPassword(auth, email.trim(), password);
-      go('/account');
     } catch (err) {
       const code = typeof err === 'object' && err && 'code' in err ? String(err.code) : '';
       setError(code === 'auth/email-already-in-use' ? 'This email already has an account. Sign in instead.' : code === 'auth/invalid-credential' ? 'The email or password did not match.' : 'We could not finish signing in. Please try again.');

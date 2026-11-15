@@ -37,8 +37,8 @@ hotel	Hotel	buildings	bespoke:hotelfront	Hotel building marked with a large H.
 camping	Campsite	leisure	lucide:tent	Canvas tent with opening.
 warehouse	Warehouse	buildings	lucide:warehouse	Wide storage building and loading door.
 bank	Bank	services	bespoke:bank	Bank facade with a currency mark.
-post	Post office	services	lucide:mailbox	Street mailbox with flag.
-library	Library	education	lucide:library	Books on shelves.
+post	Post office	services	bespoke:postoffice	Postal building with a pitched roof and envelope on its frontage.
+library	Library	education	bespoke:library	Three distinct upright books on a shelf.
 pharmacy	Pharmacy	services	lucide:pill-bottle	Medicine bottle with tablets.
 hospital	Hospital	services	lucide:hospital	Hospital facade with cross.
 police	Police station	safety	bespoke:policestation	Station building with a police shield.
