@@ -1,3 +1,5 @@
+import { onLog } from 'firebase/app';
+
 // A failed Firestore internal queue can leave every later read pending. Keep the
 // persistent cache untouched; this tab can temporarily use an in-memory cache.
 const KEY = 'll.firestore-memory-recovery';
@@ -31,6 +33,11 @@ export function watchFirestoreCacheFailures() {
     fatal = true;
     listeners.forEach((listener) => listener());
   };
+  // Firestore logs an internal assertion before throwing it. Its async queue can
+  // swallow that throw, so window error and unhandledrejection do not always fire.
+  onLog(({ level, type, message }) => {
+    if (level === 'error' && type === '@firebase/firestore') note(message);
+  }, { level: 'error' });
   window.addEventListener('error', (event) => note(event.error ?? event.message));
   window.addEventListener('unhandledrejection', (event) => note(event.reason));
 }

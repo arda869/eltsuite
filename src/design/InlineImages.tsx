@@ -8,6 +8,7 @@ import { useDesign, loadPicture, ensureFont, type DPage, type El } from './model
 import { pageBlob } from './tools';
 import { drawPage, pageCanvas } from './render';
 import { drawnImages, searchPictures, type WebPic } from './assets';
+import { preparePageImage } from './trimArtwork';
 
 // Designer pictures in a lesson: a page or panel, or a whole story as one strip. The lesson gets
 // its own copy of the picture, so changing the design later doesn't change lessons already made.
@@ -30,28 +31,13 @@ async function imagesFor(id: string, pages: DPage[], els: El[], accent: string) 
   );
   return imgs;
 }
-export async function designPageImage(id: string, page: DPage, els: El[], accent: string, scale = 1.6, fitFigures = false) {
+export async function designPageImage(id: string, page: DPage, els: El[], accent: string, scale = 1.6, fitArtwork = false) {
   const mine = els.filter((e) => e.page === page.id);
   const imgs = await imagesFor(id, [page], mine, accent);
-  // A chart or map placed in a lesson should fill the chosen picture size. Keep ordinary
-  // Designer pages intact; only trim a page made entirely of editable figures.
-  const visible = mine.filter((e) => !e.hidden);
-  if (fitFigures && visible.length && visible.every((e) => e.t === 'figure' && !(e.rot ?? 0)) && !page.scene) {
-    const pad = Math.min(32, page.w * 0.04, page.h * 0.04);
-    const x = Math.max(0, Math.floor(Math.min(...visible.map((e) => e.x)) - pad));
-    const y = Math.max(0, Math.floor(Math.min(...visible.map((e) => e.y)) - pad));
-    const right = Math.min(page.w, Math.ceil(Math.max(...visible.map((e) => e.x + e.w)) + pad));
-    const bottom = Math.min(page.h, Math.ceil(Math.max(...visible.map((e) => e.y + e.h)) + pad));
-    if (right > x && bottom > y) {
-      const source = pageCanvas(page, els, { imgs, view: 'all', accent }, scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round((right - x) * scale);
-      canvas.height = Math.round((bottom - y) * scale);
-      canvas.getContext('2d')!.drawImage(source, x * scale, y * scale, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
-      return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image')), 'image/png'));
-    }
-  }
-  return pageBlob(page, els, { imgs, view: 'all', accent }, scale);
+  if (!fitArtwork || (page.scene && page.scene !== 'plain')) return pageBlob(page, els, { imgs, view: 'all', accent }, scale);
+  const source = pageCanvas(page, els, { imgs, view: 'all', accent }, scale);
+  const canvas = preparePageImage(source, page.bg || '#ffffff', true, () => document.createElement('canvas'));
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image')), 'image/png'));
 }
 // All the panels of a story as one picture: two to a row, each with its caption under it.
 export async function storyStripImage(id: string, pages: DPage[], els: El[], accent: string, cols = 2, scale = 0.6) {
@@ -178,6 +164,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
   const { pages, els, meta } = useDesign(d.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pageFit, setPageFit] = useState<'artwork' | 'page'>('artwork');
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const accent = meta.accent ?? '#c8764a';
   const run = async (f: () => Promise<void>) => {
@@ -200,7 +187,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
     const t = setTimeout(() => {
       void Promise.all(
         pages.map((p) =>
-          designPageImage(d.id, p, els, accent, 0.25)
+          designPageImage(d.id, p, els, accent, 0.25, pageFit === 'artwork')
             .then((b) => {
               const u = URL.createObjectURL(b);
               urls.push(u);
@@ -215,7 +202,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
       clearTimeout(t);
       urls.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [d.id, pages, els, accent]);
+  }, [d.id, pages, els, accent, pageFit]);
   return (
     <div>
       <h3>{d.title}</h3>
@@ -230,10 +217,15 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
               Insert the whole story as a strip
             </button>
           )}
+          <div className="inline-image-fit" role="group" aria-label="Insert Designer page as">
+            <button type="button" aria-pressed={pageFit === 'artwork'} className={pageFit === 'artwork' ? 'on' : ''} onClick={() => setPageFit('artwork')}>Fit artwork</button>
+            <button type="button" aria-pressed={pageFit === 'page'} className={pageFit === 'page' ? 'on' : ''} onClick={() => setPageFit('page')}>Whole page</button>
+          </div>
+          <p className="hint">Fit artwork removes empty margins. Whole page keeps the original Designer layout.</p>
           <div className="inline-image-pages">
             {pages.map((p, i) => (
-              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent, 1.6, true), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
-                {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="inline-image-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
+              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent, 1.6, pageFit === 'artwork'), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
+                {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" /> : <span className="inline-image-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
                 <span>{p.name || `${canvasStory ? 'Panel' : 'Page'} ${i + 1}`}</span>
                 {p.caption && <small>{p.caption}</small>}
               </button>

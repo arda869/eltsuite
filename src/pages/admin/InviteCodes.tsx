@@ -75,7 +75,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
       setEmail('');
       setName('');
       setAccess({});
-      say(clean ? `Code ${code} made. We’ll email it to ${clean} within 15 minutes.` : `Code ${code} made.`);
+      say(clean ? `Code ${code} made. We’ll usually email it to ${clean} within 15 minutes.` : `Code ${code} made.`);
     } catch {
       say(full ? limitMessage(target!, 'teachers') : 'That didn’t work. Try again.');
     }
@@ -101,7 +101,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
     setSending(r.id);
     try {
       const code = await inviteFromRequest(r, me, requestAccess[r.id]);
-      say(`Code ${code} made for ${r.name}. We’ll email it to ${r.email} within 15 minutes.`);
+      say(`Code ${code} made for ${r.name}. We’ll usually email it to ${r.email} within 15 minutes.`);
     } catch {
       say('That didn’t work. Try again.');
     }
@@ -194,7 +194,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
                 Copy link
               </button>
               {c.email && c.mailed ? (
-                <button type="button" className="btn link small" onClick={() => void resendCode(c.code).then(() => say(`The email to ${c.email} goes out again within 15 minutes.`))}>
+                <button type="button" className="btn link small" onClick={() => void resendCode(c.code).then(() => say(`The email to ${c.email} is queued to send again.`))}>
                   Send again
                 </button>
               ) : null}

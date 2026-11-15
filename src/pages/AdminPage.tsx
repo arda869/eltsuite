@@ -14,6 +14,16 @@ import { daysSince, plural } from './admin/ui';
 import type { OrgData, Go, SuperData } from './admin/types';
 import './admin.css';
 
+function readableTextOn(hex: string): '#fff' | '#000' {
+  const luminance = (colour: string) => {
+    const channels = [1, 3, 5].map((at) => parseInt(colour.slice(at, at + 2), 16) / 255)
+      .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  };
+  const background = luminance(hex);
+  return 1.05 / (background + 0.05) >= (background + 0.05) / 0.05 ? '#fff' : '#000';
+}
+
 // The overview opens with the app. Load the deeper admin tools only when selected.
 const SuperUsage = lazy(() => import('./admin/Usage').then((m) => ({ default: m.SuperUsage })));
 const OrgAdmins = lazy(() => import('./admin/OrgPeople').then((m) => ({ default: m.OrgAdmins })));
@@ -280,7 +290,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
   ];
   const known = groups.some(([, l]) => l.some((i) => i.k === tab)) ? tab : 'overview';
   const color = org.brand?.color && /^#[0-9a-f]{6}$/i.test(org.brand.color) ? org.brand.color : '';
-  const style = color ? ({ '--accent': color, '--accent-text': `color-mix(in srgb, ${color} 66%, #000)` } as React.CSSProperties) : undefined;
+  const style = color ? ({ '--accent': color, '--accent-text': `color-mix(in srgb, ${color} 66%, #000)`, '--hq-on-accent': readableTextOn(color) } as React.CSSProperties) : undefined;
   return (
     <Frame>
       <div className="hq" style={style}>

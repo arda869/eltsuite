@@ -27,6 +27,8 @@ jobs:
           node --test test/speech/*.test.mjs
       - name: Invitation template checks
         run: node test/invitation-emails.mjs
+      - name: Check scheduled invitation delivery
+        run: node test/invitation-delivery.mjs
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
       - name: Lesson assistant contract and provider checks

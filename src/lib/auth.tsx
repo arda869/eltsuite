@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { ensureProfile, retryProfile, NotInvited, profileLoadErrorMessage, withSetupTimeout, type Profile, type TextSize, type Reading } from './teacherProfile';
+import { openTemporaryFirestore, usingTemporaryFirestore } from './firestoreRecovery';
 export type { Profile, TextSize, Reading } from './teacherProfile';
 export { inviteFields } from './teacherProfile';
 
@@ -18,6 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // The email of someone whose teacher profile could not be created with an invitation.
   const [notInvited, setNotInvited] = useState('');
   const [profileError, setProfileError] = useState('');
+  const [profileConnectionError, setProfileConnectionError] = useState(false);
+  const [temporaryConnectionError, setTemporaryConnectionError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const retryGeneration = useRef(0);
 
@@ -31,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const active = () => !disposed && retry === retryGeneration.current && current === generation && auth.currentUser?.uid === u?.uid;
         setUser(u);
         setProfileError('');
+        setProfileConnectionError(false);
+        setTemporaryConnectionError(false);
         setProfile(null);
         setReady(!u);
         let p: Profile | null = null;
@@ -49,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             p = null;
             setProfileError(profileLoadErrorMessage(e));
+            setProfileConnectionError(['deadline-exceeded', 'unavailable', 'network-request-failed'].includes((e as { code?: string })?.code ?? ''));
             void load
               .then((late) => { if (active() && late) { setProfile(late); setProfileError(''); setReady(true); } })
               .catch((late) => {
@@ -92,7 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Joining a game only needs Firebase sign-in. The game service checks class
   // membership itself, so a slow profile read must not block a live round.
   const gameJoinRoute = /^\/game(?:\/|$)/.test(window.location.pathname);
-  if (user && profileError && !gameJoinRoute) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">We couldn’t open your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { retryGeneration.current += 1; void retryProfile(user).catch(() => {}); setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry loading account</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
+  if (user && profileError && !gameJoinRoute) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title">
+    <h1 id="profile-setup-title">We couldn’t open your account</h1>
+    <p role="alert">{profileError}</p>
+    <button type="button" className="btn primary" onClick={() => { retryGeneration.current += 1; void retryProfile(user).catch(() => {}); setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry loading account</button>
+    {profileConnectionError && !usingTemporaryFirestore() && <>
+      <p>If retry keeps getting stuck, try a temporary connection while online. Your saved work on this device stays here, but it will not appear in the temporary session. Work you do offline there may not survive a reload.</p>
+      {temporaryConnectionError && <p role="alert">This browser could not open a temporary connection. Please try another browser while your saved work stays here.</p>}
+      <button type="button" className="btn" onClick={() => setTemporaryConnectionError(!openTemporaryFirestore())}>Open with temporary connection</button>
+    </>}
+    <button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button>
+  </section></main>;
   return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 

@@ -43,7 +43,7 @@ export function useInvitationRequests(on: boolean) {
   return list;
 }
 
-// Makes a one-person code for their email (emailed within 15 minutes) and marks the request.
+// Makes a one-person code for their email (normally sent by Cloud Scheduler soon after) and marks the request.
 export async function inviteFromRequest(r: InvitationRequest, me: { uid: string; name: string }, access: InviteAccess = {}) {
   const code = await makeCode({ email: r.email, name: r.name, maxUses: 1, days: 30, me, ...access });
   await updateDoc(doc(db, 'invitationRequests', r.id), { invited: code, invitedAt: Date.now(), invitedBy: me.name.slice(0, 80) });

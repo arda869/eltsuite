@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 
 const bundle = async entry => (await build({ entryPoints: [entry], bundle: true, write: false, platform: 'browser', format: 'iife', globalName: entry.includes('MapToolIcons') ? 'ToolIcons' : 'Figures' })).outputFiles[0].text;
+const symbolKeys = (await readFile('src/design/mapSymbolInventory.tsv', 'utf8')).trim().split('\n').slice(1).filter(line => line && !line.startsWith('#')).map(line => line.split('\t')[0]);
 
 test('plain and shaded map symbols retain their chosen colour through the shared export renderer', async () => {
   const browser = await chromium.launch({ headless: true });
@@ -41,6 +43,42 @@ test('plain and shaded map symbols retain their chosen colour through the shared
       assert.ok(result.shadedBlue.tinted > result.plainBlue.tinted + 1000, `${icon}: shaded background must use the selected colour`);
       assert.ok(result.plainRed.tinted < result.shadedRed.tinted, `${icon}: plain symbol must have no shaded background`);
     }
+  } finally { await browser.close(); }
+});
+
+test('all named symbols render with chosen colour in both plain and shaded modes', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<canvas width="1000" height="720"></canvas>');
+    await page.addScriptTag({ content: await bundle('src/design/figures.ts') });
+    const failures = await page.evaluate(keys => {
+      const ctx = document.querySelector('canvas').getContext('2d');
+      const count = color => {
+        const pixels = ctx.getImageData(456, 329, 88, 88).data;
+        let strokes = 0, tint = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const [r, g, b] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+          if (color === 'red' && r > g + 20 && r > b + 20 || color === 'blue' && b > r + 20 && b > g + 10) strokes++;
+          if (Math.max(r, g, b) - Math.min(r, g, b) > 15) tint++;
+        }
+        return { strokes, tint };
+      };
+      const render = (key, style, color) => {
+        Figures.drawMap(ctx, { kind: 'map', title: '', items: [{ id: key, kind: 'icon', icon: key, x: .5, y: .5, w: .1, h: .1, iconStyle: style, iconColor: color }] });
+        return count(color === '#c34c4c' ? 'red' : 'blue');
+      };
+      const bad = [];
+      for (const key of keys) {
+        const plain = render(key, 'plain', '#c34c4c');
+        const shaded = render(key, 'shaded', '#305ab6');
+        if (plain.strokes < 20) bad.push(`${key}: plain artwork lost its chosen colour`);
+        if (shaded.strokes < 100) bad.push(`${key}: shaded artwork lost its chosen colour`);
+        if (shaded.tint < plain.tint + 900) bad.push(`${key}: shaded background missing`);
+      }
+      return bad;
+    }, symbolKeys);
+    assert.deepEqual(failures, []);
   } finally { await browser.close(); }
 });
 

@@ -761,8 +761,32 @@ const J = {
     await pictures.getByRole('radio', { name: 'Large' }).click();
     await pictures.getByLabel('Search Designer').fill(title);
     await pictures.locator('.inline-image-list button').filter({ hasText: title }).first().click();
+    await pictures.getByRole('button', { name: /Insert page 1/i }).waitFor();
+    const pagePicker = pictures.getByRole('group', { name: 'Insert Designer page as' });
+    const fitArtwork = pagePicker.getByRole('button', { name: 'Fit artwork' });
+    const wholePage = pagePicker.getByRole('button', { name: 'Whole page' });
+    if (await fitArtwork.getAttribute('aria-pressed') !== 'true') throw Error('Designer page picker did not default to fitting the artwork');
+    await fitArtwork.focus();
+    await fitArtwork.press('Tab');
+    if (!await wholePage.evaluate(el => el === document.activeElement)) throw Error('The whole-page choice is not reachable by keyboard');
+    await wholePage.click();
+    if (await wholePage.getAttribute('aria-pressed') !== 'true') throw Error('The whole-page choice was not selected');
+    await fitArtwork.click();
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+    const cardColours = await pictures.locator('.inline-image-page').first().evaluate(el => {
+      const style = getComputedStyle(el);
+      return { background: style.backgroundColor, text: style.color };
+    });
+    if (cardColours.background === 'rgb(255, 255, 255)' || cardColours.text === cardColours.background) throw Error(`Designer page picker has unreadable dark-mode colours: ${JSON.stringify(cardColours)}`);
+    await pictures.locator('.inline-image-page img').first().waitFor({ timeout: 10000 });
+    if (process.env.DESIGNER_PICKER_SCREENSHOT_DIR) {
+      mkdirSync(process.env.DESIGNER_PICKER_SCREENSHOT_DIR, { recursive: true });
+      await s.p.screenshot({ path: `${process.env.DESIGNER_PICKER_SCREENSHOT_DIR}/designer-page-picker-desktop-dark.png` });
+    }
+    await axe(s.p, 'Designer page picker in dark mode', A11Y_FOUND);
     await pictures.getByRole('button', { name: /Insert page 1/i }).click();
     await pictures.waitFor({ state: 'detached' });
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
     await s.p.locator('.pic-node').first().waitFor();
     const fitted = await s.p.locator('.pic-node img').first().evaluate(img => ({ width: img.naturalWidth, height: img.naturalHeight }));
     if (fitted.width <= fitted.height * 1.2) throw Error('Figure-only Designer page kept excessive square-page margins');
@@ -805,6 +829,18 @@ const J = {
     if (await map.getByRole('button', { name: 'Select and move' }).count() !== 1 || await map.getByRole('button', { name: 'Save map' }).count() !== 1) throw Error('Map tools and Save are not immediately available');
     await map.getByRole('status').filter({ hasText: 'No changes to save' }).waitFor();
     if (await map.getByRole('group', { name: 'Symbol appearance' }).getByRole('button', { name: 'Plain' }).getAttribute('aria-pressed') !== 'true') throw Error('New map symbols do not start with the plain background');
+    const categories = map.locator('.dz-symbol-browse-toggle');
+    await categories.click();
+    await map.getByRole('group', { name: 'Symbol categories' }).waitFor();
+    await categories.press('Escape');
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count() || await categories.getAttribute('aria-expanded') !== 'false' || !await categories.evaluate(element => element === document.activeElement)) throw Error('Escape did not close symbol categories and restore keyboard focus');
+    await categories.click();
+    await map.getByRole('group', { name: 'Symbol categories' }).getByRole('button', { name: 'Nature and water' }).click();
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count() || !await categories.evaluate(element => element === document.activeElement)) throw Error('Choosing a symbol category did not return focus to its control');
+    await categories.click();
+    await map.getByRole('button', { name: 'Select and move' }).click();
+    if (await map.getByRole('group', { name: 'Symbol categories' }).count()) throw Error('Symbol categories stayed open after an outside click');
+    await map.getByRole('group', { name: 'Browse map symbols' }).getByRole('button', { name: 'All', exact: true }).click();
     await design.waitForFunction(() => {
       const center = document.querySelector('.dz-map-center');
       const canvas = center?.querySelector('canvas');
@@ -2878,6 +2914,34 @@ const J = {
     await s.p.click('.hq-table tbody tr:has-text("Sofia Rossi") .hq-row-open');
     await see(s.p, '.hq-drawer:has-text("Senior teacher"), .hq-drawer input[value="Senior teacher"]', 'Sofia in the side panel');
     await axe(s.p, 'Organisation admin: a teacher', A11Y_FOUND);
+    const tags = s.p.getByRole('button', { name: 'Tags for Sofia Rossi' });
+    await tags.focus();
+    await s.p.keyboard.press('ArrowDown');
+    await see(s.p, '[role="listbox"][aria-label="Tags for Sofia Rossi"]', 'teacher tags menu opens by keyboard');
+    await s.p.waitForFunction(() => document.activeElement?.getAttribute('role') === 'option');
+    await s.p.keyboard.press('Tab');
+    if (!(await s.p.getByRole('switch', { name: 'Sofia Rossi is a teacher trainer' }).evaluate(el => document.activeElement === el))) throw new Error('Tab in the open tags menu did not move to the next field');
+    await s.p.getByRole('listbox', { name: 'Tags for Sofia Rossi' }).waitFor({ state: 'hidden' });
+    await tags.focus();
+    await s.p.keyboard.press('ArrowDown');
+    await s.p.waitForFunction(() => document.activeElement?.getAttribute('role') === 'option');
+    await s.p.keyboard.press('Shift+Tab');
+    if (!(await s.p.getByRole('textbox', { name: 'Job title' }).evaluate(el => document.activeElement === el))) throw new Error('Shift+Tab in the open tags menu did not move to the previous field');
+    await s.p.getByRole('listbox', { name: 'Tags for Sofia Rossi' }).waitFor({ state: 'hidden' });
+    await s.p.setViewportSize({ width: 390, height: 760 });
+    await s.p.evaluate(() => { localStorage.setItem('ll.theme', 'dark'); document.documentElement.dataset.theme = 'dark'; });
+    await tags.scrollIntoViewIfNeeded();
+    await tags.click();
+    const tagMenu = s.p.getByRole('listbox', { name: 'Tags for Sofia Rossi' });
+    await tagMenu.waitFor();
+    const menuFits = await tagMenu.evaluate(el => { const r = el.closest('.sel-list').getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!menuFits) throw new Error('The dark tags menu leaves a short phone viewport');
+    await axe(s.p, 'Organisation tags menu in dark mode on a phone', A11Y_FOUND);
+    if (process.env.ELT_DROPDOWN_PHONE_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_DROPDOWN_PHONE_SCREENSHOT });
+    await s.p.keyboard.press('Escape');
+    await tagMenu.waitFor({ state: 'hidden' });
+    await s.p.evaluate(() => { localStorage.setItem('ll.theme', 'light'); document.documentElement.dataset.theme = 'light'; });
+    await s.p.setViewportSize({ width: 1280, height: 900 });
     await s.p.keyboard.press('Escape');
     await s.p.click('.hq-nav-i:has-text("Invitations")');
     await s.p.click('.hq-head button:has-text("Invite teachers")');
@@ -3326,7 +3390,17 @@ const J = {
       window.dispatchEvent(new ErrorEvent('error', { message: 'FirebaseError: unavailable' }));
     });
     if (await s.p.getByRole('alertdialog').count()) throw Error('A normal connection error triggered cache recovery');
-    await s.p.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' })));
+    await s.p.evaluate(async () => {
+      const { emitFirebaseLog } = await import('/test/mock/app.ts');
+      emitFirebaseLog({ level: 'error', type: '@firebase/auth', message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+      emitFirebaseLog({ level: 'warn', type: '@firebase/firestore', message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+    });
+    if (await s.p.getByRole('alertdialog').count()) throw Error('A non-Firestore log triggered cache recovery');
+    await s.p.evaluate(async () => {
+      const { emitFirebaseLog } = await import('/test/mock/app.ts');
+      // The SDK has caught the throw: only its logged assertion reaches the app.
+      emitFirebaseLog({ level: 'error', type: '@firebase/firestore', message: 'Firestore (11.10.0): FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' });
+    });
     const recovery = s.p.getByRole('alertdialog', { name: 'Your account couldn’t finish loading' });
     await recovery.waitFor();
     await see(s.p, '#firestore-recovery-description:has-text("not been deleted")', 'clear device-work message');
@@ -3349,6 +3423,35 @@ const J = {
     if (await s.p.locator('.firestore-temporary').count()) throw Error('Temporary connection reminder remained after returning to normal');
     const restored = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
     if (restored.key || restored.work !== 'saved on device') throw Error('Returning to normal cache removed device-only work');
+    return s;
+  },
+  'A stalled profile read offers temporary recovery without discarding saved work': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm', 'teacher account before a stalled profile read');
+    await s.p.evaluate(() => {
+      localStorage.setItem('recovery-work-sentinel', 'saved on device');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/teacher1', count: 1, delay: 30000 }]));
+    });
+    await s.p.reload();
+    await see(s.p, 'button:has-text("Open with temporary connection")', 'profile timeout offers temporary recovery', 25000);
+    await axe(s.p, 'Profile timeout recovery', A11Y_FOUND);
+    await s.p.setViewportSize({ width: 390, height: 760 });
+    const phone = await s.p.locator('.signin .card').evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const action = [...el.querySelectorAll('button')].find(button => button.textContent?.includes('Open with temporary connection'));
+      const a = action?.getBoundingClientRect();
+      return { fitsWidth: r.left >= 8 && r.right <= innerWidth - 8 && document.documentElement.scrollWidth <= innerWidth,
+        recoveryVisible: !!a && a.left >= 8 && a.right <= innerWidth - 8 && a.width > 0 };
+    });
+    if (!phone.fitsWidth || !phone.recoveryVisible) throw Error('Profile recovery does not fit a phone');
+    await axe(s.p, 'Profile timeout recovery on a phone', A11Y_FOUND);
+    if (process.env.ELT_PROFILE_RECOVERY_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_PROFILE_RECOVERY_SCREENSHOT });
+    await s.p.getByRole('button', { name: 'Open with temporary connection' }).click();
+    await see(s.p, '.hm', 'real teacher account after temporary restart');
+    await see(s.p, '.firestore-temporary:has-text("Temporary connection")', 'temporary connection is identified');
+    const state = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (state.key !== '1' || state.work !== 'saved on device') throw Error('Profile recovery discarded saved device work');
     return s;
   },
   'Teacher onboarding and goal-based guide': async (b) => {
