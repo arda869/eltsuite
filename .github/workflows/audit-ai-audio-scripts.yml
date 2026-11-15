@@ -11,6 +11,10 @@ on:
         description: 'Exact legacyScripts count from the reviewed dry run; required for apply'
         type: string
         required: false
+      live_pin_uat:
+        description: 'Temporarily show the hidden synthetic AI lesson and test a normal learner PIN session (default: off)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,6 +45,27 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: node scripts/diagnose-b019-media.mjs
+      - name: Install browser for independent learner check
+        if: inputs.live_pin_uat == true
+        run: npm ci --ignore-scripts --no-audit --no-fund && npx playwright install --with-deps chromium
+      - name: Verify normal learner PIN and private AI script access
+        if: inputs.live_pin_uat == true
+        timeout-minutes: 10
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+          B029_SCREENSHOT: ${{ runner.temp }}/b029-learner.png
+        run: node scripts/uat-b029-independent-learner.mjs
+      - name: Restore hidden AI UAT lesson
+        if: always() && inputs.live_pin_uat == true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: node scripts/restore-b029-hidden.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.live_pin_uat == true
+        with:
+          name: b029-independent-learner-${{ github.run_id }}
+          path: ${{ runner.temp }}/b029-learner.png
+          if-no-files-found: ignore
       - name: Copy, verify, then remove legacy public script fields
         if: inputs.apply == true
         env:
