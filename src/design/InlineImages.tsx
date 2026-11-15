@@ -8,7 +8,7 @@ import { useDesign, loadPicture, ensureFont, type DPage, type El } from './model
 import { pageBlob } from './tools';
 import { drawPage, pageCanvas } from './render';
 import { drawnImages, searchPictures, type WebPic } from './assets';
-import { artworkBounds } from './trimArtwork';
+import { preparePageImage } from './trimArtwork';
 
 // Designer pictures in a lesson: a page or panel, or a whole story as one strip. The lesson gets
 // its own copy of the picture, so changing the design later doesn't change lessons already made.
@@ -36,30 +36,7 @@ export async function designPageImage(id: string, page: DPage, els: El[], accent
   const imgs = await imagesFor(id, [page], mine, accent);
   if (!fitArtwork || (page.scene && page.scene !== 'plain')) return pageBlob(page, els, { imgs, view: 'all', accent }, scale);
   const source = pageCanvas(page, els, { imgs, view: 'all', accent }, scale);
-  const sample = document.createElement('canvas');
-  const scanScale = Math.min(1, 1200 / Math.max(source.width, source.height));
-  sample.width = Math.max(1, Math.round(source.width * scanScale));
-  sample.height = Math.max(1, Math.round(source.height * scanScale));
-  const sampleContext = sample.getContext('2d', { willReadFrequently: true })!;
-  sampleContext.drawImage(source, 0, 0, sample.width, sample.height);
-  const backdrop = document.createElement('canvas');
-  backdrop.width = backdrop.height = 1;
-  const backdropContext = backdrop.getContext('2d')!;
-  backdropContext.fillStyle = page.bg || '#ffffff';
-  backdropContext.fillRect(0, 0, 1, 1);
-  const background = [...backdropContext.getImageData(0, 0, 1, 1).data] as [number, number, number, number];
-  let bounds = null;
-  try { bounds = artworkBounds(sampleContext.getImageData(0, 0, sample.width, sample.height).data, sample.width, sample.height, background); }
-  catch { /* A page whose pixels cannot be inspected keeps its whole layout. */ }
-  if (!bounds) return new Promise<Blob>((resolve, reject) => source.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image')), 'image/png'));
-  const x = Math.max(0, Math.floor(bounds.x * source.width / sample.width));
-  const y = Math.max(0, Math.floor(bounds.y * source.height / sample.height));
-  const right = Math.min(source.width, Math.ceil((bounds.x + bounds.w) * source.width / sample.width));
-  const bottom = Math.min(source.height, Math.ceil((bounds.y + bounds.h) * source.height / sample.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = right - x;
-  canvas.height = bottom - y;
-  canvas.getContext('2d')!.drawImage(source, x, y, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+  const canvas = preparePageImage(source, page.bg || '#ffffff', true, () => document.createElement('canvas'));
   return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image')), 'image/png'));
 }
 // All the panels of a story as one picture: two to a row, each with its caption under it.
