@@ -23,7 +23,43 @@ export function eligibleMessages(messages, cursor, cutoff) {
 }
 
 export function nextDigestMarker(chat, uid, messages) {
+  return advanceDigestMarker({ at: Number(chat.digested?.[uid] ?? 0), ids: chat.digestedIds?.[uid] ?? [] }, messages);
+}
+
+function advanceDigestMarker(marker, messages) {
   const at = messages.at(-1).at;
-  const previousIds = Number(chat.digested?.[uid] ?? 0) === at ? chat.digestedIds?.[uid] ?? [] : [];
-  return { at, ids: [...new Set([...previousIds, ...messages.filter((message) => message.at === at).map((message) => message.id)])] };
+  const ids = messages.filter((message) => message.at === at).map((message) => message.id);
+  return { at, ids: at === marker.at ? [...new Set([...marker.ids, ...ids])] : ids };
+}
+
+export const DIGEST_PAGE_SIZE = 100;
+export const DIGEST_MAX_PAGES = 5;
+
+// Process at most 500 documents per chat per scheduled run. The marker stops at
+// the last processed message, so a longer unread history continues next run.
+export async function collectSummaryBatch(source, cursor, cutoff, initialMarker, uid, pageSize = DIGEST_PAGE_SIZE, maxPages = DIGEST_MAX_PAGES) {
+  let lastDocument = null;
+  let marker = initialMarker;
+  let processed = false;
+  let count = 0;
+  const preview = [];
+  for (let page = 0; page < maxPages; page += 1) {
+    const query = lastDocument ? source.startAfter(lastDocument) : source;
+    const snapshot = await query.limit(pageSize).get();
+    if (!snapshot.docs.length) break;
+    const eligible = eligibleMessages(snapshot.docs.map((document) => ({ id: document.id, ...document.data() })), cursor, cutoff);
+    if (eligible.length) {
+      processed = true;
+      marker = advanceDigestMarker(marker, eligible);
+      for (const message of eligible) {
+        if (message.by === uid || message.deleted) continue;
+        count += 1;
+        preview.push(message);
+        if (preview.length > 5) preview.shift();
+      }
+    }
+    lastDocument = snapshot.docs.at(-1);
+    if (snapshot.docs.length < pageSize) break;
+  }
+  return { processed, marker, count, preview };
 }

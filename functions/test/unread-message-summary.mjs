@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { digestCursor, eligibleMessages, mayHaveEligibleMessage, nextDigestMarker } from '../notifications/digest-logic.js';
+import { collectSummaryBatch, digestCursor, eligibleMessages, mayHaveEligibleMessage, nextDigestMarker } from '../notifications/digest-logic.js';
 
 const fifteenMinutes = 15 * 60_000;
 const recipient = 'learner';
@@ -66,4 +66,61 @@ test('a batch of more than five eligible messages advances through all of them',
   chat.digested = { learner: marker.at };
   chat.digestedIds = { learner: marker.ids };
   assert.equal(mayHaveEligibleMessage(chat, recipient, thirdAt), false);
+});
+
+function pagedSource(messages, reads, start = 0, size = Infinity) {
+  const docs = messages.map((message) => ({ id: message.id, data: () => message }));
+  return {
+    startAfter(last) { return pagedSource(messages, reads, docs.findIndex((document) => document.id === last.id) + 1, size); },
+    limit(n) { return pagedSource(messages, reads, start, n); },
+    async get() {
+      const page = docs.slice(start, start + size);
+      reads.pages += 1;
+      reads.maxPage = Math.max(reads.maxPage, page.length);
+      return { docs: page };
+    },
+  };
+}
+
+test('long unread histories use bounded pages and continue from the last emailed message', async () => {
+  const messages = Array.from({ length: 620 }, (_, index) => ({ id: `m${String(index).padStart(4, '0')}`, at: thirdAt + index, by: 'teacher' }));
+  const chat = { last: { id: messages.at(-1).id, by: 'teacher' }, lastAt: messages.at(-1).at, seen: { learner: 0 } };
+  const reads = { pages: 0, maxPage: 0 };
+  const cutoff = chat.lastAt;
+  const initial = { at: 0, ids: [] };
+  const first = await collectSummaryBatch(pagedSource(messages, reads), digestCursor(chat, recipient), cutoff, initial, recipient);
+  assert.equal(first.count, 500);
+  assert.deepEqual(first.preview.map((message) => message.id), messages.slice(495, 500).map((message) => message.id));
+  assert.equal(first.marker.at, messages[499].at);
+  assert.equal(reads.pages, 5);
+  assert.equal(reads.maxPage, 100);
+
+  chat.digested = { learner: first.marker.at };
+  chat.digestedIds = { learner: first.marker.ids };
+  const second = await collectSummaryBatch(pagedSource(messages.filter((message) => message.at >= first.marker.at), reads),
+    digestCursor(chat, recipient), cutoff, first.marker, recipient);
+  assert.equal(second.count, 120);
+  assert.equal(second.marker.at, messages.at(-1).at);
+  chat.digested.learner = second.marker.at;
+  chat.digestedIds.learner = second.marker.ids;
+  assert.equal(mayHaveEligibleMessage(chat, recipient, cutoff), false);
+  assert.equal(reads.maxPage, 100);
+});
+
+test('pagination preserves all IDs when the timestamp is the same across pages', async () => {
+  const messages = Array.from({ length: 105 }, (_, index) => ({ id: `m${String(index).padStart(3, '0')}`, at: thirdAt, by: 'teacher' }));
+  const chat = { last: { id: messages.at(-1).id, by: 'teacher' }, lastAt: thirdAt, seen: { learner: 0 } };
+  const reads = { pages: 0, maxPage: 0 };
+  const first = await collectSummaryBatch(pagedSource(messages, reads), digestCursor(chat, recipient), thirdAt, { at: 0, ids: [] }, recipient);
+  assert.equal(first.count, 105);
+  assert.equal(first.marker.ids.length, 105);
+  chat.digested = { learner: thirdAt };
+  chat.digestedIds = { learner: first.marker.ids };
+  chat.last.id = 'm050b';
+  const withNew = [...messages, { id: 'm050b', at: thirdAt, by: 'teacher' }].sort((a, b) => a.id.localeCompare(b.id));
+  const second = await collectSummaryBatch(pagedSource(withNew, reads), digestCursor(chat, recipient), thirdAt, first.marker, recipient);
+  assert.equal(second.count, 1);
+  assert.deepEqual(second.preview.map((message) => message.id), ['m050b']);
+  assert.equal(second.marker.ids.length, 106);
+  assert.equal(reads.maxPage, 100);
 });
