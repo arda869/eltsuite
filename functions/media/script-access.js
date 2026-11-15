@@ -33,7 +33,9 @@ export async function issueMediaQrGrantForTeacher(db, auth, input) {
   const coRole=classSnap.get('coTeachers')?.[auth.uid]?.role;
   if(classSnap.get('teacherId')!==auth.uid&&coRole!=='co')throw denied();
   const task=taskSnap.data(),content=task.restricted?(await taskRef.collection('private').doc('body').get()).get('content'):task.content;
-  if(itemSnap.get('hidden')||itemSnap.get('locked')||task.hidden||task.locked||task.kind==='section'||!savedMediaMode(content,mediaId))throw denied();
+  // A teacher may print before showing the task. The access callable checks
+  // this placement's current visibility when a learner scans the QR code.
+  if(task.kind==='section'||!savedMediaMode(content,mediaId))throw denied();
   const key=[classId,itemId,taskId,mediaId].join('/');
   const grants=db.collection('mediaQrGrants');
   const old=await grants.where('key','==',key).limit(1).get();
