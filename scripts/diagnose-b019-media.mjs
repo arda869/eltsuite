@@ -159,3 +159,10 @@ for(const classItem of classItems.docs){
  }
 }
 console.log('migrated_ai_fixture_count',migratedAiFixtures);
+const candidateLearners=await classRef.collection('learners').get();
+for(const learner of candidateLearners.docs){
+ const name=String(learner.get('displayName')||'');
+ if(!/privacy|uat|release|test/i.test(name))continue;
+ const secret=await classRef.collection('secrets').doc(learner.id).get();
+ console.log('uat_learner_candidate',JSON.stringify({learnerId:learner.id,authAccount:typeof learner.get('authUid')==='string',pinAvailable:/^\d{4}$/.test(String(secret.get('pin')||'')),syntheticName:/privacy|uat|release|test/i.test(name)}));
+}
