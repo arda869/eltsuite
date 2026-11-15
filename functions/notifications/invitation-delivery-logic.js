@@ -50,8 +50,8 @@ async function deliverOne({ db, ref, eligible, makeMessage, mail, from, now }) {
   return true;
 }
 
-// The Cloud Scheduler worker is the sole sender for org and code invitations.
-// Per-document claims prevent overlapping scheduled runs from sending the same invitation.
+// Cloud Scheduler is the primary sender; the GitHub email job uses this as a fallback.
+// Per-document claims prevent overlapping runs from sending the same invitation.
 export async function deliverPendingInvitations({ db, auth, mail, from, now = Date.now() }) {
   const tally = { organisations: 0, codes: 0, errors: 0 };
   const invitations = await db.collection('orgInvites').where('status', '==', 'pending').get();
