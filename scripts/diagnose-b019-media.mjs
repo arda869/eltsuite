@@ -61,3 +61,40 @@ await new Promise(resolve=>{
   if(event.type==='error')done({result:'provider_error',code:event.error?.code??'',type:event.error?.type??'',param:event.error?.param??'',message:String(event.error?.message??'').slice(0,180)});
  });
 });
+
+// B-030: inspect the existing QR grant for a hidden lesson and ask the deployed
+// callable for the script anonymously. Never print grant IDs, scripts or URLs.
+const qrItemId='zHSqDqT0842sWY40Oanu';
+const qrItem=db.doc(`classes/${classId}/items/${qrItemId}`);
+const [qrItemSnap,qrTasks]=await Promise.all([qrItem.get(),qrItem.collection('tasks').get()]);
+console.log('qr_fixture',JSON.stringify({itemExists:qrItemSnap.exists,itemHidden:qrItemSnap.get('hidden')===true,itemLocked:qrItemSnap.get('locked')===true,taskCount:qrTasks.size}));
+let qrMediaCount=0,qrGrantCount=0,qrDeniedCount=0;
+for(const qrTask of qrTasks.docs){
+ const task=qrTask.data();
+ const content=task.restricted?(await qrTask.ref.collection('private').doc('body').get()).get('content'):task.content;
+ const mediaIds=new Set();
+ const visit=node=>{if(!node||typeof node!=='object')return;if(['media','inlineMedia'].includes(node.type)&&typeof node.attrs?.media==='string')mediaIds.add(node.attrs.media);if(Array.isArray(node.content))node.content.forEach(visit);};
+ visit(content);
+ for(const qrMediaId of mediaIds){
+  qrMediaCount++;
+  const key=[classId,qrItemId,qrTask.id,qrMediaId].join('/');
+  const [grantQuery,publicMedia,privateScript]=await Promise.all([
+   db.collection('mediaQrGrants').where('key','==',key).limit(1).get(),
+   db.doc(`classes/${classId}/media/${qrMediaId}`).get(),
+   db.doc(`classes/${classId}/mediaScripts/${qrMediaId}`).get(),
+  ]);
+  console.log('qr_placement',JSON.stringify({taskHidden:task.hidden===true,taskLocked:task.locked===true,existingGrant:!grantQuery.empty,publicMediaExists:publicMedia.exists,publicMediaContainsScript:publicMedia.data()&&Object.hasOwn(publicMedia.data(),'script')||false,privateScriptExists:privateScript.exists}));
+  if(grantQuery.empty)continue;
+  qrGrantCount++;
+  const response=await fetch('https://us-central1-lesson-lit.cloudfunctions.net/mediaScriptAccess',{
+   method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({data:{classId,itemId:qrItemId,taskId:qrTask.id,mediaId:qrMediaId,grant:grantQuery.docs[0].id,action:'read'}}),
+   signal:AbortSignal.timeout(30000),
+  });
+  const result=await response.json();
+  const denied=result.error?.status==='PERMISSION_DENIED';
+  if(denied)qrDeniedCount++;
+  console.log('qr_anonymous_read',JSON.stringify({httpStatus:response.status,errorStatus:result.error?.status||'',scriptLines:Array.isArray(result.result?.script)?result.result.script.length:null,denied}));
+ }
+}
+console.log('qr_summary',JSON.stringify({mediaPlacements:qrMediaCount,existingGrants:qrGrantCount,deniedReads:qrDeniedCount}));
