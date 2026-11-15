@@ -35,7 +35,7 @@ export function MenuHost() {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useMenuKeys(ref, open, () => setOpen(null), !!open?.kbd);
-  useEffect(() => {
+  useLayoutEffect(() => {
     setter = setOpen;
     // Never the browser's menu: anywhere the app has no menu of its own, this one.
     const fallback = (e: MouseEvent) => {
@@ -68,10 +68,12 @@ export function MenuHost() {
   useLayoutEffect(() => {
     if (!open || !ref.current) return setPos(null);
     const r = ref.current.getBoundingClientRect();
-    const below = window.innerHeight - open.y - 8;
-    const above = (open.anchorTop ?? open.y) - 8;
+    // Leave a little room for subpixel rounding on short phone viewports.
+    const inset = 10;
+    const below = window.innerHeight - open.y - inset;
+    const above = (open.anchorTop ?? open.y) - inset;
     const top = r.height > below && above > below ? (open.anchorTop ?? open.y) - r.height - 4 : open.y;
-    setPos({ left: Math.max(8, Math.min(open.x, window.innerWidth - r.width - 8)), top: Math.max(8, Math.min(top, window.innerHeight - r.height - 8)) });
+    setPos({ left: Math.max(inset, Math.min(open.x, window.innerWidth - r.width - inset)), top: Math.max(inset, Math.min(top, window.innerHeight - r.height - inset)) });
   }, [open]);
   useEffect(() => {
     if (!open) return;

@@ -27,19 +27,21 @@ try {
       const task = flattenTask({ title: 'Designer figure', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt: 'Designer map or chart', size, w: width } }] }] } });
       const picture = task.blocks.flatMap((block) => block.kind === 'p' ? block.runs : []).find((run) => run.pic)?.pic;
       const html = inlineWorksheetHtml(task, media);
-      const word = await lessonDocx('Figure worksheet', [{ kind: 'task', task }], { header: false, key: false, columns, media });
+      const word = await lessonDocx('Figure worksheet', [{ kind: 'task', task }], { header: false, key: width === 450, columns, media });
       return { width: picture?.w ?? null, html, wordBytes: Array.from(new Uint8Array(await word.arrayBuffer())) };
     };
     return { map: await check(450, 'm', 1), chart: await check(600, 'm', 1), columns: await check(600, 'm', 2), preset: await check(0, 'm', 1) };
   });
+  const wordXml = (result) => strFromU8(unzipSync(Uint8Array.from(result.wordBytes))['word/document.xml']);
   const wordWidth = (result) => {
-    const xml = strFromU8(unzipSync(Uint8Array.from(result.wordBytes))['word/document.xml']);
+    const xml = wordXml(result);
     const extent = /<wp:extent cx="(\d+)" cy="(\d+)"/.exec(xml);
     return extent ? Math.round(Number(extent[1]) / 9525) : null;
   };
   assert.equal(results.map.width, 450, 'The teacher’s dragged width must reach the worksheet model');
   assert.match(results.map.html, /class="ws-picture pic-m" style="width:min\(100%,69mm\)"/, 'A map dragged to 450 px should print at the corresponding width');
   assert.equal(wordWidth(results.map), 300, 'Word keeps the 450 px map at the matching print size');
+  assert.doesNotMatch(wordXml(results.map), /Answer key|FOR THE TEACHER/, 'A visual-only task should not add an empty teacher page when answer key is selected');
   assert.match(results.chart.html, /style="width:min\(100%,92mm\)"/, 'A chart dragged to 600 px should retain its print width');
   assert.equal(wordWidth(results.chart), 400, 'Word keeps the 600 px chart at the matching print size');
   assert.equal(wordWidth(results.columns), 300, 'A wide picture must fit a two-column Word worksheet');

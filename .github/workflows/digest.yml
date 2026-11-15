@@ -28,7 +28,7 @@ jobs:
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/space.mjs scripts/file-bin-cleanup.mjs scripts/video.mjs scripts/ics.mjs scripts/email-layout.mjs "$RUNNER_TEMP/d/"
+          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/mail-replies.mjs scripts/space.mjs scripts/file-bin-cleanup.mjs scripts/video.mjs scripts/ics.mjs scripts/email-layout.mjs "$RUNNER_TEMP/d/"
           mkdir -p "$RUNNER_TEMP/functions" && cp functions/push-delivery.js functions/package.json "$RUNNER_TEMP/functions/"
           mkdir -p "$RUNNER_TEMP/functions/notifications" && cp functions/notifications/email-layout.js functions/notifications/invitation-emails.js functions/notifications/invitation-copy.json functions/notifications/invitation-delivery-logic.js "$RUNNER_TEMP/functions/notifications/"
           # The app's own repeat rules (src/lib/repeat.ts), for meeting invitations.

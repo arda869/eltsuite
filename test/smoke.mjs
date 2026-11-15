@@ -2636,6 +2636,31 @@ const J = {
     await axe(s.p, 'Messages', A11Y_FOUND);
     return s;
   },
+  'Message settings choices work inside their menu on a phone': async (b) => {
+    const s = await session(b);
+    await s.p.setViewportSize({ width: 320, height: 720 });
+    await s.p.evaluate(() => {
+      localStorage.setItem('ll.theme', 'dark');
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['users/teacher1'] = { ...fs['users/teacher1'], msgPrefs: { email: true, after: 60, receipts: true } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/messages`);
+    await s.p.getByRole('button', { name: 'Message settings' }).click();
+    const delay = s.p.getByRole('button', { name: 'When they stay unread for' });
+    await delay.click();
+    await s.p.getByRole('option', { name: '15 minutes' }).click();
+    await s.p.waitForFunction(() => {
+      const prefs = JSON.parse(localStorage.getItem('mockfs'))['users/teacher1']?.msgPrefs;
+      return prefs?.after === 15;
+    });
+    if (!await s.p.getByRole('menu').filter({ hasText: 'When they stay unread for' }).isVisible()) throw Error('Choosing a delay closed Message settings');
+    if (!await delay.getByText('15 minutes').isVisible()) throw Error('The selected delay did not update');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'Message settings' }).click();
+    await s.p.getByRole('button', { name: 'When they stay unread for' }).getByText('15 minutes').waitFor();
+    return s;
+  },
   'Message document preview fits phone': async (b) => {
     const s = await session(b);
     await s.p.setViewportSize({ width: 390, height: 844 });
@@ -2841,8 +2866,8 @@ const J = {
     await s.p.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 160 })));
     const menu = s.p.getByRole('menu');
     await menu.waitFor();
-    const fits = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
-    if (!fits) throw new Error('Shared menu leaves a short phone viewport');
+    const bounds = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: innerWidth, height: innerHeight, scrollY }; });
+    if (bounds.left < 8 || bounds.right > bounds.width - 8 || bounds.top < 8 || bounds.bottom > bounds.height - 8) throw new Error('Shared menu leaves a short phone viewport: ' + JSON.stringify(bounds));
     const last = menu.getByRole('menuitem').last();
     await last.scrollIntoViewIfNeeded();
     const lastFits = await last.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });
@@ -3347,6 +3372,43 @@ const J = {
     }
     await see(s.p, 'text=Present perfect', 'the lesson on the learner home page');
     await axe(s.p, 'Learner home', A11Y_FOUND);
+    return s;
+  },
+  'An unavailable learner lesson link ends loading and offers recovery': async (b) => {
+    const s = await session(b, { as: 'Mia' });
+    await s.p.evaluate(async () => {
+      const { doc, getFirestore, onSnapshot } = await import('/test/mock/firestore.ts');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([
+        { op: 'listen', path: 'tests/cancelled-listener', count: 1, code: 'permission-denied' },
+      ]));
+      const stop = onSnapshot(doc(getFirestore(), 'tests', 'cancelled-listener'), () => {});
+      stop();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      const [fault] = JSON.parse(sessionStorage.getItem('mockfs-faults'));
+      if (fault.count !== 1) throw Error('An unsubscribed listener consumed the next active listener’s fault');
+      sessionStorage.removeItem('mockfs-faults');
+    });
+    await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(s.p, '.task-frame .task-title', 'a shared lesson opens normally');
+
+    await s.p.goto(`${BASE}/learn/no-longer-shared`);
+    await see(s.p, '.task-frame h1:has-text("This lesson is unavailable")', 'a removed lesson explains why it cannot open');
+    await see(s.p, '.task-frame:has-text("no longer shared")', 'removed lesson guidance');
+    if (await s.p.locator('.frame-loading:has-text("Loading tasks")').count()) throw Error('A missing lesson remained on the loading screen');
+    await s.p.getByRole('link', { name: 'Back to class home' }).click();
+    await s.p.waitForURL(BASE + '/');
+    await see(s.p, 'text=Present perfect', 'the learner can return to class home');
+
+    await s.p.evaluate(({ classId, itemId }) => sessionStorage.setItem('mockfs-faults', JSON.stringify([
+      // Keep the read unavailable through any transient StrictMode subscriptions.
+      { op: 'listen', path: `classes/${classId}/items/${itemId}`, count: 100, code: 'permission-denied' },
+    ])), s.demo);
+    await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(s.p, '.task-frame h1:has-text("This lesson is unavailable")', 'a failed item read offers recovery');
+    await see(s.p, '.task-frame:has-text("Check your connection")', 'read failure guidance');
+    await s.p.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
+    await s.p.getByRole('button', { name: 'Try again' }).click();
+    await see(s.p, '.task-frame .task-title:not(:has-text("unavailable"))', 'retry reopens the lesson');
     return s;
   },
   'Slow teacher profile setup recovers without opening an unfinished account': async b => {

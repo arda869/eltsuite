@@ -32,6 +32,8 @@ jobs:
         run: node test/push-notifications.mjs
       - name: Invitation template and delivery checks
         run: node test/invitation-emails.mjs && node test/invitation-delivery.mjs
+      - name: Class email reply boundaries
+        run: node --test test/mail-replies.mjs
       - name: Account email privacy and retry checks
         run: node --test functions/test/auth-email.mjs
 
@@ -100,6 +102,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Designer and Classes visual regression checks
         run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
+
+      - name: Multi-page worksheet PDF and Designer figure exports
+        run: node test/worksheet-multipage.mjs && node test/worksheet-picture-width.mjs
 
       - name: The Information Gap publication and access journeys (Firebase simulated)
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.information-gap.emulators.json --project demo-information-gap "node test/information-gap-rules.mjs && node scripts/test-information-gap.mjs"

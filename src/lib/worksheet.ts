@@ -956,12 +956,16 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   if (opts.marks && grand) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 120 }, children: [new TextRun({ text: 'TOTAL', font: SANS, size: S(18), bold: true }), markRun(grand)] }));
   const keyParas: (Paragraph | Table)[] = [];
   const withNotes = !!opts.notes;
-  if (opts.key || withNotes) {
+  const hasTeacherContent = tasks.some((t) =>
+    (opts.key && (t.answers.length > 0 || (t.media ?? []).some((id) => (opts.sounds?.[id]?.script.length ?? 0) > 0))) ||
+    (withNotes && !!t.notes?.trim()),
+  );
+  if (hasTeacherContent) {
     keyParas.push(new Paragraph({ children: [new TextRun({ text: 'FOR THE TEACHER', font: SANS, size: S(15), bold: true, color: ACC, characterSpacing: 40 })] }));
     keyParas.push(new Paragraph({ children: [new TextRun({ text: opts.key && withNotes ? 'Answer key and notes' : opts.key ? 'Answer key' : 'Teacher’s notes', font: SERIF, size: S(40), bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACC, space: 6 } }, spacing: { after: 200 } }));
     tasks.forEach((t, ti) => {
       const answers = opts.key ? t.answers : [];
-      const notes = withNotes ? t.notes ?? '' : '';
+      const notes = withNotes ? t.notes?.trim() ?? '' : '';
       const scripts = opts.key ? (t.media ?? []).map((id) => opts.sounds?.[id]).filter((m): m is MediaInfo => !!m && m.script.length > 0) : [];
       if (!answers.length && !notes && !scripts.length) return;
       keyParas.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));

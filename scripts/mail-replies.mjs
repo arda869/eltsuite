@@ -1,0 +1,123 @@
+import crypto from 'node:crypto';
+
+const address = value => String(value ?? '').trim().toLowerCase();
+const dmId = (a, b) => 'dm_' + [a, b].sort().join('_');
+const teacherStillTeaches = (cls, teacher) => Boolean(cls && cls.status !== 'deleted' &&
+  (cls.teacherId === teacher || cls.coTeachers?.[teacher]?.role === 'co'));
+
+// A reply must belong to one thread. Some mail servers retain the plus address,
+// while others deliver to the base mailbox and leave only the subject token.
+export function replyToken(message) {
+  const recipients = [message.to?.text ?? '', message.headers?.get('delivered-to') ?? ''].join(' ');
+  const alias = /\+([0-9a-f]{12})@/i.exec(recipients)?.[1]?.toLowerCase();
+  const subject = /\[#([0-9a-f]{12})\]/i.exec(message.subject ?? '')?.[1]?.toLowerCase();
+  return alias && subject && alias !== subject ? null : alias || subject || null;
+}
+
+export function replySenderMatches(message, learner) {
+  const from = message.from?.value ?? [];
+  const sender = message.sender?.value ?? [];
+  const expected = address(learner?.contactEmail);
+  return Boolean(expected && learner?.role === 'learner' && from.length === 1 &&
+    address(from[0]?.address) === expected &&
+    (!sender.length || sender.length === 1 && address(sender[0]?.address) === expected));
+}
+
+export function freshReply(textBody) {
+  const lines = String(textBody ?? '').replace(/\r/g, '').split('\n');
+  const out = [];
+  for (const line of lines) {
+    if (/^>/.test(line) || /^On .+wrote:\s*$/i.test(line) || /^-{2,}\s*Original Message/i.test(line) || /^From:\s/i.test(line) || /^Sent from my /i.test(line)) break;
+    out.push(line);
+  }
+  return out.join('\n').trim().slice(0, 4000);
+}
+
+export function replyMessageId(token, message, uid, uidValidity) {
+  const identity = String(message.messageId ?? '').trim() || `${String(uidValidity ?? '')}:${String(uid ?? '')}`;
+  return 'email_' + crypto.createHash('sha256').update(token + '\0' + identity).digest('hex').slice(0, 32);
+}
+
+// Permanently invalid mail is handled once in the dedicated reply mailbox.
+// A database or post failure leaves it unread so the next run can retry it.
+export async function handleIncomingReply({ message, uid, uidValidity, getThread, getLearner, getClass, post, markSeen }) {
+  const token = replyToken(message);
+  const thread = token ? await getThread(token) : null;
+  if (!thread?.learnerUid) {
+    await markSeen();
+    return 'ignored';
+  }
+  const learner = await getLearner(thread.learnerUid);
+  if (learner?.learnerId !== thread.learnerId || learner?.classId !== thread.classId || !replySenderMatches(message, learner)) {
+    await markSeen();
+    return 'ignored';
+  }
+  const cls = await getClass(thread.classId);
+  if (!teacherStillTeaches(cls, thread.teacher)) {
+    await markSeen();
+    return 'ignored';
+  }
+  const text = freshReply(message.text);
+  const posted = text ? await post(thread, text, replyMessageId(token, message, uid, uidValidity)) : false;
+  await markSeen();
+  return text ? posted ? 'posted' : 'duplicate' : 'empty';
+}
+
+// ImapFlow cannot issue another IMAP command from inside its fetch() iterator:
+// flagging a message there deadlocks the connection. Fetch a small set of
+// complete messages first, then process and flag them after fetchAll resolves.
+export async function processReplyMailbox({ client, parse, getThread, getLearner, getClass, post,
+  limit = 100, batchSize = 20 }) {
+  const unread = await client.search({ seen: false }, { uid: true });
+  const uids = Array.isArray(unread) ? unread.slice(0, limit) : [];
+  let delivered = 0;
+  for (let i = 0; i < uids.length; i += batchSize) {
+    const messages = await client.fetchAll(uids.slice(i, i + batchSize), { source: true, uid: true }, { uid: true });
+    for (const m of messages) {
+      const result = await handleIncomingReply({
+        message: await parse(m.source), uid: m.uid, uidValidity: client.mailbox?.uidValidity,
+        getThread, getLearner, getClass, post,
+        markSeen: async () => {
+          if (!await client.messageFlagsAdd(m.uid, ['\\Seen'], { uid: true })) throw Error('Could not mark a reply as read.');
+        },
+      });
+      if (result === 'posted') delivered++;
+    }
+  }
+  return { processed: uids.length, delivered };
+}
+
+// A stable message ID and one transaction prevent a duplicate chat message if
+// posting succeeds but marking the IMAP message as seen fails or the job restarts.
+export async function postEmailReply(db, thread, text, messageId, at = Date.now()) {
+  const id = dmId(thread.teacher, thread.learnerId);
+  const ref = db.collection('chats').doc(id), messageRef = ref.collection('msgs').doc(messageId);
+  return db.runTransaction(async tx => {
+    const [chat, existing, classSnap, learnerSnap, memberSnap] = await Promise.all([
+      tx.get(ref), tx.get(messageRef), tx.get(db.collection('classes').doc(thread.classId)),
+      tx.get(db.collection('users').doc(thread.learnerUid)),
+      tx.get(db.collection('classes').doc(thread.classId).collection('members').doc(thread.learnerUid)),
+    ]);
+    if (existing.exists) return false;
+    if (!classSnap.exists || !teacherStillTeaches({
+      teacherId: classSnap.get('teacherId'), coTeachers: classSnap.get('coTeachers'), status: classSnap.get('status'),
+    }, thread.teacher)) return false;
+    if (!learnerSnap.exists || learnerSnap.get('role') !== 'learner' ||
+      learnerSnap.get('classId') !== thread.classId || learnerSnap.get('learnerId') !== thread.learnerId ||
+      !memberSnap.exists || memberSnap.get('learnerId') !== thread.learnerId) return false;
+    if (chat.exists && (chat.get('classId') !== thread.classId ||
+      !chat.get('members')?.includes(thread.teacher) || !chat.get('members')?.includes(thread.learnerId))) {
+      throw Error('The email thread no longer matches this chat.');
+    }
+    const last = { id: messageRef.id, text: text.slice(0, 140), name: thread.learnerName, by: thread.learnerId, mentions: [] };
+    tx.set(ref, {
+      ...(chat.exists ? {} : { members: [thread.teacher, thread.learnerId], names: { [thread.teacher]: thread.teacherName, [thread.learnerId]: thread.learnerName }, roles: { [thread.teacher]: 'teacher', [thread.learnerId]: 'learner' }, classId: thread.classId, kind: 'dm', createdBy: thread.learnerId, createdAt: at }),
+      at, lastAt: at, last, emailThread: true,
+      seen: { [thread.learnerId]: at }, mailed: { [thread.learnerId]: at },
+    }, { merge: true });
+    tx.set(messageRef, { by: thread.learnerId, name: thread.learnerName, role: 'learner', at, text,
+      content: { type: 'doc', content: text.split(/\n{2,}/).map(p => ({ type: 'paragraph', content: p.trim() ? [{ type: 'text', text: p.trim() }] : [] })) },
+      viaEmail: true, mentions: [] });
+    return true;
+  });
+}

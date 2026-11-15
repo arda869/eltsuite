@@ -1374,7 +1374,7 @@ export function LessonEditor() {
                       </YoungScore>
                     ) : !previewChecked ? <YoungProgress done={qs.filter((q) => isAnswered(previewResponses[q.id])).length} total={qs.length} /> : null;
                   })()}
-                  <span className="hint">{preview ? 'Preview · answers here aren’t saved' : 'Teaching · click a question to show its answer to the class'}</span>
+                  <span className="hint">{preview ? <><span className="foot-long">Preview · answers here aren’t saved</span><span className="foot-short">Answers aren’t saved</span></> : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
                     {!preview && qCount > 0 && (
                       <span className="reveal-ctl foot-reveal" aria-label="Answers">

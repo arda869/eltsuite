@@ -47,6 +47,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     }
   };
   const [busy, setBusy] = useState('');
+  const [exportError, setExportError] = useState('');
   const [paper, setPaperState] = useState<Paper>(defaultPaper);
   const setPaper = (p: Paper) => {
     setPaperState(p);
@@ -132,6 +133,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   // A real PDF, opened in the viewer, to save in Files or download.
   const [preview, setPreview] = useState<{ bytes: Uint8Array; name: string } | null>(null);
   const makePdf = async () => {
+    setExportError('');
     setBusy('Making the PDF…');
     try {
       const tasks = chosen();
@@ -141,17 +143,20 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
       setBusy('');
     } catch (e) {
       console.error(e);
-      setBusy('We couldn’t make the PDF: ' + (e as Error).message);
+      setExportError('We couldn’t make the PDF. ' + (e as Error).message);
+      setBusy('');
     }
   };
   const docx = async () => {
+    setExportError('');
     setBusy('Making the Word file…');
     try {
       const items = chosen();
       saveBlob(`${lesson!.title.replace(/[^\w\- ]+/g, '').trim() || 'Worksheet'}.docx`, await lessonDocx(lesson!.title, items, { ...look(), media: await pictures(items), sounds: await sounds(items) }));
       setBusy('');
     } catch (e) {
-      setBusy('We couldn’t make the file: ' + (e as Error).message);
+      setExportError('We couldn’t make the Word file. ' + (e as Error).message);
+      setBusy('');
     }
   };
   return (
@@ -238,14 +243,15 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
               </label>
             )}
             {busy && <span className="hint">{busy}</span>}
+            {exportError && <span className="load-error" role="alert">{exportError}</span>}
             <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" className="btn" onClick={onClose}>
                 Close
               </button>
-              <button type="button" className="btn" disabled={!ids.size} onClick={docx}>
+              <button type="button" className="btn" disabled={!ids.size || !!busy} onClick={docx}>
                 Word file (.docx)
               </button>
-              <button type="button" className="btn" disabled={!ids.size} onClick={print}>
+              <button type="button" className="btn" disabled={!ids.size || !!busy} onClick={print}>
                 Print
               </button>
               <button type="button" className="btn primary" disabled={!ids.size || !!busy} onClick={() => void makePdf()}>

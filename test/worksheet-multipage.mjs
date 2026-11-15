@@ -1,14 +1,47 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from '@napi-rs/canvas';
 
-const base = process.env.STYLE_BASE || 'http://localhost:5184';
-const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
+const base = process.env.STYLE_BASE || 'http://127.0.0.1:5280';
+const server = process.env.STYLE_BASE ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', '5280', '--strictPort', '--host', '127.0.0.1'], { stdio: 'inherit' });
+let browser;
 try {
+  if (server) {
+    let ready = false;
+    for (let i = 0; i < 120; i++) {
+      if (await fetch(base).then((r) => r.ok, () => false)) { ready = true; break; }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    assert(ready, 'The worksheet test page did not start');
+  }
+  browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
   const page = await browser.newPage();
   await page.goto(`${base}/test/lesson-style-check.html`);
   await page.waitForFunction(() => !!window.worksheetPdf && !!window.exportFixture);
+  // Pictures trigger a preliminary layout to start loading, then a final layout that replaces
+  // every page node. PDF capture must never see the preliminary nodes as printable pages.
+  const picture = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="680" height="460"><rect width="680" height="460" fill="#eeeeee"/><path d="M30 40h600v350H30z" stroke="#222" stroke-width="8" fill="none"/></svg>').toString('base64');
+  const delayedHtml = await page.evaluate((src) => {
+    const tasks = Array.from({ length: 4 }, (_, i) => {
+      const task = window.flattenTask(window.exportFixture, 'exam');
+      return { kind: 'task', task: { ...task, title: `Picture exercise ${i + 1}`, blocks: i === 0 ? [...task.blocks, { kind: 'p', runs: [{ pic: { src, size: 'large', label: '', alt: 'Test map' } }] }] : task.blocks } };
+    });
+    return window.worksheetHtml('Picture worksheet', tasks, {
+      lessonStyle: 'exam', header: true, key: false, notes: false, paper: 'Letter',
+      columns: 1, accent: '#13579b', className: 'Exam class', origin: location.origin,
+    }).replace('<script>\n(function ()', '<script>window.pictureDecodePromise = new Promise(resolve => { window.releasePictureDecode = resolve; }); HTMLImageElement.prototype.decode = function () { return window.pictureDecodePromise; };</script><script>\n(function ()');
+  }, picture);
+  const delayedPage = await browser.newPage();
+  await delayedPage.goto(`${base}/test/lesson-style-check.html`);
+  await delayedPage.setContent(delayedHtml);
+  await delayedPage.waitForFunction(() => document.querySelectorAll('#pages > .page').length >= 2 && !!window.releasePictureDecode);
+  assert.equal(await delayedPage.evaluate(() => window.__laidOut === true), false, 'Preliminary pages were incorrectly marked ready for PDF capture');
+  await delayedPage.evaluate(() => window.releasePictureDecode());
+  await delayedPage.waitForFunction(() => window.__laidOut === true);
+  assert(await delayedPage.locator('#pages > .page').count() >= 2, 'Final worksheet lost its second page');
+  await delayedPage.close();
   const { data, html, forcedFailures } = await page.evaluate(async () => {
     const tasks = Array.from({ length: 4 }, (_, i) => ({
       kind: 'task',
@@ -62,4 +95,4 @@ try {
     }
     console.log(`PASS: all ${pdf.numPages} PDF pages contain the worksheet image`);
   } finally { await pdf.destroy(); }
-} finally { await browser.close(); }
+} finally { await browser?.close(); server?.kill('SIGTERM'); }
