@@ -3365,8 +3365,10 @@ const J = {
     await s.p.setViewportSize({ width: 390, height: 760 });
     const phone = await s.p.locator('.signin .card').evaluate(el => {
       const r = el.getBoundingClientRect();
+      const action = [...el.querySelectorAll('button')].find(button => button.textContent?.includes('Open with temporary connection'));
+      const a = action?.getBoundingClientRect();
       return { fitsWidth: r.left >= 8 && r.right <= innerWidth - 8 && document.documentElement.scrollWidth <= innerWidth,
-        recoveryVisible: !!el.querySelector('button')?.getBoundingClientRect().width };
+        recoveryVisible: !!a && a.left >= 8 && a.right <= innerWidth - 8 && a.width > 0 };
     });
     if (!phone.fitsWidth || !phone.recoveryVisible) throw Error('Profile recovery does not fit a phone');
     await axe(s.p, 'Profile timeout recovery on a phone', A11Y_FOUND);

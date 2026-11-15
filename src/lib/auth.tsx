@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <p role="alert">{profileError}</p>
     <button type="button" className="btn primary" onClick={() => { retryGeneration.current += 1; void retryProfile(user).catch(() => {}); setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry loading account</button>
     {profileConnectionError && !usingTemporaryFirestore() && <>
-      <p>If retry keeps getting stuck, you can open this tab with a temporary connection. It still needs internet. Your saved work on this device stays here, but it will not appear in the temporary session. Keep the tab open if you work offline.</p>
+      <p>If retry keeps getting stuck, try a temporary connection while online. Your saved work on this device stays here, but it will not appear in the temporary session. Work you do offline there may not survive a reload.</p>
       {temporaryConnectionError && <p role="alert">This browser could not open a temporary connection. Please try another browser while your saved work stays here.</p>}
       <button type="button" className="btn" onClick={() => setTemporaryConnectionError(!openTemporaryFirestore())}>Open with temporary connection</button>
     </>}
