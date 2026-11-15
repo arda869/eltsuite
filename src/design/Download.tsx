@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { auth } from '../lib/firebase';
 import { tell } from '../lib/ask';
 import { uploadPicture } from '../editor/PackNode';
@@ -10,6 +10,8 @@ import type { Env } from './render';
 export function DownloadMenu({ cx }: { cx: Ctx }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState('');
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const env: Env = { imgs: cx.imgs, view: cx.view, accent: cx.accent };
   const name = cx.d.title || 'Design';
   const run = async (what: string, f: () => Promise<void>) => {
@@ -30,17 +32,41 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
     await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`);
     void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
   };
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+  const onMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    if (!items.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : event.key === 'ArrowDown' ? (current + 1) % items.length
+        : current < 0 ? items.length - 1 : (current + items.length - 1) % items.length;
+    items[next].focus();
+  };
   return (
     <>
       {busy && <span className="dz-busy" role="status">{busy}</span>}
-      <button type="button" className="btn primary dz-dl" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+      <button ref={triggerRef} type="button" className="btn primary dz-dl" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
         Download
       </button>
       {open && (
         <>
           <div className="dz-dl-scrim" onClick={() => setOpen(false)} />
-          <div className="dz-dl-pop" role="menu">
+          <div ref={menuRef} className="dz-dl-pop" role="menu" aria-label="Download options" onKeyDown={onMenuKey} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
             <p className="dz-dl-h">This page</p>
             <button type="button" role="menuitem" onClick={() => void run('Making the picture…', () => downloadImage(cx.page, cx.els, env, name, 'png', 2.5))}>
               <strong>Picture (PNG)</strong><span>Sharp, for screens and slides</span>
