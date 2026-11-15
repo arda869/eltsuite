@@ -64,7 +64,11 @@ function runs(rs: Run[]): string {
         const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
         const dots = (r.pic.pts ?? []).map((p, i) => `<span class="pic-pt" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join('');
         const tags = (r.pic.tags ?? []).map((t) => `<span class="pic-tag" style="left:${t.x}%;top:${t.y}%">${esc(t.text)}</span>`).join('');
-        return `<span class="ws-picture pic-${esc(r.pic.size)}"><span class="pic${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>${r.pic.caption?.length ? `<span class="ws-picture-caption">${runs(r.pic.caption)}</span>` : ''}</span>`;
+        // Match the existing screen/print presets: 300 screen px is 46 mm on paper.
+        // A custom width still fits its paper column, including in two-column worksheets.
+        const customW = Number(r.pic.w);
+        const width = Number.isFinite(customW) && customW > 0 ? ` style="width:min(100%,${Math.max(9.2, Math.round(customW * 46 / 300 * 10) / 10)}mm)"` : '';
+        return `<span class="ws-picture pic-${esc(r.pic.size)}"${width}><span class="pic${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>${r.pic.caption?.length ? `<span class="ws-picture-caption">${runs(r.pic.caption)}</span>` : ''}</span>`;
       }
       if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
       if (r.phon) return renderToStaticMarkup(createElement(PhonView, { type: r.phon.type, a: r.phon.a }));
