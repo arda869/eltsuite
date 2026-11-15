@@ -9,8 +9,12 @@ const { build } = require('esbuild');
 const outputDir = mkdtempSync(join(tmpdir(), 'elt-profile-retry-'));
 const output = join(outputDir, 'teacherProfile.mjs');
 const pending = [];
+const savedGoalReads = [];
+const goalWrites = [];
 globalThis.sessionStorage = { getItem: () => null };
 globalThis.profileRead = () => new Promise((resolve, reject) => pending.push({ resolve, reject }));
+globalThis.savedGoalRead = () => Promise.resolve(savedGoalReads.shift());
+globalThis.goalWrite = (_ref, data) => { goalWrites.push(data); return Promise.resolve(); };
 
 try {
   await build({
@@ -22,8 +26,8 @@ try {
       }
       bundle.onLoad({ filter: /.*/, namespace: 'profile-stubs' }, ({ path }) => ({
         contents: {
-          'firebase/firestore': `export const doc=(_db,...parts)=>parts.join('/'); export const getDoc=()=>globalThis.profileRead(); export const runTransaction=()=>{throw Error('Unexpected new-account write');}; export const serverTimestamp=()=>null; export const updateDoc=()=>Promise.resolve();`,
-          './firebase': 'export const db={}; export const auth={currentUser:null};',
+          'firebase/firestore': `export const doc=(_db,...parts)=>parts.join('/'); export const getDoc=()=>globalThis.profileRead(); export const getDocFromServer=()=>globalThis.savedGoalRead(); export const runTransaction=()=>{throw Error('Unexpected new-account write');}; export const serverTimestamp=()=>null; export const updateDoc=(ref,data)=>globalThis.goalWrite(ref,data);`,
+          './firebase': 'export const db={}; export const auth={get currentUser(){return globalThis.currentProfileUser}};',
           './learners': 'export const isLearnerEmail=()=>false;',
           './afterSignIn': 'export const AFTER_SIGN_IN="afterSignIn";',
           './codes': 'export const cleanCode=()=>"";export const codeProblem=()=>null;export const forgetCode=()=>{};export const keptCode=()=>"";export const keptName=()=>"";export const spendCode=()=>{};',
@@ -32,8 +36,9 @@ try {
       }));
     } }],
   });
-  const { ensureProfile, retryProfile, withSetupTimeout, profileLoadErrorMessage } = await import(output);
+  const { ensureProfile, retryProfile, saveTeacherGoal, withSetupTimeout, profileLoadErrorMessage } = await import(output);
   const user = { uid: 'teacher-retry', email: 'teacher@example.com' };
+  globalThis.currentProfileUser = user;
   const first = ensureProfile(user);
   assert.equal(ensureProfile(user), first, 'ordinary simultaneous profile loads share one request');
   await assert.rejects(withSetupTimeout(first, 5), (error) => error.code === 'deadline-exceeded');
@@ -54,9 +59,27 @@ try {
   const recovered = retryProfile(user);
   pending[3].resolve({ exists: () => true, data: () => ({ role: 'teacher', displayName: 'Recovered' }) });
   assert.equal((await recovered).displayName, 'Recovered');
-  console.log('Profile retry passed: hung first read, fresh retry, late result isolation, permission error and recovery.');
+  const stuckGoalRead = ensureProfile(user);
+  savedGoalReads.push({ exists: () => true, data: () => ({ role: 'teacher', onboarding: 'done', teacherGoal: '' }), metadata: { hasPendingWrites: false } });
+  const resumedBlankGoal = saveTeacherGoal(user, '', true);
+  assert.equal(pending.length, 6, 'goal retry makes a new profile read');
+  pending[5].resolve({ exists: () => true, data: () => ({ role: 'teacher' }) });
+  await resumedBlankGoal;
+  assert.equal(goalWrites.length, 0, 'an already committed blank goal is not written twice');
+  pending[4].resolve({ exists: () => true, data: () => ({ role: 'teacher' }) });
+  await stuckGoalRead;
+
+  savedGoalReads.push({ exists: () => true, data: () => ({ role: 'teacher', onboarding: 'done', teacherGoal: '' }), metadata: { hasPendingWrites: true } });
+  const pendingWriteRetry = saveTeacherGoal(user, '', true);
+  pending[6].resolve({ exists: () => true, data: () => ({ role: 'teacher' }) });
+  await pendingWriteRetry;
+  assert.deepEqual(goalWrites, [{ onboarding: 'done', teacherGoal: '' }], 'a local pending write is not mistaken for a committed save');
+  console.log('Profile and goal retry passed: hung read, fresh retry, late result isolation, permission recovery, committed blank goal and pending write.');
 } finally {
   rmSync(outputDir, { recursive: true, force: true });
   delete globalThis.profileRead;
+  delete globalThis.savedGoalRead;
+  delete globalThis.goalWrite;
+  delete globalThis.currentProfileUser;
   delete globalThis.sessionStorage;
 }

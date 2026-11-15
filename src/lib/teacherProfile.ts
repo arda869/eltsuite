@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth';
-import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { isLearnerEmail } from './learners';
 import { AFTER_SIGN_IN } from './afterSignIn';
@@ -80,11 +80,21 @@ export function withSetupTimeout<T>(promise: Promise<T>, ms = 15000): Promise<T>
     promise.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
   });
 }
-export async function saveTeacherGoal(user: User, goal: string) {
+export async function saveTeacherGoal(user: User, goal: string, retry = false) {
   if (goal && !TEACHER_PATHS.some((p) => p.id === goal)) throw new Error('Choose one of the starting points shown.');
-  const p = await withSetupTimeout(ensureProfile(user));
+  // A timed-out profile read may still be in the shared loads map. A teacher's
+  // next click must make a new request, including when they skip the goal.
+  const p = await withSetupTimeout(retry ? retryProfile(user) : ensureProfile(user));
   if (p?.role !== 'teacher' || auth.currentUser?.uid !== user.uid) throw new Error('Please sign in again to finish setting up your teacher account.');
-  await withSetupTimeout(updateDoc(doc(db, 'users', user.uid), { onboarding: 'done', teacherGoal: goal }));
+  const ref = doc(db, 'users', user.uid);
+  if (retry) {
+    // A timed-out write may have reached Firestore after the error appeared.
+    // Confirm its committed value before sending the same write again.
+    const saved = await withSetupTimeout(getDocFromServer(ref));
+    if (!saved.exists() || saved.data().role !== 'teacher') throw new Error('Your account profile could not be confirmed. Please sign in again.');
+    if (!saved.metadata.hasPendingWrites && saved.data().onboarding === 'done' && saved.data().teacherGoal === goal) return;
+  }
+  await withSetupTimeout(updateDoc(ref, { onboarding: 'done', teacherGoal: goal }));
 }
 export function setupErrorMessage(e: unknown) {
   switch ((e as { code?: string })?.code) {
