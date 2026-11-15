@@ -36,6 +36,26 @@ export function replyMessageId(token, message, uid, uidValidity) {
   return 'email_' + crypto.createHash('sha256').update(token + '\0' + identity).digest('hex').slice(0, 32);
 }
 
+// Permanently invalid mail is handled once in the dedicated reply mailbox.
+// A database or post failure leaves it unread so the next run can retry it.
+export async function handleIncomingReply({ message, uid, uidValidity, getThread, getLearner, post, markSeen }) {
+  const token = replyToken(message);
+  const thread = token ? await getThread(token) : null;
+  if (!thread?.learnerUid) {
+    await markSeen();
+    return 'ignored';
+  }
+  const learner = await getLearner(thread.learnerUid);
+  if (learner?.learnerId !== thread.learnerId || learner?.classId !== thread.classId || !replySenderMatches(message, learner)) {
+    await markSeen();
+    return 'ignored';
+  }
+  const text = freshReply(message.text);
+  const posted = text ? await post(thread, text, replyMessageId(token, message, uid, uidValidity)) : false;
+  await markSeen();
+  return text ? posted ? 'posted' : 'duplicate' : 'empty';
+}
+
 // A stable message ID and one transaction prevent a duplicate chat message if
 // posting succeeds but marking the IMAP message as seen fails or the job restarts.
 export async function postEmailReply(db, thread, text, messageId, at = Date.now()) {

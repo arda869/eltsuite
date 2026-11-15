@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { freshReply, postEmailReply, replyMessageId, replySenderMatches, replyToken } from '../scripts/mail-replies.mjs';
+import { freshReply, handleIncomingReply, postEmailReply, replyMessageId, replySenderMatches, replyToken } from '../scripts/mail-replies.mjs';
 
 const token = 'a1b2c3d4e5f6';
 const parsed = {
@@ -26,6 +26,29 @@ test('rejects a forwarded or conflicting thread and a different sender', () => {
   assert.equal(replySenderMatches({ ...parsed, sender: { value: [{ address: 'other@example.com' }] } }, learner), false);
   assert.equal(replySenderMatches(parsed, { ...learner, contactEmail: '' }), false);
   assert.equal(replySenderMatches(parsed, { ...learner, role: 'teacher' }), false);
+});
+
+test('permanently invalid mail is marked seen, but a temporary database failure remains unread', async () => {
+  let seen = 0, posted = 0;
+  const route = overrides => handleIncomingReply({
+    message: parsed, uid: 10, uidValidity: 1,
+    getThread: async () => ({ teacher: 't', learnerId: 'l', learnerUid: 'u', classId: 'c' }),
+    getLearner: async () => learner,
+    post: async () => { posted++; return true; },
+    markSeen: async () => { seen++; },
+    ...overrides,
+  });
+  assert.equal(await route({ message: { ...parsed, subject: 'Unrelated', to: { text: 'reply@eltsuite.com' } } }), 'ignored');
+  assert.equal(await route({ getThread: async () => null }), 'ignored');
+  assert.equal(await route({ getLearner: async () => ({ ...learner, contactEmail: 'changed@example.com' }) }), 'ignored');
+  assert.equal(seen, 3);
+  assert.equal(posted, 0);
+  await assert.rejects(route({ getThread: async () => { throw Error('Firestore unavailable'); } }), /Firestore unavailable/);
+  await assert.rejects(route({ post: async () => { throw Error('Write unavailable'); } }), /Write unavailable/);
+  assert.equal(seen, 3);
+  assert.equal(await route({}), 'posted');
+  assert.equal(seen, 4);
+  assert.equal(posted, 1);
 });
 
 test('reprocessing after an IMAP flag failure does not duplicate the chat message', async () => {

@@ -1,6 +1,6 @@
 import { frame as brandedFrame, pad, h1 } from './email-layout.mjs';
 import { deliverPendingInvitations } from '../functions/notifications/invitation-delivery-logic.js';
-import { freshReply, postEmailReply, replyMessageId, replySenderMatches, replyToken } from './mail-replies.mjs';
+import { handleIncomingReply, postEmailReply } from './mail-replies.mjs';
 // Email for classes (runs every 15 minutes with the other notifications):
 // 1. Announcements a teacher also sends by email go to the learners who added an email.
 // 2. Replies to those emails (when IMAP_URL and MAIL_REPLY are set) arrive in the app as messages to the teacher.
@@ -169,18 +169,14 @@ if (replyEnabled) {
     try {
       for await (const m of client.fetch({ seen: false }, { source: true, uid: true })) {
         const p = await simpleParser(m.source);
-        const token = replyToken(p);
-        const t = token ? (await db.collection('mailThreads').doc(token).get()).data() : null;
-        if (!t?.learnerUid) continue;
-        const learner = (await db.collection('users').doc(t.learnerUid).get()).data();
-        if (learner?.learnerId !== t.learnerId || learner?.classId !== t.classId || !replySenderMatches(p, learner)) continue;
-        const text = freshReply(p.text);
-        if (text) {
-          const messageId = replyMessageId(token, p, m.uid, client.mailbox?.uidValidity);
-          const posted = await postEmailReply(db, t, text, messageId);
-          if (posted) console.log('Reply delivered to class chat.');
-        }
-        await client.messageFlagsAdd({ uid: m.uid }, ['\\Seen'], { uid: true });
+        const result = await handleIncomingReply({
+          message: p, uid: m.uid, uidValidity: client.mailbox?.uidValidity,
+          getThread: async token => (await db.collection('mailThreads').doc(token).get()).data(),
+          getLearner: async uid => (await db.collection('users').doc(uid).get()).data(),
+          post: (thread, text, messageId) => postEmailReply(db, thread, text, messageId),
+          markSeen: () => client.messageFlagsAdd({ uid: m.uid }, ['\\Seen'], { uid: true }),
+        });
+        if (result === 'posted') console.log('Reply delivered to class chat.');
       }
     } finally {
       lock.release();
