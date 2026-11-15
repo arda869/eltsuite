@@ -42,8 +42,8 @@ The picker, canvas and exported images use the same vector paths. Lucide SVGs co
 | 36 | leisure | Campsite (`camping`) | lucide:tent | Canvas tent with opening. |
 | 37 | buildings | Warehouse (`warehouse`) | lucide:warehouse | Wide storage building and loading door. |
 | 38 | services | Bank (`bank`) | bespoke:bank | Bank facade with a currency mark. |
-| 39 | services | Post office (`post`) | lucide:mailbox | Street mailbox with flag. |
-| 40 | education | Library (`library`) | lucide:library | Books on shelves. |
+| 39 | services | Post office (`post`) | bespoke:postoffice | Postal building with a pitched roof and envelope on its frontage. |
+| 40 | education | Library (`library`) | bespoke:library | Three distinct upright books on a shelf. |
 | 41 | services | Pharmacy (`pharmacy`) | lucide:pill-bottle | Medicine bottle with tablets. |
 | 42 | services | Hospital (`hospital`) | lucide:hospital | Hospital facade with cross. |
 | 43 | safety | Police station (`police`) | bespoke:policestation | Station building with a police shield. |

@@ -62,6 +62,18 @@ test('critical places remain in the correct map categories', () => {
   }
 });
 
+test('post office and library stay visually distinct from nearby symbols', () => {
+  const byKey = key => MAP_SYMBOLS.find(symbol => symbol.key === key);
+  const postOffice = byKey('post');
+  const postBox = byKey('postbox');
+  const library = byKey('library');
+  const readingRoom = byKey('reading');
+  assert.equal(postOffice?.glyph.source, 'bespoke:postoffice', 'Post office needs a building, not a street mailbox');
+  assert.equal(library?.glyph.source, 'bespoke:library', 'Library needs recognisable books at picker size');
+  assert.notDeepEqual(postOffice.glyph.paths, postBox.glyph.paths);
+  assert.notDeepEqual(library.glyph.paths, readingRoom.glyph.paths);
+});
+
 test('shaded area and skateboard ramp keep place-specific pictograms', () => {
   const shade = MAP_SYMBOLS.find(symbol => symbol.key === 'shade');
   const ramp = MAP_SYMBOLS.find(symbol => symbol.key === 'skate');
