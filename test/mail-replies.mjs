@@ -134,7 +134,11 @@ test('a removed teacher cannot receive an old email thread even when teacherIds 
 });
 
 test('reprocessing after an IMAP flag failure does not duplicate the chat message', async () => {
-  const records = new Map([['classes/c', { teacherId: 't', status: 'active' }]]);
+  const records = new Map([
+    ['classes/c', { teacherId: 't', status: 'active' }],
+    ['users/u', { role: 'learner', learnerId: 'l', classId: 'c' }],
+    ['classes/c/members/u', { learnerId: 'l' }],
+  ]);
   const ref = path => ({ id: path.split('/').at(-1), path, collection: name => ({ doc: id => ref(path + '/' + name + '/' + id) }) });
   const db = {
     collection: name => ({ doc: id => ref(name + '/' + id) }),
@@ -149,15 +153,23 @@ test('reprocessing after an IMAP flag failure does not duplicate the chat messag
       return result;
     },
   };
-  const thread = { teacher: 't', teacherName: 'Teacher', learnerId: 'l', learnerName: 'Learner', classId: 'c' };
+  const thread = { teacher: 't', teacherName: 'Teacher', learnerId: 'l', learnerUid: 'u', learnerName: 'Learner', classId: 'c' };
   const id = replyMessageId(token, parsed, 10, 1);
   assert.equal(await postEmailReply(db, thread, 'Tuesday works for me.', id, 100), true);
   assert.equal(await postEmailReply(db, thread, 'Tuesday works for me.', id, 101), false);
   assert.equal([...records.keys()].filter(path => path.includes('/msgs/')).length, 1);
   assert.equal(records.get('chats/dm_l_t').last.id, id);
+  records.delete('classes/c/members/u');
+  const secondId = replyMessageId(token, { ...parsed, messageId: '<reply-2@example.com>' }, 11, 1);
+  assert.equal(await postEmailReply(db, thread, 'Removed learner reply', secondId), false);
+  records.set('classes/c/members/u', { learnerId: 'l' });
+  records.delete('users/u');
+  assert.equal(await postEmailReply(db, thread, 'Deleted identity reply', secondId), false);
+  records.set('users/u', { role: 'learner', learnerId: 'l', classId: 'c' });
+  assert.equal([...records.keys()].filter(path => path.includes('/msgs/')).length, 1, 'revoked learners cannot add a reply');
   records.set('classes/c', { teacherId: 'other', teacherIds: ['t'], coTeachers: {} });
-  assert.equal(await postEmailReply(db, thread, 'New reply', replyMessageId(token, { ...parsed, messageId: '<reply-2@example.com>' }, 11, 1)), false);
+  assert.equal(await postEmailReply(db, thread, 'New reply', secondId), false);
   records.set('classes/c', { teacherId: 't', status: 'active' });
   records.set('chats/dm_l_t', { ...records.get('chats/dm_l_t'), classId: 'other' });
-  await assert.rejects(postEmailReply(db, thread, 'New reply', replyMessageId(token, { ...parsed, messageId: '<reply-2@example.com>' }, 11, 1)), /no longer matches/);
+  await assert.rejects(postEmailReply(db, thread, 'New reply', secondId), /no longer matches/);
 });

@@ -93,11 +93,18 @@ export async function postEmailReply(db, thread, text, messageId, at = Date.now(
   const id = dmId(thread.teacher, thread.learnerId);
   const ref = db.collection('chats').doc(id), messageRef = ref.collection('msgs').doc(messageId);
   return db.runTransaction(async tx => {
-    const [chat, existing, classSnap] = await Promise.all([tx.get(ref), tx.get(messageRef), tx.get(db.collection('classes').doc(thread.classId))]);
+    const [chat, existing, classSnap, learnerSnap, memberSnap] = await Promise.all([
+      tx.get(ref), tx.get(messageRef), tx.get(db.collection('classes').doc(thread.classId)),
+      tx.get(db.collection('users').doc(thread.learnerUid)),
+      tx.get(db.collection('classes').doc(thread.classId).collection('members').doc(thread.learnerUid)),
+    ]);
     if (existing.exists) return false;
     if (!classSnap.exists || !teacherStillTeaches({
       teacherId: classSnap.get('teacherId'), coTeachers: classSnap.get('coTeachers'), status: classSnap.get('status'),
     }, thread.teacher)) return false;
+    if (!learnerSnap.exists || learnerSnap.get('role') !== 'learner' ||
+      learnerSnap.get('classId') !== thread.classId || learnerSnap.get('learnerId') !== thread.learnerId ||
+      !memberSnap.exists || memberSnap.get('learnerId') !== thread.learnerId) return false;
     if (chat.exists && (chat.get('classId') !== thread.classId ||
       !chat.get('members')?.includes(thread.teacher) || !chat.get('members')?.includes(thread.learnerId))) {
       throw Error('The email thread no longer matches this chat.');
