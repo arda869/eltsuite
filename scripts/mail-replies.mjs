@@ -63,6 +63,30 @@ export async function handleIncomingReply({ message, uid, uidValidity, getThread
   return text ? posted ? 'posted' : 'duplicate' : 'empty';
 }
 
+// ImapFlow cannot issue another IMAP command from inside its fetch() iterator:
+// flagging a message there deadlocks the connection. Fetch a small set of
+// complete messages first, then process and flag them after fetchAll resolves.
+export async function processReplyMailbox({ client, parse, getThread, getLearner, getClass, post,
+  limit = 100, batchSize = 20 }) {
+  const unread = await client.search({ seen: false }, { uid: true });
+  const uids = Array.isArray(unread) ? unread.slice(0, limit) : [];
+  let delivered = 0;
+  for (let i = 0; i < uids.length; i += batchSize) {
+    const messages = await client.fetchAll(uids.slice(i, i + batchSize), { source: true, uid: true }, { uid: true });
+    for (const m of messages) {
+      const result = await handleIncomingReply({
+        message: await parse(m.source), uid: m.uid, uidValidity: client.mailbox?.uidValidity,
+        getThread, getLearner, getClass, post,
+        markSeen: async () => {
+          if (!await client.messageFlagsAdd(m.uid, ['\\Seen'], { uid: true })) throw Error('Could not mark a reply as read.');
+        },
+      });
+      if (result === 'posted') delivered++;
+    }
+  }
+  return { processed: uids.length, delivered };
+}
+
 // A stable message ID and one transaction prevent a duplicate chat message if
 // posting succeeds but marking the IMAP message as seen fails or the job restarts.
 export async function postEmailReply(db, thread, text, messageId, at = Date.now()) {

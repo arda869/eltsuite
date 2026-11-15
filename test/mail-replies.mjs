@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { freshReply, handleIncomingReply, postEmailReply, replyMessageId, replySenderMatches, replyToken } from '../scripts/mail-replies.mjs';
+import { freshReply, handleIncomingReply, postEmailReply, processReplyMailbox, replyMessageId, replySenderMatches, replyToken } from '../scripts/mail-replies.mjs';
 
 const token = 'a1b2c3d4e5f6';
 const parsed = {
@@ -51,6 +51,67 @@ test('permanently invalid mail is marked seen, but a temporary database failure 
   assert.equal(await route({}), 'posted');
   assert.equal(seen, 4);
   assert.equal(posted, 1);
+});
+
+test('mailbox reader finishes each bounded fetch before marking messages seen', async () => {
+  const fetched = [], flagged = [], posted = [];
+  let fetchInProgress = false;
+  const client = {
+    mailbox: { uidValidity: 1 },
+    search: async (query, options) => {
+      assert.deepEqual(query, { seen: false });
+      assert.deepEqual(options, { uid: true });
+      return [10, 11, 12];
+    },
+    fetch: () => { throw Error('Streaming fetch would deadlock when marking a message seen.'); },
+    fetchAll: async (uids, query, options) => {
+      assert.equal(fetchInProgress, false);
+      fetchInProgress = true;
+      fetched.push(uids);
+      assert.deepEqual(query, { source: true, uid: true });
+      assert.deepEqual(options, { uid: true });
+      await Promise.resolve();
+      fetchInProgress = false;
+      return uids.map(uid => ({ uid, source: Buffer.from(String(uid)) }));
+    },
+    messageFlagsAdd: async (uid, flags, options) => {
+      assert.equal(fetchInProgress, false, 'flagging inside a fetch would deadlock ImapFlow');
+      assert.deepEqual(flags, ['\\Seen']);
+      assert.deepEqual(options, { uid: true });
+      flagged.push(uid);
+      return true;
+    },
+  };
+  const result = await processReplyMailbox({
+    client, parse: async source => ({ ...parsed, messageId: `<reply-${source.toString()}@example.com>` }),
+    getThread: async () => ({ teacher: 't', learnerId: 'l', learnerUid: 'u', classId: 'c' }),
+    getLearner: async () => learner,
+    getClass: async () => ({ teacherId: 't', status: 'active' }),
+    post: async (_thread, _text, id) => { posted.push(id); return true; },
+    limit: 3, batchSize: 2,
+  });
+  assert.deepEqual(fetched, [[10, 11], [12]]);
+  assert.deepEqual(flagged, [10, 11, 12]);
+  assert.equal(new Set(posted).size, 3);
+  assert.deepEqual(result, { processed: 3, delivered: 3 });
+});
+
+test('failed IMAP flagging is retried without losing the posted reply', async () => {
+  let postCount = 0;
+  const client = {
+    mailbox: { uidValidity: 1 },
+    search: async () => [10],
+    fetchAll: async () => [{ uid: 10, source: Buffer.from('reply') }],
+    messageFlagsAdd: async () => false,
+  };
+  await assert.rejects(processReplyMailbox({
+    client, parse: async () => parsed,
+    getThread: async () => ({ teacher: 't', learnerId: 'l', learnerUid: 'u', classId: 'c' }),
+    getLearner: async () => learner,
+    getClass: async () => ({ teacherId: 't', status: 'active' }),
+    post: async () => { postCount++; return true; },
+  }), /mark a reply as read/);
+  assert.equal(postCount, 1);
 });
 
 test('a removed teacher cannot receive an old email thread even when teacherIds is stale', async () => {

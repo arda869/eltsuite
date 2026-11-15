@@ -1,6 +1,6 @@
 import { frame as brandedFrame, pad, h1 } from './email-layout.mjs';
 import { deliverPendingInvitations } from '../functions/notifications/invitation-delivery-logic.js';
-import { handleIncomingReply, postEmailReply } from './mail-replies.mjs';
+import { processReplyMailbox, postEmailReply } from './mail-replies.mjs';
 // Email for classes (runs every 15 minutes with the other notifications):
 // 1. Announcements a teacher also sends by email go to the learners who added an email.
 // 2. Replies to those emails (when IMAP_URL and MAIL_REPLY are set) arrive in the app as messages to the teacher.
@@ -164,21 +164,18 @@ if (replyEnabled) {
     const { simpleParser } = await import('mailparser');
     const u = new URL(IMAP);
     const client = new ImapFlow({ host: u.hostname, port: Number(u.port) || 993, secure: u.protocol !== 'imap:', auth: { user: decodeURIComponent(u.username), pass: decodeURIComponent(u.password) }, logger: false });
+    client.on('error', error => console.error('Reply mailbox connection error:', error?.code ?? 'unknown'));
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
     try {
-      for await (const m of client.fetch({ seen: false }, { source: true, uid: true })) {
-        const p = await simpleParser(m.source);
-        const result = await handleIncomingReply({
-          message: p, uid: m.uid, uidValidity: client.mailbox?.uidValidity,
-          getThread: async token => (await db.collection('mailThreads').doc(token).get()).data(),
-          getLearner: async uid => (await db.collection('users').doc(uid).get()).data(),
-          getClass: async id => (await db.collection('classes').doc(id).get()).data(),
-          post: (thread, text, messageId) => postEmailReply(db, thread, text, messageId),
-          markSeen: () => client.messageFlagsAdd({ uid: m.uid }, ['\\Seen'], { uid: true }),
-        });
-        if (result === 'posted') console.log('Reply delivered to class chat.');
-      }
+      const result = await processReplyMailbox({
+        client, parse: simpleParser,
+        getThread: async token => (await db.collection('mailThreads').doc(token).get()).data(),
+        getLearner: async uid => (await db.collection('users').doc(uid).get()).data(),
+        getClass: async id => (await db.collection('classes').doc(id).get()).data(),
+        post: (thread, text, messageId) => postEmailReply(db, thread, text, messageId),
+      });
+      if (result.delivered) console.log('Replies delivered to class chat:', result.delivered);
     } finally {
       lock.release();
       await client.logout();
