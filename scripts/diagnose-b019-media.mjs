@@ -24,10 +24,14 @@ for(const job of jobs.docs){
  const media=await job.ref.collection('media').get();
  for(const asset of media.docs){
   const a=asset.data();
-  console.log('media',JSON.stringify({status:a.status,kind:a.kind,source:a.source??'',error:a.error??'',completedLines:a.completedLines??0,lineCount:Array.isArray(a.lines)?a.lines.length:0,startedAt:a.startedAt?.toDate?.()?.toISOString(),failedAt:a.failedAt?.toDate?.()?.toISOString()}));
+  console.log('media',JSON.stringify({status:a.status,kind:a.kind,source:a.source??'',error:a.error??'',completedLines:a.completedLines??0,lineCount:Array.isArray(a.lines)?a.lines.length:0,startedAt:a.startedAt?.toDate?.()?.toISOString(),retriedAt:a.retriedAt?.toDate?.()?.toISOString(),failedAt:a.failedAt?.toDate?.()?.toISOString()}));
  }
 }
 if(!found)console.log('No matching recent B-019 taskTools job in last 35 jobs.');
+const attempts=await db.collection('aiCostAttempts').where('startedAt','>=',Date.parse('2026-11-15T07:38:00Z')).where('startedAt','<=',Date.parse('2026-11-15T07:50:00Z')).get();
+let attemptCount=0;
+for(const s of attempts.docs){const a=s.data();if(a.actorUid!==uid||a.feature!=='lessonAudio')continue;attemptCount++;console.log('audio_attempt',JSON.stringify({status:a.status,model:a.model,basis:a.basis,reason:a.reason??'',failureCode:a.failureCode??'',startedAt:new Date(a.startedAt).toISOString(),settledAt:a.settledAt?new Date(a.settledAt).toISOString():null}));}
+if(!attemptCount)console.log('No B-019 lessonAudio cost attempt in interval.');
 
 // Check the exact deployed secret binding and speech model through a non-generating API call.
 const client=await new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']}).getClient();
