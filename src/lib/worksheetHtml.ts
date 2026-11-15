@@ -758,7 +758,7 @@ ${sheetCss(opts)}
       grid.appendChild(cards[i]);
     }
   }
-  function layout(${opts.lessonStyle === 'young' ? 'preparing' : ''}) {
+  function layout(preparing) {
     pagesEl.innerHTML = '';
     // The worksheet, then the answer key, then the cards to cut out: always last, and not numbered.
     flow('u-main', 'band-main');
@@ -780,7 +780,9 @@ ${sheetCss(opts)}
     var cutN = pagesEl.querySelectorAll('.cut-page').length;
     document.getElementById('status').textContent = numbered.length + (numbered.length === 1 ? ' page' : ' pages') + (keyPages.length ? ' + ' + keyPages.length + ' for the teacher' : '') + (cutN ? ' + ' + cutN + ' to cut out' : '');
     void all;
-    ${opts.lessonStyle === 'young' ? 'if (preparing) return;' : ''}
+    // The first pass starts image loading. Its pages are replaced once images and fonts are ready,
+    // so PDF capture must wait for the final pass for every lesson style.
+    if (preparing) return;
     window.__laidOut = true;
     if (window.__autoPrint) setTimeout(function () { window.print(); }, 120);
   }
