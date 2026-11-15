@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OrgLimitsPanel } from './OrgLimits';
 import { MultiSelect, Select } from '../../components/Select';
@@ -198,6 +198,14 @@ function FieldLabel({ value, onSave }: { value: string; onSave: (v: string) => v
 
 function IconPicker({ at, value, onPick, onClose }: { at: DOMRect; value: string; onPick: (v: string) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const below = window.innerHeight - at.bottom - 8;
+    const top = rect.height > below && at.top - 8 > below ? at.top - rect.height - 6 : at.bottom + 6;
+    setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - rect.width - 8)), top: Math.max(8, Math.min(top, window.innerHeight - rect.height - 8)) });
+  }, [at]);
   useEffect(() => {
     const down = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -207,7 +215,7 @@ function IconPicker({ at, value, onPick, onClose }: { at: DOMRect; value: string
     return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', esc));
   }, [onClose]);
   return createPortal(
-    <div ref={ref} className="hq-icons" role="listbox" aria-label="Icons" style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - 300)), top: at.bottom + 6 }}>
+    <div ref={ref} className="hq-icons" role="listbox" aria-label="Icons" style={pos ?? { left: 0, top: 0, visibility: 'hidden' }}>
       {PROFILE_ICONS.map((k) => (
         <button key={k} type="button" role="option" aria-selected={k === value} className={k === value ? 'on' : ''} onClick={() => onPick(k)} aria-label={k}>
           <ProfileIcon name={k} size={18} />

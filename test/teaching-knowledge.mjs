@@ -1,3 +1,4 @@
+import {chooseSelect} from './select.mjs';
 // Actual UI, file/task persistence and learner display; Firebase/model responses simulated.
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
@@ -54,7 +55,7 @@ try {
  assert.equal((await p.locator('.def-word').first().textContent()).trim(),'bank');
  await p.getByRole('button',{name:'Help',exact:true}).click();await p.getByRole('menuitem',{name:/Ask ELT Suite/}).click();
  const help=p.getByRole('dialog',{name:'ELT Suite assistant',exact:true});await help.getByRole('button',{name:'How do I generate images?',exact:true}).click();await help.getByRole('heading',{name:'Generate an image with AI',exact:true}).waitFor();
- await help.getByRole('button',{name:'Browse topics',exact:true}).click();await help.getByRole('combobox',{name:'Category',exact:true}).selectOption('Images and Designer');await help.getByRole('searchbox').fill('magic eraser');await help.locator('summary').filter({hasText:'Remove an object from a picture'}).click();await help.getByRole('link',{name:'Open Designer',exact:true}).waitFor();
+ await help.getByRole('button',{name:'Browse topics',exact:true}).click();await chooseSelect(p, help.getByRole('button',{name:'Category',exact:true}), 'Images and Designer');await help.getByRole('searchbox').fill('magic eraser');await help.locator('summary').filter({hasText:'Remove an object from a picture'}).click();await help.getByRole('link',{name:'Open Designer',exact:true}).waitFor();
  await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
  const violations=await p.evaluate(async()=>{const r=await axe.run(document,{runOnly:['wcag2a','wcag2aa']});return r.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id);});assert.deepEqual(violations,[]);assert.deepEqual(crashes,[]);
  // Outside-course definitions must save pictures with the document, not the teacher's private media.

@@ -1,3 +1,4 @@
+import {chooseSelect} from './select.mjs';
 // Actual UI, file/task persistence and learner display; Firebase/model responses simulated.
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
@@ -30,7 +31,7 @@ try {
  await p.goto(base+'/admin');await p.getByText('Super Admin is only for the super admins of ELT Suite',{exact:true}).waitFor();
  await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});
  await p.goto(base+'/admin?tab=teachers&f=trainers&t=teacher1');await p.getByRole('button',{name:'Remove teacher-trainer access',exact:true}).click();await p.getByText('Teacher-trainer access removed. Existing courses are kept.',{exact:true}).waitFor();
- await p.goto(base+'/admin');await p.setViewportSize({width:390,height:844});await p.getByRole('button',{name:'Open it anyway',exact:true}).click();await p.getByLabel('Admin section',{exact:true}).selectOption('teachers');await p.getByRole('heading',{name:'Teachers',exact:true}).waitFor();assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Admin must fit a phone');
+ await p.goto(base+'/admin');await p.setViewportSize({width:390,height:844});await p.getByRole('button',{name:'Open it anyway',exact:true}).click();await chooseSelect(p, p.getByRole('button',{name:'Admin section',exact:true}), 'teachers');await p.getByRole('heading',{name:'Teachers',exact:true}).waitFor();assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Admin must fit a phone');
  await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});const violations=await p.evaluate(async()=>{const r=await axe.run(document,{runOnly:['wcag2a','wcag2aa']});return r.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id);});assert.deepEqual(violations,[]);assert.deepEqual(crashes,[]);
  console.log('PASS: admin search → grant → reload; independent non-admin teacher creates and reopens training course with optional fields blank; revoke; mobile grouped navigation and accessibility. Firebase simulated.');
 } catch(e){console.log((await p?.locator('body').innerText())?.slice(-5000));throw e;}

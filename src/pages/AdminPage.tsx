@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { lazy, Suspense, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -130,7 +131,7 @@ function Nav({ label, items, groups, tab, go, top }: { label: string; items?: Na
   return (
     <aside className="hq-side">
       {top}
-      <label className="hq-mobile-nav">Admin section<select aria-label="Admin section" value={tab} onChange={e=>go({tab:e.target.value})}>{items?.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}{groups.map(([g,list])=>g?<optgroup key={g} label={g}>{list.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}</optgroup>:list.map(i=><option key={i.k} value={i.k}>{i.label}</option>))}</select></label>
+      <label className="hq-mobile-nav">Admin section<NSelect aria-label="Admin section" value={tab} onChange={e=>go({tab:e.target.value})}>{items?.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}{groups.map(([g,list])=>g?<optgroup key={g} label={g}>{list.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}</optgroup>:list.map(i=><option key={i.k} value={i.k}>{i.label}</option>))}</NSelect></label>
       <nav className="hq-nav" aria-label={label} ref={ref}>
         {items?.map(link)}
         {groups.map(([g, list]) => (

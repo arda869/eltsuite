@@ -70,6 +70,8 @@
 .dz-map-check{display:flex!important;align-items:center;gap:8px;color:var(--dz-ink)!important;font:12px/1.35 var(--sans)!important}
 .dz-map-check input{flex:none}
 .dz-map-toolgroup select{width:100%;border:1px solid var(--dz-line);border-radius:8px;background-color:var(--dz-panel);color:var(--dz-ink);padding:8px;font:12px var(--sans)}
+.dz-map-toolgroup .nsel,.dz-map-toolgroup .sel{width:100%;box-sizing:border-box}
+.dz-map-toolgroup .sel{min-height:36px;border-color:var(--dz-line);background:var(--dz-panel);color:var(--dz-ink)}
 .dz-map-confirm{display:grid;gap:8px;border:1px solid color-mix(in srgb,var(--dz) 45%,var(--dz-line));border-radius:12px;padding:12px;background:color-mix(in srgb,var(--dz) 7%,var(--dz-panel));font:12px/1.4 var(--sans)}
 .dz-map-confirm strong{font:700 13px var(--sans)}
 .dz-map-confirm p{margin:0;color:var(--dz-muted)}

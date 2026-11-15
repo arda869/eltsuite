@@ -1,5 +1,5 @@
 import { UiIcon } from './UiIcon';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { useMenuKeys } from './menuKeys';
 export type DocumentMenuItem = { label: string; run: () => void; disabled?: boolean; checked?: boolean; hint?: string; icon?: string } | 'sep';
@@ -13,8 +13,27 @@ export function DocumentMenuBar({ menus }: { menus: { label: string; items: Docu
   const [hidden,setHidden]=useState(false),[headerHeight,setHeaderHeight]=useState(64);
   useEffect(()=>{const header=root.current?.closest('.dp')?.querySelector('.dp-bar');if(!header)return;const measure=()=>setHeaderHeight(header.getBoundingClientRect().height);measure();const observer=new ResizeObserver(measure);observer.observe(header);let previous=window.scrollY;const scroll=()=>{const current=Math.max(0,window.scrollY);if(current!==previous)setHidden(current>header.getBoundingClientRect().height&&current>previous);previous=current;};window.addEventListener('scroll',scroll,{passive:true});return()=>{observer.disconnect();window.removeEventListener('scroll',scroll);};},[]);
   const menu = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const id = useId();
   useMenuKeys(menu, active === null ? null : active + 1, () => setActive(null), true);
+  useLayoutEffect(() => {
+    const popup = menu.current;
+    const anchor = popup?.parentElement;
+    const trigger = anchor?.querySelector<HTMLElement>('.document-menu-trigger');
+    if (!popup || !anchor || !trigger || active === null) return;
+    const button = trigger.getBoundingClientRect();
+    const parent = anchor.getBoundingClientRect();
+    const width = popup.getBoundingClientRect().width;
+    const below = window.innerHeight - button.bottom - 12;
+    const above = button.top - 12;
+    const up = below < 140 && above > below;
+    const maxHeight = Math.max(80, up ? above : below);
+    setMenuPosition({
+      left: Math.max(8, Math.min(button.left, window.innerWidth - width - 8)) - parent.left,
+      top: up ? -Math.min(popup.scrollHeight, maxHeight) - 4 : button.height + 4,
+      maxHeight,
+    });
+  }, [active]);
   const next = (i: number) => (i + menus.length) % menus.length;
   return <div className={'document-menubar'+(hidden&&active===null?' is-hidden':'')} style={{top:headerHeight}} role="menubar" aria-label="Document menus" ref={root} onKeyDown={(e) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
@@ -28,7 +47,7 @@ export function DocumentMenuBar({ menus }: { menus: { label: string; items: Docu
   }}>
     {menus.map((m, i) => <span className="document-menu" key={m.label}>
       <button type="button" className={'document-menu-trigger' + (active === i ? ' on' : '')} role="menuitem" aria-haspopup="menu" aria-expanded={active === i} aria-controls={active === i ? id : undefined} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => active !== null && setActive(i)} onClick={() => setActive(active === i ? null : i)} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setActive(i); } }}>{m.label}</button>
-      {active === i && <div className="ctx-menu document-menu-popup" role="menu" aria-label={m.label} id={id} ref={menu} onPointerMove={(e) => {
+      {active === i && <div className="ctx-menu document-menu-popup" role="menu" aria-label={m.label} id={id} ref={menu} style={menuPosition ?? { visibility: 'hidden' }} onPointerMove={(e) => {
         const item = (e.target as Element).closest<HTMLButtonElement>('.ctx-item');
         if (item && !item.disabled) item.focus({ preventScroll: true });
         else if (item?.disabled) menu.current?.focus({ preventScroll: true });

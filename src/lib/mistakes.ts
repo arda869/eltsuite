@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
-import { isCorrect, type AnswerKey, type QRef, type Responses } from './questions';
+import { isCorrect, scoreQuestion, type AnswerKey, type QRef, type Responses } from './questions';
 import { packAnswerText } from './pack';
 
 // Mistake bank: every question a learner gets wrong in homework or practice goes to their
@@ -82,7 +82,7 @@ function textFor(content: JSONContent | null, qid: string, key: AnswerKey, r: Re
 export async function recordMistakes(classId: string, me: { learnerUid: string; learnerId: string }, itemId: string, taskId: string, content: JSONContent | null, qs: QRef[], key: AnswerKey, responses: Responses, area = '') {
   for (const q of qs) {
     const e = key[q.id];
-    if (!e || e.kind === 'writing' || q.type === 'reflect') continue;
+    if (!e || e.kind === 'writing' || q.type === 'reflect' || scoreQuestion(e, responses[q.id]).max === 0) continue;
     if (isCorrect(e, responses[q.id])) continue;
     const id = `${taskId}_${q.id}_${me.learnerUid}`;
     const t = textFor(content, q.id, key, responses[q.id]);

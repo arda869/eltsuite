@@ -3,6 +3,58 @@ footer p {
   color: #626262;
 }
 
+.form .section-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.section-choice legend {
+  padding: 0 0 10px;
+  font-weight: 700;
+}
+
+.form .section-choice label {
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+}
+
+.form .section-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.section-choice span {
+  display: block;
+  min-width: 108px;
+  padding: 10px 16px;
+  border: 1px solid #b7b0aa;
+  border-radius: 9px;
+  background: #fff;
+  color: #33302c;
+  text-align: center;
+  transition: border-color .15s, background .15s;
+}
+
+.section-choice input:checked + span {
+  border-color: #975f40;
+  background: #f2e6dd;
+  color: #75472e;
+  font-weight: 700;
+}
+
+.section-choice input:focus-visible + span {
+  outline: 3px solid #975f40;
+  outline-offset: 2px;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
@@ -113,6 +165,18 @@ footer p {
   .form textarea::placeholder,
   .search-form input::placeholder {
     color: #b2aba5;
+  }
+
+  .section-choice span {
+    border-color: #626668;
+    background: #242728;
+    color: #ede8e3;
+  }
+
+  .section-choice input:checked + span {
+    border-color: #e2a582;
+    background: #39302b;
+    color: #f0b694;
   }
 
   .error {

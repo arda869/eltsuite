@@ -11,7 +11,7 @@ import { UiIcon } from './UiIcon';
 // <MenuHost/> is mounted once, next to the dialogs.
 
 export type MenuItem = { label: string; icon?: string; onClick: () => void; danger?: boolean; disabled?: boolean; hint?: string } | 'sep';
-type Open = { x: number; y: number; items: MenuItem[]; kbd?: boolean } | null;
+type Open = { x: number; y: number; items: MenuItem[]; kbd?: boolean; anchorTop?: number } | null;
 
 let setter: ((o: Open) => void) | null = null;
 
@@ -27,7 +27,7 @@ export function openMenu(e: React.MouseEvent | MouseEvent, items: MenuItem[]) {
 export function openMenuAt(el: HTMLElement, items: MenuItem[]) {
   const r = el.getBoundingClientRect();
   // Opened from the keyboard (the button has focus): the first item gets it.
-  setter?.({ x: r.left, y: r.bottom + 4, items, kbd: document.activeElement === el });
+  setter?.({ x: r.left, y: r.bottom + 4, anchorTop: r.top, items, kbd: document.activeElement === el });
 }
 
 export function MenuHost() {
@@ -68,7 +68,10 @@ export function MenuHost() {
   useLayoutEffect(() => {
     if (!open || !ref.current) return setPos(null);
     const r = ref.current.getBoundingClientRect();
-    setPos({ left: Math.max(8, Math.min(open.x, window.innerWidth - r.width - 8)), top: Math.max(8, Math.min(open.y, window.innerHeight - r.height - 8)) });
+    const below = window.innerHeight - open.y - 8;
+    const above = (open.anchorTop ?? open.y) - 8;
+    const top = r.height > below && above > below ? (open.anchorTop ?? open.y) - r.height - 4 : open.y;
+    setPos({ left: Math.max(8, Math.min(open.x, window.innerWidth - r.width - 8)), top: Math.max(8, Math.min(top, window.innerHeight - r.height - 8)) });
   }, [open]);
   useEffect(() => {
     if (!open) return;

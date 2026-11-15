@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UiIcon } from '../components/UiIcon';
 import { DOTS } from '../editor/nodes';
@@ -318,37 +319,37 @@ export function PaperBar({ look, onChange, gaps, writing, online, young = false 
       <b className="sh-pb-k">On paper</b>
       <label className="sh-pb-f">
         <span>Show it</span>
-        <select value={look.show ?? 'both'} onChange={(e) => set({ show: e.target.value as Paper['show'] })}>
+        <NSelect value={look.show ?? 'both'} onChange={(e) => set({ show: e.target.value as Paper['show'] })}>
           <option value="both">On paper and on screen</option>
           <option value="paper">Only on paper</option>
           <option value="screen">Only on screen</option>
-        </select>
+        </NSelect>
       </label>
       {young && (
         <label className="sh-pb-f">
           <span>Print icon</span>
-          <select value={look.icon ?? 'same'} onChange={(e) => set({ icon: e.target.value as Paper['icon'] })}>
+          <NSelect value={look.icon ?? 'same'} onChange={(e) => set({ icon: e.target.value as Paper['icon'] })}>
             <option value="same">Same as on screen</option>
             <option value="none">No icon</option>
             {YOUNG_ICONS.map((icon) => <option key={icon.id} value={icon.id}>{icon.label}</option>)}
-          </select>
+          </NSelect>
         </label>
       )}
       {gaps && (
         <label className="sh-pb-f">
           <span>Gaps</span>
-          <select value={look.gap ?? 'fit'} onChange={(e) => set({ gap: e.target.value as Paper['gap'] })}>
+          <NSelect value={look.gap ?? 'fit'} onChange={(e) => set({ gap: e.target.value as Paper['gap'] })}>
             <option value="fit">Fit the answer</option>
             <option value="short">Short</option>
             <option value="medium">Medium</option>
             <option value="long">Long</option>
-          </select>
+          </NSelect>
         </label>
       )}
       {writing && (
         <label className="sh-pb-f">
           <span>Writing space</span>
-          <select value={look.lines === undefined || look.lines === null ? 'auto' : String(look.lines)} onChange={(e) => set({ lines: e.target.value === 'auto' ? null : Number(e.target.value) })}>
+          <NSelect value={look.lines === undefined || look.lines === null ? 'auto' : String(look.lines)} onChange={(e) => set({ lines: e.target.value === 'auto' ? null : Number(e.target.value) })}>
             <option value="auto">Lines for the word count</option>
             <option value="0">No lines</option>
             {[4, 6, 8, 10, 12, 16, 20].map((n) => (
@@ -356,7 +357,7 @@ export function PaperBar({ look, onChange, gaps, writing, online, young = false 
                 {n} lines
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
       )}
       <label className="sh-pb-c">

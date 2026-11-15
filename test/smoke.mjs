@@ -4,6 +4,7 @@ import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {documentSharing} from './document-sharing.mjs';
 import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
+import {chooseSelect} from './select.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
 import {reviewAi,returnDuringAi,backgroundSongAudit,suiteCohesionAudit} from './cohesion.mjs';
 // Smoke tests: the journeys teachers and learners take most, run in a real browser against the
@@ -490,7 +491,7 @@ const J = {
     await s.p.getByRole('button',{name:'Class actions'}).click();
     await s.p.getByRole('menuitem',{name:'Class settings'}).click();
     const settings=s.p.getByRole('dialog',{name:'Class settings'});
-    await settings.getByLabel('Class spelling spell check').selectOption('off');
+    await chooseSelect(s.p, settings.getByRole('button', { name: 'Class spelling spell check' }), 'off');
     await settings.getByRole('button',{name:'Save changes'}).click();
     await s.p.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+id]?.spelling?.enabled===false,s.demo.classId);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -662,9 +663,25 @@ const J = {
     await design.getByRole('button', { name: 'Edit chart data and style' }).click();
     const chart = design.getByRole('dialog', { name: 'Edit chart' });
     await chart.getByRole('textbox', { name: 'Category 1' }).fill('Hong Kong');
-    await chart.getByRole('combobox', { name: 'Type' }).selectOption('pie');
+    await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'pie');
     await chart.getByLabel('Hong Kong slice colour').fill('#506a8f');
-    await chart.getByRole('combobox', { name: 'Type' }).selectOption('bars');
+    await chooseSelect(design, chart.getByRole('button', { name: 'Type', exact: true }), 'bars');
+    const type = chart.getByRole('button', { name: 'Type', exact: true });
+    await type.click();
+    await axe(design, 'Designer chart dropdown open', A11Y_FOUND);
+    if (process.env.DROPDOWN_SCREENSHOT_DIR) {
+      mkdirSync(process.env.DROPDOWN_SCREENSHOT_DIR, { recursive: true });
+      await design.screenshot({ path: `${process.env.DROPDOWN_SCREENSHOT_DIR}/designer-desktop-light.png` });
+      await type.press('Escape');
+      await design.setViewportSize({ width: 390, height: 844 });
+      await design.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+      await type.click();
+      await design.screenshot({ path: `${process.env.DROPDOWN_SCREENSHOT_DIR}/designer-phone-dark.png` });
+      await type.press('Escape');
+      await design.setViewportSize({ width: 1300, height: 900 });
+      await design.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+    }
+    else await type.press('Escape');
     await axe(design, 'Designer chart editor', A11Y_FOUND);
     await chart.getByRole('button', { name: 'Done' }).click();
     await design.getByRole('tab', { name: 'Maps' }).click();
@@ -674,6 +691,7 @@ const J = {
     await map.getByText('Layout and reference image', { exact: true }).click();
     await map.locator('input[type=file]').setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') });
     await map.getByRole('button', { name: 'Remove image' }).waitFor();
+    await chooseSelect(design, map.getByRole('button', { name: 'Fit', exact: true }), 'cover');
     await axe(design, 'Designer map editor', A11Y_FOUND);
     await map.getByRole('button', { name: 'Save map' }).click();
     await design.locator('.dz-saved:not(.bad)').waitFor();
@@ -688,6 +706,7 @@ const J = {
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.categories[0] === 'Hong Kong')) throw Error('Edited chart data did not save');
     if (!saved.some(v => v.figure?.kind === 'chart' && v.figure.palette?.[0] === '#506a8f')) throw Error('Edited pie slice colour did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundImage)) throw Error('Imported map visual did not save');
+    if (!saved.some(v => v.figure?.kind === 'map' && v.figure.backgroundFit === 'cover')) throw Error('Map image fit choice did not save');
     if (!saved.some(v => v.figure?.kind === 'map' && v.figure.items.some(item => item.icon === 'café' && item.iconStyle === 'plain' && item.iconColor === '#286c7d'))) throw Error('Map symbol drawer did not save the chosen plain colour');
     await design.reload();
     await design.getByRole('button', { name: 'Download' }).click();
@@ -1221,7 +1240,7 @@ const J = {
     if (!(await lessons.innerText()).includes('Not explored yet')) throw Error('Reading a guide fabricated feature adoption');
     await axe(s.p, 'Feature discovery usage', A11Y_FOUND);
     await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
-    await s.p.getByLabel('Suggestion frequency', { exact: true }).selectOption('3');
+    await chooseSelect(s.p, s.p.getByRole('button', { name: 'Suggestion frequency', exact: true }), '3');
     await s.p.getByRole('button', { name: 'Pause for 30 days', exact: true }).click();
     await see(s.p, 'text=Resume suggestions', 'suggestion pause');
     await axe(s.p, 'Feature discovery preferences', A11Y_FOUND);
@@ -1229,6 +1248,14 @@ const J = {
       await s.p.setViewportSize({ width, height: 800 });
       const fits = await s.p.locator('#discovery-panel').evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; });
       if (!fits) throw Error('Discovery panel overflows at ' + width);
+      if (width === 390) {
+        const frequency = s.p.getByRole('button', { name: 'Suggestion frequency', exact: true });
+        await frequency.click();
+        const menu = s.p.locator('.sel-list:visible').last();
+        const visible = await menu.evaluate(el => { const r = el.getBoundingClientRect(); const target = document.elementFromPoint(r.left + r.width / 2, r.top + 20); return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 && !!target && el.contains(target); });
+        if (!visible) throw Error('Discovery dropdown is clipped or covered on a phone');
+        await frequency.press('Escape');
+      }
     }
     await s.p.getByRole('button', { name: 'Close feature discovery', exact: true }).click();
     const d = await newFile(s, 'Collab document');
@@ -1240,7 +1267,7 @@ const J = {
     await s.p.reload();
     await launch.click();
     await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
-    if (await s.p.getByLabel('Suggestion frequency', { exact: true }).inputValue() !== '3') throw Error('Frequency preference was not saved');
+    if (!(await s.p.getByLabel('Suggestion frequency', { exact: true }).textContent())?.includes('One every 3 days')) throw Error('Frequency preference was not saved');
     await see(s.p, 'text=Resume suggestions', 'pause survives reload');
     await s.p.getByLabel('Personalise suggestions', { exact: false }).uncheck();
     if (await s.p.getByLabel('Quiet suggestions', { exact: false }).isChecked()) throw Error('Opting out left proactive suggestions enabled');
@@ -1278,6 +1305,18 @@ const J = {
     const box = await panel.boundingBox();
     if (!box || box.x < 0 || box.width > 391 || box.height > 845) throw Error('Phone help overflows the viewport.');
     await axe(s.p, 'Help assistant phone', A11Y_FOUND);
+    await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
+    const category = panel.getByRole('button', { name: 'Category', exact: true });
+    await category.click();
+    const categoryMenu = s.p.locator('.sel-list:visible').last();
+    const categoryVisible = await categoryMenu.evaluate(el => { const r = el.getBoundingClientRect(); const target = document.elementFromPoint(r.left + r.width / 2, r.top + 20); return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 && !!target && el.contains(target); });
+    if (!categoryVisible) throw Error('Help category dropdown is clipped or covered on a phone');
+    await axe(s.p, 'Help category dropdown open on phone', A11Y_FOUND);
+    await category.press('Escape');
+    await category.click();
+    const chosenCategory = (await categoryMenu.getByRole('option').nth(1).innerText()).trim();
+    await categoryMenu.getByRole('option').nth(1).click();
+    if (!(await category.innerText()).includes(chosenCategory)) throw Error('Help category dropdown did not keep the chosen category');
     await panel.getByRole('button', { name: 'Close help' }).click();
     await s.p.getByRole('button', { name: 'Help', exact: true }).waitFor();
     await s.p.setViewportSize({ width: 1280, height: 900 });
@@ -1759,6 +1798,28 @@ const J = {
     await see(s.p, '.learners table:has-text("Audit Name")', 'one learner successfully added');
     return s;
   },
+  'Training course suggestions keep free typing in the suite menu': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), teacherTrainer: true };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(`${BASE}/classes`);
+    await s.p.getByRole('button', { name: '+ New class' }).first().click();
+    await s.p.getByRole('radio', { name: /Teacher training/ }).click();
+    const course = s.p.getByRole('combobox', { name: 'Course' });
+    await course.click();
+    await see(s.p, '.suggest-list [role="option"]:has-text("Delta Module 2")', 'styled training course suggestions');
+    const bounds = await s.p.locator('.suggest-list').boundingBox();
+    if (!bounds || bounds.x < 0 || bounds.x + bounds.width > 391) throw Error('Course suggestions overflow the phone screen');
+    await s.p.locator('.suggest-list [role="option"]:has-text("Delta Module 2")').click();
+    if (await course.inputValue() !== 'Delta Module 2') throw Error('Course suggestion was not selected');
+    await course.fill('My own teacher programme');
+    if (await course.inputValue() !== 'My own teacher programme') throw Error('Custom course was not kept');
+    return s;
+  },
   'Three-day calendar across themes and screen sizes': async (b) => {
     const s = await session(b);
     for (const width of [390, 1300]) {
@@ -2168,6 +2229,27 @@ const J = {
     const keyboardHighlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').length);
     if (keyboardHighlight !== 1) throw new Error('The menu shows more than one selection highlight.');
     await d.keyboard.press('Escape');
+    await d.setViewportSize({ width: 390, height: 600 });
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    const formatMenu = d.locator('.document-menu-popup');
+    const menuFits = await formatMenu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!menuFits) throw new Error('The document Format menu leaves the phone viewport');
+    await formatMenu.getByRole('menuitem').last().scrollIntoViewIfNeeded();
+    const lastFits = await formatMenu.getByRole('menuitem').last().evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!lastFits) throw new Error('The last document Format action cannot be reached on a phone');
+    await d.keyboard.press('Escape');
+    await d.setViewportSize({ width: 1280, height: 900 });
+    const styleTrigger = d.getByRole('button', { name: 'Paragraph style' });
+    await styleTrigger.focus();
+    await styleTrigger.press('ArrowDown');
+    const styleList = d.getByRole('listbox', { name: 'Paragraph style' });
+    await styleList.waitFor();
+    await d.waitForFunction(() => document.activeElement?.classList.contains('sm-o'));
+    await d.keyboard.press('End');
+    const styleFocus = await styleList.getByRole('option', { name: 'Heading 3' }).evaluate(el => ({ right: document.activeElement === el, active: document.activeElement?.outerHTML.slice(0, 250) }));
+    if (!styleFocus.right) throw new Error('Paragraph style menu did not support keyboard navigation: ' + styleFocus.active);
+    await d.keyboard.press('Escape');
+    await styleList.waitFor({ state: 'hidden' });
     await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
     await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
@@ -2682,6 +2764,24 @@ const J = {
     if (!new URL(s.p.url()).pathname.startsWith('/colleagues')) throw new Error('Message left the Colleagues page');
     return s;
   },
+  'Shared menu stays usable in a short phone viewport': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm-hero', 'the home page');
+    await s.p.setViewportSize({ width: 390, height: 180 });
+    await s.p.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 160 })));
+    const menu = s.p.getByRole('menu');
+    await menu.waitFor();
+    const fits = await menu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!fits) throw new Error('Shared menu leaves a short phone viewport');
+    const last = menu.getByRole('menuitem').last();
+    await last.scrollIntoViewIfNeeded();
+    const lastFits = await last.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!lastFits) throw new Error('Last shared-menu action cannot be reached on a short phone viewport');
+    await s.p.keyboard.press('Escape');
+    await menu.waitFor({ state: 'hidden' });
+    return s;
+  },
   'Super Admin and an organisation': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/admin`);
@@ -2716,7 +2816,7 @@ const J = {
       fs['users/teacher2'] = { role: 'teacher', displayName: 'Sofia Rossi', email: 'sofia@school.org', createdAt: { __ts: now - 9e8 } };
       fs['accounts/teacher2'] = { org: 'o1', usedBytes: 4.8 * 1024 ** 3 };
       fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'o1' };
-      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, perTeacherGb: 5, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' }, teacher2: { name: 'Sofia Rossi', email: 'sofia@school.org', title: 'Senior teacher' } }, tags: { t1: { name: 'Exams team' } }, brand: { color: '#2f6f8f' }, allow: { trainers: true } };
+      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, perTeacherGb: 5, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' }, teacher2: { name: 'Sofia Rossi', email: 'sofia@school.org', title: 'Senior teacher' } }, tags: { t1: { name: 'Exams team' } }, brand: { color: '#2f6f8f' }, allow: { trainers: true }, policy: { profiles: true } };
       fs['orgInvites/i1'] = { org: 'o1', orgName: 'Harbour School', email: 'tom@school.org', name: 'Tom Becker', by: 'teacher1', byName: 'Arda', at: now - 10 * 864e5, status: 'pending', mailed: now - 10 * 864e5 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
@@ -2724,6 +2824,21 @@ const J = {
     await see(s.p, '.hq-ledger:has-text("invitation waiting more than a week")', 'what needs a look');
     await see(s.p, '.hq-ledger:has-text("nearly out of space")', 'a teacher nearly out of space');
     await axe(s.p, 'Organisation admin: overview', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Rules")');
+    await see(s.p, 'h1:has-text("Rules")', 'organisation rules');
+    const profilesSwitch = s.p.getByRole('switch', { name: 'Ask teachers for a profile' });
+    if (await profilesSwitch.getAttribute('aria-checked') === 'false') await profilesSwitch.click();
+    await s.p.setViewportSize({ width: 390, height: 600 });
+    await s.p.getByRole('button', { name: 'Open it anyway' }).click();
+    const iconTrigger = s.p.getByRole('button', { name: /^Icon for / }).last();
+    await iconTrigger.scrollIntoViewIfNeeded();
+    await iconTrigger.click();
+    const iconMenu = s.p.getByRole('listbox', { name: 'Icons' });
+    const iconsFit = await iconMenu.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!iconsFit) throw new Error('Organisation icon picker leaves the phone viewport');
+    await iconMenu.getByRole('option', { name: 'flag' }).click();
+    await iconMenu.waitFor({ state: 'hidden' });
+    await s.p.setViewportSize({ width: 1280, height: 900 });
     await s.p.click('.hq-nav-i:has-text("Teachers")');
     await s.p.click('.hq-table tbody tr:has-text("Sofia Rossi") .hq-check');
     await see(s.p, '.hq-bulk:has-text("1 teacher selected")', 'the bar for the selected teachers');
@@ -2828,7 +2943,7 @@ const J = {
     const s = await session(b, { owner: true });
     await s.p.evaluate(() => {const fs=JSON.parse(localStorage.getItem('mockfs')||'{}');fs['users/allowance-user']={role:'learner',displayName:'Allowance learner',email:'allowance@example.test'};localStorage.setItem('mockfs',JSON.stringify(fs));});
     await s.p.goto(BASE+'/admin?tab=ai');
-    await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).selectOption('testing');
+    await chooseSelect(s.p, s.p.getByRole('button',{name:'Songs release state',exact:true}), 'testing');
     await s.p.getByRole('button',{name:'Save feature states',exact:true}).click();
     await s.p.getByText('Feature states saved. New requests use these settings.',{exact:true}).waitFor();
     await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
@@ -2848,7 +2963,7 @@ const J = {
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).waitFor();
     if(await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).inputValue()!=='0')throw Error('Saved zero limit missing');
     if(!await s.p.getByRole('checkbox',{name:'Songs testing access',exact:true}).isChecked())throw Error('Saved testing access missing');
-    if(await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).inputValue()!=='testing')throw Error('Saved release state missing');
+    if(!(await s.p.getByRole('button',{name:'Songs release state',exact:true}).textContent())?.includes('Testing'))throw Error('Saved release state missing');
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('999');
     await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
     await see(s.p,'[role=alert]:has-text("Test save unavailable")','visible save failure');
@@ -3162,6 +3277,45 @@ const J = {
     await see(s.p, '.hm', 'slow setup completed',60000).catch(async e=>{throw Error(e.message+' · '+(await s.p.locator('body').innerText()).slice(0,1200)+' · '+s.errors.slice(0,3).join('; '));});
     const uses = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['inviteCodes/SLOW-AB23'].uses);
     if (uses !== 1) throw Error('Retry spent the invitation more than once');
+    return s;
+  },
+  'Fatal Firestore cache failure offers a temporary connection without deleting saved work': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await see(s.p, '.hm', 'teacher home before cache failure');
+    const detectsPrecursor = await s.p.evaluate(async () => {
+      const { isFatalFirestoreError } = await import('/src/lib/firestoreRecovery.ts');
+      return isFatalFirestoreError({ message: "Cannot read properties of null (reading 'Pe')", stack: 'at getTargetData' });
+    });
+    if (!detectsPrecursor) throw Error('The fatal Firestore getTargetData precursor was missed');
+    await s.p.evaluate(() => {
+      localStorage.setItem('recovery-work-sentinel', 'saved on device');
+      window.dispatchEvent(new ErrorEvent('error', { message: 'FirebaseError: unavailable' }));
+    });
+    if (await s.p.getByRole('alertdialog').count()) throw Error('A normal connection error triggered cache recovery');
+    await s.p.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { message: 'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)' })));
+    const recovery = s.p.getByRole('alertdialog', { name: 'Your account couldn’t finish loading' });
+    await recovery.waitFor();
+    await see(s.p, '#firestore-recovery-description:has-text("not been deleted")', 'clear device-work message');
+    await axe(s.p, 'Firestore cache recovery', A11Y_FOUND);
+    if (process.env.ELT_RECOVERY_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_RECOVERY_SCREENSHOT });
+    await s.p.setViewportSize({ width: 390, height: 760 });
+    await s.p.evaluate(() => { localStorage.setItem('ll.theme', 'dark'); document.documentElement.dataset.theme = 'dark'; });
+    const fitsPhone = await recovery.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 8 && r.right <= innerWidth - 8 && r.top >= 8 && r.bottom <= innerHeight - 8; });
+    if (!fitsPhone) throw Error('Cache recovery dialog does not fit a phone');
+    await axe(s.p, 'Firestore cache recovery on a dark phone', A11Y_FOUND);
+    if (process.env.ELT_RECOVERY_PHONE_SCREENSHOT) await s.p.screenshot({ path: process.env.ELT_RECOVERY_PHONE_SCREENSHOT });
+    await recovery.getByRole('button', { name: 'Open with temporary connection' }).click();
+    await see(s.p, '.hm', 'teacher home after temporary restart');
+    await see(s.p, '.firestore-temporary:has-text("Temporary connection")', 'temporary connection reminder');
+    await axe(s.p, 'Firestore temporary connection', A11Y_FOUND);
+    const preserved = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (preserved.key !== '1' || preserved.work !== 'saved on device') throw Error('Recovery did not preserve the device cache marker');
+    await s.p.getByRole('button', { name: 'Try normal connection' }).click();
+    await see(s.p, '.hm', 'teacher home after returning to normal cache');
+    if (await s.p.locator('.firestore-temporary').count()) throw Error('Temporary connection reminder remained after returning to normal');
+    const restored = await s.p.evaluate(() => ({ key: sessionStorage.getItem('ll.firestore-memory-recovery'), work: localStorage.getItem('recovery-work-sentinel') }));
+    if (restored.key || restored.work !== 'saved on device') throw Error('Returning to normal cache removed device-only work');
     return s;
   },
   'Teacher onboarding and goal-based guide': async (b) => {

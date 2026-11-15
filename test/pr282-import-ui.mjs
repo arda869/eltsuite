@@ -90,13 +90,17 @@ try {
   await dialog.locator('.mi-shot').nth(2).waitFor({ timeout: 30000 });
   await dialog.screenshot({ path: 'outputs/pr282/import-screenshots.png' });
 
-  // A PDF replaces the picture batch and can be turned into a saved task.
+  // A worksheet PDF and a separate key PDF travel through one reviewed task.
   const pdfPage = await context.newPage();
-  await pdfPage.setContent('<html><body><h1>Weather</h1><p>Complete: The sky is ___.</p><p>Answers: blue.</p></body></html>');
+  await pdfPage.setContent('<html><body><h1>Invitation</h1><p>Read the email. Which day does Alex suggest?</p></body></html>');
   const pdf = await pdfPage.pdf();
+  await pdfPage.setContent('<html><body><h1>Answer key</h1><p>Which day? Saturday.</p></body></html>');
+  const keyPdf = await pdfPage.pdf();
   await pdfPage.close();
-  await dialog.locator('input[type=file]').setInputFiles({ name: 'Weather.pdf', mimeType: 'application/pdf', buffer: pdf });
-  await dialog.getByRole('region', { name: 'Selected source' }).getByText('Weather.pdf').waitFor({ timeout: 30000 });
+  await dialog.getByLabel('Upload existing materials').setInputFiles({ name: 'Invitation.pdf', mimeType: 'application/pdf', buffer: pdf });
+  await dialog.getByRole('region', { name: 'Selected source' }).getByText('Invitation.pdf').waitFor({ timeout: 30000 });
+  await dialog.getByLabel('Choose answer key file').setInputFiles({ name: 'Invitation key.pdf', mimeType: 'application/pdf', buffer: keyPdf });
+  await dialog.getByRole('region', { name: 'Answer key (optional)' }).getByText('Invitation key.pdf').waitFor({ timeout: 30000 });
   await dialog.getByLabel('I have permission to use and adapt these materials.').check();
   assert.ok(await dialog.getByRole('button', { name: 'Make the task' }).isEnabled());
   await dialog.getByRole('button', { name: 'Make the task' }).click();
@@ -107,11 +111,40 @@ try {
   await dialog.waitFor({ state: 'detached', timeout: 30000 });
   const request = await page.evaluate(() => JSON.parse(localStorage.getItem('mockMaterialRequest')));
   assert.equal(request.scope, 'task');
-  assert.equal(request.source.name, 'Weather.pdf');
+  assert.equal(request.source.name, 'Invitation.pdf');
+  assert.match(request.source.text, /\[Answer key: Invitation key.pdf\][\s\S]*Saturday/);
+  assert.deepEqual(request.source.imageLabels, ['PDF page 1', 'Answer key · Invitation key.pdf · PDF page 1']);
+  assert.equal(request.source.images.length, 2);
+  assert.equal(request.source.answerKeyImageStart, 1);
   const fs = await page.evaluate(() => JSON.parse(localStorage.getItem('mockfs')));
-  assert.ok(Object.entries(fs).some(([key, value]) => key.startsWith(`classes/${demo.classId}/items/${demo.itemId}/tasks/`) && value.title === 'Read the invitation'));
-  writeFileSync('outputs/pr282/import-ui-results.json', JSON.stringify({ source: request.source.name, scope: request.scope, taskAdded: true }, null, 2));
-  console.log('Isolated import UI journey passed');
+  const taskPath = Object.keys(fs).find(key => key.startsWith(`classes/${demo.classId}/items/${demo.itemId}/tasks/`) && fs[key].title === 'Read the invitation');
+  assert.ok(taskPath, 'reviewed task is saved in the lesson');
+  assert.ok(Object.values(fs[`${taskPath}/private/key`] ?? {}).some(entry => JSON.stringify(entry).includes('Saturday')), 'mocked private key is saved separately');
+  const walk = node => [node, ...(node.content ?? []).flatMap(walk)];
+  const publicGap = walk(fs[taskPath].content).find(node => node.type === 'gap');
+  assert.deepEqual(publicGap?.attrs?.answers, [], 'the saved learner task has no accepted answers in its public content');
+  // The answer-key upload is optional. A listening source without one still
+  // becomes an editable task, and its blank key cannot mark a guess wrong.
+  await page.locator('.task-insert').last().locator('summary').click();
+  await page.getByRole('button', { name: 'Import a task' }).last().click();
+  const noKeyDialog = page.getByRole('dialog', { name: 'Import a task' });
+  await noKeyDialog.getByLabel('Upload existing materials').setInputFiles({ name: 'Listening.txt', mimeType: 'text/plain', buffer: Buffer.from('NOKEY_IMPORT_VERIFICATION\nListen and complete the missing word.') });
+  await noKeyDialog.getByRole('region', { name: 'Selected source' }).getByText('Listening.txt').waitFor();
+  await noKeyDialog.getByLabel('I have permission to use and adapt these materials.').check();
+  await noKeyDialog.getByRole('button', { name: 'Make the task' }).click();
+  await noKeyDialog.getByText('2. Review your rebuilt materials').waitFor({ timeout: 30000 });
+  await noKeyDialog.getByLabel('I’ve checked the content, answer keys and import notes.').check();
+  await noKeyDialog.getByRole('button', { name: 'Add reviewed task' }).click();
+  await noKeyDialog.waitFor({ state: 'detached', timeout: 30000 });
+  const noKeyRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('mockMaterialRequest')));
+  assert.equal(noKeyRequest.source.name, 'Listening.txt');
+  assert.equal(noKeyRequest.source.answerKeyImageStart, undefined);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mockfs')));
+  const noKeyTask = Object.keys(saved).find(path => path.startsWith(`classes/${demo.classId}/items/${demo.itemId}/tasks/`) && saved[path].title === 'Listening without a key');
+  assert.ok(noKeyTask, 'a source without a separate key still becomes an editable task');
+  assert.deepEqual(Object.values(saved[`${noKeyTask}/private/key`] ?? {})[0].answers, [], 'unknown answers stay empty in the private key');
+  writeFileSync('outputs/pr282/import-ui-results.json', JSON.stringify({ source: request.source.name, answerKey: 'Invitation key.pdf', scope: request.scope, taskAdded: true, privateKeySaved: true, verification: 'simulated model and Firebase' }, null, 2));
+  console.log('Isolated import UI journey passed with separate key PDF; AI and Firebase simulated.');
   await context.close();
 } finally {
   await browser.close();

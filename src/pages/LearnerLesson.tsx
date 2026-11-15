@@ -30,6 +30,7 @@ import type { ClassDoc, Item } from '../lib/classes';
 import {
   answerRef,
   isAnswered,
+  scoreQuestion,
   scoreTask,
   loadKey,
   questionIds,
@@ -465,6 +466,7 @@ export function LearnerLesson() {
 
   const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
   const score = result.score;
+  const unmarked = key ? qs.filter((q) => !['writing', 'reflect', 'upload'].includes(q.type) && isAnswered(responses[q.id]) && scoreQuestion(key[q.id], responses[q.id]).max === 0).length : 0;
   const retryMode = task?.afterCheck === 'retry';
   const prevOpen = [...tasks.slice(0, Math.max(0, index))].reverse().find((t) => !t.locked && t.kind !== 'section');
   const nextOpen = tasks.slice(index + 1).find((t) => !t.locked && t.kind !== 'section');
@@ -762,7 +764,8 @@ export function LearnerLesson() {
                       <>
                         <span className="big">{Math.round(score * 10) / 10}</span> of {result.total} correct
                       </>
-                    ) : null}
+                    ) : unmarked > 0 ? 'Your answers are saved for your teacher' : null}
+                    {result.total > 0 && unmarked > 0 && <span className="hint"> · Your teacher can review {unmarked === 1 ? '1 answer' : `${unmarked} answers`} without a key</span>}
                   </YoungScore>
                 ) : checked && key && showScore ? (
                   <span className="score">
@@ -772,6 +775,7 @@ export function LearnerLesson() {
                       </>
                     ) : null}
                     {result.hasWriting && <span className="hint">{result.total > 0 ? ' · ' : ''}Your writing has gone to your teacher</span>}
+                    {unmarked > 0 && <span className="hint">{result.total > 0 || result.hasWriting ? ' · ' : ''}Your teacher can review {unmarked === 1 ? '1 answer' : `${unmarked} answers`} without a key</span>}
                   </span>
                 ) : (
                   <span className="hint foot-status">

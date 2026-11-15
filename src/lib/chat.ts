@@ -27,7 +27,7 @@ export type Chat = {
   createdBy: string;
   at: number;
   lastAt: number;
-  last?: { text: string; name: string; by: string; mentions?: string[] };
+  last?: { id?: string; text: string; name: string; by: string; mentions?: string[] };
   seen?: Record<string, number>; // when each person last opened it (for unread counts; private)
   read?: Record<string, number>; // read receipts: as seen, but only from people who share them
   got?: Record<string, number>; // when each person's app last received its messages (delivered)
@@ -207,8 +207,9 @@ export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'n
   // The message and the chat preview must either both save or both fail. A partial
   // send used to leave a message behind while telling the sender to retry it.
   const batch = writeBatch(db);
-  batch.set(doc(msgsCol(c.id)), clean);
-  batch.update(doc(col, c.id), { lastAt: at, last: { text: preview.slice(0, 140), name: me.name, by: me.key, mentions: m.mentions ?? [] }, [`seen.${me.key}`]: at });
+  const message = doc(msgsCol(c.id));
+  batch.set(message, clean);
+  batch.update(doc(col, c.id), { lastAt: at, last: { id: message.id, text: preview.slice(0, 140), name: me.name, by: me.key, mentions: m.mentions ?? [] }, [`seen.${me.key}`]: at });
   await batch.commit();
 }
 export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => updateDoc(doc(msgsCol(c.id), id), JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));

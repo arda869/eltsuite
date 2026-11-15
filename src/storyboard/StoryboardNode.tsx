@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useState } from 'react';
@@ -67,13 +68,13 @@ function StoryboardView({ node, updateAttributes, deleteNode, editor, getPos, se
               <span className="sbn-title">{a.title}</span>
               <label className="sbn-cols">
                 <span>Scenes a row</span>
-                <select value={a.cols ?? 2} onChange={(e) => updateAttributes({ cols: Number(e.target.value) })}>
+                <NSelect value={a.cols ?? 2} onChange={(e) => updateAttributes({ cols: Number(e.target.value) })}>
                   {[1, 2, 3].map((n) => (
                     <option key={n} value={n}>
                       {n}
                     </option>
                   ))}
-                </select>
+                </NSelect>
               </label>
               <button type="button" className="sbn-b" onClick={() => void refresh()} data-tip="Bring in the latest changes from the file">
                 Update

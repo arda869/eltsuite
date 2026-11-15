@@ -156,9 +156,9 @@ export function scoreAnswer(slide, key, player, answer) {
   const m = answer ? markSlide(key, slide, answer.responses) : { got: 0, max: 0, frac: null };
   const scored = !slide.poll && m.frac !== null;
   const right = scored && m.frac === 1;
-  const streak = slide.poll ? player.streak || 0 : right ? (player.streak || 0) + 1 : 0;
+  const streak = slide.poll || !scored ? player.streak || 0 : right ? (player.streak || 0) + 1 : 0;
   const gained = answer ? pointsFor(slide, m.frac, answer.ms) + (right && slide.points ? streakBonus(streak) : 0) : 0;
-  const maxHere = slide.poll ? 0 : slide.qids.reduce((n, q) => n + (key[q] ? 1 : 0), 0);
+  const maxHere = slide.poll ? 0 : slide.qids.reduce((n, q) => n + scoreQuestion(key[q], undefined).max, 0);
   return {
     frac: m.frac,
     scored,

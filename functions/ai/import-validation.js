@@ -7,7 +7,7 @@ export function checkImportElements(elements,training){
  for(const e of elements){const d=e.data;
   if(e.kind==='picture'&&(!/^[a-zA-Z0-9_-]{1,60}$/.test(d.ref)||d.x+d.width>100.01||d.y+d.height>100.01||d.asset&&!/^[a-f0-9]{64}$/.test(d.asset)))throw Error('Choose a valid source illustration reference and crop within its page.');
   if(e.kind==='dialogue'){
-   if(new Set(d.turns.map(turn=>turn.speaker.trim())).size>4||d.turns.some(turn=>!turn.speaker.trim()||!turn.text.trim()||(turn.text.match(/___/g)||[]).length!==turn.answers.length))throw Error('A dialogue needs 2–4 speakers and one answer for each ___ gap in its turns.');
+   if(new Set(d.turns.map(turn=>turn.speaker.trim())).size>4||d.turns.some(turn=>!turn.speaker.trim()||!turn.text.trim()||(turn.answers.length!==0&&(turn.text.match(/___/g)||[]).length!==turn.answers.length)))throw Error('A dialogue needs 2–4 speakers and either no key or one answer for each ___ gap in its turns.');
   }
   if(e.kind.startsWith('tt-')&&training===false)throw Error('Teacher-training forms need a teacher-training class.');
   if(['gap','lettergap','wordform','drop'].includes(e.kind)&&e.prompt.split('___').length!==2)throw Error('A '+e.kind+' needs exactly one ___ in its prompt.');
@@ -22,7 +22,7 @@ export function checkImportElements(elements,training){
   if(e.kind==='writing'&&d.maxWords&&d.minWords>d.maxWords)throw Error('Writing word limits are reversed.');
   if(e.kind==='writing'&&d.rubric==='custom'&&!d.criteria.length)throw Error('Custom marking needs criteria.');
   if(e.kind==='pq-highlight'&&!/\{\{[^{}]+\}\}/.test(d.text))throw Error('Highlight targets must be marked with {{double braces}}.');
-  if(e.kind==='table'){const gaps=[d.headers,...d.rows].flat().join('\n').split('___').length-1;if(gaps!==d.answers.length)throw Error('A table needs one answer for each ___ gap in its cells.');}
+  if(e.kind==='table'){const gaps=[d.headers,...d.rows].flat().join('\n').split('___').length-1;if(d.answers.length!==0&&gaps!==d.answers.length)throw Error('A table needs either no key or one answer for each ___ gap in its cells.');}
   if(e.kind==='stress'&&d.stressed>=d.syllables.length)throw Error('The stressed syllable is outside the word.');
   if(e.kind==='subst'&&e.prompt.split('___').length!==2)throw Error('A substitution slot needs exactly one ___ in its prompt.');
   if(e.kind==='linkcard'&&(!/^https:\/\//.test(d.url)||!validImage(d.url)))throw Error('A link card needs the full HTTPS address from the source.');
