@@ -3388,11 +3388,13 @@ const J = {
     await see(s.p, 'text=Present perfect', 'the learner can return to class home');
 
     await s.p.evaluate(({ classId, itemId }) => sessionStorage.setItem('mockfs-faults', JSON.stringify([
-      { op: 'listen', path: `classes/${classId}/items/${itemId}`, count: 1, code: 'permission-denied' },
+      // Keep the read unavailable through any transient StrictMode subscriptions.
+      { op: 'listen', path: `classes/${classId}/items/${itemId}`, count: 100, code: 'permission-denied' },
     ])), s.demo);
     await s.p.goto(`${BASE}/learn/${s.demo.itemId}`);
     await see(s.p, '.task-frame h1:has-text("This lesson is unavailable")', 'a failed item read offers recovery');
     await see(s.p, '.task-frame:has-text("Check your connection")', 'read failure guidance');
+    await s.p.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
     await s.p.getByRole('button', { name: 'Try again' }).click();
     await see(s.p, '.task-frame .task-title:not(:has-text("unavailable"))', 'retry reopens the lesson');
     return s;

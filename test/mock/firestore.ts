@@ -157,7 +157,7 @@ export function onSnapshot(target: DocRef | Q | CollRef, ...args: unknown[]) {
     last = key;
     next(s);
   };
-  setTimeout(() => { void beforeOperation(target.type === 'collection' && target.path === 'orgs' ? 'listen-orgs-all' : 'listen', target.path)
+  setTimeout(() => { if (!active) return; void beforeOperation(target.type === 'collection' && target.path === 'orgs' ? 'listen-orgs-all' : 'listen', target.path)
     .then(() => { ready = true; fire(); })
     .catch((error) => { if (active) onError?.(error); }); }, 0);
   const unsubscribe = subscribe(fire);
