@@ -5,7 +5,7 @@ import type { MapItemKind } from './figures';
 const paths:Record<MapItemKind,string[]>={
   road:['M4 21C8 16 8 8 12 3','M11 22c4-5 4-13 8-17','M8 18l2-3m2-4 1-3'],
   river:['M3 3c4 2 4 5 0 7s-4 5 0 7 4 4 0 5','M11 3c4 2 4 5 0 7s-4 5 0 7 4 4 0 5','M19 3c4 2 4 5 0 7s-4 5 0 7 4 4 0 5'],
-  footpath:['M4 21c-1-4 3-5 5-8s1-6 5-8 5-1 6-2','M5 18h.01M8 15h.01M10 12h.01M11 9h.01M14 6h.01M18 4h.01'],
+  footpath:['M3 21c0-2 1-3 3-4','M8 15c2-1 2-3 3-4','M13 9c1-2 3-3 4-3','M19 5l2-2'],
   wall:['M2 5h20v14H2z','M2 12h20M8 5v7m8 0v7M12 12v7'],
   fence:['M3 20V5l2-2 2 2v15M17 20V5l2-2 2 2v15M3 9h18M3 15h18'],
   zone:['M4 5h6m4 0h6v6m0 4v4h-6m-4 0H4v-6m0-4v-4','M9 10h6v5H9z'],
