@@ -47,6 +47,8 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-material-import 'node test/ai/materials-integration.mjs'
       - name: Assessment, roster, invitation and call security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security 'node test/security-phase2-firestore.mjs'
+      - name: Class recording script privacy, QR access and migration
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ordinary-media-script-privacy 'node test/media-script-access.mjs'
       - name: Learner discussion timeline and access
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-learning-timeline 'node functions/test/learner-discussion-timeline.mjs'
       - name: Live classroom security boundaries

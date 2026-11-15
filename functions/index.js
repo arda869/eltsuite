@@ -13,6 +13,7 @@ export { assessTask, manageExam, resubmitCorrection } from './learning/assessmen
 export { claimLiveClass, classTeachingAccessChanged } from './learning/class-access.js';
 export { sharedDocumentAccessChanged, inlineDocumentAccessChanged, sharedClassMemberAccessChanged, sharedClassGroupsChanged } from './collab/access.js';
 export { resolveLearnerSignIn } from './learning/join.js';
+export { mediaScriptAccess, issueMediaScriptQr, clearMediaScriptSessions } from './media/script-access.js';
 export { requestInvitation } from './accounts/invitations.js';
 export { startCallRoom, endCallRoom } from './learning/call-rooms.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
