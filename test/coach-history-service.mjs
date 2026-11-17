@@ -37,6 +37,13 @@ try{
  await db.doc('teachingCoach/service-teacher/settings/context').set({forms:false,lessons:false,version:2});
  await teachingCoach({...base,data:{...base.data,requestId:'optout'}},options);assert.equal(sent.context.relatedLessons,undefined);assert.equal(sent.context.lesson,undefined);
  await assert.rejects(teachingCoach({...base,data:{...base.data,requestId:'selected-optout',lessonContext:{classId:'owned',itemId:'lesson'}}},options),/switched off/);
+ await db.doc('teachingCoach/service-teacher/settings/profile').delete();
+ await teachingCoach({...base,data:{...base.data,conversationId:'history-blank',requestId:'blank-profile',prompt:'What could I try tomorrow?'}},options);
+ assert.equal(sent.context.profile,undefined);assert.equal(sent.context.beliefs,undefined);
+ await db.doc('teachingCoach/service-teacher/settings/profile').set({goals:'Make instructions clearer',version:2});
+ await teachingCoach({...base,data:{...base.data,conversationId:'history-partial',requestId:'partial-profile',prompt:'How could I explain this?'}},options);
+ assert.equal(sent.context.profile?.goals,'Make instructions clearer');assert.equal(sent.context.beliefs,undefined);
  console.log('PASS default discovery reads owned/co-taught lesson content, excludes foreign classes, respects revoked access and lesson opt-out.');
  console.log('PASS real service transactions: durable prompt/reply with blank optional fields, idempotent retry, running-turn recovery, concurrent-send rejection, failure preservation and follow-up. AI provider simulated.');
+ console.log('PASS general coaching accepts an empty or partial profile and only supplies nonblank context. AI provider simulated.');
 }finally{await deleteApp(app);}

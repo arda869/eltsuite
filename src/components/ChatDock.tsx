@@ -22,7 +22,7 @@ import { CallButtons } from './Rooms';
 // all of them can be minimised or closed at once. They stay as you move between apps.
 
 const KEY = 'll.dock2';
-export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number; size?: { w: number; h: number }; coachContext?: CoachContext }; // id: a chat, 'teaching-coach', or 'list'
+export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number; size?: { w: number; h: number }; coachContext?: CoachContext; coachConversationId?: string }; // id: a chat, 'teaching-coach', or 'list'
 type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
@@ -332,7 +332,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
           <WinIcon d="M6 6l12 12M18 6L6 18" />
         </button>
       </div>
-      {coachOpen ? <div className="dock-chat dock-coach coach"><CoachConversation uid={me} context={w.coachContext ?? coachContextOnPage()} compact /></div> : cur && dir ? (
+      {coachOpen ? <div className="dock-chat dock-coach coach"><CoachConversation uid={me} initialConversationId={w.coachConversationId} context={w.coachContext ?? coachContextOnPage()} compact onConversationChange={(id,context)=>patch(w.id,{coachContext:context,coachConversationId:id})}/></div> : cur && dir ? (
         <div className="dock-chat">
           <ChatView key={cur.id} c={cur} me={dir.me} dir={dir} teacher={profile?.role === 'teacher'} onBack={() => closeWin(w.id)} />
         </div>
