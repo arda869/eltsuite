@@ -39,7 +39,15 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const {lessonContext,formContext,evidencePacketId='',reflectionId=''}=context;
   const route = useLocation();
   const [visibleLesson,setVisibleLesson]=useState<LessonCoachContext|null>(()=>coachContextOnPage().lessonContext??null);
-  useEffect(()=>{setVisibleLesson(coachContextOnPage().lessonContext??null);},[route.pathname,route.search]);
+  useEffect(()=>{
+    const syncVisibleLesson=()=>setVisibleLesson(coachContextOnPage().lessonContext??null);
+    syncVisibleLesson();
+    // Switching tasks within one lesson does not change the route. Keep the
+    // attached-activity choice in sync with the task the teacher can see.
+    const observer=new MutationObserver(syncVisibleLesson);
+    observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-coach-task-id']});
+    return ()=>observer.disconnect();
+  },[route.pathname,route.search]);
   const attachmentDiffers=!!(compact&&lessonContext&&visibleLesson&&!matchesAttachment(lessonContext,visibleLesson));
   const { value: preferences, ready: preferencesReady } = useCoachPreferences(uid);
   const saved=useConversations(uid,conversationId,coachHistoryKey(profile.version,preferences.version,context));

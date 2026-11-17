@@ -480,6 +480,18 @@ const J = {
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
     if(request.lessonContext?.classId!==s.demo.classId||request.lessonContext?.itemId!==s.demo.itemId||request.lessonContext?.taskId!==taskId)throw Error('The current activity was not included in the conversation');
     await s.p.waitForFunction(()=>document.querySelectorAll('.dock-win[data-win="teaching-coach"] .coach-chat-message-coach').length>=2);
+    await s.p.getByRole('button',{name:'2 Notice the rule'}).click();
+    await coach.getByRole('complementary',{name:'Attached activity'}).getByText('This conversation is still using the activity you attached earlier.').waitFor();
+    const nextTaskId=await s.p.locator('[data-coach-task-id]').getAttribute('data-coach-task-id');
+    if(nextTaskId===taskId)throw Error('The lesson did not switch to its second activity');
+    await coach.getByRole('button',{name:'Use the activity on this page'}).click();
+    await coach.getByRole('complementary',{name:'Attached activity'}).waitFor({state:'hidden'});
+    await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Now consider the second activity.');
+    await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='Now consider the second activity.');
+    const switched=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(switched.lessonContext?.taskId!==nextTaskId)throw Error('Switching activities in the same lesson did not update the attachment');
+    await s.p.waitForFunction(()=>document.querySelectorAll('.dock-win[data-win="teaching-coach"] .coach-chat-message-coach').length>=3);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.packId}`);
     await coach.getByRole('complementary',{name:'Attached activity'}).getByText('This conversation is still using the activity you attached earlier.').waitFor();
     await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What about the attached activity?');
