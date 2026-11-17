@@ -438,7 +438,7 @@ const J = {
     await s.p.getByText('Sources used (1)',{exact:true}).click();
     await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
-    await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
+    await s.p.getByLabel('Message Teacher’s Companion').waitFor();
     if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
     return s;
   },
@@ -479,6 +479,23 @@ const J = {
     await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='What is your advice on this activity?');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
     if(request.lessonContext?.classId!==s.demo.classId||request.lessonContext?.itemId!==s.demo.itemId||request.lessonContext?.taskId!==taskId)throw Error('The current activity was not included in the conversation');
+    await s.p.waitForFunction(()=>document.querySelectorAll('.dock-win[data-win="teaching-coach"] .coach-chat-message-coach').length>=2);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.packId}`);
+    await coach.getByRole('complementary',{name:'Attached activity'}).getByText('This conversation is still using the activity you attached earlier.').waitFor();
+    await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What about the attached activity?');
+    await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='What about the attached activity?');
+    const kept=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(kept.lessonContext?.itemId!==s.demo.itemId||kept.pageContext!==null)throw Error('Navigating silently replaced the attached activity or leaked the new page text');
+    await s.p.waitForFunction(()=>document.querySelectorAll('.dock-win[data-win="teaching-coach"] .coach-chat-message-coach').length>=3);
+    await coach.getByRole('button',{name:'Use the activity on this page'}).click();
+    await coach.getByRole('complementary',{name:'Attached activity'}).waitFor({state:'hidden'});
+    await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Now use this activity.');
+    await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='Now use this activity.');
+    const changed=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(changed.lessonContext?.itemId!==s.demo.packId)throw Error('Explicit attachment change did not use the activity on screen');
+    await s.p.waitForFunction(()=>document.querySelectorAll('.dock-win[data-win="teaching-coach"] .coach-chat-message-coach').length>=4);
     await coach.getByRole('button',{name:'Minimise',exact:true}).click();
     await s.p.getByRole('button',{name:'Open Teacher’s Companion'}).click();
     await s.p.locator('.dock-win[data-win="teaching-coach"] .coach-chat-message-teacher').filter({hasText:'What is your advice on this activity?'}).waitFor();
@@ -3602,28 +3619,12 @@ const J = {
     await see(s.p, '.hm', 'skip opens home');
     return s;
   },
-  'Development Studio chat profile setup and settings persist': async b => {
+  'Development Studio chat works with blank optional profile and settings persist': async b => {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development?section=coach');
-    await see(s.p, 'text=Let’s start with your teaching', 'first-chat profile setup');
-    if (await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Coach allowed chat before profile completion');
-    await s.p.locator('.qualifications-picker > summary:visible').click();
-    await s.p.getByRole('checkbox',{name:'CELTA',exact:true}).check();
-    await s.p.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
-    await s.p.getByRole('checkbox',{name:'Other',exact:true}).check();
-    await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
-    await s.p.getByLabel('Specify your other course or qualification').fill('Local mentoring course');
-    await s.p.getByRole('button',{name:'Teaching experience',exact:true}).click();
-    await s.p.getByRole('option',{name:'10+ years',exact:true}).click();
-    await s.p.getByRole('checkbox', {name:'Teacher',exact:true}).check();
-    await s.p.getByLabel('Who do you teach?', {exact:true}).fill('Adult learners at B1');
-    await s.p.getByRole('button', {name:'Continue to teaching beliefs',exact:true}).click();
-    await see(s.p,'text=What guides your teaching?','beliefs required before chat');
-    if(await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Chat allowed without beliefs');
-    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
-    await s.p.getByRole('button',{name:'Save beliefs and start chatting',exact:true}).click();
-    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer after setup');
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer with blank profile and beliefs');
+    await see(s.p, 'text=You can ask a question now.', 'optional context explanation');
     await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
     await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');

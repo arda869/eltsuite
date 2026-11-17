@@ -8,7 +8,7 @@ import { usageContext, chargeFeature } from './feature-usage.js';
 import { dailyGlobalUsage } from './allowance.js';
 import {observationCoachEvidence} from '../observations/service.js';
 import {coachEvidence} from '../linguistics/service.js';
-import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, writingExcerpt } from './coach-context.js';
+import { contextPermissions, relevantWriting, writingExcerpt } from './coach-context.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
@@ -27,8 +27,6 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   const [professional, preferences] = await Promise.all([
     db.doc(`teachingCoach/${uid}/settings/profile`).get(), db.doc(`teachingCoach/${uid}/settings/context`).get(),
   ]);
-  if (!input.formContext && !input.lessonContext && !input.evidencePacketId && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
-  if (!input.formContext && !input.lessonContext && !input.evidencePacketId && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
   const preferencesData = preferences.data();
   const permissions = contextPermissions(preferencesData);
   if (['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode'].includes(preferencesData?.mode)) input.mode = preferencesData.mode;
@@ -53,11 +51,16 @@ export async function teachingCoach(req, { apiKey, model, enabled, generateReply
   if(selectedLesson){context.lesson=selectedLesson.context;sources.push(...selectedLesson.sources);basis.push(...selectedLesson.sources.map(s=>s.title));}
   if(foundLessons){context.lessonSearchScope=foundLessons.scope;if(foundLessons.lessons.length){context.relatedLessons=foundLessons.lessons.map(l=>({className:l.className,...l.context}));sources.push(...foundLessons.lessons.flatMap(l=>l.sources));basis.push(...foundLessons.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(foundLessons.scope);}
   if(foundPdfs){context.pdfSearchScope=foundPdfs.scope;if(foundPdfs.pdfs.length){context.pdfs=foundPdfs.pdfs;sources.push(...foundPdfs.pdfs.map(p=>({title:p.title,url:'/doc/'+p.id})));basis.push(...foundPdfs.pdfs.map(p=>'PDF: '+p.title));}basis.push(foundPdfs.scope);}
-  if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
-    context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
-    basis.push('Your professional profile');
+  if (input.useProfile && permissions.profile) {
+    const details = Object.fromEntries(['qualifications','experience','roles','context','goals']
+      .map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).trim().slice(0,3000) : professional.get(k)])
+      .filter(([, value]) => typeof value === 'string' ? !!value : Array.isArray(value) && value.length > 0));
+    if (Object.keys(details).length) { context.profile = details; basis.push('Your professional profile'); }
   }
-  if (input.useBeliefs && permissions.beliefs && beliefsComplete(professional.data())) { context.beliefs = String(professional.get('beliefs')).slice(0,4000); basis.push('Your teaching beliefs'); }
+  if (input.useBeliefs && permissions.beliefs && typeof professional.get('beliefs') === 'string' && professional.get('beliefs').trim()) {
+    context.beliefs = professional.get('beliefs').trim().slice(0,4000);
+    basis.push('Your teaching beliefs');
+  }
   for (const [field, kind] of [['entryId', 'reflections'], ['researchId', 'inquiries']]) {
     if (!permissions[kind]) continue;
     if (input.contextVersion === 2) {

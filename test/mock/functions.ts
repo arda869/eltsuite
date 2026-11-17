@@ -384,15 +384,14 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     jobs[d.requestId]={...job,createdItemId:id,taskId:taskId+'_0'};localStorage.setItem('mockMaterialJobs',JSON.stringify(jobs));return {data:{createdItemId:id,taskId:taskId+'_0'}};
   }
   if (d.action === 'coach') {
-    const { profileComplete, beliefsComplete, contextPermissions } = await import('../../functions/ai/coach-context.js');
+    const { contextPermissions } = await import('../../functions/ai/coach-context.js');
     const current = (await import('firebase/auth')).getAuth().currentUser?.uid ?? 'teacher1';
     const p = (await getDoc(doc(db,'teachingCoach',current,'settings','profile'))).data();
-    if (!d.formContext && !d.lessonContext && !beliefsComplete(p)) throw Error('Add your teaching beliefs before starting a coaching conversation.');
-    if (!d.formContext && !d.lessonContext && !profileComplete(p)) throw Error('Complete your teaching profile before starting a coaching conversation.');
     localStorage.setItem('mockCoachLastRequest',JSON.stringify(d));
     const prefs = contextPermissions((await getDoc(doc(db,'teachingCoach',current,'settings','context'))).data());
     await new Promise(resolve=>setTimeout(resolve,350));
-    const result={sources:d.lessonContext?[{title:'Selected activity',url:`/class/${d.lessonContext.classId}/lesson/${d.lessonContext.itemId}`}]:[],journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile?'Your professional profile':'',prefs.beliefs&&p?.beliefs?'Your teaching beliefs':''].filter(Boolean)};
+    const hasProfile=!!(p&&[p.qualifications,p.experience,p.context,p.goals,...(p.roles||[])].some(v=>typeof v==='string'&&v.trim()));
+    const result={sources:d.lessonContext?[{title:'Selected activity',url:`/class/${d.lessonContext.classId}/lesson/${d.lessonContext.itemId}`}]:[],journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile&&hasProfile?'Your professional profile':'',prefs.beliefs&&p?.beliefs?'Your teaching beliefs':''].filter(Boolean)};
     if(d.conversationId){const ref=doc(db,'teachingCoach',current,'conversations',d.conversationId),old=(await getDoc(ref)).data(),n=(old?.turnCount||0)+1;await setDoc(ref,{title:old?.title||d.prompt.slice(0,100),updatedAt:Date.now(),turnCount:n,context:{lessonContext:d.lessonContext||null,formContext:d.formContext||null,evidencePacketId:d.evidencePacketId||'',reflectionId:d.entryId||''}});await setDoc(doc(db,'teachingCoach',current,'conversations',d.conversationId,'turns',d.requestId),{prompt:d.prompt,status:'completed',at:Date.now(),sequence:n,contextKey:(await import('../../functions/ai/coach-history.js')).coachHistoryKey(p?.version,(await getDoc(doc(db,'teachingCoach',current,'settings','context'))).data()?.version,{...d,reflectionId:d.entryId}),result});}
     return {data:result};
   }
