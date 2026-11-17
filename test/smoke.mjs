@@ -512,6 +512,18 @@ const J = {
     await s.p.getByRole('button',{name:'Open Teacher’s Companion'}).click();
     await s.p.locator('.dock-win[data-win="teaching-coach"] .coach-chat-message-teacher').filter({hasText:'What is your advice on this activity?'}).waitFor();
     await axe(s.p,'Teacher’s Companion in small Messages',A11Y_FOUND);
+    if (A11Y) {
+      await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Contrast check');
+      await coach.evaluate(el => el.style.setProperty('--accent', '#fff'));
+      for (const theme of ['light', 'dark']) {
+        await s.p.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        const violations = await s.p.evaluate(async () => {
+          const button = document.querySelector('.dock-win[data-win="teaching-coach"] .coach-chat-composer .btn.primary');
+          return (await window.axe.run(button, { runOnly: ['color-contrast'] })).violations.map(v => v.help);
+        });
+        if (violations.length) throw Error(`Companion Send contrast failed with a bright accent in ${theme} mode: ${violations.join(', ')}`);
+      }
+    }
     return s;
   },
   'Class spelling and a saved question exception apply to the learner answer': async b => {
