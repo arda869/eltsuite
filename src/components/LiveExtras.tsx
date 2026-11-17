@@ -1,3 +1,5 @@
+import { TaskRenderer } from './TaskRenderer';
+import { ActivityStage } from '../communicative/ActivityStage';
 import { IconBtn } from './UiIcon';
 import { useDismiss } from '../lib/useDismiss';
 import { useEffect, useRef, useState } from 'react';
@@ -203,8 +205,9 @@ export function SpotlightCard({ spotlight, taskId, onClose }: { spotlight?: Live
   if (!spotlight || spotlight.taskId !== taskId) return null;
   return (
     <div className="spotlight" role="status">
-      <span className="eyebrow">Let’s look at this answer together</span>
+      <span className="eyebrow">{spotlight.activity?'Let’s look at this screen together':'Let’s look at this answer together'}</span>
       <p className="spotlight-text">{spotlight.text || '(no answer)'}</p>
+      {spotlight.activity&&<ActivityStage {...spotlight.activity} busy send={()=>{}} renderItem={item=><TaskRenderer content={{type:'doc',content:item.content??[]}} responses={{}} disabled classId={spotlight.activity?.classId}/>}/>}
       {onClose && (
         <button type="button" className="btn small-btn" onClick={onClose}>
           Stop showing

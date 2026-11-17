@@ -1,3 +1,6 @@
+import { hasUnresolvedActivities } from '../lib/questions';
+import { LocalActivityMode } from '../communicative/LocalActivity';
+import { TeacherVersionComparison } from '../communicative/VersionComparison';
 import { questionAcceptsTypedAnswer } from '../lib/questions';
 import { dockOpen } from '../components/ChatDock';
 import { AiMark, AiButton } from '../components/AiMark';
@@ -682,6 +685,7 @@ export function LessonEditor() {
       if (cancelled) return;
       setOpening('');
       const content = mergeKey(task.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }, key);
+      if(hasUnresolvedActivities(content)) throw new Error('The activity cards could not be loaded. Try opening the task again. Your saved cards have not changed.');
       const fromServer = { title: task.title, instructions: task.instructions ?? '', instrDoc: task.instrDoc ?? null, content };
       let recovered: Draft | null = null;
       try {
@@ -882,12 +886,12 @@ export function LessonEditor() {
       if (name.trim()) label = name.trim();
     }
     if (!(await flush())) return;
-    const id = await makeVariant(classId, itemId, tasks, task, label, splitKey(draft.content).content);
+    const id = await makeVariant(classId, itemId, tasks, task, label, draft.content);
     if (firstName) await setTaskFlags(classId, itemId, task.id, { variant: firstName });
     setSelected(id);
   }
 
-  const previewKey = useMemo(() => (draft ? splitKey(draft.content) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previewKey = useMemo(() => (draft ? splitKey(draft.content, true) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
   const th = theme(c?.themeColor);
   // The worksheet view's printed pieces, from the saved tasks.
   // The worksheet on the left follows the task being edited as you type (a moment after each change).
@@ -1359,7 +1363,8 @@ export function LessonEditor() {
                 >
                   {NOTEBOOK && !preview && user && inkMode === 'off' && <SelectionNote container={teachBodyRef} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} onAdd={toNotebook} />}
                   {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere && inkMode === 'off'} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
-                  <TaskRenderer
+                  {!preview && fam.length > 1 && famMain && <TeacherVersionComparison classId={classId} itemId={itemId} taskId={famMain.id} />}
+                  <LocalActivityMode.Provider value={preview}><TaskRenderer
                     content={previewKey?.content ?? null}
                     responses={previewResponses}
                     onChange={(id, v) => setPreviewResponses((r) => ({ ...r, [id]: v }))}
@@ -1372,13 +1377,15 @@ export function LessonEditor() {
                     revealed={!preview && previewKey ? revealedSubset(previewKey.key, questionIds(previewKey.content), revealN, singles) : null}
                     classmates={classmates}
                     classId={classId}
+                    itemId={itemId}
+                    taskId={task.id}
                     boardMe={!preview && user ? { classId, taskId: task.id, itemId, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true, people: classmates, penPeople: inLesson.map((p) => ({ uid: p.id, name: p.name })) } : undefined}
                     onOpenTask={(id) => select(id)}
                     onOpenNotebook={(id) => (setNbFocus(id), setNbOpen(true))}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
                     onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
-                  />
+                  /></LocalActivityMode.Provider>
                 </div>
                 <div className="frame-foot">
                   {preview && lessonStyleOf(c) === 'young' && previewKey && (() => {

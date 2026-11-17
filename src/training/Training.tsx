@@ -1,3 +1,4 @@
+import { NoCorrectAnswer } from '../editor/NoCorrectAnswer';
 import { TT_KINDS, CRITERIA, RATINGS, DEVELOPMENT_FORMS, type TTKind, type TTFormDef } from './formDefinitions';
 export { TT_KINDS, CRITERIA, type TTField, type TTKind, type TTFormDef } from './formDefinitions';
 import { NSelect } from '../components/Select';
@@ -356,7 +357,7 @@ function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }
   const shared = editor.extensionManager.extensions.some((e) => e.name === 'collaboration');
   return (
     <NodeViewWrapper className={'block-node tt-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
-      <div className="mcq-tools">
+      <div className="mcq-tools"><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} />
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">{a.kind === 'custom' ? a.def?.name ?? 'Form' : TT_KINDS.find((k) => k.k === a.kind)?.label}</span>
         {a.kind !== 'loop' && !shared && <span className="seg small-seg" role="radiogroup" aria-label="How trainees use it">

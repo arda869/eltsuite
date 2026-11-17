@@ -15,7 +15,7 @@ export type LiveState = {
   revealedQs?: Record<string, string[]>; // taskId -> single questions the teacher revealed
   timer?: { endsAt: number; total: number; up?: boolean; startedAt?: number } | null; // countdown (or count-up stopwatch) everyone sees
   picked?: { name: string; learnerId: string; at: number } | null; // random learner picker
-  spotlight?: { taskId: string; qid: string; text: string; at: number } | null; // one answer shown to the class, name hidden
+  spotlight?: { taskId: string; qid: string; text: string; at: number; activity?: {config: import('../communicative/model').ActivityConfig; state: import('../communicative/state').ActivityState; selfId: string; classId: string} } | null; // one answer shown to the class, name hidden
   groupSetId?: string | null; // the group set in use (breakout rooms)
   syncRoom?: string | null; // when set, "Sync" moves only this room with the teacher
   roomTask?: Record<string, string> | null; // room -> task the room is synced to
@@ -52,7 +52,7 @@ export const revealedCount = (s: LiveState | null | undefined, itemId: string, t
 
 // The part of the answer key the teacher has revealed: the first n questions, or all (-1).
 export function revealedSubset(key: AnswerKey, qs: { id: string }[], n: number, extra: string[] = []): AnswerKey {
-  const all = qs.map((q) => q.id).filter((id) => key[id] && key[id].kind !== 'writing');
+  const all = qs.map((q) => q.id).filter((id) => key[id] && !key[id].ungraded && key[id].kind !== 'writing');
   const ids = [...(n < 0 ? all : all.slice(0, n)), ...extra.filter((id) => all.includes(id))];
   return Object.fromEntries(ids.filter((id) => key[id]).map((id) => [id, key[id]]));
 }

@@ -1,3 +1,4 @@
+import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { NSelect } from '../components/Select';
 import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
@@ -189,7 +190,7 @@ function UploadView({ node, updateAttributes, deleteNode, editor, getPos, select
   };
   return (
     <NodeViewWrapper className={'block-node up-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
-      <div className="mcq-tools">
+      <div className="mcq-tools"><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} />
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">File upload</span>
         <button type="button" className="remove" style={{ marginLeft: 'auto' }} onClick={deleteNode}>

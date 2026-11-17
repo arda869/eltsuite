@@ -1,3 +1,5 @@
+import type { JSONContent } from '@tiptap/react';
+import { LearnerVersionComparison } from '../communicative/VersionComparison';
 import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import { YoungBuddy, YoungEffects, YoungInstr, YoungProgress, YoungScore, YoungSoundToggle } from '../lessons/young';
@@ -476,9 +478,16 @@ export function LearnerLesson() {
     }
   }
 
+  const openQuestionIds = useMemo(() => {
+    const ids = new Set<string>();
+    const walk = (node: JSONContent) => { if (node.attrs?.noCorrectAnswer && node.attrs.id) ids.add(node.attrs.id); node.content?.forEach(walk); };
+    if (task?.content) walk(task.content);
+    return ids;
+  }, [task?.content]);
   const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
+  const neutralResult = checked && key && result.total === 0 && qs.some(q => key[q.id]?.ungraded || openQuestionIds.has(q.id));
   const score = result.score;
-  const unmarked = key ? qs.filter((q) => !['writing', 'reflect', 'upload'].includes(q.type) && isAnswered(responses[q.id]) && scoreQuestion(key[q.id], responses[q.id]).max === 0).length : 0;
+  const unmarked = key ? qs.filter((q) => !['writing', 'reflect', 'upload'].includes(q.type) && !key[q.id]?.ungraded && isAnswered(responses[q.id]) && scoreQuestion(key[q.id], responses[q.id]).max === 0).length : 0;
   const retryMode = task?.afterCheck === 'retry';
   const prevOpen = [...tasks.slice(0, Math.max(0, index))].reverse().find((t) => !t.locked && t.kind !== 'section');
   const nextOpen = tasks.slice(index + 1).find((t) => !t.locked && t.kind !== 'section');
@@ -721,6 +730,7 @@ export function LearnerLesson() {
                     </span>
                   </div>
                 ) : (
+                <>{(task.family || task.variants?.length) && <LearnerVersionComparison classId={classId} itemId={itemId} taskId={task.family ?? task.id} />}
                 <TaskRenderer
                   content={task.content}
                   responses={responses}
@@ -759,10 +769,10 @@ export function LearnerLesson() {
                   onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || tr('A learner')).catch((e) => console.error(e))}
                   liveHere={liveHere}
                   onToggleFlag={task.locked ? undefined : toggleFlag}
-                />
+                /></>
                 )}
               </div>
-              {lessonStyleOf(c) === 'young' && <YoungEffects taskId={task.id} answered={answered} checked={checked} got={score} total={result.total} />}
+              {lessonStyleOf(c) === 'young' && !neutralResult && <YoungEffects taskId={task.id} answered={answered} checked={checked} got={score} total={result.total} />}
               <div className="frame-foot">
                 {scope && examState === 'running' ? (
                   <span className="foot-status"><span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
@@ -770,6 +780,8 @@ export function LearnerLesson() {
                   </span><span className={'save-dot' + (pendingSave || saves.status(current) !== 'saved' ? ' pending' : '')}>{saves.status(current) === 'error' || saves.status(current) === 'waiting' ? <button type="button" onClick={() => void saves.retry(current)}>{saves.status(current) === 'waiting' ? ' · Waiting for connection. Retry save' : ' · Not saved. Retry save'}</button> : pendingSave || saves.status(current) !== 'saved' ? ' · saving…' : ' · saved'}</span></span>
                 ) : scope && examState === 'submitted' ? (
                   <span className="hint">{tr('Handed in. Your teacher will share the results soon.')}</span>
+                ) : neutralResult ? (
+                  <span className="hint" role="status">Your answers are saved for your teacher.</span>
                 ) : checked && key && showScore && lessonStyleOf(c) === 'young' && !result.hasWriting ? (
                   <YoungScore got={score} total={result.total}>
                     {result.total > 0 ? (

@@ -1,13 +1,14 @@
 // Only answer-key fields are accepted. Learner-facing content is never rewritten.
 export function taskQuestions(content) {
   const out = new Map();
-  const walk = n => { if(n?.attrs?.id && !n.attrs.example) out.set(n.attrs.id,n); for(const c of n?.content??[])walk(c); };
+  const walk = n => { if(n?.attrs?.noCorrectAnswer || n?.type==='communicativeActivity')return; if(n?.attrs?.id && !n.attrs.example) out.set(n.attrs.id,n); for(const c of n?.content??[])walk(c); };
   walk(content); return out;
 }
 const strings = a => Array.isArray(a) && a.length>0 && a.length<=30 && a.every(x=>typeof x==='string' && x.trim() && x.length<=5000);
 const ints = (a,n) => Array.isArray(a)&&a.length>0&&a.every(x=>Number.isInteger(x)&&x>=0&&x<n);
 export function hasAnswer(k) {
   if(!k)return false;
+  if(k.ungraded)return true;
   if(k.kind==='gap')return strings(k.answers);
   if(k.kind==='mcq')return Number.isInteger(k.correct)&&k.correct>=0;
   if(k.kind==='multi')return ints(k.correct,1000);
@@ -29,6 +30,7 @@ export function hasAnswer(k) {
   return false;
 }
 export function checkedKey(node, raw) {
+  if(node?.attrs?.noCorrectAnswer)throw Error('This question has no correct answer.');
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid answer key.');
   const a=node.attrs??{},n=node.type;
   let result;

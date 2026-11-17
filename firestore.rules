@@ -144,6 +144,24 @@ service cloud.firestore {
       match /libPlaces/{placeId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
       }
+      // Private pictures authored in the personal resources library.
+      match /activityMedia/{assetId} {
+        allow read, delete: if isSelf(uid) && isTeacher();
+        allow create, update: if isSelf(uid) && isTeacher() && hasRoom(uid)
+          && request.resource.data.keys().hasOnly(['type', 'size', 'chunks', 'createdAt'])
+          && request.resource.data.type is string && request.resource.data.type.matches('image/.*')
+          && request.resource.data.size is int && request.resource.data.size >= 0 && request.resource.data.size <= 614400
+          && request.resource.data.chunks is int && request.resource.data.chunks >= 1 && request.resource.data.chunks <= 4;
+        match /chunks/{chunkId} {
+          allow read, delete: if isSelf(uid) && isTeacher();
+          allow create, update: if isSelf(uid) && isTeacher() && hasRoom(uid)
+            && chunkId in ['0', '1', '2', '3'] && request.resource.data.keys().hasOnly(['data', 'bytes'])
+            && request.resource.data.data is string && request.resource.data.data.size() <= 250000
+            && request.resource.data.bytes is int && request.resource.data.bytes == request.resource.data.data.size();
+        }
+      }
+
+
       // Media added straight to the archive (copied into a class when it is first used there)
       match /media/{mediaId} {
         allow read, delete: if isSelf(uid) && !learnerAccount();
@@ -268,6 +286,56 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
 
       // Speaking attempts are visible only to their learner and class teachers.
+      // Activity definitions and canonical rooms contain private cards. Only a
+      // projected, server-written view is readable on a learner's device.
+      // Private activity pictures never enter the class-wide media archive.
+      match /activityMedia/{assetId} {
+        allow read, delete: if teachesClass(classId);
+        allow create, update: if teachesClass(classId) && hasRoom(classData(classId).teacherId)
+          && request.resource.data.keys().hasOnly(['type', 'size', 'chunks', 'createdAt'])
+          && request.resource.data.type is string && request.resource.data.type.matches('image/.*')
+          && request.resource.data.size is int && request.resource.data.size >= 0 && request.resource.data.size <= 614400
+          && request.resource.data.chunks is int && request.resource.data.chunks >= 1 && request.resource.data.chunks <= 4;
+        match /chunks/{chunkId} {
+          allow read, delete: if teachesClass(classId);
+          allow create, update: if teachesClass(classId) && hasRoom(classData(classId).teacherId)
+            && chunkId in ['0', '1', '2', '3'] && request.resource.data.keys().hasOnly(['data', 'bytes'])
+            && request.resource.data.data is string && request.resource.data.data.size() <= 250000
+            && request.resource.data.bytes is int && request.resource.data.bytes == request.resource.data.data.size();
+        }
+      }
+
+      match /comparisons/{comparisonId} {
+        allow read: if viewsClass(classId);
+        allow write: if false;
+        match /views/{uid} {
+          allow read: if viewsClass(classId) || (active() && request.auth.uid == uid && memberOf(classId)
+            && learnerMayOpenItem(classId, get(/databases/$(database)/documents/classes/$(classId)/comparisons/$(comparisonId)).data.itemId));
+          allow write: if false;
+        }
+      }
+
+      match /activities/{runId} {
+        allow read: if viewsClass(classId);
+        allow write: if false;
+        match /rooms/{roomId} {
+          allow read: if viewsClass(classId);
+          allow write: if false;
+        }
+        match /views/{uid} {
+          function canOpenActivity() {
+            let run = get(/databases/$(database)/documents/classes/$(classId)/activities/$(runId)).data;
+            let task = get(/databases/$(database)/documents/classes/$(classId)/items/$(run.itemId)/tasks/$(run.taskId)).data;
+            return learnerMayOpenItem(classId, run.itemId)
+              && get(/databases/$(database)/documents/classes/$(classId)/items/$(run.itemId)).data.get('type', '') != 'exam' && task.get('exam', false) == false
+              && task.get('hidden', true) == false && task.get('locked', true) == false
+              && (task.get('restricted', false) == false || get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId in task.get('allowed', []));
+          }
+          allow read: if viewsClass(classId) || (active() && request.auth.uid == uid && memberOf(classId) && canOpenActivity());
+          allow write: if false;
+        }
+      }
+
       // All writes go through authenticated server functions, including feedback.
       match /speakingActivities/{activityId} {
         allow read: if viewsClass(classId) || memberOf(classId);

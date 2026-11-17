@@ -1,3 +1,6 @@
+import { useContext } from 'react';
+import { LocalActivity, LocalActivityMode } from '../communicative/LocalActivity';
+import { LiveActivity } from '../communicative/LiveActivity';
 import { InlineGame } from '../quiz/InlineGame';
 import { OfflineMedia } from '../offline/OfflineMedia';
 import {Concordance,concordanceRows} from '../linguistics/Concordance';
@@ -203,7 +206,17 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, itemId, taskId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results: resultsIn, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed: revealedIn, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, itemId, taskId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+  const offlineActivity = useContext(LocalActivityMode);
+  const ungraded = useMemo(() => {
+    const ids = new Set<string>();
+    const visit = (node: JSONContent) => { if (node.attrs?.noCorrectAnswer && node.attrs.id) ids.add(String(node.attrs.id)); node.content?.forEach(visit); };
+    if (content) visit(content);
+    for (const [id, key] of Object.entries(resultsIn ?? {})) if (key.ungraded) ids.add(id);
+    return ids;
+  }, [content, resultsIn]);
+  const results = resultsIn ? Object.fromEntries(Object.entries(resultsIn).filter(([id, entry]) => !ungraded.has(id) && !entry.ungraded)) : resultsIn;
+  const revealed = revealedIn ? Object.fromEntries(Object.entries(revealedIn).filter(([id, entry]) => !ungraded.has(id) && !entry.ungraded)) : revealedIn;
   const citationStyle = useCiteStyle();
   const citationSources = useMemo(() => {
     const seen = new Map<string, Source>();
@@ -214,8 +227,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
-  const checkedId = (id: string) => checkedQuestionIds ? checkedQuestionIds.includes(id) : !!results;
-  const lockedId = (id: string) => !!disabled || checkedId(id);
+  const checkedId = (id: string) => !ungraded.has(id) && (checkedQuestionIds ? checkedQuestionIds.includes(id) : !!results);
+  const lockedId = (id: string) => !!disabled || (checkedQuestionIds ? checkedQuestionIds.includes(id) : !!resultsIn);
   const locked = disabled || (!!results && !checkedQuestionIds);
   const training = useTrainingClass(classId);
   const narrow = useNarrow();
@@ -317,7 +330,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       <path d="M3 21V2M3 3h12l-2.5 4L15 11H3" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   );
-  const num = (id: string, offset = 0) => {
+  const numBase = (id: string, offset = 0) => {
     const flagged = flags?.includes(id);
     if (onToggleFlag && offset === 0 && !checkedId(id))
       return (
@@ -339,6 +352,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       </sup>
     );
   };
+
+  const num = (id: string, offset = 0) => <>{numBase(id, offset)}{offset === 0 && ungraded.has(id) && <span className="ca-nca">No correct answer</span>}</>;
 
   // Answer the teacher has revealed, shown next to the question.
   const revealOf = (node: JSONContent): string | null => {
@@ -802,7 +817,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         {(node.attrs?.genre || criteriaOf(node.attrs)) && (
           <span className="writing-meta">
             {node.attrs?.genre && <span className="writing-genre">{genreLabel(node.attrs.genre)}</span>}
-            {criteriaOf(node.attrs) && <span className="hint">Marked on {criteriaOf(node.attrs)!.map((c) => c.name.toLowerCase()).join(', ')}</span>}
+            {!ungraded.has(id) && criteriaOf(node.attrs) && <span className="hint">Marked on {criteriaOf(node.attrs)!.map((c) => c.name.toLowerCase()).join(', ')}</span>}
           </span>
         )}
         {(myAnns.length > 0 || corr) && (
@@ -848,13 +863,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           <div className="t-mark">
             <span className="t-mark-head">
               <span className="eyebrow">Your teacher</span>
-              {teacherMarks[id].score !== null && (
+              {!ungraded.has(id) && teacherMarks[id].score !== null && (
                 <span className="t-mark-score">
                   {teacherMarks[id].score} / {node.attrs?.points ?? 5}
                 </span>
               )}
             </span>
-            {criteriaOf(node.attrs) && teacherMarks[id].crit && (
+            {!ungraded.has(id) && criteriaOf(node.attrs) && teacherMarks[id].crit && (
               <span className="t-rubric">
                 {criteriaOf(node.attrs)!.map((c) => (
                   <span key={c.name} className="t-rubric-row">
@@ -1108,6 +1123,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           />
         );
       }
+      case 'communicativeActivity':
+        if (offlineActivity) return <LocalActivity key={key} node={node} classId={classId} renderItem={item => (item.content ?? []).map((child,n) => render(child,key+'.offline.'+item.id+'.'+n))} />;
+        return <LiveActivity key={key} node={node} classId={classId} itemId={itemId} taskId={taskId} teacher={teacher} renderItem={item => (item.content ?? []).map((child, n) => render(child, key + '.activity.' + item.id + '.' + n))} />;
       case 'randomPick': {
         const id = node.attrs?.id as string;
         const cards = node.content ?? [];

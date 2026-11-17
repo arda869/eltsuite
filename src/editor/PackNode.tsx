@@ -1,3 +1,5 @@
+import {isActivityPicture,resolveActivityPicture} from '../communicative/privatePictures';
+import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { NSelect, Select } from '../components/Select';
 import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
@@ -23,9 +25,9 @@ const LETTERS = 'ABCDEFGHIJKLMNOP';
 
 // Pictures: a web address, or "media:<id>" for a picture uploaded to the class.
 export function useImageSrc(classId: string, src: string) {
-  const [url, setUrl] = useState(src.startsWith('media:') ? '' : src);
+  const [url, setUrl] = useState(src.startsWith('media:') || isActivityPicture(src) ? '' : src);
   useEffect(() => {
-    if (!src.startsWith('media:')) {
+    if (!src.startsWith('media:') && !isActivityPicture(src)) {
       setUrl(src);
       return;
     }
@@ -35,7 +37,7 @@ export function useImageSrc(classId: string, src: string) {
     setUrl('');
     if (!classId) return;
     let active = true;
-    mediaUrl(classId, src.slice(6)).then((value) => {
+    (isActivityPicture(src)?resolveActivityPicture(classId,src):mediaUrl(classId, src.slice(6))).then((value) => {
       if (active) setUrl(value);
     }).catch(() => {
       if (active) setUrl('');
@@ -69,6 +71,11 @@ const shrink = async (bmp: ImageBitmap, maxW: number, maxH: number, q0: number, 
   }
   return { blob, canvas: c };
 };
+
+export async function preparePicture(file:Blob,quality:PicQuality='standard'):Promise<Blob>{
+  const bmp=await createImageBitmap(file);
+  try{const p=PIC_QUALITY.find(x=>x.k===quality)??PIC_QUALITY[1];return (await shrink(bmp,p.max[0],p.max[1],p.q,p.limit)).blob;}finally{bmp.close();}
+}
 
 // Shrinks a picture and stores it with the class: "media:<id>", its size and a small preview.
 export async function uploadPictureFull(classId: string, file: Blob, quality: PicQuality = 'standard') {
@@ -106,7 +113,7 @@ export async function uploadPicture(classId: string, file: File | Blob, quality:
 
 // A picture for a question: uploaded, chosen from the teacher's resources, or a web address. With
 // size, the teacher also chooses how big it shows (on screen and on paper).
-function PictureField({ value, onChange, label = 'Picture', size, onSize }: { value: string; onChange: (v: string) => void; label?: string; size?: PicSize; onSize?: (s: PicSize) => void }) {
+export function PictureField({ value, onChange, label = 'Picture', size, onSize, savePicture, pickPicture }: { value: string; onChange: (v: string) => void; label?: string; size?: PicSize; onSize?: (s: PicSize) => void; savePicture?: (file:File)=>Promise<string>; pickPicture?: (item:ArchiveItem)=>Promise<string> }) {
   const { classId } = useEditorClass();
   const { user } = useAuth();
   const file = useRef<HTMLInputElement>(null);
@@ -117,7 +124,8 @@ function PictureField({ value, onChange, label = 'Picture', size, onSize }: { va
     if (!it || !user) return;
     setBusy('Adding…');
     try {
-      if (it.link) onChange(it.link);
+      if (pickPicture) onChange(await pickPicture(it));
+      else if (it.link) onChange(it.link);
       else if (classId) onChange('media:' + (await mediaIn(user.uid, it, classId)));
       setLibrary(false);
     } catch {
@@ -130,7 +138,7 @@ function PictureField({ value, onChange, label = 'Picture', size, onSize }: { va
     <span className="pq-pic-wrap">
       <span className="pq-pic">
         <span className="pq-lab">{label}</span>
-        <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={value.startsWith('media:') ? 'Uploaded picture' : value} readOnly={value.startsWith('media:')} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
+        <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={(value.startsWith('media:') || isActivityPicture(value)) ? 'Uploaded picture' : value} readOnly={value.startsWith('media:') || isActivityPicture(value)} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
         <button type="button" className="btn small-btn" disabled={!!busy || !classId} onClick={() => file.current?.click()}>
           {busy === 'Uploading…' ? busy : 'Upload'}
         </button>
@@ -169,7 +177,7 @@ function PictureField({ value, onChange, label = 'Picture', size, onSize }: { va
           if (!f) return;
           setBusy('Uploading…');
           try {
-            onChange(await uploadPicture(classId, f));
+            onChange(await (savePicture?savePicture(f):uploadPicture(classId, f)));
           } catch {
             void tell('We couldn’t add the picture. Try a smaller one.');
           } finally {
@@ -648,7 +656,7 @@ function PackView(props: NodeViewProps) {
       <div className="pq-edit">
         <Editor kind={kind} d={d} set={set} />
       </div>
-      {kind !== 'speaking' && <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />}
+      {kind !== 'speaking' && <><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} /><NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} /></>}
     </NodeViewWrapper>
   );
 }

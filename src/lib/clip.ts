@@ -26,7 +26,7 @@ export function readClip(html?: string | null): Clip | null {
 }
 // A pasted question is a new question: new ids.
 export function freshIds(n: JSONContent): JSONContent {
-  const attrs = n.attrs && 'id' in n.attrs && n.attrs.id ? { ...n.attrs, id: newId() } : n.attrs;
+  const attrs = n.attrs && (n.attrs.id || n.attrs.activityItemId) ? { ...n.attrs, ...(n.attrs.id?{id:newId()}:{}),...(n.attrs.activityItemId?{activityItemId:newId()}:{}) } : n.attrs;
   return { ...n, ...(attrs ? { attrs } : {}), ...(n.content ? { content: n.content.map(freshIds) } : {}) };
 }
 // Copy outside an editor (a message): on the copy event, or from a button.

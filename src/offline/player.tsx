@@ -1,3 +1,5 @@
+import {LocalActivityMode} from '../communicative/LocalActivity';
+import '../communicative/activities.css';
 import {useEffect,useState,type CSSProperties} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
@@ -21,7 +23,7 @@ export type OfflinePackage={title:string;tasks?:ExportTask[];warnings?:string[];
 
 function Task({task,style,index,reveal,individual,onToggle}:{task:ExportTask;style:LessonStyle;index:number;reveal:number;individual:string[];onToggle:(id:string)=>void}){
  const young=style==='young';
- const {content,key}=splitKey(task.content);
+ const {content,key}=splitKey(task.content,true);
  const refs=questionIds(content);
  const shown:AnswerKey=Object.fromEntries(refs.filter((q,i)=>(reveal<0||i<reveal||individual.includes(q.id))&&key[q.id]).map(q=>[q.id,key[q.id]]));
  const instruction=<InstrView doc={task.instrDoc} text={task.instructions||''}/>;
@@ -48,7 +50,7 @@ function Player({data}:{data:OfflinePackage}){
    <button type="button" className="offline-mobile-tasks btn" aria-expanded={taskListOpen} onClick={()=>setTaskListOpen(!taskListOpen)}>Tasks · {selected+1} of {tasks.length} <span aria-hidden="true">▾</span></button>
    <nav className={'task-list offline-task-list'+(taskListOpen?' mobile-open':'')} aria-label="Tasks"><h2 className="offline-lesson-title">{data.title}</h2>{tasks.map((t,i)=><button type="button" key={i} className={'task-row offline-task-row'+(selected===i?' on':'')} aria-current={selected===i?'page':undefined} onClick={()=>select(i)}><span className="n">{i+1}</span><span>{t.title||'New task'}</span></button>)}</nav>
    <div className="center-col"><div className="session-strip teach-bar offline-teach-bar" aria-label="Teaching tools"><span className="tb-group"><button type="button" className="tb-sync" disabled title="Class syncing needs the online lesson"><UiIcon name="sync"/> Sync class</button></span><span className="tb-group"><button type="button" className={'icon-btn'+(timerOn?' on':'')} aria-label={timerOn?'Pause timer':'Start timer'} onClick={()=>setTimerOn(!timerOn)}><UiIcon name="timer"/></button>{seconds>0&&<button type="button" className="offline-timer" title="Reset timer" onClick={()=>{setSeconds(0);setTimerOn(false)}}>{String(Math.floor(seconds/60)).padStart(2,'0')}:{String(seconds%60).padStart(2,'0')}</button>}</span><span className="tb-group offline-menu-anchor"><button type="button" className="tb-more" aria-expanded={activities} onClick={()=>setActivities(!activities)}>Activities <span aria-hidden="true">▾</span></button>{activities&&<div className="menu tb-menu"><p>Live class activities need the online lesson.</p><button type="button" onClick={()=>{setActivities(false);setInfo(true)}}>About this file</button></div>}</span><span className="tb-group"><IconBtn icon={full?'fullscreenOff':'fullscreen'} label={full?'Leave full screen':'Full screen'} onClick={()=>setFull(!full)}/></span></div>
-    {current?<div className="offline-slide" key={selected}><OfflineTaskActive.Provider value={true}><Task task={current} style={data.lessonStyle??'adult'} index={selected} reveal={shown} individual={individual[selected]||[]} onToggle={toggleOne}/></OfflineTaskActive.Provider></div>:<p className="offline-empty">This lesson has no visible tasks.</p>}
+    {current?<div className="offline-slide" key={selected}><LocalActivityMode.Provider value={true}><OfflineTaskActive.Provider value={true}><Task task={current} style={data.lessonStyle??'adult'} index={selected} reveal={shown} individual={individual[selected]||[]} onToggle={toggleOne}/></OfflineTaskActive.Provider></LocalActivityMode.Provider></div>:<p className="offline-empty">This lesson has no visible tasks.</p>}
     {current&&<div className="frame-foot offline-foot"><span className="hint">Offline teaching copy · click a question to show its answer</span><span className="foot-acts"><span className="reveal-ctl foot-reveal" aria-label="Answers"><IconBtn icon="revealOne" label="Show the next answer" disabled={shown<0||shown>=count} onClick={showNext}/><IconBtn icon="revealAll" label="Show all answers" disabled={shown<0||count===0} onClick={showAll}/><IconBtn icon="hideAnswers" label="Hide answers" disabled={shown===0&&!(individual[selected]||[]).length} onClick={hideAll}/></span><IconBtn icon="prev" label="Previous task" className="nav-arrow" disabled={selected===0} onClick={()=>select(selected-1)}/><IconBtn icon="next" label="Next task" className="nav-arrow" disabled={selected>=tasks.length-1} onClick={()=>select(selected+1)}/></span></div>}
    </div>
   </div>

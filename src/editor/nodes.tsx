@@ -1,3 +1,4 @@
+import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { BlockMenu } from './BlockMenu';
 import { useEditorClass } from './context';
 import { ExampleToggle } from './ExampleToggle';
@@ -159,7 +160,11 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
 
   function save() {
     const list = value.split('|').map((s) => s.trim()).filter(Boolean);
-    updateAttributes({ answers: list, ...(node.attrs.letters ? { pattern: makePattern(list[0] ?? '', !!node.attrs.firstLetter) } : {}) });
+    const pattern = node.attrs.letters ? makePattern(list[0] ?? '', !!node.attrs.firstLetter) : undefined;
+    // Closing unchanged settings must not replace inline nodes during another item's click.
+    if (list.length !== answers.length || list.some((answer, n) => answer !== answers[n]) || (pattern !== undefined && pattern !== node.attrs.pattern)) {
+      updateAttributes({ answers: list, ...(pattern !== undefined ? { pattern } : {}) });
+    }
     setOpen(false);
   }
   const first = () => value.split('|').map((s) => s.trim()).filter(Boolean)[0] ?? '';
@@ -214,7 +219,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             <span>Word formation</span>
             <input aria-label="Stem word, for example DECIDE" value={node.attrs.stem ?? ''} placeholder="Stem word, for example DECIDE" onChange={(e) => updateAttributes({ stem: e.target.value.toUpperCase() })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
-          <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
+          <><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} /><NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} /></>
         </span>
       )}
     </NodeViewWrapper>
@@ -265,6 +270,7 @@ function McqView({ node, updateAttributes, selected, deleteNode }: NodeViewProps
       <div className={'mcq-tools' + (node.attrs.example ? ' is-example' : '')}>
         <span>Multiple choice</span>
         <ExampleToggle on={!!node.attrs.example} onChange={(v) => updateAttributes({ example: v })} />
+        <NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} />
         <button type="button" onClick={deleteNode}>
           Remove
         </button>
@@ -488,9 +494,9 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
             <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
             Example: learners see the answer, and it isn’t marked
           </label>
-          <span className="hint">Enter for the next option · click a letter to mark it correct</span>
-          <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
-          {correctList.length === 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
+          <span className="hint">{node.attrs.noCorrectAnswer ? 'Enter for the next option' : 'Enter for the next option · click a letter to mark it correct'}</span>
+          <><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} /><NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} /></>
+          {!node.attrs.noCorrectAnswer && correctList.length === 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
           <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-end' }} onClick={() => setOpen(false)}>
             Done
           </button>

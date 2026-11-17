@@ -1,3 +1,5 @@
+import {insideCommunicativeActivity} from '../communicative/pictureContext';
+import {savePrivateActivityPicture,copyPrivateActivityPicture} from '../communicative/privatePictures';
 import { InlineAiImage } from '../design/InlineAiImage';
 import { DesignerImages, CommonsImages } from '../design/InlineImages';
 import { readStoryboard } from '../storyboard/StoryboardNode';
@@ -7,7 +9,7 @@ import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type Editor, t
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorClass } from './context';
-import { PIC_QUALITY, uploadPicture, useImageSrc, type PicQuality } from './PackNode';
+import { PIC_QUALITY, preparePicture, uploadPicture, useImageSrc, type PicQuality } from './PackNode';
 import { usePopPos } from './usePopPos';
 import { listLabel } from '../lib/listLabel';
 import { cropStyles, filterCss, PicCover, PictureEditor, type CoverMode, type CoverProps } from './PicEdit';
@@ -559,7 +561,7 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
       // In a class the picture is stored with the class. Elsewhere (a document, notes) it sits in the
       // page itself; either way a copy is kept in My files.
       for (const f of list) {
-        if (classId) srcs.push(await uploadPicture(classId, f, quality));
+        if (classId) srcs.push(insideCommunicativeActivity(editor)?await savePrivateActivityPicture(classId,await preparePicture(f,quality)):await uploadPicture(classId,f,quality));
         else {
           srcs.push(await imageToData(f, 1100));
           if (user) void uploadPicture('user:' + user.uid, f, quality).catch(() => {});
@@ -580,7 +582,7 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
       for (const it of items) {
         let src = '';
         if (it.link) src = it.link;
-        else if (classId) src = 'media:' + (await mediaIn(user.uid, it, classId));
+        else if (classId) src = insideCommunicativeActivity(editor)?await copyPrivateActivityPicture(classId,it):'media:'+(await mediaIn(user.uid,it,classId));
         else if (it.home) src = await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100);
         if (src) { srcs.push(src); designerIds.push(it.designerId || ''); }
       }
@@ -591,7 +593,7 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
     }
   };
   const fromDesign = async (blob:Blob,title:string,credit='',designerId='') => {
-    const src=classId?await uploadPicture(classId,blob,quality,title,'',designerId):await imageToData(blob,1100);
+    const src=classId?(insideCommunicativeActivity(editor)?await savePrivateActivityPicture(classId,await preparePicture(blob,quality)):await uploadPicture(classId,blob,quality,title,'',designerId)):await imageToData(blob,1100);
     insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit,designerId});onClose();
   };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.

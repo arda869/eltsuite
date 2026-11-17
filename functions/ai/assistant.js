@@ -107,11 +107,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           const v=item.collection('tasks').doc('activity_'+i+'_'+suffix);
           tx.create(v,{kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
           tx.create(v.collection('private').doc('body'),{content:version.content});
-          tx.create(v.collection('private').doc('key'),version.key);
+          tx.create(v.collection('private').doc('key'),version.key);tx.create(v.collection('private').doc('activities'),{nodes:version.activities??{}});
           tx.create(v.collection('private').doc('notes'),{text:version.notes,updatedAt:Timestamp.now()});
         }
         tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions:activityMainInstruction(task),content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
-        tx.create(ref.collection('private').doc('key'),native.key);
+        tx.create(ref.collection('private').doc('key'),native.key);tx.create(ref.collection('private').doc('activities'),{nodes:native.activities??{}});
         tx.create(ref.collection('private').doc('notes'),{text:[i===0?Object.entries({'Main aim':plan.mainAim,'Language analysis':plan.languageAnalysis,Assessment:plan.assessment,Differentiation:activities.differentiation,Recycling:activities.recycling}).map(([label,text])=>label.toUpperCase()+'\n'+text).join('\n\n'):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
       });
       tx.update(source,{createdItemId:itemId});

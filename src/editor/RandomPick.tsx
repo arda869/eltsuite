@@ -119,14 +119,16 @@ function PickCardView({ node, updateAttributes, deleteNode, editor, getPos }: No
   const parent = typeof pos === 'number' ? editor.state.doc.resolve(pos).parent : null;
   const only = parent?.type.name === 'randomPick' && parent.childCount <= 1;
   const mode = parent?.attrs.mode ?? 'cards';
+  const activity = parent?.type.name === 'communicativeActivity';
+  const titleLabel = activity ? 'Item text (optional with a picture)' : mode === 'wheel' ? 'Label on the wheel (optional)' : 'Card name (optional, shown after it’s drawn)';
   return (
     <NodeViewWrapper className="pick-card-node">
       <div className="pick-card-head" contentEditable={false}>
         <span className="pick-card-n" />
-        <input aria-label={mode === 'wheel' ? 'Label on the wheel (optional)' : 'Card name (optional, shown after it’s drawn)'}
+        <input aria-label={titleLabel}
           className="pick-card-title"
           value={node.attrs.title ?? ''}
-          placeholder={mode === 'wheel' ? 'Label on the wheel (optional)' : 'Card name (optional, shown after it’s drawn)'}
+          placeholder={titleLabel}
           onChange={(e) => updateAttributes({ title: e.target.value })}
         />
         {!only && (

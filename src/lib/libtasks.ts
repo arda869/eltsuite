@@ -1,9 +1,10 @@
+import {rehomeActivityPictures} from '../communicative/privatePictures';
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
 import { addTask, loadKey, saveTask, taskRef } from './tasks';
-import { mergeKey } from './questions';
+import { hasUnresolvedActivities, mergeKey } from './questions';
 
 // Tasks kept in the resources library. A task saved there (or added from there to a lesson) stays
 // linked: a change in the library reaches every lesson that uses it, and a change in one of those
@@ -55,6 +56,7 @@ export function useLibTasks(uid?: string | null) {
 const clean = (b: Partial<TaskBody>) => JSON.parse(JSON.stringify(b)) as Partial<TaskBody>;
 
 export async function newLibTask(uid: string, folder = '', body?: TaskBody, uses: string[] = []) {
+  if(body) body={...body,content:await rehomeActivityPictures(body.content,'user:'+uid)};
   const r = await addDoc(col(uid), { ...clean(body ?? { title: 'New task', instructions: '', content: EMPTY }), folder, uses, createdAt: Date.now(), updatedAt: Date.now() });
   return r.id;
 }
@@ -77,11 +79,14 @@ export async function lessonTaskBody(use: Use): Promise<TaskBody | null> {
     content = (b?.data()?.content as JSONContent) ?? content;
   }
   const key = await loadKey(use.classId, use.itemId, use.taskId).catch(() => ({}));
-  return { title: String(d.title ?? 'Task'), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, content: mergeKey(content, key) };
+  const restored=mergeKey(content,key);
+  if(hasUnresolvedActivities(restored)) throw new Error('The saved activity cards could not be loaded. Reopen the task before saving it to your resources.');
+  return { title: String(d.title ?? 'Task'), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, content: restored };
 }
 
 // A change in the library, or in one lesson: everywhere else follows. `from` is where it was made.
 export async function updateLibTask(uid: string, id: string, patch: Partial<TaskBody>, from?: Use) {
+  if(patch.content) patch={...patch,content:await rehomeActivityPictures(patch.content,'user:'+uid)};
   const ref = doc(col(uid), id);
   await updateDoc(ref, { ...clean(patch), updatedAt: Date.now() });
   const s = await getDoc(ref);

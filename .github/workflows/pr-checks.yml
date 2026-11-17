@@ -57,6 +57,13 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ordinary-media-script-privacy 'node test/media-script-access.mjs'
       - name: Learner discussion timeline and access
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-learning-timeline 'node functions/test/learner-discussion-timeline.mjs'
+      - name: Communicative activity contracts and server boundaries
+        run: |
+          node scripts/sync-communicative-engine.mjs --check
+          node test/communicative-model.mjs
+          node test/communicative-spot-authoring.mjs
+          node test/communicative-ungraded.mjs
+          npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.communicative.json --project demo-communicative "node test/communicative-rules.mjs && node test/communicative-service.mjs && node test/communicative-pictures.mjs && node test/communicative-space.mjs"
       - name: Live classroom security boundaries
         run: |
           node test/collab-access.mjs
@@ -87,6 +94,16 @@ jobs:
         run: npm run build:information-gap
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Communicative teacher and learner journeys and print exports (Firebase simulated)
+        run: node test/communicative-suite.mjs
+      - name: Save communicative failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: communicative-failure
+          path: outputs/communicative/
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Designer and Classes visual regression checks
         run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/classes-picture-zoom.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
       - name: Save Classes picture zoom screenshots

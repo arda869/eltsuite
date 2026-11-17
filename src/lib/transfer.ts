@@ -1,6 +1,7 @@
+import {rehomeActivityPictures} from '../communicative/privatePictures';
 import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import { keyRef, loadKey, loadNotes, mergeKey, notesRef, splitKey, tasksCol, type Task } from './tasks';
+import { activityContentRef, keyRef, hasUnresolvedActivities, loadKey, loadNotes, mergeKey, notesRef, splitKey, tasksCol, type Task } from './tasks';
 import { exportLesson, type ExportTask, type ImportedTask } from './textformat';
 
 // Reads a lesson with answers and notes, ready for text export.
@@ -15,7 +16,9 @@ export async function gatherLesson(classId: string, itemId: string): Promise<{ t
       ? (await getDoc(doc(d.ref, 'private', 'body'))).data()?.content
       : t.content;
     if (t.restricted && !body) throw new Error('The saved activity content could not be loaded.');
-    tasks.push({ id: t.id, family: t.family, variant: t.variant, print: t.print ?? null, ylIcon: t.ylIcon, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(body ?? { type: 'doc' }, key) });
+    const content=mergeKey(body ?? {type:'doc'},key);
+    if(hasUnresolvedActivities(content)) throw new Error('The saved activity cards could not be loaded. Reopen the lesson and try again.');
+    tasks.push({ id: t.id, family: t.family, variant: t.variant, print: t.print ?? null, ylIcon: t.ylIcon, title: t.title, instructions: t.instructions, instrDoc: t.instrDoc ?? null, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content });
   }
   return { title: (item.data()?.title as string) ?? 'Lesson', tasks };
 }
@@ -43,6 +46,7 @@ export function download(name: string, text: string) {
 
 // Creates a new lesson (hidden) from imported tasks.
 export async function createLessonFromImport(classId: string, topicId: string | null, title: string, tasks: ImportedTask[]) {
+  tasks=await Promise.all(tasks.map(async task=>({...task,content:await rehomeActivityPictures(task.content,classId)})));
   const items = await getDocs(collection(db, 'classes', classId, 'items'));
   const order = items.docs.reduce((m, d) => Math.max(m, (d.data().order as number) ?? 0), -1) + 1;
   const itemRef = doc(collection(db, 'classes', classId, 'items'));
@@ -52,7 +56,7 @@ export async function createLessonFromImport(classId: string, topicId: string | 
   let i = 0;
   for (const t of tasks) {
     const ref = doc(tasksCol(classId, itemRef.id));
-    const { content, key } = splitKey(t.content);
+    const { content, key, activities } = splitKey(t.content);
     const b = writeBatch(db);
     b.set(ref, {
       kind: t.kind === 'section' ? 'section' : 'task',
@@ -67,6 +71,7 @@ export async function createLessonFromImport(classId: string, topicId: string | 
       createdAt: serverTimestamp(),
     });
     b.set(keyRef(classId, itemRef.id, ref.id), key);
+    b.set(activityContentRef(classId, itemRef.id, ref.id), { nodes: activities });
     if (t.notes) b.set(notesRef(classId, itemRef.id, ref.id), { text: t.notes, updatedAt: serverTimestamp() });
     await b.commit();
   }

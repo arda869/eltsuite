@@ -45,7 +45,7 @@ export const FreshIds = Extension.create({
             const remap = (frag: Fragment): Fragment => {
               const out: PMNode[] = [];
               frag.forEach((n) => {
-                let node = n.attrs?.id ? n.type.create({ ...n.attrs, id: newId() }, n.content, n.marks) : n;
+                let node = n.attrs?.id || n.attrs?.activityItemId ? n.type.create({ ...n.attrs, ...(n.attrs.id?{id:newId()}:{}),...(n.attrs.activityItemId?{activityItemId:newId()}:{}) }, n.content, n.marks) : n;
                 if (node.content.size) node = node.copy(remap(node.content));
                 out.push(node);
               });

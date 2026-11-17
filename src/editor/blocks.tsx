@@ -1,3 +1,4 @@
+import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -36,6 +37,7 @@ function BlockHead({ label, onRemove, p }: { label: string; onRemove: () => void
       >
         {label}
       </span>
+      {'noCorrectAnswer' in (p.node.attrs ?? {}) && <NoCorrectAnswer on={!!p.node.attrs.noCorrectAnswer} onChange={v => p.updateAttributes({ noCorrectAnswer: v })} />}
       {'example' in (p.node.attrs ?? {}) && <ExampleToggle on={!!p.node.attrs.example} onChange={(v) => p.updateAttributes({ example: v })} />}
       <button type="button" onClick={onRemove}>
         Remove
@@ -90,6 +92,7 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
             <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
             Example (answer shown, numbered 0, not marked)
           </label>
+          <NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} />
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}

@@ -76,7 +76,7 @@ export async function checkSubTaskForLearner(db, auth, data, now = Date.now()) {
     // A discussion-only part has no answers to check and must not prevent a finished task.
     const complete = partQuestions.filter((part) => part.questions.length).every((part) => checkedParts.includes(part.id));
     if (action === 'check') {
-      const update = { checkedParts, checkedResponses, updatedAt: FieldValue.serverTimestamp() };
+      const update = { checkedParts, checkedResponses, ungradedIds: Object.keys(fullKey).filter(id => fullKey[id]?.ungraded), updatedAt: FieldValue.serverTimestamp() };
       if (complete) {
         const totals = allQuestions.reduce((sum, q) => {
           const s = scoreQuestion(fullKey[q.id], Object.hasOwn(checkedResponses, q.id) ? checkedResponses[q.id] : responses[q.id]);

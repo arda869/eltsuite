@@ -13,6 +13,7 @@ export type ExportTask = { id?: string; family?: string | null; variant?: string
 function inline(nodes: JSONContent[] | undefined): string {
   return (nodes ?? [])
     .map((n) => {
+      if (n.attrs?.noCorrectAnswer) return `[[raw]]${JSON.stringify(n)}[[/raw]]`;
       if (n.type === 'text') {
         let t = n.text ?? '';
         const m = (n.marks ?? []).map((x) => x.type);
@@ -39,6 +40,7 @@ function inline(nodes: JSONContent[] | undefined): string {
 
 function block(n: JSONContent, out: string[], listPrefix = '') {
   const a = n.attrs ?? {};
+  if (a.noCorrectAnswer) { out.push(`[[raw]]\n${JSON.stringify(n)}\n[[/raw]]`, ''); return; }
   switch (n.type) {
     case 'paragraph':
       out.push(listPrefix + inline(n.content));
