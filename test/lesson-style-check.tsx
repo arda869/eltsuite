@@ -19,14 +19,15 @@ function Check() {
   const [style, setStyle] = useState('young');
   const [responses, setResponses] = useState<Responses>({});
   const [content, setContent] = useState(fixture);
+  const [isTeacher, setTestTeacher] = useState(true);
   const [checkedKey, setCheckedKey] = useState<AnswerKey | null>(null);
-  Object.assign(window, { setFixture: setContent, setTestResponses: setResponses, setCheckedKey, fixture, COMMANDS, splitKey, questionIds, scoreTask, exportFixture, flattenTask, worksheetHtml, worksheetPdf, responses, soundFixture: async () => ({'style-recording': {url:'https://example.org/visit',svg: await QRCode.toString('https://example.org/visit',{type:'svg'}),png:'',title:'Listen to the visit plan',video:false,script:['We will go on Monday.']}}) });
+  Object.assign(window, { setFixture: setContent, setTestTeacher, setTestResponses: setResponses, setCheckedKey, fixture, COMMANDS, splitKey, questionIds, scoreTask, exportFixture, flattenTask, worksheetHtml, worksheetPdf, responses, soundFixture: async () => ({'style-recording': {url:'https://example.org/visit',svg: await QRCode.toString('https://example.org/visit',{type:'svg'}),png:'',title:'Listen to the visit plan',video:false,script:['We will go on Monday.']}}) });
   return <div style={{ padding: 24, ['--accent' as string]: '#338399', ['--accent-text' as string]: '#216073' }}>
     <aside id="outside">Outside lesson</aside>
     <label>Fixture style <select value={style} onChange={e => setStyle(e.target.value)}><option value="adult">Adult</option><option value="young">Young learner</option><option value="exam">Exam Prep</option><option value="teen">Teenagers</option></select></label>
     <main className="task-frame" data-lesson-style={style} style={{ maxWidth: 920, margin: '20px auto' }}>
       <div className="frame-inner"><div className="frame-head"><h1 className="task-title"><span className="yl-activity-number">1</span>Planning a visit</h1><p className="task-instr">Read, choose and compare your ideas.</p></div>
-      <div className="frame-body"><TaskRenderer content={content} responses={responses} results={checkedKey} teacher onChange={(id, value) => setResponses(r => ({ ...r, [id]: value }))} /></div></div>
+      <div className="frame-body"><TaskRenderer content={content} responses={responses} results={checkedKey} teacher={isTeacher} onChange={(id, value) => setResponses(r => ({ ...r, [id]: value }))} /></div></div>
     </main>
     <div id="catalogue-editor"><TaskEditor content={{type:'doc',content:[{type:'paragraph'}]}} onChange={()=>{}} /></div>
   </div>;

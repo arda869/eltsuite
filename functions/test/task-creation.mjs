@@ -57,6 +57,9 @@ test('prepared picture is placed inside a label question', () => {
   const question=native.content.content.find(node=>node.type==='pq');
   assert.equal(question.attrs.data.image,'media:prepared_picture');
   assert.ok(!JSON.stringify(native.content).includes('counter"}'), 'label answer must not be exposed in learner content');
+  const invented=structuredClone(label);invented.data.image='https://example.org/invented-picture.png';
+  assert.throws(()=>check({...generated,inlineElements:[invented]}),/prepared media plan/,
+    'a model-supplied URL must not replace the picture that the server prepares');
 });
 
 test('a complete AI conversation setup becomes a native speaking task', () => {
@@ -80,6 +83,9 @@ test('a speaking picture is attached inside its prompt without a duplicate', () 
   const picturePrompts=native.content.content.filter(n=>n.type==='pq'&&n.attrs.kind==='speaking');
   assert.deepEqual(picturePrompts[0].attrs.data.images,['media:prepared_picture']);
   assert.equal(native.content.content.filter(n=>n.type==='paragraph'&&n.content?.some(c=>c.type==='picture')).length,0);
+  const invented=structuredClone(speaking);invented.data.images=['https://example.org/invented-picture.png'];
+  assert.throws(()=>check({...generated,inlineElements:[invented]}),/prepared media plan/,
+    'a model-supplied photo URL must not replace the prepared speaking picture');
 });
 
 test('dialogue and table gaps count as learner responses', () => {

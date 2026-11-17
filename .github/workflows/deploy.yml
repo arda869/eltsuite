@@ -101,7 +101,7 @@ jobs:
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
       - name: Designer and Classes visual regression checks
-        run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
+        run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/classes-picture-zoom.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
 
       - name: Multi-page worksheet PDF and Designer figure exports
         run: node test/worksheet-multipage.mjs && node test/worksheet-picture-width.mjs

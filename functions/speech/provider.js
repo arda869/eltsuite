@@ -8,9 +8,14 @@ export function transcriptReadsDirection(transcript, spoken, cues) {
   const heard = tokens(transcript), expected = tokens(spoken);
   const occurrences = (source, phrase) => source.reduce((count, word, index) =>
     count + (word === phrase[0] && phrase.every((part, offset) => source[index + offset] === part) ? 1 : 0), 0);
+  const wordCount = (source, word) => source.filter(part => part === word).length;
   return cues.some(({ direction }) => {
     const cue = tokens(direction);
-    return cue.length && occurrences(heard, cue) > occurrences(expected, cue);
+    if (!cue.length) return false;
+    if (occurrences(heard, cue) > occurrences(expected, cue)) return true;
+    // The voice can read only part of a multi-word direction. Compare cue words
+    // with the script so a legitimate use of the same word is still accepted.
+    return cue.some(word => word.length >= 4 && wordCount(heard, word) > wordCount(expected, word));
   });
 }
 
