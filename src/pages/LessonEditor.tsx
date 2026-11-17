@@ -335,6 +335,16 @@ export function LessonEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, item]);
 
+  // Designer can return to a lesson that is already being taught. Open that
+  // task's editor before asking the teacher to choose the exported picture.
+  // Wait until the task query has selected its target, so the picture cannot
+  // land in whichever task happened to be open before the return.
+  useEffect(() => {
+    if (!params.get('designer') || params.get('task') || !task) return;
+    setPreview(false);
+    if (teachingHere) setEditWhileTeaching(true);
+  }, [params, task, teachingHere]);
+
   // Sync and reveal while teaching.
   const qCount = useMemo(() => (draft ? questionIds(splitKey(draft.content).content).filter((q) => q.type !== 'writing' && q.type !== 'reflect').length : 0), [draft]);
   const revealN = task ? revealedCount(live, itemId, task.id) : 0;
