@@ -2,6 +2,7 @@ import {splitKey} from '../lib/questions';
 import { bingoCards, bingoClaim, checkDominoes, dominoTiles, shuffled, validateActivity, type ActivityConfig, type Participant } from './model';
 
 export type ActivityState = {
+  actorRevisions?: Record<string, number>;
   seq: number; phase: 'ready' | 'running' | 'revealed' | 'ended'; people: Participant[]; turn: number;
   positions: Record<string, number>; skip: Record<string, boolean>; scores: Record<string, number>; die: number | null;
   order: string[]; agreed: string[]; submitted: boolean; checked: boolean; correct: boolean | null;
@@ -34,7 +35,7 @@ export function initialActivity(c: ActivityConfig, people: Participant[], random
   const deckMap: NonNullable<ActivityState['deckMap']> = {};
   if(c.kind==='memory')for(const item of c.items)for(const side of ['a','b'] as const){let id='';for(let tries=0;tries<32;tries++){id=Math.floor(random()*4294967295).toString(36)+Math.floor(random()*4294967295).toString(36);if(!deckMap[id])break;}if(deckMap[id])throw new Error('Shuffle the cards again.');deckMap[id]={itemId:item.id,side};}
   return {
-    seq: 0, phase: 'ready', people: c.settings.turnOrder === 'random' ? shuffled(people, random) : [...people], turn: 0,
+    actorRevisions: {}, seq: 0, phase: 'ready', people: c.settings.turnOrder === 'random' ? shuffled(people, random) : [...people], turn: 0,
     positions: Object.fromEntries(people.map(p => [p.id, 0])), skip: {}, scores: {}, die: null,
     order: ['strips', 'dominoes', 'ranking', 'speaking'].includes(c.kind) ? shuffled(c.items.map(i => i.id), random) : c.items.map(i => i.id),
     agreed: [], submitted: false, checked: false, correct: null,
@@ -203,6 +204,7 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
 // Server-side projection: never send another learner's card or an unrevealed opinion.
 export function stateForLearner(c: ActivityConfig, s: ActivityState, learnerId: string): ActivityState {
   const out = structuredClone(s);
+  out.actorRevisions = s.actorRevisions?.[learnerId] !== undefined ? {[learnerId]: s.actorRevisions[learnerId]} : {};
   out.deckMap = Object.fromEntries(Object.entries(s.deckMap??{}).filter(([id,entry])=>s.faceUp.includes(id)||s.won[entry.itemId]));
   out.cards = s.cards[learnerId] ? { [learnerId]: s.cards[learnerId] } : {};
   out.marked = s.marked[learnerId] ? { [learnerId]: s.marked[learnerId] } : {};

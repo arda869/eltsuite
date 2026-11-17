@@ -550,6 +550,7 @@ function initialActivity(c, people, random = Math.random) {
     deckMap[id] = { itemId: item.id, side };
   }
   return {
+    actorRevisions: {},
     seq: 0,
     phase: "ready",
     people: c.settings.turnOrder === "random" ? shuffled(people, random) : [...people],
@@ -819,6 +820,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
 }
 function stateForLearner(c, s, learnerId) {
   const out = structuredClone(s);
+  out.actorRevisions = s.actorRevisions?.[learnerId] !== void 0 ? { [learnerId]: s.actorRevisions[learnerId] } : {};
   out.deckMap = Object.fromEntries(Object.entries(s.deckMap ?? {}).filter(([id, entry]) => s.faceUp.includes(id) || s.won[entry.itemId]));
   out.cards = s.cards[learnerId] ? { [learnerId]: s.cards[learnerId] } : {};
   out.marked = s.marked[learnerId] ? { [learnerId]: s.marked[learnerId] } : {};

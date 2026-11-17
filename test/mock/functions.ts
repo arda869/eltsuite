@@ -178,7 +178,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if (name === 'communicativeActivity') {
     const [{ runCommunicativeActivity }, { adminDb }, { getAuth }] = await Promise.all([import('../../functions/communicative/service.js'), import('./quiz-admin'), import('./auth')]);
     const user = getAuth().currentUser;
-    return { data: await runCommunicativeActivity(adminDb, user ? { uid: user.uid, token: {} } : null, d) };
+    // Firestore serialises conflicting transactions. LocalStorage alone does not;
+    // use a same-origin lock so separate mock learner tabs cannot lose each other's writes.
+    const execute = async () => ({ data: await runCommunicativeActivity(adminDb, user ? { uid: user.uid, token: {} } : null, d) });
+    return navigator.locks ? navigator.locks.request('mock-communicative-service', execute) : execute();
   }
   if (name === 'quizShow') {
     if (d.action === 'end' && sessionStorage.getItem('mockQuizEndFailure')) {

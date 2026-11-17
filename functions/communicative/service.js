@@ -9,6 +9,9 @@ const validId = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,150}$/.test(id
 const teacherOf = (c, uid) => c.teacherId === uid || c.coTeachers?.[uid]?.role === 'co';
 const deny = () => new HttpsError('permission-denied', 'This activity is not available to you.');
 const clone = value => JSON.parse(JSON.stringify(value));
+const personalCommands = new Set(['answer','opinion','summary','found','mark','claim','agree']);
+const changed = () => new HttpsError('aborted', 'The activity changed. Wait for the update, then try again.');
+
 
 async function access(db, auth, data) {
   if (!auth?.uid) throw new HttpsError('unauthenticated', 'Sign in first.');
@@ -172,7 +175,17 @@ export async function runCommunicativeActivity(db, auth, data, now = Date.now())
     if (!meta.exists || !snap.exists || !(meta.get('roomIds') ?? []).includes(data.roomId)) throw deny();
     const room = snap.data();
     if (!a.teacher && !room.state.people.some(p => p.id === a.uid)) throw deny();
-    if (room.state.seq !== data.expectedSeq) throw new HttpsError('aborted', 'The activity changed. Wait for the update, then try again.');
+    const personal = !a.teacher && personalCommands.has(data.command.type);
+    const actorRevision = room.state.actorRevisions?.[a.uid] ?? 0;
+    const hasPersonalEnvelope = data.expectedStartedAt !== undefined || data.expectedActorRevision !== undefined || data.expectedOrder !== undefined;
+    const samePersonalRevision = personal && room.state.phase === 'running' && room.state.startedAt !== null
+      && data.expectedStartedAt === room.state.startedAt && Number.isInteger(data.expectedActorRevision)
+      && data.expectedActorRevision === actorRevision
+      && (data.command.type !== 'agree' || Array.isArray(data.expectedOrder) && JSON.stringify(data.expectedOrder) === JSON.stringify(room.state.order));
+    // Independent answers may share an older global snapshot. Their own revision
+    // still prevents duplicate toggles/writes, and startedAt identifies this run.
+    if (personal && hasPersonalEnvelope && !samePersonalRevision) throw changed();
+    if (room.state.seq !== data.expectedSeq && !(samePersonalRevision && data.expectedSeq < room.state.seq)) throw changed();
     const command = clone(data.command);
     if (command.type === 'roll') command.die = randomInt(1, 7);
     if (command.type === 'call' && !command.itemId) {
@@ -182,6 +195,7 @@ export async function runCommunicativeActivity(db, auth, data, now = Date.now())
     }
     try { room.state = transition(room.config, room.state, command, { id: a.uid, teacher: a.teacher }, now); }
     catch (e) { throw new HttpsError('failed-precondition', e.message || 'Try the next step.'); }
+    if (personal) room.state.actorRevisions = {...room.state.actorRevisions, [a.uid]: actorRevision + 1};
     if (new TextEncoder().encode(JSON.stringify(room)).length > 950000) throw new HttpsError('resource-exhausted','This activity has reached its shared response limit. Keep extra details short, or use smaller groups.');
     tx.set(snap.ref, clone(room)); writeViews(tx, a.run, data.roomId, room,a.context);
     tx.update(a.run, { updatedAt: FieldValue.serverTimestamp() });

@@ -71,7 +71,11 @@ export function LiveActivity({ node, classId, itemId, taskId, teacher, renderIte
   }
   const send = (action: ActivityAction) => {
     const state = teacher ? room?.state : view?.state, roomId = teacher ? room?.id : view?.roomId;
-    if (state && roomId) void request({ op: 'command', roomId, expectedSeq: state.seq, command: action });
+    if (state && roomId) {
+      const personal = !teacher && ['answer','opinion','summary','found','mark','claim','agree'].includes(action.type);
+      void request({ op: 'command', roomId, expectedSeq: state.seq, command: action,
+        ...(personal ? {expectedStartedAt: state.startedAt, expectedActorRevision: state.actorRevisions?.[user?.uid ?? ''] ?? 0, ...(action.type==='agree' ? {expectedOrder: [...state.order]} : {})} : {}) });
+    }
   };
   if (!classId || !itemId || !taskId) return <div className="ca"><span className="eyebrow">{ACTIVITY_LABELS[config.kind]}</span><p>{config.instruction}</p><p className="hint">Save this activity in a class lesson to play it live. You can try it in its editor.</p></div>;
   if (teacher) return <div className="ca-live-host">
