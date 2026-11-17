@@ -63,6 +63,25 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
       triggerRef.current?.focus();
       return;
     }
+    if (event.key === 'Tab') {
+      const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+      const current = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.shiftKey && current === 0) {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      } else if (!event.shiftKey && current === items.length - 1) {
+        // Removing the last option during the browser's Tab step can send
+        // focus to the page body. Pick the next visible control first.
+        const tabbables = Array.from(document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]'))
+          .filter(el => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length > 0);
+        const next = tabbables[tabbables.indexOf(items[current]) + 1];
+        event.preventDefault();
+        setOpen(false);
+        (next ?? triggerRef.current)?.focus();
+      }
+      return;
+    }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
     if (!items.length) return;
@@ -85,7 +104,12 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
       {open && (
         <>
           <div className="dz-dl-scrim" onClick={() => setOpen(false)} />
-          <div ref={menuRef} className="dz-dl-pop" role="menu" aria-label="Download options" onKeyDown={onMenuKey} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+          <div ref={menuRef} className="dz-dl-pop" role="menu" aria-label="Download options" onKeyDown={onMenuKey} onBlur={event => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            // Let the browser finish moving focus before removing the menu.
+            // Unmounting it during Tab can leave focus on the page body.
+            window.setTimeout(() => { if (!menuRef.current?.contains(document.activeElement)) setOpen(false); }, 0);
+          }}>
             <p className="dz-dl-h">This page</p>
             <button type="button" role="menuitem" onClick={() => void run('Making the picture…', () => downloadImage(cx.page, cx.els, env, name, 'png', 2.5))}>
               <strong>Picture (PNG)</strong><span>Sharp, for screens and slides</span>
