@@ -186,7 +186,7 @@ const J = {
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
-  'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: available inline forms and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: text-only Teacher’s Companion':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
@@ -1312,7 +1312,7 @@ const J = {
     await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved choice after reloading');
     const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
     if (saved.code.uses !== 1 || saved.user.onboarding !== 'done' || saved.user.teacherGoal !== 'audio') throw Error('Setup was repeated or the goal was lost');
-    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/reading'], ['Work with other teachers', '/colleagues']]) {
+    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/archive'], ['Work with other teachers', '/colleagues']]) {
       await s.p.goto(BASE + '/welcome');
       await s.p.getByRole('button', { name: title, exact: false }).click();
       await s.p.getByRole('button', { name: 'Show my starting point' }).click();
