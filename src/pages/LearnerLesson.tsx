@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/react';
 import { LearnerVersionComparison } from '../communicative/VersionComparison';
 import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
@@ -477,7 +478,14 @@ export function LearnerLesson() {
     }
   }
 
+  const openQuestionIds = useMemo(() => {
+    const ids = new Set<string>();
+    const walk = (node: JSONContent) => { if (node.attrs?.noCorrectAnswer && node.attrs.id) ids.add(node.attrs.id); node.content?.forEach(walk); };
+    if (task?.content) walk(task.content);
+    return ids;
+  }, [task?.content]);
   const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
+  const neutralResult = checked && key && result.total === 0 && qs.some(q => key[q.id]?.ungraded || openQuestionIds.has(q.id));
   const score = result.score;
   const unmarked = key ? qs.filter((q) => !['writing', 'reflect', 'upload'].includes(q.type) && !key[q.id]?.ungraded && isAnswered(responses[q.id]) && scoreQuestion(key[q.id], responses[q.id]).max === 0).length : 0;
   const retryMode = task?.afterCheck === 'retry';
@@ -764,7 +772,7 @@ export function LearnerLesson() {
                 /></>
                 )}
               </div>
-              {lessonStyleOf(c) === 'young' && <YoungEffects taskId={task.id} answered={answered} checked={checked} got={score} total={result.total} />}
+              {lessonStyleOf(c) === 'young' && !neutralResult && <YoungEffects taskId={task.id} answered={answered} checked={checked} got={score} total={result.total} />}
               <div className="frame-foot">
                 {scope && examState === 'running' ? (
                   <span className="foot-status"><span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
@@ -772,6 +780,8 @@ export function LearnerLesson() {
                   </span><span className={'save-dot' + (pendingSave || saves.status(current) !== 'saved' ? ' pending' : '')}>{saves.status(current) === 'error' || saves.status(current) === 'waiting' ? <button type="button" onClick={() => void saves.retry(current)}>{saves.status(current) === 'waiting' ? ' · Waiting for connection. Retry save' : ' · Not saved. Retry save'}</button> : pendingSave || saves.status(current) !== 'saved' ? ' · saving…' : ' · saved'}</span></span>
                 ) : scope && examState === 'submitted' ? (
                   <span className="hint">{tr('Handed in. Your teacher will share the results soon.')}</span>
+                ) : neutralResult ? (
+                  <span className="hint" role="status">Your answers are saved for your teacher.</span>
                 ) : checked && key && showScore && lessonStyleOf(c) === 'young' && !result.hasWriting ? (
                   <YoungScore got={score} total={result.total}>
                     {result.total > 0 ? (

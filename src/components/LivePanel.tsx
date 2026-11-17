@@ -54,6 +54,10 @@ function nodesById(content: JSONContent | null) {
   return out;
 }
 
+function ungradedQuestion(id: string, answerKey: AnswerKey, nodes: Record<string, JSONContent>): boolean {
+  return answerKey[id]?.ungraded === true || nodes[id]?.attrs?.noCorrectAnswer === true;
+}
+
 function label(node: JSONContent | undefined, r: Response): string {
   if (!isAnswered(r)) return '';
   const a = node?.attrs ?? {};
@@ -95,6 +99,8 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
   useEffect(() => onSnapshot(learnersCol(classId), (s) => setRoster(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Learner, 'id'>) })).sort((a, b) => a.displayName.localeCompare(b.displayName))), () => {}), [classId]);
   useEffect(() => {
     setAnswers([]);
+    setFocus(null);
+    setDetail(null);
     return onSnapshot(query(collection(db, 'classes', classId, 'answers'), where('taskId', '==', taskId)), (s) => setAnswers(s.docs.map((d) => d.data() as AnswerDoc)), () => {});
   }, [classId, taskId]);
 
@@ -108,13 +114,13 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
 
   const pct = (qid: string) => {
     const got = answers.filter((a) => isAnswered(a.responses?.[qid]));
-    if (!got.length || !answerKey[qid] || answerKey[qid]?.kind === 'writing') return null;
+    if (ungradedQuestion(qid, answerKey, nodes) || !got.length || !answerKey[qid] || answerKey[qid]?.kind === 'writing') return null;
     return Math.round((got.filter((a) => isCorrect(answerKey[qid], a.responses[qid])).length / got.length) * 100);
   };
 
   // Most common wrong answers for the question in focus.
   const wrongs = useMemo(() => {
-    if (!focus) return [];
+    if (!focus || ungradedQuestion(focus, answerKey, nodes)) return [];
     const count: Record<string, number> = {};
     for (const a of answers) {
       const r = a.responses?.[focus];
@@ -172,9 +178,9 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
           {qs.map((q, i) => {
             const p = pct(q.id);
             return (
-              <button key={q.id} type="button" className={'lg-head lg-q' + (focus === q.id ? ' on' : '')} onClick={() => setFocus(focus === q.id ? null : q.id)} title={p === null ? 'No answers yet' : `${p}% correct`}>
+              <button key={q.id} type="button" className={'lg-head lg-q' + (focus === q.id ? ' on' : '')} onClick={() => setFocus(focus === q.id ? null : q.id)} title={ungradedQuestion(q.id, answerKey, nodes) ? 'No correct answer' : p === null ? 'No answers yet' : `${p}% correct`}>
                 <span className="lg-n">{i + 1}</span>
-                <span className="lg-pct">{p === null ? '–' : `${p}%`}</span>
+                <span className="lg-pct">{ungradedQuestion(q.id, answerKey, nodes) ? 'Open' : p === null ? '–' : `${p}%`}</span>
               </button>
             );
           })}
@@ -190,17 +196,17 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
                   {signals[l.authUid]?.hand && <span className="lg-sig" title="Hand up"><Icon name="wave" size="13" /></span>}
                   {signals[l.authUid]?.stuck && <span className="lg-sig stuck" title="Stuck"><Icon name="question" size="13" /></span>}
                   {a?.checked && <span className="lg-checked">checked</span>}
-                  {qs.some((q) => q.type === 'writing' && isAnswered(a?.responses?.[q.id]) && a?.marks?.[q.id]?.score == null) && <span className="lg-tomark" title="Long answer to mark">to mark</span>}
+                  {qs.some((q) => q.type === 'writing' && !ungradedQuestion(q.id, answerKey, nodes) && isAnswered(a?.responses?.[q.id]) && a?.marks?.[q.id]?.score == null) && <span className="lg-tomark" title="Long answer to mark">to mark</span>}
                 </span>
                 {qs.map((q) => {
                   const r = a?.responses?.[q.id];
                   const text = label(nodes[q.id], r);
                   const k = answerKey[q.id];
-                  const s = isAnswered(r) && k && k.kind !== 'writing' ? scoreQuestion(k, r) : null;
-                  const state = !text ? 'empty' : !s ? 'neutral' : s.got === s.max ? 'right' : 'wrong';
+                  const s = !ungradedQuestion(q.id, answerKey, nodes) && isAnswered(r) && k && k.kind !== 'writing' ? scoreQuestion(k, r) : null;
+                  const state = !isAnswered(r) ? 'empty' : !s ? 'neutral' : s.got === s.max ? 'right' : 'wrong';
                   return (
-                    <span key={q.id} className={'lg-cell ' + state + (focus === q.id ? ' focus' : '')} title={text || 'No answer yet'}>
-                      {text || '·'}
+                    <span key={q.id} className={'lg-cell ' + state + (focus === q.id ? ' focus' : '')} title={text || (isAnswered(r) ? 'Answered' : 'No answer yet')}>
+                      {text || (isAnswered(r) ? 'Answered' : '·')}
                     </span>
                   );
                 })}
@@ -210,7 +216,8 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
         </div>
       )}
 
-      {focus && (
+      {focus && ungradedQuestion(focus, answerKey, nodes) && <div className="lg-open"><span className="eyebrow">Question {qs.findIndex(q => q.id === focus) + 1} · No correct answer</span><p className="hint">Responses are collected without a score.</p></div>}
+      {focus && !ungradedQuestion(focus, answerKey, nodes) && (
         <div className="lg-wrongs">
           <span className="eyebrow" style={{ fontSize: 11 }}>
             Question {qs.findIndex((q) => q.id === focus) + 1} · common wrong answers
@@ -241,11 +248,14 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
 
 // One learner's answers for the task, with marking for long answers.
 function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose, onSpotlight, codes, annotations }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void; onSpotlight?: (qid: string, text: string) => void; codes: Code[]; annotations: Annotation[] }) {
-  const writing = questionIds(content).filter((q) => q.type === 'writing');
+  const questions = questionIds(content);
+  const writing = questions.filter((q) => q.type === 'writing');
   const nodes = nodesById(content);
   const [draft, setDraft] = useState<Record<string, Mark>>(() => answer?.marks ?? {});
   const [saved, setSaved] = useState('');
-  const result = answer ? questionIds(content).reduce((acc, q) => {
+  const allOpen = questions.length > 0 && questions.every(q => ungradedQuestion(q.id, answerKey, nodes));
+  const result = answer ? questions.reduce((acc, q) => {
+    if (ungradedQuestion(q.id, answerKey, nodes)) return acc;
     const s = scoreQuestion(answerKey[q.id], answer.responses?.[q.id]);
     return { got: acc.got + s.got, max: acc.max + s.max };
   }, { got: 0, max: 0 }) : { got: 0, max: 0 };
@@ -253,7 +263,7 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
     if (!answer) return;
     const node = nodes[qid];
     const max = criteriaOf(node?.attrs)?.reduce((sum, criterion) => sum + criterion.max, 0) ?? (Number(node?.attrs?.points) || 5);
-    await saveMark(classId, taskId, answer.learnerUid, qid, { ...(draft[qid] ?? { score: null, comment: '' }), max });
+    await saveMark(classId, taskId, answer.learnerUid, qid, ungradedQuestion(qid, answerKey, nodes) ? { score: null, comment: draft[qid]?.comment ?? '' } : { ...(draft[qid] ?? { score: null, comment: '' }), max });
     setSaved(qid);
     window.setTimeout(() => setSaved(''), 1500);
   }
@@ -262,19 +272,19 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
       <div className="dialog detail-dialog" role="dialog" aria-label={learner.displayName} onClick={(e) => e.stopPropagation()}>
         <div className="row-between">
           <h2 style={{ margin: 0 }}>{learner.displayName}</h2>
-          <span className="hint">{!answer ? 'No answers yet' : `${result.got} of ${result.max} correct${answer.checked ? ' · checked' : ' · not checked yet'}`}</span>
+          <span className="hint">{!answer ? 'No answers yet' : allOpen ? `No correct answer · ${answer.checked ? 'submitted' : 'in progress'}` : `${result.max ? `${result.got} of ${result.max} correct` : 'No automatic score'}${answer.checked ? ' · checked' : ' · not checked yet'}`}</span>
         </div>
         <div className="detail-body">
           <TaskRenderer content={content} responses={answer?.responses ?? {}} results={answerKey} disabled teacherMarks={answer?.marks} />
         </div>
-        {onSpotlight && answer && (
+        {onSpotlight && answer && questions.some(q => !ungradedQuestion(q.id, answerKey, nodes) && isAnswered(answer.responses?.[q.id])) && (
           <div className="spot-pick">
             <span className="eyebrow">Show one answer to the class (the name stays hidden)</span>
             <span className="spot-btns">
               {questionIds(content).map((q, i) => {
                 const text = label(nodes[q.id], answer.responses?.[q.id]);
                 const full = q.type === 'writing' ? textOf(answer.responses?.[q.id]) : text;
-                return full ? (
+                return full && !ungradedQuestion(q.id, answerKey, nodes) ? (
                   <button key={q.id} type="button" className="btn small-btn" onClick={() => (onSpotlight(q.id, `${i + 1}. ${full}`), onClose())}>
                     Question {i + 1}
                   </button>
@@ -285,14 +295,15 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
         )}
         {writing.length > 0 && answer && (
           <div className="mark-box">
-            <span className="eyebrow">Mark the long answers</span>
+            <span className="eyebrow">Review the long answers</span>
             {writing.map((q) => {
               const m = draft[q.id] ?? { score: null, comment: '' };
+              const open = ungradedQuestion(q.id, answerKey, nodes);
               const out = criteriaOf(nodes[q.id]?.attrs)?.reduce((sum, criterion) => sum + criterion.max, 0) ?? ((nodes[q.id]?.attrs?.points as number) || 5);
               return (
                 <div key={q.id} className="mark-block">
-                  <WritingReview classId={classId} taskId={taskId} learnerUid={answer.learnerUid} qid={q.id} text={textOf(answer.responses?.[q.id])} corr={answer.corrections?.[q.id]} codes={codes} anns={annotations.filter((a) => a.target === 'answer' && a.qid === q.id && a.learnerUid === answer.learnerUid)} />
-                {criteriaOf(nodes[q.id]?.attrs) && (
+                  {open ? <div className="wr-teacher"><span className="hint">No correct answer · comments only</span><div className="am-text">{textOf(answer.responses?.[q.id])}</div></div> : <WritingReview classId={classId} taskId={taskId} learnerUid={answer.learnerUid} qid={q.id} text={textOf(answer.responses?.[q.id])} corr={answer.corrections?.[q.id]} codes={codes} anns={annotations.filter((a) => a.target === 'answer' && a.qid === q.id && a.learnerUid === answer.learnerUid)} />}
+                {!open && criteriaOf(nodes[q.id]?.attrs) && (
                   <div className="rubric-mark">
                     {criteriaOf(nodes[q.id]?.attrs)!.map((c) => {
                       const v = m.crit?.[c.name] ?? null;
@@ -327,13 +338,13 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
                 )}
                 <div className="mark-row">
                   <span className="mark-q">Question {questionIds(content).findIndex((x) => x.id === q.id) + 1}</span>
-                  <span className="mark-score">
+                  {!open && <span className="mark-score">
                     <input inputMode="numeric" value={m.score ?? ''} placeholder="–" readOnly={!!criteriaOf(nodes[q.id]?.attrs)} onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
                     <span className="hint">/ {out}</span>
-                  </span>
+                  </span>}
                   <textarea aria-label="A comment for the learner" value={m.comment} placeholder="A comment for the learner" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, comment: e.target.value } }))} />
                   <button type="button" className="btn small-btn primary" onClick={() => save(q.id)}>
-                    {saved === q.id ? 'Saved' : 'Save mark'}
+                    {saved === q.id ? 'Saved' : open ? 'Save comment' : 'Save mark'}
                   </button>
                 </div>
                 </div>

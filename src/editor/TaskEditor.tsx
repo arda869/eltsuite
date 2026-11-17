@@ -717,7 +717,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     [onPickBank],
   );
   const training = useTrainingClass(classId);
-  const slash = useSlash(editor, bankCmds, textOnly, training, c=>!classId.startsWith('chat:')||!c.key.startsWith('activity-'), training || !!classId?.startsWith('chat:'));
+  // A custom predicate filters the supplied catalogue, so retain the standard commands too.
+  const slash = useSlash(editor, [...COMMANDS, ...bankCmds], textOnly, training, c=>!classId.startsWith('chat:')||!c.key.startsWith('activity-'), training || !!classId?.startsWith('chat:'));
   const toolPlace = useToolGate();
   // The extra tools are out by default; closing them is remembered on this device.
   const [moreOpen, setMoreOpenState] = useState(() => {
