@@ -3689,7 +3689,9 @@ const J = {
     await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
     await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');
-    await s.p.getByRole('link',{name:'Profile and settings'}).click();
+    const companionSettings = s.p.getByRole('region',{name:'Teacher’s Companion chat'}).getByRole('link',{name:'Settings',exact:true});
+    if (await companionSettings.getAttribute('href') !== '/settings#set-teacher-s-companion') throw Error('Companion settings gear points to the old section');
+    await companionSettings.click();
     await see(s.p, '#coach-profile-settings', 'profile inside Settings');
     await s.p.getByRole('textbox',{name:'Your learners and teaching context'}).fill('Adult beginners');
     await s.p.getByRole('button',{name:'Save teaching profile'}).click();
