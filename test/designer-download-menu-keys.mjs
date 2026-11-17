@@ -66,12 +66,14 @@ test('Designer Download menu supports arrows, Escape and natural Tab order', asy
     assert.equal(await options.first().evaluate(e => e === document.activeElement), true);
     await page.keyboard.press('Shift+Tab');
     assert.equal(await trigger.evaluate(e => e === document.activeElement), true);
+    await options.first().waitFor({ state: 'detached' });
     assert.equal(await options.count(), 0);
     await page.keyboard.press('Enter');
     await options.first().waitFor();
     await options.last().focus();
     await page.keyboard.press('Tab');
     await page.waitForFunction(() => document.activeElement?.id === 'after-download');
+    await options.first().waitFor({ state: 'detached' });
     assert.equal(await page.locator('#after-download').evaluate(e => e === document.activeElement), true);
     assert.equal(await options.count(), 0);
     assert.deepEqual(errors, []);

@@ -85,7 +85,12 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
       {open && (
         <>
           <div className="dz-dl-scrim" onClick={() => setOpen(false)} />
-          <div ref={menuRef} className="dz-dl-pop" role="menu" aria-label="Download options" onKeyDown={onMenuKey} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+          <div ref={menuRef} className="dz-dl-pop" role="menu" aria-label="Download options" onKeyDown={onMenuKey} onBlur={event => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            // Let the browser finish moving focus before removing the menu.
+            // Unmounting it during Tab can leave focus on the page body.
+            window.setTimeout(() => { if (!menuRef.current?.contains(document.activeElement)) setOpen(false); }, 0);
+          }}>
             <p className="dz-dl-h">This page</p>
             <button type="button" role="menuitem" onClick={() => void run('Making the picture…', () => downloadImage(cx.page, cx.els, env, name, 'png', 2.5))}>
               <strong>Picture (PNG)</strong><span>Sharp, for screens and slides</span>
