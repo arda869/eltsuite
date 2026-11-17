@@ -192,3 +192,6 @@ table.pa-tally th:last-child,table.pa-tally td:last-child {width:16%;}
 table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-cut-grid > .pa-caller-strip {min-height:10mm;font:400 10pt/1.35 Fraunces,serif;display:flex;align-items:center;}
 .pa-cut-grid > .pa-strip {min-height:17mm;}
+
+/* Keep each Bingo picture in the same frame as its on-screen card, even in a 5 × 5 grid. */
+.pa-bingo-grid .pa-picture {width:100%;height:auto;aspect-ratio:4 / 3;}
