@@ -1,6 +1,5 @@
 import { NSelect } from '../components/Select';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { contextDefaults, contextPermissions, type ContextPermissions } from '../../functions/ai/coach-context.js';
@@ -55,7 +54,7 @@ export function CoachPreferences({ uid }: { uid: string }) {
       </div>
       <div className="set-row">
         <span className="set-row-t"><b>Your teaching profile</b><span className="hint">Your Reading Journal and learner records are only read when you bring them into a chat. Chats are saved privately in History.</span></span>
-        <span className="set-row-c"><Link className="btn small-btn" to="/development?section=profile">Edit profile</Link></span>
+        <span className="set-row-c"><a className="btn small-btn" href="#coach-profile-settings">Edit profile</a></span>
       </div>
     </div>
     {error&&<p role="alert" className="error">{error}</p>}

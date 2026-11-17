@@ -163,9 +163,9 @@ const APPS: GuideApp[] = [
     glyph: APP_MARKS.collab,
   },
   {
-    k: 'reading', name: 'Reading Journal', color: '#6b5a8a', to: '/reading', tag: 'Reading, notes and citations',
-    about: 'For CELTA, Delta, an MA or your own development: each book or article with your notes, and its reference written for you.',
-    can: ['Notes under each source', 'References in APA, Harvard and more', 'Cite a source in a Collab document in one click'],
+    k: 'development', name: 'Teacher’s Companion', color: '#a56748', to: '/coach', tag: 'Talk through your teaching',
+    about: 'Ask a teaching question, discuss an activity or reflect on a lesson. Your teaching profile is optional and lives in Settings.',
+    can: ['Start with a question even when your profile is blank', 'Bring a Class activity into the conversation', 'Choose which teaching context it can use in Settings'],
     glyph: APP_MARKS.development,
   },
   {
@@ -183,8 +183,8 @@ const APPS: GuideApp[] = [
   },
   {
     k: 'files', name: 'Resources', color: '#3667a6', to: '/archive', tag: 'Everything you keep',
-    about: 'Lessons, documents, flashcards, PDFs, pictures and recordings in one place, in folders like on your computer, with your organisation’s library beside them.',
-    can: ['Folders, tags and search', 'Share a folder with colleagues', 'Copy from the library into a class'],
+    about: 'Lessons, documents, Reading Journals, flashcards, PDFs, pictures and recordings in one place, in folders like on your computer, with your organisation’s library beside them.',
+    can: ['Create a Reading Journal file for sources and notes', 'Folders, tags and search', 'Copy from the library into a class'],
     glyph: APP_MARKS.files,
   },
   {

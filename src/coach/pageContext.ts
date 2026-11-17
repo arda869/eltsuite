@@ -15,7 +15,7 @@ export function coachContextOnPage(): CoachContext {
     evidencePacketId: '',
     reflectionId: '',
     pageContext: {
-      name: match ? 'Classroom lesson' : path.startsWith('/doc/') ? 'Collab document' : path.startsWith('/recordings') ? 'Recordings' : path.startsWith('/archive') || path.startsWith('/resources') ? 'Resources' : path.startsWith('/development') ? 'Development Studio' : path.startsWith('/class/') ? 'Classroom' : path.startsWith('/messages') ? 'Messages' : 'ELT Suite',
+      name: match ? 'Classroom lesson' : path.startsWith('/doc/') ? 'Collab document' : path.startsWith('/recordings') ? 'Recordings' : path.startsWith('/archive') || path.startsWith('/resources') ? 'Resources' : path.startsWith('/development') || path.startsWith('/coach') ? 'Teacher’s Companion' : path.startsWith('/class/') ? 'Classroom' : path.startsWith('/messages') ? 'Messages' : 'ELT Suite',
       path: path.slice(0,200),
     },
   };

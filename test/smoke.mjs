@@ -134,8 +134,8 @@ const J = {
     const appsHit=await appsButton.evaluate(el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,viewport:innerWidth,hit:el===document.elementFromPoint(x,y)||el.contains(document.elementFromPoint(x,y))};});
     if(!appsHit.hit)throw Error('Apps button is obscured at tablet width: '+JSON.stringify(appsHit));
     await appsButton.click();
-    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('journal');
-    await s.p.getByRole('menuitem',{name:'Reading Journal',exact:true}).waitFor();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('companion');
+    await s.p.getByRole('menuitem',{name:'Teacher’s Companion',exact:true}).waitFor();
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
     await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
     await s.p.getByText('No apps match your search.').waitFor();
@@ -186,7 +186,7 @@ const J = {
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
-  'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: available inline forms and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: text-only Teacher’s Companion':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
@@ -1324,7 +1324,7 @@ const J = {
     await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved choice after reloading');
     const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
     if (saved.code.uses !== 1 || saved.user.onboarding !== 'done' || saved.user.teacherGoal !== 'audio') throw Error('Setup was repeated or the goal was lost');
-    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/reading'], ['Work with other teachers', '/colleagues']]) {
+    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/archive'], ['Work with other teachers', '/colleagues']]) {
       await s.p.goto(BASE + '/welcome');
       await s.p.getByRole('button', { name: title, exact: false }).click();
       await s.p.getByRole('button', { name: 'Show my starting point' }).click();
@@ -3668,179 +3668,31 @@ const J = {
     await see(s.p, '.hm', 'skip opens home');
     return s;
   },
-  'Development Studio chat works with blank optional profile and settings persist': async b => {
+  'Teacher’s Companion replaces the old studio and its profile lives in Settings': async b => {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
-    await s.p.goto(BASE + '/development?section=coach');
-    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer with blank profile and beliefs');
-    await see(s.p, 'text=You can ask a question now.', 'optional context explanation');
+    await s.p.goto(BASE + '/coach');
+    await see(s.p, 'h1:has-text("Teacher’s Companion")', 'Companion page');
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat with blank optional profile');
     await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
     await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');
-    const initialComposerHeight = await s.p.getByLabel('Message Teacher’s Companion').evaluate(el=>el.clientHeight);
-    if(initialComposerHeight>44) throw Error('Composer does not begin on one line');
-    await s.p.getByLabel('Message Teacher’s Companion').fill(Array(12).fill('A longer message with a new line.').join('\n'));
-    const expanded=await s.p.getByLabel('Message Teacher’s Companion').evaluate(el=>el.clientHeight);
-    if(expanded<=initialComposerHeight || expanded>162) throw Error('Composer did not grow within its limit');
-    await s.p.getByLabel('Message Teacher’s Companion').fill('');
-    for(let i=0;i<8;i++) {
-      await s.p.getByLabel('Message Teacher’s Companion').fill('Classroom observation '+i+': '+ 'I noticed different patterns in participation. '.repeat(12));
-      await s.p.getByRole('button',{name:'Send',exact:true}).click();
-      await s.p.getByRole('button',{name:'Send',exact:true}).waitFor({state:'visible'});
-      await s.p.waitForFunction(()=>!document.querySelector('.coach-chat-typing'));
-    }
-    for(const size of [{width:320,height:568},{width:390,height:844},{width:1280,height:720},{width:1440,height:900},{width:844,height:390}]) {
-      await s.p.setViewportSize(size);
-      const box=await s.p.locator('.coach-chat-thread').boundingBox();
-      await s.p.mouse.move(box.x+box.width/2,box.y+box.height/2);
-      for(let step=0;step<12;step++){await s.p.mouse.wheel(0,-1000);await s.p.waitForTimeout(50);if(await s.p.locator('.coach-chat-thread').evaluate(el=>el.scrollTop<2))break;}
-      await s.p.waitForFunction(()=>document.querySelector('.coach-chat-thread').scrollTop<2).catch(async()=>{throw Error('Cannot reach conversation start '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
-      const up=await s.p.evaluate(()=>({page:document.documentElement.scrollHeight,view:innerHeight,send:document.querySelector('.coach-chat-composer').getBoundingClientRect().bottom,mark:document.querySelector('.suite-mark').getBoundingClientRect().left,chat:document.querySelector('.coach-chat').getBoundingClientRect().left}));
-      if(up.page>up.view+1||up.send>up.view||Math.abs(up.mark-up.chat)>1) throw Error('Viewport, composer or alignment failed '+JSON.stringify({size,up}));
-      for(let step=0;step<12;step++){await s.p.mouse.wheel(0,1000);await s.p.waitForTimeout(50);if(await s.p.locator('.coach-chat-thread').evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop<3))break;}
-      await s.p.waitForFunction(()=>{const el=document.querySelector('.coach-chat-thread');return el.scrollHeight-el.clientHeight-el.scrollTop<3;}).catch(async()=>{throw Error('Cannot reach conversation end '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
-      await s.p.locator('.coach-chat-thread').focus();
-      await s.p.keyboard.press('Home');
-      await s.p.waitForFunction(()=>document.querySelector('.coach-chat-thread').scrollTop<2).catch(async()=>{throw Error('Cannot reach conversation start '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
-      await s.p.keyboard.press('End');
-      await s.p.waitForFunction(()=>{const el=document.querySelector('.coach-chat-thread');return el.scrollHeight-el.clientHeight-el.scrollTop<3;}).catch(async()=>{throw Error('Cannot reach conversation end '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
-    }
-    await s.p.setViewportSize({width:1280,height:900});
-    await s.p.getByLabel('Message Teacher’s Companion').fill('Yes, draft a journal reflection.');
-    await s.p.getByRole('button',{name:'Send',exact:true}).click();
-    await see(s.p,'.coach-chat-typing','thinking indicator');
-    await s.p.getByRole('button',{name:'Review journal draft',exact:true}).click();
-    const review=s.p.getByRole('dialog',{name:'Review journal draft'});
-    await review.getByLabel('Your reflection',{exact:true}).fill('My edited reflection: I want to consider other explanations.');
-    await review.getByRole('button',{name:'Save to reflections',exact:true}).click();
-    await see(s.p,'text=Saved privately to Reflections.','journal saved directly');
-    const savedDraft=await s.p.evaluate(()=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).find(([key,value])=>key.startsWith('teachingCoach/teacher1/reflections/')&&value.text==='My edited reflection: I want to consider other explanations.')?.[1]);
-    if(!savedDraft?.content) throw Error('Edited journal draft or rich content missing');
-    if(process.env.COACH_CHAT_SCREENSHOT) await s.p.screenshot({path:process.env.COACH_CHAT_SCREENSHOT});
-    await s.p.getByRole('button', {name:'Reading Journal',exact:true}).click();
-    await s.p.getByRole('button', {name:'Teacher’s Companion',exact:true}).click();
-    await see(s.p, '.coach-message:has-text("What did you notice")', 'chat retained between Studio sections');
-    await s.p.getByRole('link', {name:'Settings',exact:true}).click();
-    await s.p.getByRole('checkbox', {name:/^Professional profile/}).uncheck();
-    await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.profile === false);
+    await s.p.getByRole('link',{name:'Profile and settings'}).click();
+    await see(s.p, '#coach-profile-settings', 'profile inside Settings');
+    await s.p.getByRole('textbox',{name:'Your learners and teaching context'}).fill('Adult beginners');
+    await s.p.getByRole('button',{name:'Save teaching profile'}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/profile']?.context==='Adult beginners');
     await s.p.reload();
-    await s.p.waitForFunction(()=>{const input=document.querySelector('.coach-preference-options input');return input && !input.disabled;});
-    if (await s.p.getByRole('checkbox', {name:/^Professional profile/}).isChecked()) throw Error('Saved context opt-out was not retained');
-    await s.p.goto(BASE+'/development?section=coach');
-    for (const width of [320,390,1280]) {
-      await s.p.setViewportSize({width,height:900});
-      await axe(s.p,'Development Studio chat '+width,A11Y_FOUND);
-      if (await s.p.locator('.coach-chat').evaluate(el => el.getBoundingClientRect().right > innerWidth+1)) throw Error('Chat overflows at '+width);
-      await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-      const reading=s.p.getByRole('menuitem',{name:'Reading Journal',exact:true});
-      await reading.waitFor();
-      if (await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).count()) throw Error('Development Studio still appears as an app');
-      const fits=await reading.locator('.app-tile-copy b').evaluate(el => el.scrollWidth <= el.clientWidth+1);
-      if (!fits) throw Error('Reading Journal label is clipped at '+width);
-      await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-    }
-    return s;
-  },
-  'Development Studio reading, private writing and classroom inquiry': async (b) => {
-    const s = await session(b);
-    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); delete fs['aiPilot/teacher1']; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
-    await s.p.goto(BASE + '/development');
-    await see(s.p, 'h1:has-text("Development Studio")', 'development workspace');
-    await s.p.getByRole('button', { name: 'Reading Journal', exact: true }).click();
-    await see(s.p, '.af-embedded h2:has-text("Reading")', 'embedded reading library');
-    if (await s.p.locator('.topbar').count() > 1) throw Error('Reading has a duplicate application header');
-    await see(s.p, '.af-open:has-text("Classroom interaction notes")', 'existing reading journal');
-    const [readingTab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.locator('.af-open:has-text("Classroom interaction notes")').click()]);
-    await see(readingTab, 'text=CITATION STYLE', 'existing reading editor');
-    await readingTab.setViewportSize({ width: 390, height: 844 });
-    const readingFits = await readingTab.locator('.pd-main').evaluate(el => { const r = el.getBoundingClientRect(); return r.width > 250 && r.right <= innerWidth + 1; });
-    if (!readingFits) throw Error('Reading notes are squeezed off-screen on mobile');
-    const readingActionsFit = await readingTab.locator('.dp-acts').evaluate(el => el.getBoundingClientRect().right <= innerWidth + 1);
-    if (!readingActionsFit) throw Error('Reading return and reflection controls overflow');
-    await axe(readingTab, 'Development Studio reading editor on mobile', A11Y_FOUND);
-
-    await readingTab.getByRole('link', { name: 'Back to Reading Journal', exact: true }).click();
-    await see(readingTab, '.af', 'reading editor returns to Reading Journal');
-    await readingTab.getByRole('link',{name:'ELT Suite Reading Journal: Home',exact:true}).waitFor();
-    await readingTab.close();
-    await s.p.getByRole('button', { name: 'Home', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Reflect on this', exact: true }).click();
-    await s.p.getByLabel('Your reflection', { exact: true }).fill('This reading raises a question about my own classroom.');
-    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
-    await see(s.p, 'button.coach-entry:has-text("On Classroom interaction notes")', 'reflection linked to reading');
-    await s.p.getByRole('button', { name: 'Profile and beliefs', exact: true }).click();
-    await s.p.getByLabel('Professional goals, specialisms and interests').fill('Understand participation in speaking activities.');
-    await s.p.locator('.qualifications-picker > summary:visible').click();
-    await s.p.getByRole('checkbox',{name:'No formal qualification',exact:true}).check();
-    await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
-    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
-    await s.p.getByRole('button',{name:'Years of teaching experience',exact:true}).click();
-    await s.p.getByRole('option',{name:'3–5',exact:true}).click();
-    await s.p.getByLabel('Your learners and teaching context').fill('Adults learning English at B1');
-    await s.p.getByRole('checkbox', { name: 'Teacher', exact: true }).check();
-
-    await s.p.getByRole('button', { name: 'Save profile and beliefs', exact: true }).click();
-    await see(s.p, 'text=Saved privately.', 'saved professional profile');
-    await s.p.reload();
-    if (await s.p.getByLabel('Professional goals, specialisms and interests').inputValue() !== 'Understand participation in speaking activities.') throw Error('Profile failed to reopen after reload');
-
-    await s.p.getByRole('button', { name: 'Reflections', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Write a reflection', exact: true }).click();
-    await s.p.getByLabel('Title', { exact: true }).fill('Preparation time and participation');
-    await s.p.getByLabel('Your reflection', { exact: true }).fill('More learners volunteered after a minute to think. I wonder what else changed.').catch(async e => { throw Error('New reflection: ' + e.message + '\n' + await s.p.locator('main').innerText()); });
-    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
-    await see(s.p, 'button.coach-entry:has-text("Preparation time and participation")', 'saved reflection');
-    await s.p.reload();
-    await s.p.getByRole('button', { name: 'Reflections', exact: true }).click();
-    await s.p.getByLabel('Find a reflection').fill('participation');
-    await s.p.getByRole('button', { name: /Preparation time and participation/ }).click();
-    await s.p.getByLabel('Your reflection', { exact: true }).fill('I also changed the task. That may have affected participation.').catch(async e => { throw Error('Reopened reflection: ' + e.message + '\n' + await s.p.locator('main').innerText()); });
-    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Research', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Plan an inquiry', exact: true }).click();
-    await s.p.getByLabel('Your classroom question', { exact: true }).fill('Does preparation time affect participation?');
-    await s.p.getByLabel('What happens now?', { exact: true }).fill('Observe the number of volunteers across two lessons.');
-    await s.p.getByRole('button', { name: '2. Evidence and ethics', exact: true }).click();
-    await s.p.getByLabel('Consent, anonymity and care', { exact: true }).fill('Seek consent and record anonymous totals only.');
-    await s.p.getByRole('button', { name: 'Save inquiry', exact: true }).click();
-    await see(s.p, 'button.coach-entry:has-text("Does preparation time")', 'saved inquiry');
-    await s.p.getByRole('button', { name: 'Home', exact: true }).click();
-    await s.p.getByRole('button', { name: 'View my timeline', exact: true }).click();
-    if (await s.p.locator('.coach-timeline article').count() !== 3) throw Error('Reflection and inquiry missing from timeline');
-    for (const width of [390, 1280]) {
-      await s.p.setViewportSize({ width, height: 900 });
-      await axe(s.p, 'Teacher’s Companion at ' + width, A11Y_FOUND);
-      const overflow = await s.p.locator('.coach-panel').evaluate(el => el.getBoundingClientRect().right > innerWidth + 1);
-      if (overflow) throw Error('Coach content overflows on mobile');
-    }
-    let frame;
-    for(const tab of ['Home','Reflections','Reading','Research','Teacher’s Companion']) {
-      await s.p.getByRole('button',{name:tab==='Reading'?'Reading Journal':tab,exact:true}).click();
-      const bounds=await s.p.locator('main.coach').boundingBox();
-      if(frame&&(Math.abs(bounds.width-frame.width)>1||Math.abs(bounds.height-frame.height)>1))throw Error('Studio tabs do not share a frame: '+tab);
-      frame=bounds;
-      if(tab==='Reading') {
-        const fits=await s.p.getByRole('searchbox',{name:'Search Reading Journal'}).evaluate(el=>{const input=el.getBoundingClientRect(),parent=el.closest('label').getBoundingClientRect();return input.bottom<=parent.bottom+1&&input.right<=parent.right+1;});
-        if(!fits)throw Error('Reading search input escapes its container');
-      }
-    }
-    await s.p.getByRole('link', { name: 'Settings', exact: true }).click();
-    for (const label of ['Professional profile','Teaching beliefs','Reflections','Research inquiries']) if (!(await s.p.getByRole('checkbox', { name: new RegExp('^'+label) }).isChecked())) throw Error('Coach context must be on by default: '+label);
-    await s.p.goto(BASE+'/development?section=coach');
-    await s.p.getByLabel('Message Teacher’s Companion').fill('What else could explain participation?');
-    await s.p.getByRole('button', { name: 'Send', exact: true }).click();
-    await see(s.p, '.coach-message:has-text("What did you notice")', 'reflective coaching reply');
-    await s.p.getByRole('link',{name:'Settings',exact:true}).click();
-    await s.p.getByRole('checkbox', { name: /^Teaching beliefs/ }).uncheck();
-    await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.beliefs === false);
-    await s.p.goto(BASE+'/development?section=coach');
-    await see(s.p,'.coach-message:has-text("What did you notice")','history retained after privacy change');
-    await s.p.getByLabel('Message Teacher’s Companion').fill('Continue without my beliefs.');await s.p.getByRole('button',{name:'Send',exact:true}).click();
-    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).prompt==='Continue without my beliefs.');
-    if((await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).history)).length)throw Error('Previous context was sent after privacy settings changed');
-    const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
-    if (JSON.stringify(preserved.memberIds) !== JSON.stringify(['colleague'])) throw Error('Reading sharing was changed');
-    if (process.env.DEVELOPMENT_SCREENSHOT) { await s.p.getByRole('button', { name: 'Home', exact: true }).click(); await s.p.screenshot({ path: process.env.DEVELOPMENT_SCREENSHOT, fullPage: false }); }
+    await see(s.p, '#coach-profile-settings', 'saved profile after reload');
+    if(await s.p.getByRole('textbox',{name:'Your learners and teaching context'}).inputValue()!=='Adult beginners') throw Error('Profile edit was not retained');
+    await s.p.goto(BASE+'/development?section=profile');
+    await see(s.p,'#coach-profile-settings','legacy profile link redirects to Settings');
+    await s.p.goto(BASE+'/development?section=research');
+    await see(s.p,'h1:has-text("Teacher’s Companion")','legacy studio link opens Companion');
+    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.getByRole('menuitem',{name:'Teacher’s Companion',exact:true}).waitFor();
+    if(await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).count()) throw Error('Old studio remains in Apps');
+    if(await s.p.getByRole('menuitem',{name:'Reading Journal',exact:true}).count()) throw Error('Reading Journal remains a separate app');
     return s;
   },
   'Observation entry points hidden while existing lessons remain usable': async (b) => {
@@ -3850,7 +3702,7 @@ const J = {
     if (await s.p.getByRole('link',{name:'Observe this lesson'}).count()) throw Error('Lesson observation is still available');
     await s.p.getByRole('button',{name:'Discuss with Teacher’s Companion'}).waitFor();
     await s.p.goto(BASE+'/observations');
-    await s.p.waitForURL(/\/development$/);
+    await s.p.waitForURL(/\/coach$/);
     if (await s.p.getByRole('link',{name:'Observations',exact:true}).count()) throw Error('Observation navigation is still visible');
     return s;
   },

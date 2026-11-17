@@ -122,6 +122,13 @@
 .coach-journal-review form{width:min(680px,100%);max-height:calc(100dvh - 40px);overflow:auto;background:var(--paper);border:1px solid var(--hair);border-radius:20px;padding:26px;box-shadow:0 20px 90px #0005}
 .coach-journal-review h3{font-size:26px}.coach-journal-review p{color:var(--muted)}.coach .coach-journal-review textarea{min-height:220px}.coach-journal-saved{padding:8px 24px;margin:0;color:var(--muted);font-size:13px}.coach-chat-message>.btn{margin-top:14px;display:block}
 body:has(.coach-chat-page) .discovery-launch{bottom:8px;transform:scale(.85);transform-origin:left bottom}
+.coach-profile-settings{margin-top:28px;padding-top:24px;border-top:1px solid var(--hair)}
+.coach-profile-settings>h3{margin:0 0 8px;font-family:var(--font-display,Georgia,serif);font-size:24px}
+.coach-profile-settings>fieldset{border:0;padding:0;margin:18px 0 0;display:grid;gap:18px;min-width:0}
+.coach-profile-settings>fieldset>label{display:grid;gap:8px;min-width:0;font-weight:600}
+.coach-profile-settings>fieldset>fieldset:not(.qualifications-field){border:1px solid var(--hair);border-radius:12px;padding:14px 18px}
+.coach-profile-settings .coach-role{display:inline-flex;margin:4px 18px 4px 0}
+.coach-profile-settings .coach-actions{margin-top:20px}
 .coach.coach-chat-page{padding-bottom:64px}
 @media(max-height:600px){.coach.coach-chat-page{padding-bottom:48px}}
 .development-shell>.coach{max-width:none;width:100%}

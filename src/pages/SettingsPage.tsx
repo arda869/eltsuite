@@ -1,6 +1,7 @@
 import { TeacherPassword } from '../components/TeacherPassword';
 import { SpellingSettings } from '../spelling/SpellingSettings';
 import { CoachPreferences } from '../coach/CoachPreferences';
+import { CoachProfileSettings } from '../coach/CoachProfileSettings';
 import { isLearnerEmail } from '../lib/learners';
 import { NSelect } from '../components/Select';
 import { answerOf, profileFieldsOf, saveProfileAnswer, useMyOrg, useTeacherProfile, type ProfileField } from '../lib/admin';
@@ -246,7 +247,7 @@ export function SettingsPage() {
           </Section>
         )}
 
-        {teacher && user && <Section icon="discuss" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /></Section>}
+        {teacher && user && <Section icon="discuss" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /><CoachProfileSettings uid={user.uid} /></Section>}
         {teacher && (
           <Section icon="help" title="Feature tips">
             <Row title="Tips about features" hint="Short ideas based on the tools you use. Choose how often, set quiet hours or pause them.">
