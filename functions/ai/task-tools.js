@@ -32,7 +32,7 @@ async function sources(item) {
  const list=await item.collection('tasks').orderBy('order').get();
  return Promise.all(list.docs.filter(s=>s.get('kind')!=='section').map(async s=>{
   const [body,key,notes,activities]=await Promise.all([s.ref.collection('private').doc('body').get(),s.ref.collection('private').doc('key').get(),s.ref.collection('private').doc('notes').get(),s.ref.collection('private').doc('activities').get()]);
-  const t=s.data();const privateKey={...(key.data()??{}),...Object.fromEntries(Object.entries(activities.get('nodes')??{}).map(([id,node])=>[id,{kind:'activity',node}]))};const hydrated=mergeKey(t.restricted?body.get('content'):t.content,privateKey);return {id:s.id,title:t.title,instructions:t.instructions??'',instrDoc:t.instrDoc??null,content:hydrated,key:key.data()??{},notes:notes.get('text')??'',family:t.family??null,variants:t.variants??[],variant:t.variant??null,order:t.order,restricted:!!t.restricted};
+  const t=s.data();const privateKey=Object.fromEntries(Object.entries(activities.get('nodes')??{}).map(([id,node])=>[id,{kind:'activity',node}]));const hydrated=mergeKey(t.restricted?body.get('content'):t.content,privateKey);return {id:s.id,title:t.title,instructions:t.instructions??'',instrDoc:t.instrDoc??null,content:hydrated,key:key.data()??{},notes:notes.get('text')??'',family:t.family??null,variants:t.variants??[],variant:t.variant??null,order:t.order,restricted:!!t.restricted};
  }));
 }
 export async function taskTools(req,{db,uid,cls,apiKey,model}) {
@@ -96,7 +96,8 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    const keySnaps=await Promise.all(currentScope.map(t=>tx.get(item.collection('tasks').doc(t.id).collection('private').doc('key'))));
    const bodySnaps=await Promise.all(currentScope.map(t=>tx.get(item.collection('tasks').doc(t.id).collection('private').doc('body'))));
    const notesSnaps=await Promise.all(currentScope.map(t=>tx.get(item.collection('tasks').doc(t.id).collection('private').doc('notes'))));
-   const snapshot=currentScope.map((t,i)=>({...t,title:taskSnaps[i].get('title'),instructions:taskSnaps[i].get('instructions')??'',instrDoc:taskSnaps[i].get('instrDoc')??null,content:taskSnaps[i].get('restricted')?bodySnaps[i].get('content'):taskSnaps[i].get('content'),key:keySnaps[i].data()??{},notes:notesSnaps[i].get('text')??'',family:taskSnaps[i].get('family')??null,variants:taskSnaps[i].get('variants')??[],variant:taskSnaps[i].get('variant')??null,order:taskSnaps[i].get('order'),restricted:!!taskSnaps[i].get('restricted')}));
+   const activitySnaps=await Promise.all(currentScope.map(t=>tx.get(item.collection('tasks').doc(t.id).collection('private').doc('activities'))));
+   const snapshot=currentScope.map((t,i)=>({...t,title:taskSnaps[i].get('title'),instructions:taskSnaps[i].get('instructions')??'',instrDoc:taskSnaps[i].get('instrDoc')??null,content:mergeKey(taskSnaps[i].get('restricted')?bodySnaps[i].get('content'):taskSnaps[i].get('content'),Object.fromEntries(Object.entries(activitySnaps[i].get('nodes')??{}).map(([id,node])=>[id,{kind:'activity',node}]))),key:keySnaps[i].data()??{},notes:notesSnaps[i].get('text')??'',family:taskSnaps[i].get('family')??null,variants:taskSnaps[i].get('variants')??[],variant:taskSnaps[i].get('variant')??null,order:taskSnaps[i].get('order'),restricted:!!taskSnaps[i].get('restricted')}));
    if(hash(snapshot)!==old.sourceHash)fail('This activity changed. Generate a fresh draft before applying it.');
    if(old.mode==='edit') {
     const from=currentScope[0],ref=item.collection('tasks').doc(from.id),updated=applyTaskTextEdits(from,result.edits);

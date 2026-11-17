@@ -9,6 +9,8 @@ process.env.ELT_AI_ENABLED='true';process.env.ELT_AI_MODEL='gpt-6.1-sol';process
 const {lessonAssistant}=await import('../../functions/ai/assistant.js');
 const db=getFirestore(),uid='tools-teacher',classId='tools-class',itemId='lesson';
 await db.doc('users/'+uid).set({role:'teacher'});await db.doc('accounts/'+uid).set({});await db.doc('aiPilot/'+uid).set({enabled:true});
+// This combined regression suite intentionally exercises more than the default daily allowance.
+await db.doc('aiAllowances/'+uid).set({limits:{lessonActivities:100}});
 await db.doc('classes/'+classId).set({teacherId:uid,level:'A2'});
 const item=db.doc(`classes/${classId}/items/${itemId}`);await item.set({title:'Yesterday',type:'lesson',taskCount:1});
 const source=item.collection('tasks').doc('first');const content={type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]},{type:'paragraph',content:[{type:'gap',attrs:{id:'kept',answers:[]}}]}]};
@@ -86,6 +88,29 @@ try {
  await source.update({title:'My manual title'});
  await assert.rejects(call({action:'taskToolsApply',requestId:'edit-conflict'}),/changed/);
  await assert.rejects(call({action:'taskTools',mode:'edit',direction:'',requestId:'edit-empty'}),/Describe/);
+
+ // Communicative cards stay private through AI edits. Normal question keys must
+ // remain unchanged while activity virtual keys hydrate the teacher-only draft.
+ const privateTask=item.collection('tasks').doc('private-roles'),privateActivities=privateTask.collection('private').doc('activities');
+ const roleNode={type:'communicativeActivity',attrs:{id:'travel-cue',kind:'cue',instruction:'Ask your partner for the missing information.',settings:{mode:'class'}},content:[{type:'pickCard',attrs:{activityItemId:'role-a',title:'Museum organiser'},content:[{type:'paragraph',content:[{type:'text',text:'Your private budget is 37 tokens.'}]}]},{type:'pickCard',attrs:{activityItemId:'role-b',title:'Gallery organiser'},content:[{type:'paragraph',content:[{type:'text',text:'Your private budget is 59 tokens.'}]}]}]};
+ const sealedRole={type:'communicativeActivity',attrs:{id:'travel-cue',kind:'cue',instruction:roleNode.attrs.instruction,sealed:true},content:[]},sealedContent={type:'doc',content:[sealedRole]},originalNodes={'travel-cue':roleNode};
+ await privateTask.set({kind:'task',title:'Private travel cards',instructions:'Talk to your partner.',content:sealedContent,order:10,hidden:false,locked:false});await privateActivities.set({nodes:originalNodes});await privateTask.collection('private').doc('key').set({});
+ const privateDraft=await call({action:'taskTools',taskId:privateTask.id,mode:'edit',direction:'Change the title to A memorable day.',requestId:'edit-private-title'});
+ assert.equal(privateDraft.status,'completed');assert.deepEqual(capturedInput.sourceTasks[0].content.content[0],roleNode,'teacher draft hydrates private cards');assert.equal((await privateTask.get()).get('title'),'Private travel cards','draft leaves title untouched');assert.deepEqual((await privateTask.get()).get('content'),sealedContent,'draft leaves public cards sealed');assert.deepEqual((await privateActivities.get()).get('nodes'),originalNodes,'draft preserves private source');
+ for(let n=0;n<2;n++)assert.equal((await call({action:'taskToolsApply',taskId:privateTask.id,requestId:'edit-private-title'})).taskId,privateTask.id);
+ assert.equal((await privateTask.get()).get('title'),'A memorable day');assert.deepEqual((await privateTask.get()).get('content'),sealedContent,'applying title edit preserves the sealed public placeholder');assert.deepEqual((await privateActivities.get()).get('nodes'),originalNodes,'applying title edit preserves every private node');assert.deepEqual((await privateTask.collection('private').doc('key').get()).data(),{},'activity virtual keys never enter ordinary question keys');
+ await privateTask.update({title:'Private title before concurrent edit'});
+ await call({action:'taskTools',taskId:privateTask.id,mode:'edit',direction:'Change the title.',requestId:'edit-private-stale'});
+ const revisedNode=structuredClone(roleNode);revisedNode.content[0].content[0].content[0].text='Teacher changed this private budget to 81 tokens.';await privateActivities.set({nodes:{'travel-cue':revisedNode}});
+ await assert.rejects(call({action:'taskToolsApply',taskId:privateTask.id,requestId:'edit-private-stale'}),/changed/);assert.equal((await privateTask.get()).get('title'),'Private title before concurrent edit');assert.deepEqual((await privateActivities.get()).get('nodes'),{'travel-cue':revisedNode});
+ // Change only private content after the preflight read, immediately before the
+ // real transaction, to exercise its independent conflict snapshot as well.
+ await call({action:'taskTools',taskId:privateTask.id,mode:'edit',direction:'Change the title.',requestId:'edit-private-race'});
+ const racedNode=structuredClone(revisedNode);racedNode.content[1].attrs.title='Teacher changed this private role';let raced=false;const runTransaction=db.runTransaction;
+ db.runTransaction=async function(...args){if(!raced){raced=true;await privateActivities.set({nodes:{'travel-cue':racedNode}});}return runTransaction.apply(this,args);};
+ try{await assert.rejects(call({action:'taskToolsApply',taskId:privateTask.id,requestId:'edit-private-race'}),/changed/);}finally{db.runTransaction=runTransaction;}
+ assert.equal(raced,true);assert.equal((await privateTask.get()).get('title'),'Private title before concurrent edit');assert.deepEqual((await privateTask.get()).get('content'),sealedContent);assert.deepEqual((await privateActivities.get()).get('nodes'),{'travel-cue':racedNode});
+ console.log('Communicative AI edits: sealed title draft/apply, private source preservation, idempotency and preflight/transaction private-edit conflicts passed (real emulator, mocked provider).');
  const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
  globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
  const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});
