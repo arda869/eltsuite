@@ -98,8 +98,8 @@ export async function storyStripImage(id: string, pages: DPage[], els: El[], acc
   return new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'));
 }
 
-type Pick = (blob: Blob, title: string, credit?: string) => Promise<void>;
-export function DesignerImages({ uid, onPick, onBoard }: { uid?: string; onPick: Pick; onBoard: (d: SharedDoc) => Promise<void> }) {
+type Pick = (blob: Blob, title: string, credit?: string, designerId?: string) => Promise<void>;
+export function DesignerImages({ uid, onPick, onBoard, initialSelectedId = '', returnTo = '' }: { uid?: string; onPick: Pick; onBoard: (d: SharedDoc) => Promise<void>; initialSelectedId?: string; returnTo?: string }) {
   const { user } = useAuth();
   const { mine, withMe } = useMyDocs(uid);
   const [q, setQ] = useState('');
@@ -107,6 +107,11 @@ export function DesignerImages({ uid, onPick, onBoard }: { uid?: string; onPick:
   const [making, setMaking] = useState('');
   const docs = Array.from(new Map([...(mine ?? []), ...(withMe ?? [])].map((d) => [d.id, d])).values()).filter((d) => d.kind === 'design' || d.kind === 'storyboard' || isImageFile(d));
   const shown = docs.filter((d) => d.title.toLowerCase().includes(q.toLowerCase()));
+  useEffect(() => {
+    if (!initialSelectedId || selected || mine === null || withMe === null) return;
+    const match = docs.find(d => d.id === initialSelectedId);
+    if (match) setSelected(match);
+  }, [initialSelectedId, selected, mine, withMe]);
   // A new design opens in Designer in a new tab; when it is saved it appears in this list, ready to insert.
   const make = async (type: 'image' | 'storyboard') => {
     if (!user) return;
@@ -115,8 +120,9 @@ export function DesignerImages({ uid, onPick, onBoard }: { uid?: string; onPick:
     try {
       const id = await newSharedDoc({ uid: user.uid, name: user.displayName || 'Teacher' }, type === 'storyboard' ? 'storyboard' : 'design', type === 'storyboard' ? 'New storyboard' : 'New design');
       await (await import('./DesignerFile')).startDesigner(id, type);
-      if (w) w.location.href = '/doc/' + id;
-      else window.open('/doc/' + id, '_blank');
+      const destination = '/doc/' + id + (returnTo ? '?returnTo=' + encodeURIComponent(returnTo) : '');
+      if (w) w.location.href = destination;
+      else window.open(destination, '_blank');
       setMaking('Your new design is open in another tab. When you’ve made it, come back here and insert it.');
     } catch {
       w?.close();
@@ -213,7 +219,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
       ) : pages.length ? (
         <>
           {canvasStory && pages.length > 1 && (
-            <button type="button" className="btn primary" disabled={busy} onClick={() => void run(async () => onPick(await storyStripImage(d.id, pages, els, accent), d.title))}>
+            <button type="button" className="btn primary" disabled={busy} onClick={() => void run(async () => onPick(await storyStripImage(d.id, pages, els, accent), d.title, '', d.id))}>
               Insert the whole story as a strip
             </button>
           )}
@@ -224,7 +230,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
           <p className="hint">Fit artwork removes empty margins. Whole page keeps the original Designer layout.</p>
           <div className="inline-image-pages">
             {pages.map((p, i) => (
-              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent, 1.6, pageFit === 'artwork'), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
+              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent, 1.6, pageFit === 'artwork'), p.caption || d.title, '', d.id))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
                 {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" /> : <span className="inline-image-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
                 <span>{p.name || `${canvasStory ? 'Panel' : 'Page'} ${i + 1}`}</span>
                 {p.caption && <small>{p.caption}</small>}
@@ -233,7 +239,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
           </div>
         </>
       ) : isImageFile(d) ? (
-        <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => onPick(await loadAnyFile(d.id, d.file), d.title))}>Insert the image</button>
+        <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => onPick(await loadAnyFile(d.id, d.file), d.title, '', d.id))}>Insert the image</button>
       ) : (
         <p>This design has no pages yet.</p>
       )}

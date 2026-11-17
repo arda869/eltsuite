@@ -38,6 +38,13 @@ export const PIC_MARKS: { k: PicMark; label: string }[] = [
   { k: 'i', label: 'i, ii, iii' },
 ];
 
+function designerSourceUrl(id: string) {
+  const match = window.location.pathname.match(/^\/class\/[A-Za-z0-9_-]+\/lesson\/[A-Za-z0-9_-]+$/);
+  const task = document.querySelector<HTMLElement>('[data-coach-task-id]')?.dataset.coachTaskId || '';
+  const returnTo = match && /^[A-Za-z0-9_-]{1,100}$/.test(task) ? match[0] + '?task=' + encodeURIComponent(task) : '';
+  return '/doc/' + id + (returnTo ? '?returnTo=' + encodeURIComponent(returnTo) : '');
+}
+
 // The label of the picture at pos: it counts the pictures with the same kind of label before it.
 export function pictureLabel(doc: { descendants: (f: (n: { type: { name: string }; attrs: Record<string, unknown> }, p: number) => boolean | void) => void }, pos: number, mark: string) {
   if (!mark) return '';
@@ -232,7 +239,7 @@ function EditTag({ t, edit }: { t: PicTag; edit: TagEdit }) {
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
+  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; designerId?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -439,6 +446,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
             <span className="hint">Screen reader description</span>
             <input aria-label="Screen reader description" value={a.alt ?? ''} placeholder="Describe the picture for screen readers" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
+          {!!a.designerId && /^[A-Za-z0-9_-]{1,100}$/.test(a.designerId) && <span className="pic-row"><span className="hint">Original design</span><a className="btn small-btn" href={designerSourceUrl(a.designerId)} target="_blank" rel="noopener noreferrer">Edit source in Designer</a><small className="hint">Reinsert the picture to use later edits.</small></span>}
           <span className="pic-row pic-actions">
             <button type="button" className="btn small-btn" onClick={() => setEditing(true)}>
               Crop and colour
@@ -465,6 +473,7 @@ export const Picture = Node.create({
     src: { default: '' },
     alt: { default: '' },
     credit: { default: '' },
+    designerId: { default: '', parseHTML: (element: HTMLElement) => element.getAttribute('data-designer-id') || '', renderHTML: (attrs: Record<string, unknown>) => attrs.designerId ? { 'data-designer-id': attrs.designerId } : {} },
     size: { default: 'm' },
     mark: { default: '' },
     crop: { default: '' }, // "x y w h" fractions
@@ -484,7 +493,7 @@ export const Picture = Node.create({
 });
 
 // Insert pictures at the cursor. Labels follow the picture before it in the task, if it has one.
-export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; caption?: string; credit?: string } = {}) {
+export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; caption?: string; credit?: string; designerId?: string; designerIds?: string[] } = {}) {
   let mark: PicMark = opts.mark ?? '';
   if (opts.mark === undefined)
     editor.state.doc.descendants((n) => {
@@ -493,7 +502,7 @@ export function insertPictures(editor: Editor, srcs: string[], opts: { size?: Pi
   editor
     .chain()
     .focus()
-    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark }, ...(opts.caption?.trim() ? { content: [{ type: 'text', text: opts.caption.trim() }] } : {}) })))
+    .insertContent(srcs.map((src, i) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark, designerId: opts.designerIds?.[i] ?? opts.designerId ?? '' }, ...(opts.caption?.trim() ? { content: [{ type: 'text', text: opts.caption.trim() }] } : {}) })))
     .run();
 }
 
@@ -516,9 +525,9 @@ const savedQuality = (): PicQuality => {
   }
 };
 
-export function PictureDialog({ editor, classId, onClose }: { editor: Editor; classId: string; onClose: () => void }) {
+export function PictureDialog({ editor, classId, onClose, initialDesignId = '', returnTo = '' }: { editor: Editor; classId: string; onClose: () => void; initialDesignId?: string; returnTo?: string }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>('new');
+  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>(initialDesignId ? 'designer' : 'new');
   const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
   const [size, setSize] = useState<PicSize>('m');
@@ -567,20 +576,23 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
     setBusy(items.length > 1 ? `Adding ${items.length} pictures…` : 'Adding…');
     try {
       const srcs: string[] = [];
+      const designerIds: string[] = [];
       for (const it of items) {
-        if (it.link) srcs.push(it.link);
-        else if (classId) srcs.push('media:' + (await mediaIn(user.uid, it, classId)));
-        else if (it.home) srcs.push(await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100));
+        let src = '';
+        if (it.link) src = it.link;
+        else if (classId) src = 'media:' + (await mediaIn(user.uid, it, classId));
+        else if (it.home) src = await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100);
+        if (src) { srcs.push(src); designerIds.push(it.designerId || ''); }
       }
-      insertPictures(editor, srcs, { size, mark, alt, caption: alt });
+      insertPictures(editor, srcs, { size, mark, alt, caption: alt, designerIds });
       onClose();
     } catch {
       setBusy('We couldn’t add that picture.');
     }
   };
-  const fromDesign = async (blob:Blob,title:string,credit='') => {
-    const src=classId?await uploadPicture(classId,blob,quality,title):await imageToData(blob,1100);
-    insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit});onClose();
+  const fromDesign = async (blob:Blob,title:string,credit='',designerId='') => {
+    const src=classId?await uploadPicture(classId,blob,quality,title,'',designerId):await imageToData(blob,1100);
+    insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit,designerId});onClose();
   };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.
   const uploadRef = useRef(upload);
@@ -678,7 +690,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               <input aria-label="Description shown below the picture" value={alt} placeholder="Describe the picture for learners" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
-        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
+        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} initialSelectedId={initialDesignId} returnTo={returnTo} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
           <>
             <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} />
             {look}

@@ -6,31 +6,49 @@ import type { Ctx } from './Editor';
 import { downloadImage, downloadPdf, pageBlob } from './tools';
 import type { Env } from './render';
 
+const classReturn = (value: string | null) => {
+  if (!value) return '';
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin || !/^\/class\/[A-Za-z0-9_-]+\/lesson\/[A-Za-z0-9_-]+$/.test(url.pathname)) return '';
+    const task = url.searchParams.get('task');
+    return task && /^[A-Za-z0-9_-]{1,100}$/.test(task) ? `${url.pathname}?task=${encodeURIComponent(task)}` : '';
+  } catch { return ''; }
+};
+
 // Export image artwork or save a reusable picture in Resources.
-export function DownloadMenu({ cx }: { cx: Ctx }) {
+export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState('');
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const env: Env = { imgs: cx.imgs, view: cx.view, accent: cx.accent };
   const name = cx.d.title || 'Design';
+  const returnTo = classReturn(new URLSearchParams(window.location.search).get('returnTo'));
   const run = async (what: string, f: () => Promise<void>) => {
     setOpen(false);
     setBusy(what);
     try {
       await f();
     } catch {
-      void tell('We couldn’t make the download just now. Try again.');
+      void tell(what === 'Preparing for Classes…' ? 'We couldn’t save this design for Classes. Your work is still here; try again.' : 'We couldn’t make the download just now. Try again.');
     } finally {
       setBusy('');
     }
   };
-  const toFiles = async () => {
+  const toFiles = async (notify = true) => {
     const u = auth.currentUser;
     if (!u) return;
     const blob = await pageBlob(cx.page, cx.els, env, 1.6);
-    await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`);
-    void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
+    await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`, '', cx.d.id);
+    if (notify) void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
+  };
+  const useInClasses = async () => {
+    if (!returnTo || !cx.canEdit || !await beforeReturn?.()) throw Error('Design not ready');
+    await toFiles(false);
+    const destination = new URL(returnTo, window.location.origin);
+    destination.searchParams.set('designer', cx.d.id);
+    window.location.assign(destination.pathname + destination.search);
   };
   useEffect(() => {
     if (!open) return;
@@ -59,6 +77,7 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
   return (
     <>
       {busy && <span className="dz-busy" role="status">{busy}</span>}
+      {!cx.learnerUser && cx.canEdit && returnTo && <button type="button" className="btn dz-return" disabled={!!busy} onClick={() => void run('Preparing for Classes…', useInClasses)}>Use in Classes</button>}
       <button ref={triggerRef} type="button" className="btn primary dz-dl" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
         Download

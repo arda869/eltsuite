@@ -516,7 +516,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -692,6 +692,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     }
   }
   const [picOpen, setPicOpen] = useState(false);
+  useEffect(() => { if (initialDesignId) setPicOpen(true); }, [initialDesignId]);
   const [pdfOpen, setPdfOpen] = useState(false);
   useEffect(() => {
     const open = () => setPdfOpen(true);
@@ -892,7 +893,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           </button>
         )}
       </div>
-      {picOpen && editor && <PictureDialog editor={editor} classId={classId} onClose={() => setPicOpen(false)} />}
+      {picOpen && editor && <PictureDialog editor={editor} classId={classId} initialDesignId={initialDesignId} returnTo={designerReturnTo} onClose={() => { setPicOpen(false); if (initialDesignId) onDesignHandoffDone?.(); }} />}
       {pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
       {questionAnchor && <QuestionDropdown
         anchor={questionAnchor}

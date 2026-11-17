@@ -833,6 +833,8 @@ const J = {
     await s.p.locator('.task-pick').last().click();
     await s.p.locator('.pic-node').first().waitFor();
     if (!await s.p.locator('.pic-node .pic-s').first().count()) throw Error('Changed visual size did not survive teacher reload');
+    const handoffTaskId = await s.p.locator('[data-coach-task-id]').getAttribute('data-coach-task-id');
+    if (!handoffTaskId) throw Error('Could not identify the task for Designer handoff');
     await s.p.goto(`${BASE}/dev.html?as=Mia`);
     await s.p.waitForFunction(async () => {
       if (!window.__mockReady) return false;
@@ -845,6 +847,41 @@ const J = {
     await s.p.locator('.task-row').last().locator('button').first().click();
     await s.p.locator('.pic-rendered img').first().waitFor();
     if (!await s.p.locator('.pic-rendered .pic-s').first().count()) throw Error('Learner does not see the teacher-selected visual size');
+    const returnTo = `/class/${s.demo.classId}/lesson/${s.demo.itemId}?task=${handoffTaskId}`;
+    await design.goto(`${BASE}/doc/${id}?returnTo=${encodeURIComponent(returnTo)}`);
+    await design.getByRole('button', { name: 'Use in Classes' }).click();
+    await design.getByRole('dialog', { name: 'Add pictures' }).waitFor();
+    if (new URL(design.url()).pathname !== `/class/${s.demo.classId}/lesson/${s.demo.itemId}`) throw Error('Designer did not return to the originating lesson');
+    const returned = design.getByRole('dialog', { name: 'Add pictures' });
+    await returned.getByRole('tab', { name: 'Designer' }).waitFor();
+    await returned.getByRole('radio', { name: 'Medium' }).click();
+    await returned.getByRole('button', { name: /Insert page 1/i }).click();
+    await returned.waitFor({ state: 'detached' });
+    await design.locator('.pic-node').last().click();
+    const editSource = design.getByRole('link', { name: 'Edit source in Designer' });
+    await editSource.waitFor();
+    const sourceUrl = new URL(await editSource.getAttribute('href'), BASE);
+    if (sourceUrl.pathname !== `/doc/${id}` || !sourceUrl.searchParams.get('returnTo')?.includes(handoffTaskId)) throw Error('Inserted picture lost its editable Designer source or return task');
+    await design.locator('.save-state.saved').waitFor();
+    const content = await design.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content || {}), { classId: s.demo.classId, itemId: s.demo.itemId, taskId: handoffTaskId });
+    if (!content.includes(`"designerId":"${id}"`)) throw Error('Designer source was not saved with the Class picture');
+    await design.reload();
+    await design.locator('.task-pick').last().click();
+    await design.locator('.pic-node').last().click();
+    await design.getByRole('link', { name: 'Edit source in Designer' }).last().waitFor();
+    const printedHandoff = await design.evaluate(async value => {
+      const { flattenTask } = await import('/src/lib/worksheet.ts');
+      const { inlineWorksheetHtml } = await import('/src/lib/worksheetHtml.ts');
+      const html = inlineWorksheetHtml(flattenTask({ title: 'Designer handoff', instruction: '', content: JSON.parse(value) }));
+      return new DOMParser().parseFromString(html, 'text/html').querySelectorAll('.ws-picture.pic-m').length;
+    }, content);
+    if (!printedHandoff) throw Error('Printed worksheet lost the inserted Designer picture or its chosen Medium size');
+    await design.goto(`${BASE}/dev.html?as=Mia`);
+    await design.waitForFunction(async () => { if (!window.__mockReady) return false; await window.__mockReady; return sessionStorage.getItem('mockuid') !== 'teacher1'; });
+    await design.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await design.locator('.task-row').last().waitFor();
+    await design.locator('.task-row').last().locator('button').first().click();
+    await design.locator('.pic-rendered .pic-m img').last().waitFor();
     return s;
   },
 
