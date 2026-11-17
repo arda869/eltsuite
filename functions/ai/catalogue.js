@@ -1,6 +1,58 @@
 // Snapshot of InsertGallery descriptions; the catalogue drift test keeps this complete.
 export const taskCatalogue = [
   {
+    "key": "activity-board",
+    "description": "Learners take turns rolling a die, moving along the board and answering the prompt on their square. Add text or pictures and choose special squares."
+  },
+  {
+    "key": "activity-bingo",
+    "description": "Each learner gets a different card from your shared set of items. Draw calls, let learners mark their squares and check a winning claim."
+  },
+  {
+    "key": "activity-dominoes",
+    "description": "Learners arrange tiles into a chain by matching each word or picture to the next tile’s matching half."
+  },
+  {
+    "key": "activity-memory",
+    "description": "Learners take turns turning over two hidden cards to find matching pairs. Each half can use text, a picture or both."
+  },
+  {
+    "key": "activity-strips",
+    "description": "Add a story in its correct order. Learners see shuffled strips and move them into a sequence before checking."
+  },
+  {
+    "key": "activity-cue",
+    "description": "Give learners private roles, information or goals. They talk to their partners while keeping their own cards hidden until you reveal them."
+  },
+  {
+    "key": "activity-survey",
+    "description": "Learners choose answers to your questions, see the class results and write a short summary."
+  },
+  {
+    "key": "activity-findSomeone",
+    "description": "Learners ask classmates questions and record a name beside each prompt. You can ask for an extra detail and limit each name to one use."
+  },
+  {
+    "key": "activity-ranking",
+    "description": "Learners discuss items, arrange them in order and confirm when their group agrees. Use a ranked list or Diamond 9."
+  },
+  {
+    "key": "activity-opinion",
+    "description": "Learners choose a position between two views. Keep positions private until you reveal them, then compare reasons or pair opposite views."
+  },
+  {
+    "key": "activity-spot",
+    "description": "Give partners different private pictures. They describe what they can see and mark differences before you reveal the answer regions."
+  },
+  {
+    "key": "activity-taboo",
+    "description": "Learners describe a word while avoiding the words underneath. Use a timer and optional scoring for each turn."
+  },
+  {
+    "key": "activity-speaking",
+    "description": "Give one learner a timed speaking prompt and their partner a listening task. Swap roles for another turn."
+  },
+  {
     "key": "storyboard",
     "description": "Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update."
   },
