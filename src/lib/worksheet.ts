@@ -754,8 +754,15 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         const maxW = Number.isFinite(customW) && customW > 0
           ? Math.min(opts.columns === 1 ? 600 : 300, Math.max(40, Math.round(customW * 2 / 3)))
           : { s: 120, m: 200, l: 300, full: opts.columns === 1 ? 600 : 300 }[r.pic.size as 's' | 'm' | 'l' | 'full'] ?? 200;
-        const w = Math.min(maxW, m.w);
-        const h = Math.round((m.h / m.w) * w);
+        const rawW = Math.min(maxW, m.w);
+        const rawH = Math.round((m.h / m.w) * rawW);
+        // A tall map can otherwise fill an entire Word page. With its task
+        // heading kept beside it, Word pushes both onto page two and leaves
+        // the header alone on page one. Fit the picture beneath that heading.
+        const pageHeight = opts.paper === 'A5' ? 480 : opts.paper === 'Letter' ? 720 : 780;
+        const scale = Math.min(1, pageHeight / Math.max(1, rawH));
+        const w = Math.max(1, Math.round(rawW * scale));
+        const h = Math.max(1, Math.round(rawH * scale));
         const type = /^data:image\/png/.test(m.data) ? 'png' : /^data:image\/gif/.test(m.data) ? 'gif' : 'jpg';
         const bytes = Uint8Array.from(atob(m.data.split(',')[1] ?? ''), (c) => c.charCodeAt(0));
         return [
