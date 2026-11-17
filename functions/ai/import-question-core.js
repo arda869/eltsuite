@@ -317,13 +317,18 @@ function shuffle2(list, seed) {
   return a;
 }
 var splitWords = (s) => s.trim().split(/\s+/).filter(Boolean);
-function splitKey(content) {
+function splitKey(content, keepActivities = false) {
   const key = {};
+  const activities = {};
   const dropAnswers = [];
   const walk = (n) => {
     const out = { ...n };
     const a = n.attrs ?? {};
     const id = a.id;
+    if (n.type === "communicativeActivity" && id && !keepActivities) {
+      activities[id] = structuredClone(n);
+      return { type: n.type, attrs: { id, kind: a.kind, instruction: a.instruction ?? "", sealed: true }, content: [] };
+    }
     if (id && !a.example) {
       if (n.type === "gap") {
         key[id] = { kind: "gap", answers: (a.answers ?? []).filter((x) => x.trim()), ...a.caseSensitive ? { cs: true } : {} };
@@ -369,6 +374,10 @@ function splitKey(content) {
         out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5, genre: a.genre ?? "", rubric: a.rubric ?? "none", criteria: a.criteria ?? [] };
       }
       if (key[id]) {
+        if (a.noCorrectAnswer === true) {
+          key[id].ungraded = true;
+          out.attrs = { ...out.attrs, noCorrectAnswer: true };
+        }
         if (a.spellingOverride === true) out.attrs = { ...out.attrs, spellingOverride: true };
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
         if (a.hint?.trim()) key[id].hint = a.hint.trim();
@@ -391,13 +400,14 @@ function splitKey(content) {
     if (n.content) out.content = n.content.map(fillBanks);
     return out;
   };
-  return { content: fillBanks(pub), key };
+  return { content: fillBanks(pub), key, activities };
 }
 function mergeKey(content, key) {
   const walk = (n) => {
     const out = { ...n };
     const a = n.attrs ?? {};
     const k = a.id ? key[a.id] : void 0;
+    if (n.type === "communicativeActivity" && k?.kind === "activity") return structuredClone(k.node);
     if (k) {
       if (n.type === "gap" && k.kind === "gap") out.attrs = { ...a, answers: k.answers, caseSensitive: !!k.cs };
       if ((n.type === "mcq" || n.type === "choice") && (k.kind === "mcq" || k.kind === "multi")) out.attrs = { ...a, correct: k.correct, optFeedback: k.optFb ?? [] };
@@ -415,6 +425,7 @@ function mergeKey(content, key) {
       if (n.type === "writing" && k.kind === "writing") out.attrs = { ...a, model: k.model };
       if (n.type === "pq" && k.kind === "pack") out.attrs = { id: a.id, kind: a.kind, data: mergePack(a.kind, a.data ?? {}, k.k) };
       out.attrs = { ...out.attrs, feedback: k.feedback ?? "", hint: k.hint ?? "" };
+      if (k.ungraded === true) out.attrs.noCorrectAnswer = true;
       if (a.spellingOverride === true) out.attrs.spellingOverride = true;
     }
     if (n.type === "wordbank") out.attrs = { extras: a.extras ?? [] };

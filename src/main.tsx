@@ -1,3 +1,4 @@
+import './communicative/activities.css';
 import { SpellingAssistant } from './spelling/SpellingAssistant';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { FirestoreRecovery } from './components/FirestoreRecovery';

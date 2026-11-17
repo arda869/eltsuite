@@ -1,4 +1,4 @@
-import { mergeKey } from './import-question-core.js';
+import { mergeKey, splitKey } from './import-question-core.js';
 import { activityMainInstruction } from './activities.js';
 import { editableTaskFields, editSchema, applyTaskTextEdits, editInstructions } from './task-edit.js';
 import { GenerationError } from './errors.js';
@@ -31,8 +31,8 @@ const fail=message=>{throw new HttpsError('failed-precondition',message);};
 async function sources(item) {
  const list=await item.collection('tasks').orderBy('order').get();
  return Promise.all(list.docs.filter(s=>s.get('kind')!=='section').map(async s=>{
-  const [body,key,notes]=await Promise.all([s.ref.collection('private').doc('body').get(),s.ref.collection('private').doc('key').get(),s.ref.collection('private').doc('notes').get()]);
-  const t=s.data();return {id:s.id,title:t.title,instructions:t.instructions??'',instrDoc:t.instrDoc??null,content:t.restricted?body.get('content'):t.content,key:key.data()??{},notes:notes.get('text')??'',family:t.family??null,variants:t.variants??[],variant:t.variant??null,order:t.order,restricted:!!t.restricted};
+  const [body,key,notes,activities]=await Promise.all([s.ref.collection('private').doc('body').get(),s.ref.collection('private').doc('key').get(),s.ref.collection('private').doc('notes').get(),s.ref.collection('private').doc('activities').get()]);
+  const t=s.data();const privateKey={...(key.data()??{}),...Object.fromEntries(Object.entries(activities.get('nodes')??{}).map(([id,node])=>[id,{kind:'activity',node}]))};const hydrated=mergeKey(t.restricted?body.get('content'):t.content,privateKey);return {id:s.id,title:t.title,instructions:t.instructions??'',instrDoc:t.instrDoc??null,content:hydrated,key:key.data()??{},notes:notes.get('text')??'',family:t.family??null,variants:t.variants??[],variant:t.variant??null,order:t.order,restricted:!!t.restricted};
  }));
 }
 export async function taskTools(req,{db,uid,cls,apiKey,model}) {
@@ -100,12 +100,13 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    if(hash(snapshot)!==old.sourceHash)fail('This activity changed. Generate a fresh draft before applying it.');
    if(old.mode==='edit') {
     const from=currentScope[0],ref=item.collection('tasks').doc(from.id),updated=applyTaskTextEdits(from,result.edits);
+    const separated=splitKey(mergeKey(updated.content,updated.key));updated.content=separated.content;updated.key=separated.key;
     // Keep a private recovery copy in the same atomic transaction as the edit.
     tx.set(job.collection('original').doc('task'),{...from,savedAt:Timestamp.now()});
     tx.set(ref.collection('versions').doc('before_'+d.requestId),{title:from.title,instructions:from.instructions,instrDoc:taskSnaps[0].get('instrDoc')??null,content:mergeKey(from.content,from.key),by:uid,at:Timestamp.now()});
     tx.update(ref,{title:updated.title,instructions:updated.instructions,instrDoc:updated.instructions===from.instructions?from.instrDoc:null,content:from.restricted?null:updated.content});
     if(from.restricted)tx.set(ref.collection('private').doc('body'),{content:updated.content});
-    tx.set(ref.collection('private').doc('key'),updated.key);
+    tx.set(ref.collection('private').doc('key'),updated.key);tx.set(ref.collection('private').doc('activities'),{nodes:separated.activities});
     tx.set(ref.collection('private').doc('notes'),{text:updated.notes,updatedAt:Timestamp.now()});
     tx.update(job,{appliedTaskId:from.id,appliedAt:Timestamp.now()});return;
    }
@@ -119,7 +120,7 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    const native=result.native,activity=result.activity;
    tx.create(target,{kind:'task',title:old.mode==='differentiate'?main.get('title'):activity.title,instructions:activityMainInstruction(activity),content:old.mode==='differentiate'?null:native.content,restricted:old.mode==='differentiate',...(old.mode==='differentiate'?{family:main.id,variant:old.variantLabel,allowed:[]}:{}),order:old.mode==='differentiate'?main.get('order'):(last.docs[0]?.get('order')??-1)+1,hidden:false,locked:false,layout:activity.layout==='columns'?'two':'single',createdAt:Timestamp.now()});
    if(old.mode==='differentiate') {tx.create(target.collection('private').doc('body'),{content:native.content});tx.update(main.ref,{family:main.id,variant:main.get('variant')??'Standard',variants:[...(main.get('variants')??[]),target.id]});}
-   tx.create(target.collection('private').doc('key'),native.key);tx.create(target.collection('private').doc('notes'),{text:native.notes,updatedAt:Timestamp.now()});
+   tx.create(target.collection('private').doc('key'),native.key);tx.create(target.collection('private').doc('activities'),{nodes:native.activities??{}});tx.create(target.collection('private').doc('notes'),{text:native.notes,updatedAt:Timestamp.now()});
    tx.update(item,{taskCount:(itemNow.get('taskCount')??current.length)+1});
    tx.update(job,{appliedTaskId:target.id,appliedAt:Timestamp.now()});
   });

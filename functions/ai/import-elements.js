@@ -90,5 +90,5 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
  }
  if(addBank&&elements.some(e=>e.kind==='drop')&&!elements.some(e=>e.kind==='bank'))content.unshift({type:'wordbank',attrs:{extras:[]}});
  const separated=splitKey({type:'doc',content});
- return {content:separated.content.content,key:separated.key,notes:notes.join('\n\n'),requirements:importRequirements(elements)};
+ return {content:separated.content.content,key:separated.key,activities:separated.activities,notes:notes.join('\n\n'),requirements:importRequirements(elements)};
 }

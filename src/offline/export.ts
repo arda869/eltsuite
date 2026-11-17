@@ -1,3 +1,4 @@
+import {isActivityPicture,resolveActivityPicture} from '../communicative/privatePictures';
 import {collection,doc,getDoc,getDocs,orderBy,query} from 'firebase/firestore';
 import {auth,db} from '../lib/firebase';
 import {TEXT_SCALE,type TextSize} from '../lib/auth';
@@ -19,7 +20,7 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
  async function embed(url:string,space:string):Promise<string>{
   if(!url)return '';if(url.startsWith('data:'))return url;
   const k=space+'|'+url;if(cache.has(k))return cache.get(k)!;
-  const promise=(async()=>{const resolved=url.startsWith('media:')?await audioUrl(space,url.slice(6)):url;
+  const promise=(async()=>{const resolved=isActivityPicture(url)?await resolveActivityPicture(space,url):url.startsWith('media:')?await audioUrl(space,url.slice(6)):url;
    const response=await fetch(resolved,{signal:AbortSignal.timeout(60000)});if(!response.ok)throw Error('A media file could not be downloaded. Check its access and try again.');
    const blob=await response.blob();total+=blob.size;if(total>200*1024*1024)throw Error('This download has more than 200 MB of media. Split the lesson into smaller lessons first.');return dataUrl(blob);})();cache.set(k,promise);return promise;
  }
@@ -30,7 +31,7 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
   if(n.type==='classroomGame'){warnings.add('Games are played online.');return {type:'paragraph',content:[{type:'text',text:'A game: open the lesson online to play it.'}]};}
   if(['media','inlineMedia'].includes(n.type||'')&&a?.media){const mediaSpace=String(a.space||space);const id=String(a.media);const m=await loadManifest(mediaSpace,id);if(!m)throw Error('A recording could not be loaded.');if(m.kind==='link'&&/youtu(?:be|\.be)|vimeo/i.test(m.url||'')){const warning=`${m.title||'Video'} requires internet (${m.url}).`;warnings.add(warning);return {type:'paragraph',content:[{type:'text',text:warning}]};}const mode=mediaModes.get(`${mediaSpace}/${id}`)||'none';if(mode==='after')warnings.add('After listening scripts are available in the online lesson. The offline recording still plays.');const script=offlineLearnerScript(mode,mode==='karaoke'||mode==='button'?(await loadTeacherManifestStrict(mediaSpace,id))?.script||[]:[]);return {type:'offlineMedia',attrs:{src:await embed(m.kind==='link'?m.url||'':await soundUrl(mediaSpace,id,m),mediaSpace),video:!!m.video,title:m.title||a.title||'Recording',script,scriptMode:mode==='after'?'none':mode,inline:n.type==='inlineMedia',mute:a.mute||[]}};}
   // Also resolve image URLs nested inside question packs, diagrams and storyboards.
-  async function assets(value:any,key=''):Promise<any>{if(typeof value==='string'&&['src','image','url'].includes(key)&&/^(https?:|blob:|media:)/.test(value))return embed(value,space);if(Array.isArray(value))return Promise.all(value.map(v=>assets(v,key)));if(value&&typeof value==='object'){const entries=await Promise.all(Object.entries(value).map(async([k,v])=>[k,await assets(v,k)]));return Object.fromEntries(entries);}return value;}
+  async function assets(value:any,key=''):Promise<any>{if(typeof value==='string'&&['src','image','url'].includes(key)&&/^(https?:|blob:|media:|private-activity:|activity-picture:|comparison-picture:)/.test(value))return embed(value,space);if(Array.isArray(value))return Promise.all(value.map(v=>assets(v,key)));if(value&&typeof value==='object'){const entries=await Promise.all(Object.entries(value).map(async([k,v])=>[k,await assets(v,k)]));return Object.fromEntries(entries);}return value;}
   if(a)out.attrs=await assets(a);
   if(n.content)out.content=await Promise.all(n.content.map(c=>node(c,space)));
   return out;

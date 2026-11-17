@@ -1,3 +1,4 @@
+import { configFromNode, type ActivityConfig } from '../communicative/model';
 import { CRITERIA, DEVELOPMENT_FORMS, RATINGS, TT_KINDS, type TTKind, type TTField } from '../training/formDefinitions';
 import { studioDefinition } from '../coach/studioForms';
 import { credit } from './brand';
@@ -69,7 +70,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { id?: string; variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { family?: string | null; activityBlocks?: Record<string, Block[]>; activities?: ActivityConfig[]; id?: string; variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -102,6 +103,8 @@ const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChar
 
 export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsTask {
   const blocks: Block[] = [];
+  const activities: ActivityConfig[] = [];
+  const activityBlocks: Record<string, Block[]> = {};
   let cur: Block[] = blocks;
   const answers: { n: number; label?: string; text: string }[] = [];
   let n = 0;
@@ -125,6 +128,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
     for (const node of nodes ?? []) {
+      const beforeAnswers = answers.length, beforeMarks = marks;
       const a = node.attrs ?? {};
       switch (node.type) {
         case 'text': {
@@ -214,10 +218,11 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           else if (node.type === 'icon') out.push({ icon: { name: String(a.name ?? ''), tone: String(a.tone ?? 'ink') } });
           else if (node.type === 'sym') out.push({ sym: { text: String(a.text ?? ''), shape: String(a.shape ?? 'box'), tone: String(a.tone ?? 'ink') } });
       }
+      if (a.noCorrectAnswer) { answers.splice(beforeAnswers); marks = beforeMarks; }
     }
     return out;
   };
-  const walk = (node: JSONContent, list?: 'bullet' | 'number', mark?: string) => {
+  const walkRaw = (node: JSONContent, list?: 'bullet' | 'number', mark?: string) => {
     const a = node.attrs ?? {};
     // A whole question as an example: printed as usual, numbered 0, with its answer written in.
     if (a.example && ['mcq', 'match', 'order', 'writing', 'pq'].includes(node.type ?? '') && !(node.type === 'pq' && a.kind === 'speaking')) {
@@ -540,6 +545,11 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type !== 'textBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner, ...(node.type === 'textBox' ? { box: a } : {}) });
         return;
       }
+      case 'communicativeActivity': {
+        const config = configFromNode(node); activities.push(config);
+        for (const item of config.items) activityBlocks[item.id] = flattenTask({title: '',content: {type: 'doc',content: item.content ?? []}},lessonStyle).blocks;
+        return;
+      }
       case 'randomPick': {
         // cards, wheels and boxes print as cut-out cards on their own sheet
         const cards: CutCard[] = [];
@@ -648,6 +658,11 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         else if (node.type && ONLINE[node.type]) online.push(ONLINE[node.type]);
     }
   };
+  const walk = (node: JSONContent, list?: 'bullet' | 'number', mark?: string) => {
+    const beforeAnswers = answers.length, beforeMarks = marks;
+    walkRaw(node, list, mark);
+    if (node.attrs?.noCorrectAnswer) { answers.splice(beforeAnswers); marks = beforeMarks; }
+  };
   // A formatted instruction keeps its bold, colour, IPA and word stress on paper too.
   // An instruction written for paper replaces the online one.
   const paperInstr = t.print?.instr?.trim();
@@ -676,7 +691,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   }
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
   const icon = lessonStyle === 'young' ? youngIcon(t.print?.icon && t.print.icon !== 'same' ? t.print.icon : t.ylIcon, t.content) : null;
-  return { ...(t.id ? {id:t.id} : {}), ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(t.id ? {id:t.id} : {}), ...(t.family ? {family:t.family} : {}), ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(activities.length ? { activities, activityBlocks } : {}), ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
@@ -700,6 +715,7 @@ export function flattenLesson(tasks: ExportTask[], ids?: Set<number>) {
 // ---------------------------------------------------------------- DOCX
 
 export async function lessonDocx(title: string, items: WsItem[], opts: Options): Promise<Blob> {
+  if (items.some(item => item.kind === 'task' && item.task.activities?.length)) throw new Error('Choose PDF to export these communicative activities with their cards, boards and cut lines. Word export for these elements is not available yet.');
   // Word keeps the same look as the print version: serif text, the class colour for numbers and
   // labels, tinted boxes. Fonts that ship with Word and Google Docs are used so it looks right anywhere.
   const ACC = (opts.accent ?? '#d98f63').replace('#', '').toUpperCase();
@@ -1082,7 +1098,12 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
   items.forEach((it) => {
     if (it.kind !== 'task') return;
     pictures(it.task.instrRuns ?? []);
+    for (const activity of it.task.activities ?? []) {
+      for (const item of activity.items) for (const picture of [item.picture,item.matchPicture]) if (picture?.src) out.set(picture.src,{key:picture.src,src:picture.src});
+      for (const version of activity.settings.versions ?? []) if (version.picture.src) out.set(version.picture.src, { key: version.picture.src, src: version.picture.src });
+    }
     blocks(it.task.blocks);
+    Object.values(it.task.activityBlocks ?? {}).forEach(blocks);
     it.task.cutouts?.forEach((set) => set.cards.forEach((c) => blocks(c.blocks)));
   });
   return [...out.values()];

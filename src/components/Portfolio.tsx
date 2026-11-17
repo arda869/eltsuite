@@ -87,7 +87,7 @@ function LearnerPortfolio({ c, l, items, answers, docs, files, me, avg }: { c: C
   const done = items.filter((i) => ['submitted', 'marked'].includes(itemResult(i, answers).status)).length;
   // Long answers the teacher marked, with the comment.
   const marked = answers.flatMap((a) =>
-    Object.values(a.marks ?? {})
+    Object.entries(a.marks ?? {}).filter(([id]) => !a.ungradedIds?.includes(id)).map(([, mark]) => mark)
       .filter((m) => m.comment?.trim() || m.score !== null)
       .map((m) => ({ title: items.find((i) => i.id === a.itemId)?.title ?? 'A lesson', comment: m.comment ?? '', score: m.score, at: a.submittedAt ?? 0 })),
   );

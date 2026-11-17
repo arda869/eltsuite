@@ -2,6 +2,7 @@
 // their library (users/{uid}/archive) and the files they own (sharedDocs). A teacher over their
 // space gets accounts/{uid}.over = true, and the database rules stop new uploads until they are
 // under it again. Runs every 15 minutes from GitHub Actions, with the deploy key.
+import {taskCollectionBytes,personalTaskBytes,privatePictureBytes,liveActivityBytes} from './communicative-space.mjs';
 import { purgeFileBin } from './file-bin-cleanup.mjs';
 import { getDatabase } from 'firebase-admin/database';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
@@ -37,17 +38,20 @@ for (const t of teachers.docs) {
   for (const a of videoAssets.docs) used += Number(a.get('size')) || 0;
   for (const p of videoProjects.docs) used += JSON.stringify(p.data()).length;
   // Lessons take space too: every task in the teacher's classes, and lessons kept in Files.
-  let lessons = 0;
+  const userRef=db.collection('users').doc(uid);
+  used += await privatePictureBytes(userRef);
+  let lessons = await personalTaskBytes(userRef);
   const classes = await db.collection('classes').where('teacherId', '==', uid).get();
   for (const c of classes.docs) {
     if (c.data().status === 'deleted') continue;
+    used += await privatePictureBytes(c.ref) + await liveActivityBytes(c.ref);
     for (const item of (await c.ref.collection('items').get()).docs) {
       lessons += JSON.stringify(item.data()).length;
-      for (const t of (await item.ref.collection('tasks').get()).docs) lessons += JSON.stringify(t.data()).length;
+      lessons += await taskCollectionBytes(item.ref.collection('tasks'));
     }
   }
   const lessonFiles = await db.collection('sharedDocs').where('owner', '==', uid).where('kind', '==', 'lesson').get();
-  for (const f of lessonFiles.docs) for (const t of (await f.ref.collection('tasks').get()).docs) lessons += JSON.stringify(t.data()).length;
+  for (const f of lessonFiles.docs) lessons += await taskCollectionBytes(f.ref.collection('tasks'));
   used += lessons;
   const o = a.org ? org.get(a.org) : null;
   const gb = o ? Number(o.teachers?.[uid]?.gb ?? o.perTeacherGb ?? 1) : Number(a.limitGb ?? PLAN_GB[a.plan] ?? 1);

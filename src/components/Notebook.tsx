@@ -387,7 +387,7 @@ function PageCard({ classId, c, me, e, topics, places }: { classId: string; c: C
     setEditing(true);
   };
   const save = async () => {
-    const { content, key: k } = splitKey(draft ?? { type: 'doc', content: [] });
+    const { content, key: k } = splitKey(draft ?? { type: 'doc', content: [] }, true);
     await saveEntry(classId, me, c, e, { ...e.data, title: title.trim() || 'Untitled page', text: content, key: k });
     setEditing(false);
   };

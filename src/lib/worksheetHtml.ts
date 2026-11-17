@@ -1,3 +1,5 @@
+import { printActivity } from '../communicative/print';
+import activityPrintCss from '../communicative/print.css?raw';
 import { youngSheetCss } from './youngWorksheet';
 import { examSheetCss } from './examWorksheet';
 import { numberingCss, themeWorksheetCss } from './themeWorksheet';
@@ -476,6 +478,7 @@ ${opts.lessonStyle === 'young' ? youngSheetCss(opts.origin) : ''}
 ${opts.lessonStyle === 'exam' ? examSheetCss() : ''}
 ${themeWorksheetCss(opts.lessonStyle)}
 ${numberingCss(opts.lessonStyle)}
+${activityPrintCss}
 `;
 }
 
@@ -486,7 +489,7 @@ export function inlineWorksheetHtml(task: WsTask, pictures: Options['media'] = {
   const cards = (task.cutouts ?? []).flatMap(set => set.cards.map(card =>
     `<section class="paper-card"><strong>${esc(card.title)}</strong>${card.blocks.map(block).join('')}</section>`
   ));
-  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}${cards.join('')}</div>`;
+  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}${cards.join('')}${(task.activities ?? []).flatMap(c => printActivity(c, { media: MEDIA, renderItem: item => (task.activityBlocks?.[item.id] ?? []).map(block).join('') })).map(p => p.html).join('')}</div>`;
 }
 export function sheetParts(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
@@ -495,7 +498,7 @@ export function sheetParts(title: string, items: WsItem[], opts: Options) {
   const marks = !!opts.marks;
   numberMedia(items);
   let num = 0;
-  const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks)));
+  const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks) + (it.task.activities ?? []).flatMap(c => printActivity(c, {media: MEDIA, renderItem: item => (it.task.activityBlocks?.[item.id] ?? []).map(block).join('')})).map(p => p.html).join('')));
   const html = worksheetHtml(title, items, opts);
   const pick = (id: string) => html.match(new RegExp(`<template id="${id}">([\\s\\S]*?)</template>`))?.[1] ?? '';
   return { css: sheetCss(opts), band: pick('band-main'), foot: pick('foot'), pieces, credit: '' };
@@ -513,6 +516,11 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   const cols = opts.columns ?? 2;
   const marks = !!opts.marks;
   const tasks = items.filter((i): i is { kind: 'task'; task: WsTask } => i.kind === 'task').map((i) => i.task);
+
+  const roleFamilies = new Map<string, WsTask[]>();
+  for (const t of tasks) if (t.family) roleFamilies.set(t.family,[...(roleFamilies.get(t.family) ?? []),t]);
+  for (const [id, family] of roleFamilies) if (family.length < 2 || family.some(t => t.variant && !/^[A-Z]$/.test(t.variant))) roleFamilies.delete(id);
+  const paired = new Set([...roleFamilies.values()].flat());
 
   // Units in reading order. Section totals (exams) follow the last task of each section.
   numberMedia(items);
@@ -532,10 +540,11 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
     } else {
       num++;
       secMarks += it.task.marks;
-      units.push(taskUnit(it.task, num, marks));
+      if (!paired.has(it.task) && (it.task.blocks.length || !it.task.activities?.length)) units.push(taskUnit(it.task, num, marks));
     }
   }
   closeSection();
+  for (let i = units.length - 1; i >= 0; i--) if (units[i].includes('unit section') && (i === units.length - 1 || units[i + 1].includes('unit section'))) units.splice(i,1);
   const grand = tasks.reduce((s, t) => s + t.marks, 0);
   if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
 
@@ -572,6 +581,8 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
     }
   }
 
+  const activityPages = tasks.flatMap(t => (t.activities ?? []).flatMap(c => printActivity(c, { media: MEDIA, renderItem: item => (t.activityBlocks?.[item.id] ?? []).map(block).join('') }).map(piece => `<section data-cut="${piece.cutout ? '1' : '0'}" data-label="${esc(piece.label)}">${piece.html}</section>`)));
+  for (const family of roleFamilies.values()) activityPages.push(`<section data-cut="1" data-label="Task versions"><div class="pa-versions pa-task-versions">${family.map((t,n) => `<section class="pa-version"><h3 class="pa-role">Version ${esc(t.variant || String.fromCharCode(65+n))}</h3>${taskUnit({...t,variant:undefined},tasks.indexOf(t)+1,marks)}${(t.activities ?? []).flatMap(c=>printActivity(c,{media:MEDIA})).map(p=>p.html).join('')}</section>`).join('')}</div></section>`);
   const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `
     <header class="band">
@@ -596,6 +607,7 @@ ${sheetCss(opts)}
 <div id="pages"></div>
 <template id="u-main">${units.join('')}</template>
 <template id="cards">${cardSets.join('')}</template>
+<template id="activity-pages">${activityPages.join('')}</template>
 <template id="band-cards">${band(title + ' · Cards to cut out')}</template>
 <template id="u-key">${keyUnits.join('')}</template>
 <template id="band-main">${band(title)}</template>
@@ -758,10 +770,55 @@ ${sheetCss(opts)}
       grid.appendChild(cards[i]);
     }
   }
+  function layoutActivities() {
+    var pieces = document.getElementById('activity-pages').content.children;
+    for (var i = 0; i < pieces.length; i++) {
+      var piece = pieces[i], cols = newPage(piece.dataset.cut === '1' ? 'band-cards' : 'band-main');
+      var first = cols[0], page = first.closest('.page');
+      if (piece.dataset.cut === '1') page.classList.add('cut-page');
+      var wrap = first.parentElement; wrap.style.gridTemplateColumns = '1fr';
+      for (var j = 1; j < cols.length; j++) cols[j].remove();
+      var body = piece.cloneNode(true); body.classList.add('unit');
+      if (piece.dataset.cut === '1') {
+        var heading = document.createElement('div'); heading.className = 'cut-head';
+        heading.innerHTML = '<span class="scissors"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.6 7.6 20 18M8.6 16.4 20 6"/></svg></span><span></span>';
+        heading.lastElementChild.textContent = piece.dataset.label || 'Cut-out cards'; body.prepend(heading);
+      }
+      first.appendChild(body);
+      // Pack rich cards by their measured height rather than assuming every
+      // card has the same amount of text. Keep each physical card intact.
+      var cardBody = body, cardCol = first, cardGrid = cardBody.querySelector('.pa-cut-grid');
+      for (var guard = 0; cardGrid && guard < 200; guard++) {
+        if (cardCol.scrollHeight <= cardCol.clientHeight + 1) break;
+        var overflowCards = [];
+        while (cardCol.scrollHeight > cardCol.clientHeight + 1 && cardGrid.children.length > 1) overflowCards.unshift(cardGrid.removeChild(cardGrid.lastElementChild));
+        if (cardCol.scrollHeight > cardCol.clientHeight + 1 && cardGrid.children.length === 1) cardGrid.style.setProperty('--pa-cols','1');
+        if (!overflowCards.length) break;
+        var nextCols = newPage(piece.dataset.cut === '1' ? 'band-cards' : 'band-main');
+        cardCol = nextCols[0]; cardCol.parentElement.style.gridTemplateColumns = '1fr';
+        for (var cc = 1; cc < nextCols.length; cc++) nextCols[cc].remove();
+        if (piece.dataset.cut === '1') cardCol.closest('.page').classList.add('cut-page');
+        cardBody = body.cloneNode(true); cardGrid = cardBody.querySelector('.pa-cut-grid');cardGrid.innerHTML='';
+        overflowCards.forEach(function(card){if(card)cardGrid.appendChild(card);});cardCol.appendChild(cardBody);
+      }
+      // Keep each version intact. When two labelled versions do not fit as
+      // half-pages, give each its own page and preserve its natural proportions.
+      var versions = body.querySelector('.pa-versions');
+      if (versions && versions.children.length > 1) {
+        var available = first.clientHeight;
+        var parts = Array.prototype.slice.call(versions.children);
+        if (parts.length > 2 || parts.some(function (v) { return v.getBoundingClientRect().height > available / 2 - 12; })) {
+          versions.innerHTML = ''; versions.appendChild(parts[0]);
+          for (var v = 1; v < parts.length; v++) { var next = newPage('band-cards')[0]; next.parentElement.style.gridTemplateColumns = '1fr'; Array.prototype.slice.call(next.parentElement.children).slice(1).forEach(function (x) { x.remove(); }); next.closest('.page').classList.add('cut-page'); var unit = document.createElement('div'); unit.className = 'unit pa-activity'; unit.appendChild(parts[v]); next.appendChild(unit); }
+        }
+      }
+    }
+  }
   function layout(preparing) {
     pagesEl.innerHTML = '';
     // The worksheet, then the answer key, then the cards to cut out: always last, and not numbered.
     flow('u-main', 'band-main');
+    layoutActivities();
     flow('u-key', 'band-key');
     var sets = document.getElementById('cards').content.children;
     for (var si = 0; si < sets.length; si++) layoutCards(sets[si]);

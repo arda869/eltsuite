@@ -1,3 +1,4 @@
+import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -77,7 +78,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
 
   return (
     <NodeViewWrapper className={'block-node reflect-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
-      <div className="mcq-tools">
+      <div className="mcq-tools"><NoCorrectAnswer on={!!node.attrs.noCorrectAnswer} onChange={v => updateAttributes({ noCorrectAnswer: v })} />
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">{about === 'self' ? 'Self-reflection' : 'Peer feedback'}</span>
         <span className="seg small-seg" role="radiogroup" aria-label="About">

@@ -163,7 +163,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
       await setDoc(doc(db, answerPath), { responses: kept, checked: false, checkedParts: [], score: 0, total: 0 }, { merge: true });
       return { data: { key: null, checked: false, responses: kept } };
     }
-    if (!answer.checked) await setDoc(doc(db, answerPath), { ...scoreTask(qs, key, answer.responses ?? {}), checked: true, submittedAt: Date.now(), attempts: (answer.attempts ?? 0) + 1 }, { merge: true });
+    if (!answer.checked) await setDoc(doc(db, answerPath), { ...scoreTask(qs, key, answer.responses ?? {}), ungradedIds: Object.keys(key).filter(id=>key[id]?.ungraded), checked: true, submittedAt: Date.now(), attempts: (answer.attempts ?? 0) + 1 }, { merge: true });
     return { data: { key, checked: true } };
   }
   if (name === 'resubmitCorrection') {
@@ -174,6 +174,11 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if (!uid || answer?.corrections?.[d.questionId]?.status !== 'open') throw Error('This correction is not available to you.');
     await setDoc(doc(db, path), { corrections: { ...answer.corrections, [d.questionId]: { ...answer.corrections[d.questionId], status: 'resubmitted', at: Date.now() } } }, { merge: true });
     return { data: { saved: true } };
+  }
+  if (name === 'communicativeActivity') {
+    const [{ runCommunicativeActivity }, { adminDb }, { getAuth }] = await Promise.all([import('../../functions/communicative/service.js'), import('./quiz-admin'), import('./auth')]);
+    const user = getAuth().currentUser;
+    return { data: await runCommunicativeActivity(adminDb, user ? { uid: user.uid, token: {} } : null, d) };
   }
   if (name === 'quizShow') {
     if (d.action === 'end' && sessionStorage.getItem('mockQuizEndFailure')) {

@@ -255,7 +255,8 @@ export function nativeTask(t, index, namespace = '') {
     content.push({type:'subTask',attrs:{id:'st'+index+'_'+j,instr:st.instructions},content:children.length?children:[p('')]});
   }
   const doc={type:'doc',content};
-  const separated=imported?splitKey(mergeKey(doc,key)):{content:doc,key};
+  const hasActivity=node=>node?.type==='communicativeActivity'||node?.content?.some(hasActivity);
+  const separated=imported||hasActivity(doc)?splitKey(mergeKey(doc,key)):{content:doc,key,activities:{}};
   return {...separated,notes:notes.join('\n\n')};
 }
 

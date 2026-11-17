@@ -1,0 +1,194 @@
+/* =====================================================================================
+   New for communicative activities (.pa-). Port these into sheetCss.
+   Same materials as above: Karla labels, Fraunces learner text, one accent, warm greys,
+   dashed .9pt #6f6a64 cut lines, mm and pt only.
+   ===================================================================================== */
+.pa-body { flex: 1; min-height: 0; padding: 7mm var(--side) 0; display: flex; flex-direction: column; }
+.pa-activity { font: 400 10.2pt/1.5 Fraunces, serif; }
+.pa-cut-grid { display: grid; grid-template-columns: repeat(var(--pa-cols,2),minmax(0,1fr)); gap: 0; }
+.pa-cut-grid > .cut-card { min-height: 32mm; box-sizing: border-box; break-inside: avoid; padding: 3mm; }
+.pa-picture { display: block; width: min(100%,40mm); height: 30mm; object-fit: cover; border-radius: 2mm; align-self: center; margin-inline: auto; }
+.pa-board { max-height: 174mm; }
+.pa-board .pa-sq { aspect-ratio: auto; font-size: var(--pa-board-font,9.2pt); min-height: 0; }
+.pa-sq .pa-picture { width: min(100%,16mm); height: 12mm; }
+.pa-bingo { min-height: 75mm; display: flex; flex-direction: column; }
+.pa-memory { display: flex; align-items: center; justify-content: center; text-align: center; }
+.pa-cue { min-height: 80mm !important; display: flex; flex-direction: column; }
+.pa-useful { margin-top: auto; padding: 2mm; background: var(--tint); }
+.pa-useful > * { display: block; }
+.pa-taboo h3 { border-bottom: .5pt solid var(--hair); text-align: center; }
+.pa-taboo-words { display: grid; text-align: center; }
+.pa-strip { position: relative; display: flex; align-items: center; gap: 3mm; }
+.pa-strip-key { margin-left: auto; color: #aaa; font: 6pt Karla,sans-serif; }
+.pa-counter-number { display: grid; place-items: center; width: 13mm; height: 13mm; border: .8pt solid var(--accent); border-radius: 50%; }
+.pa-write-name { font: 7pt Karla,sans-serif; border-bottom: .5pt solid var(--hair); }
+.pa-tally, .pa-fsw { width: 100%; border-collapse: collapse; }
+.pa-tally td, .pa-tally th, .pa-fsw td, .pa-fsw th { border-bottom: .5pt solid var(--hair); padding: 2.5mm; text-align: left; }
+.pa-fsw small { display: block; }
+.pa-answer-line { display: inline-block; min-width: 28mm; border-bottom: .5pt solid var(--ink); height: 5mm; }
+.pa-chart { display: grid; grid-template-columns: repeat(var(--pa-bars,3),1fr); align-items: end; min-height: 70mm; gap: 2mm; }
+.pa-chart > div { min-width: 0; text-align: center; }
+.pa-blank-bar { display: block; height: 60mm; border: .5pt solid var(--hair); background: repeating-linear-gradient(to top,transparent 0,transparent 9.8mm,var(--hair) 9.8mm,var(--hair) 10mm); }
+.pa-summary-lines > span { display: block; height: 7.4mm; border-bottom: .5pt solid var(--hair); }
+.pa-ranking-list li { padding: 2mm; border-bottom: .5pt solid var(--hair); min-height: 8mm; }
+.pa-diamond > div { display: flex; justify-content: center; gap: 2mm; margin-bottom: 2mm; }
+.pa-diamond > div > span { width: 37mm; height: 20mm; border: .5pt solid var(--hair); padding: 2mm; }
+.pa-opinion { margin-bottom: 7mm; }
+.pa-opinion-line { display: flex; justify-content: space-between; border-bottom: 1pt solid var(--ink); margin: 5mm 0 2mm; }
+.pa-opinion-line i { height: 3mm; border-left: .7pt solid var(--ink); }
+.pa-opinion-labels { display: flex; justify-content: space-between; font: 7pt Karla,sans-serif; }
+.pa-versions { display: flex; flex-direction: column; }
+.pa-version { padding: 3mm 0; break-inside: avoid; }
+.pa-version + .pa-version { border-top: .9pt dashed #6f6a64; }
+.pa-version-picture { display: block; width: 100%; height: auto; margin-top: 3mm; max-height: 185mm; object-fit: contain; }
+.pa-lead { font-size: 1.08em; line-height: 1.35; margin: 0 0 3mm; }
+.pa-label { font: 700 6.8pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.pa-soft { font: 500 7.4pt Karla, sans-serif; color: var(--muted); }
+.pa-chip { display: inline-grid; place-items: center; min-width: 5mm; height: 5mm; padding: 0 1.4mm; border-radius: 2.5mm; background: var(--accent); color: #fff; font: 800 7pt/1 Karla, sans-serif; }
+.pa-role { display: inline-flex; align-items: center; gap: 1.6mm; padding: .8mm 3mm .8mm 1mm; border-radius: 999px; background: var(--ink); color: #fff; font: 800 7.4pt Karla, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.pa-role b { display: grid; place-items: center; width: 5mm; height: 5mm; border-radius: 50%; background: var(--accent); font-size: 8pt; letter-spacing: 0; }
+.pa-row { display: flex; gap: 6mm; align-items: flex-start; }
+.pa-grow { flex: 1; min-width: 0; }
+
+/* Board game: a snake path of squares, ladders and snakes drawn on top in the accent */
+.pa-board { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 1.8mm; padding: 3mm; border-radius: 3mm; background: var(--band); }
+.pa-sq { position: relative; aspect-ratio: .88; background: #fff; border-radius: 1.8mm; padding: 1.8mm 2mm 2mm; display: flex; flex-direction: column; justify-content: flex-end; font: 400 9.6pt/1.25 Fraunces, serif; color: var(--ink); }
+.pa-sq .n { position: absolute; top: 1.6mm; left: 1.8mm; font: 800 7pt Karla, sans-serif; color: #a9a49d; }
+.pa-sq.start, .pa-sq.finish { background: var(--ink); color: #fff; font: 800 9pt Karla, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.pa-sq.start .n, .pa-sq.finish .n { color: var(--accent); }
+.pa-sq.special { background: var(--tint); font: 700 8pt/1.2 Karla, sans-serif; color: var(--accent-ink); }
+.pa-sq.special::before { content: attr(data-icon); position: absolute; top: 1.2mm; right: 1.8mm; font: 400 11pt Karla, sans-serif; color: var(--accent); }
+.pa-board svg.paths { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pa-board svg.paths .ladder { stroke: var(--accent); stroke-width: .9; fill: none; stroke-linecap: round; }
+.pa-board svg.paths .snake { stroke: var(--accent-ink); stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-dasharray: .1 2.4; }
+.pa-board svg.paths .head { fill: var(--accent-ink); }
+.pa-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 6mm; margin: 0; padding: 0; list-style: none; counter-reset: r; font: 8.8pt/1.4 Karla, sans-serif; color: #3d3a36; }
+.pa-rules li { counter-increment: r; display: flex; gap: 2mm; } .pa-rules li::before { content: counter(r); flex: none; width: 3.4mm; font: 800 8.8pt Karla, sans-serif; color: var(--accent-ink); }
+.pa-counters { display: flex; align-items: center; gap: 3mm; }
+.pa-counter { width: 11mm; height: 11mm; border-radius: 50%; border: .9pt dashed #6f6a64; display: grid; place-items: center; }
+.pa-counter i { width: 7mm; height: 7mm; border-radius: 50%; background: var(--c); }
+
+/* Bingo cards */
+.pa-bingo { padding: 4mm 4.4mm 4.4mm; gap: 2.4mm; }
+.pa-bingo-head { display: flex; justify-content: space-between; align-items: baseline; }
+.pa-bingo-word { font: 800 15pt/1 Karla, sans-serif; letter-spacing: .32em; color: var(--accent-ink); }
+.pa-bingo-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; border-top: .9pt solid var(--ink); border-left: .9pt solid var(--ink); }
+.pa-bingo-grid span { display: grid; place-items: center; text-align: center; border-right: .9pt solid var(--ink); border-bottom: .9pt solid var(--ink); font: 400 11.5pt/1.15 Fraunces, serif; padding: 1mm; }
+.pa-bingo-grid span:nth-child(odd):nth-child(-n+4), .pa-bingo-grid span:nth-child(even):nth-child(n+5):nth-child(-n+8), .pa-bingo-grid span:nth-child(odd):nth-child(n+9):nth-child(-n+12), .pa-bingo-grid span:nth-child(even):nth-child(n+13) { background: #f6f5f3; }
+.pa-calls { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 4mm; }
+.pa-calls ol { flex: 1; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(8, 1fr); gap: 1.2mm 2mm; font: 600 8.2pt Karla, sans-serif; }
+.pa-calls li { display: flex; align-items: center; gap: 1.2mm; } .pa-calls li::before { content: ''; width: 2.8mm; height: 2.8mm; border: .8pt solid #8a847d; border-radius: .5mm; flex: none; }
+
+/* Dominoes: two halves; the join is a solid accent line, the cut is dashed */
+.pa-dom { flex-direction: row; padding: 0; gap: 0; min-height: 24mm; }
+.pa-dom > span { flex: 1; display: flex; align-items: center; padding: 2.6mm 4mm; }
+.pa-dom > span:first-child { font: 400 9.2pt/1.35 Karla, sans-serif; color: #3d3a36; border-right: 1.4pt solid var(--accent); }
+.pa-dom > span:last-child { font: 600 12.5pt/1.2 Fraunces, serif; justify-content: center; text-align: center; }
+.pa-dom .end { font: 800 8pt Karla, sans-serif !important; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink) !important; justify-content: center; background: var(--tint); }
+
+/* Pelmanism */
+.pa-mem { align-items: center; justify-content: center; text-align: center; padding: 4mm; }
+.pa-mem.a { font: 600 13pt/1.2 Fraunces, serif; }
+.pa-mem.b { font: 400 9.2pt/1.4 Karla, sans-serif; color: #3d3a36; }
+.pa-mem .cut-sym { color: var(--accent); font-size: 8pt; }
+
+/* Strip stories: full width, with a faint letter for the teacher */
+.pa-strips { display: flex; flex-direction: column; padding-top: .5pt; }
+.pa-strip { margin-top: -.5pt; border: .9pt dashed #6f6a64; min-height: 17mm; padding: 3mm 14mm 3mm 6mm; display: flex; align-items: center; font: 400 11pt/1.4 Fraunces, serif; position: relative; }
+.pa-strip .code { position: absolute; right: 4mm; top: 50%; transform: translateY(-50%); font: 700 7.5pt Karla, sans-serif; color: var(--tint-line); letter-spacing: .06em; }
+
+/* Cue cards and taboo cards */
+.pa-cue { gap: 1.8mm; }
+.pa-cue-top { display: flex; justify-content: space-between; align-items: center; }
+.pa-cue-text { font: 400 10.4pt/1.42 Fraunces, serif; color: var(--ink); }
+.pa-useful { margin-top: auto; padding: 1.8mm 2.6mm; background: var(--tint); border-radius: 1.2mm; }
+.pa-useful ul { list-style: none; margin: .6mm 0 0; padding: 0; font: italic 400 9pt/1.45 Fraunces, serif; }
+.pa-useful li::before { content: '– '; color: var(--accent); font-style: normal; }
+.pa-taboo { padding: 0; gap: 0; }
+.pa-taboo-word { padding: 4mm 3mm 3.4mm; text-align: center; background: var(--tint); border-bottom: 1.4pt solid var(--accent); }
+.pa-taboo-word small { display: block; font: 700 6.4pt Karla, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink); }
+.pa-taboo-word b { display: block; font: 600 17pt/1.15 Fraunces, serif; margin-top: .6mm; }
+.pa-taboo ul { list-style: none; margin: 0; padding: 2.6mm 3mm 3mm; text-align: center; font: 500 9.6pt/1.6 Karla, sans-serif; color: #3d3a36; }
+.pa-taboo .dont { display: block; font: 700 6.4pt Karla, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8a847d; margin-bottom: .4mm; }
+
+/* Find someone who */
+table.pa-fsw td { height: 15.5mm; vertical-align: middle; }
+table.pa-fsw td:first-child { font: 400 10.2pt Fraunces, serif; }
+table.pa-fsw td.q { font: italic 400 9pt Fraunces, serif; color: var(--muted); }
+table.pa-fsw td.write { border-left: .5pt solid #dedad4; }
+table.pa-fsw tr:nth-child(even) td { background: #faf9f7; }
+
+/* Survey: a tally and a chart to draw */
+.pa-tally { display: grid; grid-template-columns: 1fr 38mm 10mm; border-top: .9pt solid var(--ink); }
+.pa-tally > span { padding: 1.8mm 2mm; border-bottom: .5pt solid #bdb8b1; min-height: 10.5mm; display: flex; align-items: center; }
+.pa-tally > span.h { font: 700 7.5pt Karla, sans-serif; border-bottom: .9pt solid var(--ink); min-height: 0; }
+.pa-tally > span.t { border-left: .5pt solid #dedad4; }
+.pa-tally > span.n { justify-content: center; border-left: .5pt solid #dedad4; }
+.pa-chart { display: grid; grid-template-columns: 6mm repeat(4, 1fr); grid-template-rows: repeat(8, 7.6mm) auto; position: relative; padding-right: 2mm; }
+.pa-chart .gl { grid-column: 2 / -1; border-bottom: .5pt solid #dedad4; }
+.pa-chart .y { font: 600 6.4pt Karla, sans-serif; color: #8a847d; text-align: right; padding-right: 1.4mm; transform: translateY(2mm); }
+.pa-chart .x { font: 600 7pt Karla, sans-serif; text-align: center; padding-top: 1.4mm; border-top: .9pt solid var(--ink); }
+
+/* Ranking: Diamond 9 */
+.pa-diamond { display: flex; flex-direction: column; align-items: center; gap: 2.2mm; position: relative; }
+.pa-diamond > div { display: flex; gap: 2.2mm; }
+.pa-slot { width: 42mm; height: 22mm; border: .9pt solid #cfcac3; border-radius: 1.6mm; display: grid; place-items: center; font: 800 9pt Karla, sans-serif; color: #d6d3cd; background: #fff; }
+.pa-diamond > div:first-child .pa-slot { border: 1.4pt solid var(--accent); color: var(--accent); }
+.pa-scale { position: absolute; left: 0; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; font: 700 6.8pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.pa-scale i { flex: 1; width: 0; margin: 1.6mm 0 1.6mm 2mm; border-left: 1.4pt solid var(--accent); position: relative; }
+.pa-scale i::after { content: ''; position: absolute; bottom: -1mm; left: -1.75mm; border: 1.6mm solid transparent; border-top-color: var(--accent); border-bottom: 0; }
+.pa-tiles { display: grid; grid-template-columns: repeat(5, 1fr); padding: .5pt 0 0 .5pt; }
+.pa-tiles .cut-card { min-height: 24mm; align-items: center; justify-content: center; text-align: center; font: 400 9.6pt/1.25 Fraunces, serif; padding: 2mm; }
+
+/* Opinion line */
+.pa-op { padding: 5mm 0 5mm; border-bottom: .5pt solid #d6d3cd; break-inside: avoid; }
+.pa-op-s { display: flex; gap: 2.4mm; font-size: 1.08em; line-height: 1.35; margin-bottom: 3mm; }
+.pa-line { display: grid; grid-template-columns: 26mm 1fr 26mm; align-items: center; gap: 3mm; margin: 0 0 2.6mm 5.8mm; font: 600 7pt Karla, sans-serif; color: var(--muted); }
+.pa-line .track { position: relative; height: 4.6mm; display: flex; justify-content: space-between; align-items: center; }
+.pa-line .track::before { content: ''; position: absolute; left: 2.3mm; right: 2.3mm; top: 50%; border-top: 1.2pt solid var(--accent); }
+.pa-line .track i { position: relative; width: 4.6mm; height: 4.6mm; border-radius: 50%; border: 1pt solid var(--accent); background: #fff; }
+.pa-line .track i:nth-child(3) { width: 3mm; height: 3mm; margin: 0 .8mm; border-color: #a9a49d; }
+.pa-line span:last-child { text-align: right; }
+.pa-because { display: flex; align-items: flex-end; gap: 2mm; margin-left: 5.8mm; font-style: italic; color: var(--muted); }
+.pa-because .line { flex: 1; height: 6mm; }
+
+/* A/B sheets cut in half: Compare versions and Spot the Difference */
+.pa-half { flex: 1; min-height: 0; padding: 5mm var(--side) 4mm; display: flex; flex-direction: column; gap: 2.6mm; }
+.pa-half + .pa-half { border-top: .9pt dashed #6f6a64; position: relative; }
+.pa-half + .pa-half::before { content: ''; position: absolute; top: -2.2mm; left: 8mm; width: 4.4mm; height: 4.4mm; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23975f40' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cpath d='M8.6 7.6 20 18M8.6 16.4 20 6'/%3E%3C/svg%3E") center / 4mm no-repeat; }
+.pa-half-head { display: flex; align-items: center; gap: 3mm; }
+.pa-secret { margin-left: auto; font: 600 7pt Karla, sans-serif; color: #8a847d; display: flex; align-items: center; gap: 1.2mm; }
+.pa-pic { border-radius: 1.6mm; overflow: hidden; background: #f1efeb; }
+.pa-pic svg { display: block; width: 100%; height: auto; }
+.pa-found { display: flex; align-items: center; gap: 2mm; font: 600 7.4pt Karla, sans-serif; color: var(--muted); }
+.pa-found i { width: 4.2mm; height: 4.2mm; border-radius: 50%; border: .9pt solid var(--accent); }
+.pa-gap td.miss { color: transparent; }
+.pa-gap td { height: 10mm; }
+.pa-gap td.miss::after { content: ''; display: block; border-bottom: .7pt solid var(--ink); margin-top: 3.6mm; }
+
+/* Screen-only labels around each template in the gallery */
+@media screen {
+  body { background: #e6e4e0; padding: 0 0 60px; font-family: Karla, sans-serif; }
+  .page { margin: 0 auto 26px; box-shadow: 0 8px 26px rgba(0,0,0,.14); }
+  .tpl-cap { width: var(--pw); margin: 34px auto 10px; font: 13px/1.5 Karla, sans-serif; color: #4b4843; }
+  .tpl-cap b { display: block; font: 800 15px Karla, sans-serif; color: #262420; }
+  .tpl-top { width: var(--pw); margin: 30px auto 0; font: 13px/1.55 Karla, sans-serif; color: #4b4843; }
+  .tpl-top h1 { font: 500 26px/1.2 Fraunces, serif; margin: 6px 0 8px; }
+  .tpl-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+  .tpl-swatches button { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(51,48,44,.15); background: #fff; border-radius: 8px; padding: 5px 9px; font: 500 12px Karla, sans-serif; cursor: pointer; }
+  .tpl-swatches i { width: 11px; height: 11px; border-radius: 50%; background: var(--s); }
+  .tpl-swatches button[aria-checked="true"] { border-color: #262420; }
+}
+.pa-task-versions > .pa-version {min-height:92mm;box-sizing:border-box;}
+.pa-task-versions .task {margin:0;}
+/* The supplied reference uses div-based tallies; our native worksheet uses a
+   semantic table. Keep its header and body in the same column structure. */
+table.pa-tally {display:table;table-layout:fixed;width:100%;}
+table.pa-tally th:first-child,table.pa-tally td:first-child {width:40%;}
+table.pa-tally th:last-child,table.pa-tally td:last-child {width:16%;}
+.pa-chart {grid-template-columns:repeat(var(--pa-bars,3),minmax(0,1fr));grid-template-rows:1fr;min-height:70mm;background:repeating-linear-gradient(to top,transparent 0,transparent 7.8mm,#dedad4 7.8mm,#dedad4 8mm);}
+.pa-chart > div {display:flex;flex-direction:column;justify-content:flex-end;align-items:center;}
+.pa-chart .pa-blank-bar {display:block;width:60%;height:55mm;border:.5pt dashed #aaa;background:white;}
+table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
+.pa-cut-grid > .pa-caller-strip {min-height:10mm;font:400 10pt/1.35 Fraunces,serif;display:flex;align-items:center;}
+.pa-cut-grid > .pa-strip {min-height:17mm;}

@@ -145,8 +145,10 @@ var reflectAnswered = (r) => {
 };
 var isAnswered = (r) => !!r && typeof r === "object" && !Array.isArray(r) && "files" in r ? (r.files?.length ?? 0) > 0 : !!r && typeof r === "object" && !Array.isArray(r) && "pick" in r ? Array.isArray(r.pick) ? r.pick.length > 0 : typeof r.pick === "number" : !!r && typeof r === "object" && !Array.isArray(r) && "ratings" in r ? reflectAnswered(r) : !!(r !== void 0 && !(r && typeof r === "object" && !Array.isArray(r) && !textOf(r)) && r !== void 0 && r !== null && r !== "" && !(Array.isArray(r) && (r.length === 0 || r.every((x) => x === -1 || x === null))));
 function scoreQuestion(entry, r) {
-  if (!entry) return { got: 0, max: 0 };
+  if (!entry || entry.ungraded) return { got: 0, max: 0 };
   switch (entry.kind) {
+    case "activity":
+      return { got: 0, max: 0 };
     case "gap":
       if (!entry.answers.some((a) => a.trim())) return { got: 0, max: 0 };
       return { got: isAnswered(r) && entry.answers.some((a) => entry.cs ? normaliseKeepCase(a) === normaliseKeepCase(String(r)) : normalise(a) === normalise(String(r))) ? 1 : 0, max: 1 };

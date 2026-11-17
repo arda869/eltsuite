@@ -10,8 +10,9 @@ export type KeyEntry = (
   | { kind: 'drop'; answer: string }
   | { kind: 'order'; answer: string }
   | { kind: 'writing'; model: string }
+  | { kind: 'activity'; node: JSONContent } // teacher-only, hydrated from private/activities
   | PackKey
-) & { feedback?: string; hint?: string };
+) & { feedback?: string; hint?: string; ungraded?: boolean };
 export type AnswerKey = Record<string, KeyEntry>;
 export type Response = string | number | number[] | JSONContent | null | undefined;
 export type Responses = Record<string, Response>;
@@ -48,18 +49,29 @@ export function shuffle<T>(list: T[], seed: string): T[] {
   return a;
 }
 
+export function hasUnresolvedActivities(content?: JSONContent | null): boolean {
+  return !!content && ((content.type==='communicativeActivity'&&!!content.attrs?.sealed)||!!content.content?.some(hasUnresolvedActivities));
+}
+
 export const splitWords = (s: string) => s.trim().split(/\s+/).filter(Boolean);
 
 // Splitting: editor content (with answers) -> public content + key ------------------
 
-export function splitKey(content: JSONContent): { content: JSONContent; key: AnswerKey } {
+export function splitKey(content: JSONContent, keepActivities = false): { content: JSONContent; key: AnswerKey; activities: Record<string, JSONContent> } {
   const key: AnswerKey = {};
+  const activities: Record<string, JSONContent> = {};
   const dropAnswers: string[] = [];
 
   const walk = (n: JSONContent): JSONContent => {
     const out: JSONContent = { ...n };
     const a = n.attrs ?? {};
     const id = a.id as string | undefined;
+    if (n.type === 'communicativeActivity' && id && !keepActivities) {
+      activities[id] = structuredClone(n);
+      // All cards and picture versions remain in a teacher-only document. The live
+      // service distributes only the version each learner is allowed to receive.
+      return { type: n.type, attrs: { id, kind: a.kind, instruction: a.instruction ?? '', sealed: true }, content: [] };
+    }
     // An example keeps its answer in the task: learners see it straight away.
     if (id && !a.example) {
       if (n.type === 'gap') {
@@ -108,6 +120,10 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
         out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5, genre: a.genre ?? '', rubric: a.rubric ?? 'none', criteria: a.criteria ?? [] };
       }
       if (key[id]) {
+        if (a.noCorrectAnswer === true) {
+          key[id].ungraded = true;
+          out.attrs = { ...out.attrs, noCorrectAnswer: true };
+        }
         if (a.spellingOverride === true) out.attrs = { ...out.attrs, spellingOverride: true };
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
         if (a.hint?.trim()) key[id].hint = a.hint.trim();
@@ -134,7 +150,7 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
     if (n.content) out.content = n.content.map(fillBanks);
     return out;
   };
-  return { content: fillBanks(pub), key };
+  return { content: fillBanks(pub), key, activities };
 }
 
 // Merging: public content + key -> editor content ---------------------------------
@@ -144,6 +160,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
     const out: JSONContent = { ...n };
     const a = n.attrs ?? {};
     const k = a.id ? key[a.id] : undefined;
+    if (n.type === 'communicativeActivity' && k?.kind === 'activity') return structuredClone(k.node);
     if (k) {
       if (n.type === 'gap' && k.kind === 'gap') out.attrs = { ...a, answers: k.answers, caseSensitive: !!k.cs };
       if ((n.type === 'mcq' || n.type === 'choice') && (k.kind === 'mcq' || k.kind === 'multi')) out.attrs = { ...a, correct: k.correct, optFeedback: k.optFb ?? [] };
@@ -161,6 +178,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
       if (n.type === 'writing' && k.kind === 'writing') out.attrs = { ...a, model: k.model };
       if (n.type === 'pq' && k.kind === 'pack') out.attrs = { id: a.id, kind: a.kind, data: mergePack(a.kind as PackKind, a.data ?? {}, k.k) };
       out.attrs = { ...out.attrs, feedback: k.feedback ?? '', hint: k.hint ?? '' };
+      if (k.ungraded === true) out.attrs.noCorrectAnswer = true;
       if (a.spellingOverride === true) out.attrs.spellingOverride = true;
     }
     if (n.type === 'wordbank') out.attrs = { extras: a.extras ?? [] };
@@ -262,8 +280,10 @@ export const isAnswered = (r: Response): boolean =>
   r !== undefined && r !== null && r !== '' && !(Array.isArray(r) && (r.length === 0 || r.every((x) => x === -1 || x === null))));
 
 export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: number; max: number } {
-  if (!entry) return { got: 0, max: 0 };
+  if (!entry || entry.ungraded) return { got: 0, max: 0 };
   switch (entry.kind) {
+    case 'activity':
+      return { got: 0, max: 0 };
     case 'gap':
       if (!entry.answers.some((a) => a.trim())) return { got: 0, max: 0 };
       return { got: isAnswered(r) && entry.answers.some((a) => (entry.cs ? normaliseKeepCase(a) === normaliseKeepCase(String(r)) : normalise(a) === normalise(String(r)))) ? 1 : 0, max: 1 };

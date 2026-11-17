@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
-import { keyRef, notesRef, taskRef, tasksCol, type Task } from './tasks';
+import { activityContentRef, keyRef, notesRef, splitKey, taskRef, tasksCol, type Task } from './tasks';
 
 // Groups, task versions and "Who sees this".
 //
@@ -167,12 +167,14 @@ export function useTaskBodies(classId: string, itemId: string, tasks: Task[], ca
 export async function makeVariant(classId: string, itemId: string, tasks: Task[], from: Task, label: string, content: JSONContent | null) {
   const fam = familyOf(tasks, from);
   const main = fam[0];
-  const [k, n] = await Promise.all([getDoc(keyRef(classId, itemId, from.id)), getDoc(notesRef(classId, itemId, from.id))]);
+  const [k, n, activity] = await Promise.all([getDoc(keyRef(classId, itemId, from.id)), getDoc(notesRef(classId, itemId, from.id)), getDoc(activityContentRef(classId, itemId, from.id))]);
+  const separated = content ? splitKey(content) : null;
   const ref = doc(tasksCol(classId, itemId));
   const b = writeBatch(db);
   const { id: _id, variants: _v, dist: _d, audience: _a, allowed: _al, restricted: _r, ...rest } = from as Task & DocumentData; // eslint-disable-line @typescript-eslint/no-unused-vars
-  b.set(ref, { ...rest, title: main.title, content: content ?? from.content ?? null, family: main.id, variant: label, order: main.order, createdAt: serverTimestamp() });
-  b.set(keyRef(classId, itemId, ref.id), k.exists() ? k.data() : {});
+  b.set(ref, { ...rest, title: main.title, content: separated?.content ?? from.content ?? null, family: main.id, variant: label, order: main.order, createdAt: serverTimestamp() });
+  b.set(keyRef(classId, itemId, ref.id), separated?.key ?? (k.exists() ? k.data() : {}));
+  b.set(activityContentRef(classId, itemId, ref.id), { nodes: separated?.activities ?? activity.data()?.nodes ?? {} });
   if (n.exists()) b.set(notesRef(classId, itemId, ref.id), n.data());
   b.update(taskRef(classId, itemId, main.id), { family: main.id, variant: main.variant ?? (LEVELS.includes(label) ? 'Standard' : 'A'), variants: [...(main.variants ?? []), ref.id] });
   await b.commit();

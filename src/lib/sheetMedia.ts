@@ -1,3 +1,4 @@
+import { isActivityPicture, resolveActivityPicture } from '../communicative/privatePictures';
 import { learnOrigin } from './site';
 import { collectMedia, collectPictures, type MediaInfo, type MediaMap, type WsItem } from './worksheet';
 import { loadTeacherManifest } from './archive';
@@ -57,7 +58,7 @@ export async function sheetPictures(classId: string, items: WsItem[]): Promise<M
   }
   await Promise.all(
     pictures.filter(({src})=>!src.startsWith('pdf-page:')).map(async ({ key, src, crop, filter }) => {
-      const data = src.startsWith('media:') ? await audioUrl(classId, src.slice(6)).catch(() => '') : src;
+      const data = isActivityPicture(src) ? await resolveActivityPicture(classId,src) : src.startsWith('media:') ? await audioUrl(classId, src.slice(6)).catch(() => '') : src;
       if (!data) return;
       // A cropped or recoloured picture, or one from the web: a copy made here.
       if (crop || filter || !src.startsWith('media:')) {

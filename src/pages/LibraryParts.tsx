@@ -1,3 +1,4 @@
+import { LocalActivityMode } from '../communicative/LocalActivity';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -140,7 +141,7 @@ export function TaskDetail({ task, onOpen, onDownload, onRemove, onClose }: { ta
         <b className="lt-preview-t">{task.title}</b>
         {task.instructions && <span className="hint">{task.instructions}</span>}
         <div className="lt-preview-body doc">
-          <TaskRenderer content={splitKey(task.content).content} responses={{}} onChange={() => {}} disabled classId="" />
+          <LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(task.content,true).content} responses={{}} onChange={() => {}} disabled classId="" /></LocalActivityMode.Provider>
         </div>
       </div>
       <span className="ma-detail-acts">

@@ -1,3 +1,4 @@
+import { LocalActivityMode } from '../communicative/LocalActivity';
 import { InstrView } from '../editor/InstrEditor';
 import { useEffect, useState } from 'react';
 import { listVersions, splitKey, type Version } from '../lib/tasks';
@@ -39,7 +40,7 @@ export function VersionsDialog({ classId, itemId, taskId, onClose, onRestore }: 
                 <>
                   <h3 className="task-title">{sel.title}</h3>
                   <InstrView doc={sel.instrDoc} text={sel.instructions} />
-                  <TaskRenderer content={splitKey(sel.content).content} responses={{}} disabled />
+                  <LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(sel.content,true).content} responses={{}} disabled /></LocalActivityMode.Provider>
                 </>
               )}
             </div>

@@ -10,6 +10,7 @@ export type GalleryCmd = { key: string; label: string; hint: string };
 export type Section = { title: string; blurb: string; keys: string[] };
 
 const SECTIONS: Section[] = [
+  { title: 'Communicative activities', blurb: 'Discuss, compare and play together, in class or in groups.', keys: ['activity-board','activity-bingo','activity-dominoes','activity-memory','activity-strips','activity-cue','activity-survey','activity-findSomeone','activity-ranking','activity-opinion','activity-spot','activity-taboo','activity-speaking'] },
   {title:'Applied linguistics',blurb:'Selected evidence, language investigations and teacher-reviewed interpretations.',keys:['corpus','discourse','language-awareness','pragmatics','learner-development','research']},
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress', 'phonchart', 'phoncard', 'phonhow'] },

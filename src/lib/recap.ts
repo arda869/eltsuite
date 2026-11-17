@@ -71,7 +71,7 @@ export function buildRecaps(inp: Inputs, existing: Record<string, Recap>): Recap
     const mine = inp.answers.filter((a) => a.itemId === inp.item.id && a.learnerUid === l.uid);
     const tasks: RecapTask[] = visibleTasks.map((t) => {
       const a = mine.find((x) => x.taskId === t.id);
-      const marks = Object.values(a?.marks ?? {});
+      const marks = Object.entries(a?.marks ?? {}).filter(([id]) => !a?.ungradedIds?.includes(id)).map(([, mark]) => mark);
       const extra = marks.reduce((s, m) => s + (m.score ?? 0), 0);
       const done = !!a && (a.checked || Object.keys(a.responses ?? {}).length > 0);
       return { id: t.id, title: t.title, done, score: a?.checked ? (a.score ?? 0) + extra : null, total: a?.checked ? (a.total ?? 0) + marks.reduce((sum, m) => sum + (m.score === null ? 0 : m.max ?? Math.max(5, m.score ?? 0)), 0) : null };

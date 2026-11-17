@@ -3,10 +3,11 @@ import * as fs from './firestore';
 import * as rt from './database';
 
 type Data = Record<string, unknown>;
+const field = (value: unknown, key: string) => key.split('.').reduce<unknown>((o, k) => (o as Data | undefined)?.[k], value);
 const snap = async (path: string) => {
   const s = await fs.getDoc(fs.doc({}, path) as never);
   const r = docRef(path);
-  return { exists: (s as { exists: () => boolean }).exists(), id: r.id, ref: r, data: () => (s as { data: () => Data | undefined }).data() };
+  return { exists: (s as { exists: () => boolean }).exists(), id: r.id, ref: r, data: () => (s as { data: () => Data | undefined }).data(), get: (key: string) => field((s as { data: () => Data | undefined }).data(), key) };
 };
 function docRef(path: string): any {
   return {
@@ -44,13 +45,16 @@ const colRef = (path: string): any => ({
   where: (f: string, op: string, v: unknown) => ({ get: async () => wrap(await fs.getDocs(fs.query(fs.collection({}, path) as never, fs.where(f, op, v)))) }),
   get: async () => wrap(await fs.getDocs(fs.collection({}, path) as never)),
 });
-const wrap = (s: unknown) => ({ docs: (s as { docs: { id: string; ref: { path: string }; data: () => Data }[] }).docs.map((d) => ({ id: d.id, ref: docRef(d.ref.path), data: () => d.data(), exists: true })) });
+const wrap = (s: unknown) => ({ docs: (s as { docs: { id: string; ref: { path: string }; data: () => Data }[] }).docs.map((d) => ({ id: d.id, ref: docRef(d.ref.path), data: () => d.data(), get: (key: string) => field(d.data(), key), exists: true })) });
 
 export const adminDb = {
+  getAll: (...refs: {path:string}[]) => Promise.all(refs.map(r=>snap(r.path))),
   doc: docRef,
   collection: colRef,
   runTransaction: (fn: (tx: any) => Promise<unknown>) => fs.runTransaction({}, (raw: any) => fn({
     get: (r: { path: string }) => snap(r.path),
+    getAll: (...refs: { path: string }[]) => Promise.all(refs.map(r => snap(r.path))),
+    delete: (r: { path: string }) => raw.delete(fs.doc({}, r.path)),
     update: (r: { path: string }, v: Data) => raw.update(fs.doc({}, r.path), v),
     set: (r: { path: string }, v: Data, o?: { merge?: boolean }) => raw.set(fs.doc({}, r.path), v, o),
   })),

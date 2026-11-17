@@ -77,7 +77,7 @@ export async function assessTaskForLearner(db, auth, data, now = Date.now()) {
         const score = scoreQuestion(key[q.id], responses[q.id]) ?? { got: 0, max: 0 };
         return { score: sum.score + score.got, total: sum.total + score.max };
       }, { score: 0, total: 0 });
-      tx.update(answerRef, { ...total, checked: true, submittedAt: now, attempts: (answer.get('attempts') ?? 0) + 1, updatedAt: FieldValue.serverTimestamp(), late: !!i.due && now > i.due });
+      tx.update(answerRef, { ...total, ungradedIds: Object.keys(key).filter(id => key[id]?.ungraded), checked: true, submittedAt: now, attempts: (answer.get('attempts') ?? 0) + 1, updatedAt: FieldValue.serverTimestamp(), late: !!i.due && now > i.due });
     }
     return { key, checked: true };
   });

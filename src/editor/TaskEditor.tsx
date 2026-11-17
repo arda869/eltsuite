@@ -1,3 +1,6 @@
+import {insideCommunicativeActivity} from '../communicative/pictureContext';
+import {savePrivateActivityPicture} from '../communicative/privatePictures';
+import { CommunicativeActivity, ActivityCardAttributes, COMMUNICATIVE_INSERTS } from '../communicative/ActivityEditor';
 import { GameNode } from '../quiz/LegacyGameNode';
 import { GameBlock } from '../quiz/GameBlockNode';
 import { InvestigationNode, newInvestigationBlock } from '../linguistics/InvestigationNode';
@@ -64,7 +67,7 @@ import { listLabel, parseListStart } from '../lib/listLabel';
 import { EditorContextMenu } from './ContextMenu';
 import { LineAdder } from './LineAdder';
 import { Picture, PictureDialog, insertPictures } from './Picture';
-import { uploadPicture } from './PackNode';
+import { preparePicture, uploadPicture } from './PackNode';
 import { EditorClassContext } from './context';
 import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
@@ -106,6 +109,7 @@ export type Cmd = { key: string; label: string; hint: string; group: 'Questions'
 const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label, hint: b.hint, group: 'Blocks', run: (e) => e.chain().focus().insertContent([...b.make(), { type: 'paragraph' }]).run() }));
 
 export const COMMANDS: Cmd[] = [
+  ...COMMUNICATIVE_INSERTS,
   ...FAMILIES.map(f=>({key:f.id,label:f.name,hint:f.about,group:'Questions' as const,run:(e:Editor)=>{e.chain().focus().insertContent([newInvestigationBlock(f.id),{type:'paragraph'}]).run();}})),
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
   { key: 'lettergap', label: 'Letter gaps', hint: 'One line per letter, for a word or a whole sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, letters: true } }).run() },
@@ -523,6 +527,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const editor = useEditor({
     extensions: [
       Extension.create({name:'questionSpellingOverride',addGlobalAttributes(){return [{types:[...QUESTION_TYPES],attributes:{spellingOverride:{default:false,parseHTML:(el:HTMLElement)=>el.hasAttribute('data-spelling-override'),renderHTML:(attrs:Record<string,unknown>)=>attrs.spellingOverride?{'data-spelling-override':''}:{}}}}];}}),
+      Extension.create({name:'questionNoCorrectAnswer',addGlobalAttributes(){return [{types:[...QUESTION_TYPES],attributes:{noCorrectAnswer:{default:false,parseHTML:(el:HTMLElement)=>el.hasAttribute('data-no-correct-answer'),renderHTML:(attrs:Record<string,unknown>)=>attrs.noCorrectAnswer?{'data-no-correct-answer':''}:{}}}}];}}),
       StarterKit.configure({ heading: { levels: [3] }, orderedList: false, listItem: false }),
       // A list item may start with a dialogue (1. A: … B: …) as well as a paragraph.
       ListItem.extend({ content: '(paragraph | dialogue) block*' }),
@@ -564,6 +569,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       TextBox,
       RandomPick,
       PickCard,
+      ActivityCardAttributes,
+      jsonClip(CommunicativeActivity, 'div', 'data-communicative-activity').extend({renderHTML:({node})=>['div',{'data-communicative-activity':'','data-attrs':JSON.stringify(node.attrs)},0]}),
       Definition,
       Highlight,
       TextColor,
@@ -680,7 +687,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       const uid = auth.currentUser?.uid;
       // Outside a class (notes, documents) the picture sits in the page; a copy goes into My files.
       for (const f of files) {
-        if (classRef.current) srcs.push(await uploadPicture(classRef.current, f));
+        if (classRef.current) srcs.push(insideCommunicativeActivity(ed)?await savePrivateActivityPicture(classRef.current,await preparePicture(f)):await uploadPicture(classRef.current,f));
         else {
           srcs.push(await imageToData(f, 1100));
           if (uid) void uploadPicture('user:' + uid, f).catch(() => {});
@@ -710,7 +717,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     [onPickBank],
   );
   const training = useTrainingClass(classId);
-  const slash = useSlash(editor, bankCmds, textOnly, training, undefined, training || !!classId?.startsWith('chat:'));
+  const slash = useSlash(editor, bankCmds, textOnly, training, c=>!classId.startsWith('chat:')||!c.key.startsWith('activity-'), training || !!classId?.startsWith('chat:'));
   const toolPlace = useToolGate();
   // The extra tools are out by default; closing them is remembered on this device.
   const [moreOpen, setMoreOpenState] = useState(() => {
@@ -907,7 +914,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       />}
       {gallery && (
         <InsertGallery
-          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
+          commands={[...COMMANDS, ...bankCmds].filter(c=>!classId.startsWith('chat:')||!c.key.startsWith('activity-')).filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
           onClose={() => setGallery(false)}
           onQuestions={() => { setGallery(false); setQuestionAnchor(questionButtonRef.current); }}
           onPick={(key) => {

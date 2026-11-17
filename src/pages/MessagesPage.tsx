@@ -444,6 +444,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const typing = useTyping(c.id, me.key);
   const send = async (keepFocus = false) => {
     if (isEmptyContent(content) || busy) return;
+    if (JSON.stringify(content).includes('\"communicativeActivity\"')) return setErr('Add this live activity to a class lesson instead. Your message is still here.');
     const tasky = blocksIn(content) + questionIds(content).length;
     if (!elementsOk && tasky) return setErr('Your teacher has turned off task elements in messages. Take out the questions to send.');
     setErr('');
