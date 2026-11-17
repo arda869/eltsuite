@@ -96,6 +96,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Communicative teacher and learner journeys and print exports (Firebase simulated)
         run: node test/communicative-suite.mjs
+      - name: Save communicative failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: communicative-failure
+          path: outputs/communicative/
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Designer and Classes visual regression checks
         run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/classes-picture-zoom.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
       - name: Save Classes picture zoom screenshots
