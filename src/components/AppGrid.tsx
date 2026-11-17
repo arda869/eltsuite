@@ -54,7 +54,7 @@ const APPS: App[] = [
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
   { k: 'collab', group: 'make', name: 'Collab', about: 'Documents and slides written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
-  { k: 'reading', group: 'make', short: 'Reading Journal', name: 'Reading Journal', about: 'What you read, with notes and citations', to: '/reading', teacher: true, color: '#6b5a8a', glyph: APP_MARKS.reading, icon: I(APP_MARKS.reading) },
+  { k: 'development', group: 'develop', name: 'Teacher’s Companion', about: 'Reflect, plan and talk through your teaching', to: '/coach', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
   { k: 'pdf', group: 'make', name: 'PDF', about: 'PDFs to write on, alone or together', to: '/pdf', teacher: true, color: '#a6463a', glyph: APP_MARKS.pdf, icon: I(APP_MARKS.pdf) },
   { k: 'design', group: 'make', name: 'Designer', about: 'Storyboards, AI images and image editing', to: '/design', teacher: true, color: '#6d5bd0', glyph: APP_MARKS.design, icon: I(APP_MARKS.design) },
   { k: 'video', group: 'make', name: 'Video editor', short: 'Video', about: 'Edit classroom videos and reuse characters', to: '/studio/video', teacher: true, color: '#487d87', glyph: APP_MARKS.video, icon: I(APP_MARKS.video) },
@@ -89,7 +89,7 @@ const GROUPS: [App['group'], string][] = [
   ['develop', 'Professional learning'],
   ['share', 'Resources and people'],
 ];
-const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'recordings', 'video', 'development', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // Fetch an app's code as the pointer reaches its tile, before navigation starts.
@@ -102,7 +102,7 @@ const appModules: Record<string, () => Promise<unknown>> = {
   collab: () => import('../pages/AppFiles'),
   design: () => import('../pages/AppFiles'),
   pdf: () => import('../pages/AppFiles'),
-  reading: () => import('../pages/AppFiles'),
+  development: () => import('../coach/TeacherCompanionPage'),
   recordings: () => import('../pages/AppFiles'),
   games: () => import('../pages/AppFiles'),
   files: () => import('../pages/MediaArchive'),
@@ -181,7 +181,7 @@ export function AppGrid() {
   const owner = useSuper() === true;
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : on(k));
-  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k === 'reading' ? 'development' : a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
+  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="apps" ref={ref}>
       <button ref={buttonRef} type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} aria-controls={open ? 'suite-apps-menu' : undefined} data-tip="Apps" onClick={() => {setOpen((o) => !o);setSearch('');}}>

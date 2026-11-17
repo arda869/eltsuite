@@ -95,7 +95,7 @@ const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
-const DevelopmentStudio = lazy(() => import('./coach/DevelopmentStudio').then(m => ({ default: m.DevelopmentStudio })));
+const TeacherCompanionPage = lazy(() => import('./coach/TeacherCompanionPage').then(m => ({ default: m.TeacherCompanionPage })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
 function ClassAssistantRedirect() {
@@ -234,9 +234,9 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/linguistics" element={<SignedIn><AppliedLinguistics /></SignedIn>} />
-          <Route path="/observations" element={<Navigate to="/development" replace />} />
-          <Route path="/development" element={<TeacherOnly><DevelopmentStudio /></TeacherOnly>} />
-          <Route path="/coach" element={<Navigate to="/development?section=coach" replace />} />
+          <Route path="/observations" element={<Navigate to="/coach" replace />} />
+          <Route path="/development" element={<TeacherOnly><TeacherCompanionPage /></TeacherOnly>} />
+          <Route path="/coach" element={<TeacherOnly><TeacherCompanionPage /></TeacherOnly>} />
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />

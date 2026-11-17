@@ -133,7 +133,7 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : kind === 'pd' ? '/reading' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : kind === 'pd' ? 'Back to Reading Journal' : 'Back to ELT Suite'}>
+<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : 'Back to Resources'}>
           <Mark size={30} />
         </Link>
         <OrgLogo />
@@ -154,7 +154,6 @@ export function DocPage() {
         </span>
         <span className="dp-acts">
           <HelpMenu />
-          {kind === 'pd' && d && profile?.role === 'teacher' && <Link className="btn" to={`/development?section=reflections&reading=${encodeURIComponent(d.id)}`}>Reflect on this reading</Link>}
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
