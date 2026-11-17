@@ -63,6 +63,25 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
       triggerRef.current?.focus();
       return;
     }
+    if (event.key === 'Tab') {
+      const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+      const current = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.shiftKey && current === 0) {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      } else if (!event.shiftKey && current === items.length - 1) {
+        // Removing the last option during the browser's Tab step can send
+        // focus to the page body. Pick the next visible control first.
+        const tabbables = Array.from(document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]'))
+          .filter(el => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length > 0);
+        const next = tabbables[tabbables.indexOf(items[current]) + 1];
+        event.preventDefault();
+        setOpen(false);
+        (next ?? triggerRef.current)?.focus();
+      }
+      return;
+    }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
     if (!items.length) return;
