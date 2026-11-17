@@ -18,6 +18,7 @@ export function CoachProfileSettings({ uid }: { uid: string }) {
   const [notice, setNotice] = useState('');
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+  const needsOtherQualification = draft.qualifications.split(',').some(part => /^other:?\s*$/i.test(part.trim()));
   useEffect(() => onSnapshot(doc(db, 'teachingCoach', uid, 'settings', 'profile'), snap => {
     const next = { ...emptyProfile, ...snap.data() };
     setSaved(next);
@@ -53,6 +54,6 @@ export function CoachProfileSettings({ uid }: { uid: string }) {
     </fieldset>
     {error && <p role="alert" className="error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {dirty && <p className="hint">You have unsaved profile changes.</p>}
-    <div className="coach-actions"><button type="button" className="btn primary" disabled={!ready || !dirty || busy || draft.qualifications.split(',').some(part => /^other:?\s*$/i.test(part.trim()))} onClick={() => void save()}>Save teaching profile</button><button type="button" className="btn" disabled={!ready || busy} onClick={() => change({ ...emptyProfile, version: saved.version })}>Clear fields</button></div>
+    <div className="coach-actions"><button type="button" className="btn primary" disabled={!ready || !dirty || busy || needsOtherQualification} onClick={() => void save()}>Save teaching profile</button><button type="button" className="btn" disabled={!ready || busy} onClick={() => change({ ...emptyProfile, version: saved.version })}>Clear fields</button>{needsOtherQualification && <span role="status" className="hint">Name your other course or qualification to save.</span>}</div>
   </div>;
 }
