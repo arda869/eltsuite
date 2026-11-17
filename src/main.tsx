@@ -94,7 +94,6 @@ const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
-const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const TeacherCompanionPage = lazy(() => import('./coach/TeacherCompanionPage').then(m => ({ default: m.TeacherCompanionPage })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
@@ -233,7 +232,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/linguistics" element={<SignedIn><AppliedLinguistics /></SignedIn>} />
+          <Route path="/linguistics" element={<Navigate to="/coach" replace />} />
           <Route path="/observations" element={<Navigate to="/coach" replace />} />
           <Route path="/development" element={<TeacherOnly><TeacherCompanionPage /></TeacherOnly>} />
           <Route path="/coach" element={<TeacherOnly><TeacherCompanionPage /></TeacherOnly>} />
