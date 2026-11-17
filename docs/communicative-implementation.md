@@ -22,17 +22,20 @@ Printed materials reuse the worksheet fonts, branding, header/footer and dashed 
 
 All checks below are local. This document does not claim production deployment or live Firebase success.
 
-- Pure activity contracts: 20 checks; No correct answer contracts: five checks. Spot picture-replacement regressions run separately.
+- Pure activity contracts: 20 checks; No correct answer contracts: five checks. Eleven Spot picture/source/framing regressions run separately.
 - Real Firestore emulator: 25 service journeys, 37 access checks, seven picture-helper journeys and five storage-accounting journeys. These exercise real rules, transactions and authenticated identities. The Node picture-helper test only supplies FileReader conversion.
 - Simultaneous teacher and two-learner browser journeys: all 13 kinds through their final results, private cue assignment/reopen/reset, three-version comparison/reveal/hide, mixed marked/ungraded submission and teacher comments. These use Firebase stand-ins that call the actual service implementation; they are not production tests.
 - Authoring: all 13 insertions, list paste, limits and adjacent validation, rich/picture-only cards, crop persistence, keyboard Spot controls, optional fields blank, saved/reopened previews, and 768px containment with scoped accessibility checks. Existing phone behaviour switches to learner preview at 390px; phone editing is not verified.
 - Seven actual picture entry paths: upload, native clipboard paste, file drop, resources and rich-picture dialog/paste routes. Saved/reopened teacher and assigned learner pictures decode; no ordinary public media copy is created.
 - Copy/import: protected source guard, personal-library ownership, another class, three linked text edits without duplicate image bytes, plain-text round trip and reopened decoded image.
+- All thirteen kinds also retain valid picture-only prompts on learner and print surfaces. Teacher Bingo calls, cue assignments and Find someone who summaries stay identifiable without text titles. A focused picture-only Bingo journey reaches a winning claim and decoded caller-strip printout. Spot marker, learner view and print share a 4:3 frame; changed source/framing clears outdated regions. Learner story strips do not carry solved-order letters.
 - Actual downloadable production offline HTML with networking disabled: winning Bingo claim, covered private-card handover, assigned picture decoded from embedded bytes, branding and 390px layout; zero remote requests.
 - Actual A4 and Letter PDFs: all 13 kinds, 48-square board, 5×5 Bingo, long cue cards, 16-row Find someone who, short/long task versions and protected pictures. Page/card containment is measured, PDFs are rendered and visually inspected.
-- Relevant AI task-key/edit/activity regressions and TypeScript/build checks run independently. CI includes the activity, emulator and browser suites.
+- All 163 AI regression checks pass. The extended real-emulator task-tools integration also passes for sealed private-card edits and stale-draft checks. TypeScript/build checks run independently. CI includes the activity, emulator and browser suites.
 
 ## Release and remaining manual checks
+
+Arda subsequently asked to do the remaining production journeys personally. Bug tracker B-048 records the manual checklist; keep its status In progress until those results are recorded. Publication must still be independently verified.
 
 No production teacher or learner accounts, real learners or live class video rooms have been used. Before claiming live functionality, verify the published build and complete a disposable real teacher/learner journey including private picture delivery, save/reopen, group allocation, results and downloadable output.
 

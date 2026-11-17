@@ -75,6 +75,11 @@ export function plainText(nodes: JSONContent[] = []): string {
   return nodes.map(n => n.text ?? plainText(n.content)).join(' ').replace(/\s+/g, ' ').trim();
 }
 
+// Difference regions are coordinates in the displayed frame, not the source file.
+export function sameActivityPictureFrame(a?: ActivityPicture | null, b?: ActivityPicture | null): boolean {
+  return (a?.src ?? '') === (b?.src ?? '') && (a?.fit ?? 'cover') === (b?.fit ?? 'cover') && (a?.position ?? '50% 50%') === (b?.position ?? '50% 50%');
+}
+
 // Keep the existing rich pickCard content. Activities add settings around that same card structure.
 export function configFromNode(node: JSONContent): ActivityConfig {
   const attrs = node.attrs ?? {};
@@ -91,7 +96,7 @@ export function configFromNode(node: JSONContent): ActivityConfig {
     const versions = config.items.slice(0, 2).map((i, n) => ({ name: i.title || `Learner ${String.fromCharCode(65 + n)}`, picture: i.picture ?? { src: '', alt: '' } }));
     // Item-backed activities own their current pictures. Saved versions can be a
     // snapshot from before a teacher replaced or removed one of those pictures.
-    if (previous?.length && (previous.length !== versions.length || versions.some((version, n) => version.picture.src !== previous[n]?.picture.src))) config.settings.differences = [];
+    if (previous?.length && (previous.length !== versions.length || versions.some((version, n) => !sameActivityPictureFrame(version.picture, previous[n]?.picture)))) config.settings.differences = [];
     config.settings.versions = versions;
   }
   return config;

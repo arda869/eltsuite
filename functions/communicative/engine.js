@@ -70,6 +70,9 @@ function validateActivity(c) {
 function plainText(nodes = []) {
   return nodes.map((n) => n.text ?? plainText(n.content)).join(" ").replace(/\s+/g, " ").trim();
 }
+function sameActivityPictureFrame(a, b) {
+  return (a?.src ?? "") === (b?.src ?? "") && (a?.fit ?? "cover") === (b?.fit ?? "cover") && (a?.position ?? "50% 50%") === (b?.position ?? "50% 50%");
+}
 function configFromNode(node) {
   const attrs = node.attrs ?? {};
   const kind = ACTIVITY_KINDS.includes(attrs.kind) ? attrs.kind : "cue";
@@ -88,7 +91,7 @@ function configFromNode(node) {
   if (kind === "spot" && (config.items.length || !config.settings.versions?.length)) {
     const previous = config.settings.versions;
     const versions = config.items.slice(0, 2).map((i, n) => ({ name: i.title || `Learner ${String.fromCharCode(65 + n)}`, picture: i.picture ?? { src: "", alt: "" } }));
-    if (previous?.length && (previous.length !== versions.length || versions.some((version, n) => version.picture.src !== previous[n]?.picture.src))) config.settings.differences = [];
+    if (previous?.length && (previous.length !== versions.length || versions.some((version, n) => !sameActivityPictureFrame(version.picture, previous[n]?.picture)))) config.settings.differences = [];
     config.settings.versions = versions;
   }
   return config;
@@ -887,6 +890,7 @@ export {
   oppositePairs,
   parseItemList,
   plainText,
+  sameActivityPictureFrame,
   shuffled,
   stateForLearner,
   surveyCounts,

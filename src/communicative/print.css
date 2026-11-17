@@ -19,7 +19,6 @@
 .pa-taboo h3 { border-bottom: .5pt solid var(--hair); text-align: center; }
 .pa-taboo-words { display: grid; text-align: center; }
 .pa-strip { position: relative; display: flex; align-items: center; gap: 3mm; }
-.pa-strip-key { margin-left: auto; color: #aaa; font: 6pt Karla,sans-serif; }
 .pa-counter-number { display: grid; place-items: center; width: 13mm; height: 13mm; border: .8pt solid var(--accent); border-radius: 50%; }
 .pa-write-name { font: 7pt Karla,sans-serif; border-bottom: .5pt solid var(--hair); }
 .pa-tally, .pa-fsw { width: 100%; border-collapse: collapse; }
@@ -40,7 +39,8 @@
 .pa-versions { display: flex; flex-direction: column; }
 .pa-version { padding: 3mm 0; break-inside: avoid; }
 .pa-version + .pa-version { border-top: .9pt dashed #6f6a64; }
-.pa-version-picture { display: block; width: 100%; height: auto; margin-top: 3mm; max-height: 185mm; object-fit: contain; }
+.pa-version-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; margin-top: 3mm; }
+.pa-version-picture { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
 .pa-lead { font-size: 1.08em; line-height: 1.35; margin: 0 0 3mm; }
 .pa-label { font: 700 6.8pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
 .pa-soft { font: 500 7.4pt Karla, sans-serif; color: var(--muted); }

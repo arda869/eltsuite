@@ -168,6 +168,9 @@
 .ca-call { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; }
 .ca-call-now { font: 400 44px/1.1 var(--serif); letter-spacing: -.01em; }
 .ca-calls { display: flex; flex-wrap: wrap; gap: 5px; }
+.ca-call-now .ca-pic { width: min(100%, 240px); margin-inline: auto; }
+.ca-calls > button:has(img) { max-width: 180px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ca-calls .ca-pic { width: 96px; max-height: 72px; }
 .ca-claim { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 12px; border-radius: 14px; background: var(--paper); border: 1px solid var(--hair); }
 
 /* ---------- #8 Dominoes ---------- */
@@ -281,7 +284,7 @@
 .ca-pairs span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 3px; border-radius: 999px; background: var(--surface); font-size: 12px; }
 
 /* ---------- #15 Spot the difference ---------- */
-.ca-spot { position: relative; border-radius: 12px; overflow: hidden; }
+.ca-spot { position: relative; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; }
 .ca-spot svg.pic { display: block; width: 100%; height: auto; }
 .ca-ring { position: absolute; left: var(--x); top: var(--y); width: 46px; height: 46px; transform: translate(-50%, -50%); border-radius: 50%;
   border: 3px solid var(--accent); box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,.15); }
@@ -365,7 +368,7 @@
 .ca-cues { display: grid; gap: 14px; }
 .ca-slider-label { display: grid; gap: 8px; margin-top: 20px; }
 .ca-slider-label input { width: 100%; min-height: 44px; }
-.ca-spot img { width: 100%; display: block; }
+.ca-spot > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 50%; }
 .ca-coordinate { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .ca-coordinate label { display: grid; gap: 4px; }
 .ca-coordinate input { width: 90px; min-height: 44px; }

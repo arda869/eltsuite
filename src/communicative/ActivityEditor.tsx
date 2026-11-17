@@ -7,7 +7,7 @@ import { newId } from '../lib/tasks';
 import { PictureField, preparePicture, useImageSrc } from '../editor/PackNode';
 import { useEditorClass } from '../editor/context';
 import { ActivityStage } from './ActivityStage';
-import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, parseItemList, plainText, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem } from './model';
+import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, sameActivityPictureFrame, parseItemList, plainText, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem } from './model';
 import { configForLearner, initialActivity, stateForLearner, transition, type ActivityAction } from './state';
 
 export const ActivityCardAttributes = Extension.create({
@@ -61,7 +61,8 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
   const [previewState, setPreviewState] = useState<ReturnType<typeof initialActivity> | null>(null);
   const [previewRole, setPreviewRole] = useState('teacher');
   const { classId, classmates } = useEditorClass();
-  const pictureB = useImageSrc(classId, c.items[1]?.picture?.src ?? '');
+  const spotPictureB = c.settings.versions?.[1]?.picture;
+  const pictureB = useImageSrc(classId, spotPictureB?.src ?? '');
   const people = [{ id: 'preview-a', name: 'Learner A' }, { id: 'preview-b', name: 'Learner B' }];
   const settings = (patch: Partial<ActivitySettings>) => { updateAttributes({ settings: { ...c.settings, ...patch } }); setPreview(false); };
   const cardAt = (n: number) => {
@@ -71,10 +72,10 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
   };
   const itemAttrs = (n: number, patch: Record<string, unknown>) => {
     const at = cardAt(n); if (at === null) return;
-    const sourceChanged = c.kind === 'spot' && n < 2 && 'picture' in patch && ((patch.picture as ActivityItem['picture'])?.src ?? '') !== (c.items[n].picture?.src ?? '');
+    const frameChanged = c.kind === 'spot' && n < 2 && 'picture' in patch && !sameActivityPictureFrame(patch.picture as ActivityItem['picture'], c.items[n].picture);
     editor.commands.command(({ tr }) => {
       tr.setNodeMarkup(at, undefined, { ...node.child(n).attrs, ...patch });
-      if (sourceChanged) {
+      if (frameChanged) {
         const pos = typeof getPos === 'function' ? getPos() : undefined;
         const changed = typeof pos === 'number' ? tr.doc.nodeAt(pos) : null;
         if (changed && typeof pos === 'number') tr.setNodeMarkup(pos, undefined, { ...changed.attrs, settings: { ...configFromNode(changed.toJSON()).settings, differences: [] } });
@@ -156,7 +157,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
       {c.kind === 'survey' && <label>Possible answers (one per line)<textarea value={(item.options ?? []).join('\n')} onChange={e => itemAttrs(n, { options: e.target.value.split('\n') })} /></label>}
       {c.kind === 'findSomeone' && <><label>Question form (optional)<input value={item.question ?? ''} onChange={e => itemAttrs(n, { question: e.target.value })} /></label><label>Follow-up question (optional)<input value={item.followUp ?? ''} onChange={e => itemAttrs(n, { followUp: e.target.value })} /></label></>}
     </details>)}</div>
-    {c.kind === 'spot' && <div contentEditable={false}><p>Mark the differences on picture B. Select a circle to remove it.</p>{pictureB && <><div className="ca-crop-controls">{(['x','y'] as const).map((axis,n)=><label key={axis}>{n===0?'Horizontal position':'Vertical position'}<input type="range" min="0" max="100" value={differencePosition[axis]} onChange={e=>setDifferencePosition({...differencePosition,[axis]:Number(e.target.value)})}/></label>)}<button className="btn" type="button" onClick={()=>markDifference(differencePosition.x,differencePosition.y)}>Mark this point</button></div><div className="ca-spot ca-spot-editor" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); markDifference(100 * (e.clientX-r.left)/r.width,100*(e.clientY-r.top)/r.height); }}><img src={pictureB} alt={c.items[1]?.picture?.alt || 'Picture B'} />{c.settings.differences?.map(d => <button key={d.id} type="button" className="ca-ring" style={{ left: `${d.x}%`, top: `${d.y}%` }} aria-label={`Remove ${d.label}`} onClick={e => { e.stopPropagation(); settings({ differences: c.settings.differences?.filter(x => x.id !== d.id) }); }} />)}</div></>}</div>}
+    {c.kind === 'spot' && <div contentEditable={false}><p>Mark the differences on picture B. Select a circle to remove it.</p>{pictureB && <><div className="ca-crop-controls">{(['x','y'] as const).map((axis,n)=><label key={axis}>{n===0?'Horizontal position':'Vertical position'}<input type="range" min="0" max="100" value={differencePosition[axis]} onChange={e=>setDifferencePosition({...differencePosition,[axis]:Number(e.target.value)})}/></label>)}<button className="btn" type="button" onClick={()=>markDifference(differencePosition.x,differencePosition.y)}>Mark this point</button></div><div className="ca-spot ca-spot-editor" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); markDifference(100 * (e.clientX-r.left)/r.width,100*(e.clientY-r.top)/r.height); }}><img src={pictureB} alt={spotPictureB?.alt || 'Picture B'} style={{width:'100%',height:'100%',maxWidth:'none',maxHeight:'none',margin:0,objectFit:spotPictureB?.fit ?? 'cover',objectPosition:spotPictureB?.position ?? '50% 50%'}} />{c.settings.differences?.map(d => <button key={d.id} type="button" className="ca-ring" style={{ left: `${d.x}%`, top: `${d.y}%` }} aria-label={`Remove ${d.label}`} onClick={e => { e.stopPropagation(); settings({ differences: c.settings.differences?.filter(x => x.id !== d.id) }); }} />)}</div></>}</div>}
     <NodeViewContent className="pick-cards ca-rich-items" />
     <div contentEditable={false}><button className="btn dashed" type="button" disabled={c.kind==='board'&&c.items.length>=48} onClick={() => c.kind==='board'?resizeBoard(c.items.length+1):add()}>Add item</button>{c.kind==='board'&&c.items.length>=48&&<p className="hint">A board can have up to 48 squares.</p>}</div>
   </NodeViewWrapper>;

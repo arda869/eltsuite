@@ -41,7 +41,7 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
       const people: Participant[] = Array.from({ length: count }, (_, n) => ({ id: String(n), name: `Card ${n + 1}` }));
       const cards = bingoCards(c, people, random), size = c.settings.gridSize ?? 4;
       const pages = chunks(people.map(p => card(`<div class="pa-bingo-head"><b>Bingo</b><span>${esc(p.name)}</span></div><div class="pa-bingo-grid" style="grid-template-columns:repeat(${size},1fr)">${cards[p.id].map(id => { const item = c.items.find(i => i.id === id); return `<span>${id === '__free__' ? 'Free' : item ? picture(item, o) + esc(item.title) : ''}</span>`; }).join('')}</div>`, 'pa-bingo')), 4).map(group => piece(grid(group, 2), 'Bingo cards', true));
-      const calls = shuffled(c.items, random).map(item => card(`<span>${esc(item.call || item.title)}</span>`, 'pa-caller-strip'));
+      const calls = shuffled(c.items, random).map(item => card(`${picture(item, o)}<span>${text(item, o)}</span>${item.call?.trim() && item.call !== (plainText(item.content) || item.title) ? `<small>${esc(item.call)}</small>` : ''}`, 'pa-caller-strip'));
       return [...pages, ...chunks(calls, 24).map(group => piece(grid(group, 2), 'Caller strips', true))];
     }
     case 'dominoes': {
@@ -53,7 +53,7 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
       return chunks(halves, 16).map(group => piece(grid(group.map(({ item, side }) => card(side === 'a' ? picture(item, o) + esc(item.title) : picture({...item,picture:item.matchPicture},o) + esc(item.match), 'pa-memory')), 4), 'Pelmanism cards', true));
     }
     case 'strips':
-      return chunks(shuffled(c.items.map((item, n) => ({ item, n })), random), 10).map(group => piece(grid(group.map(({ item, n }) => card(`${picture(item, o)}<span>${text(item, o)}</span><small class="pa-strip-key" aria-label="Teacher key">${String.fromCharCode(65 + n)}</small>`, 'pa-strip')), 1), 'Story strips', true));
+      return chunks(shuffled(c.items, random), 10).map(group => piece(grid(group.map(item => card(`${picture(item, o)}<span>${text(item, o)}</span>`, 'pa-strip')), 1), 'Story strips', true));
     case 'cue':
       return itemCards(c.items, 'pa-cue', 4, 2, item => `<span class="pa-role">${esc(item.cardType === 'secret' ? 'Secret objective' : item.cardType || 'Character')}</span><h3>${esc(item.title)}</h3>${picture(item, o)}<div>${text(item, o)}</div>${useful(item.useful || c.settings.useful)}`);
     case 'taboo':
@@ -73,7 +73,7 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
     case 'spot': {
       const versions = c.settings.versions ?? [];
       // Images are measured by the existing worksheet paginator. Each labelled half is indivisible.
-      return [piece(`<div class="pa-versions">${versions.map((v, n) => `<section class="pa-version"><span class="pa-role"><b>${String.fromCharCode(65 + n)}</b>${esc(v.name)}</span><img class="pa-version-picture" src="${esc(source(v.picture.src, o))}" alt="${esc(v.picture.alt)}"><p>Describe your picture. Keep it hidden from your partner.</p></section>`).join('')}</div>`, 'Spot the difference', true)];
+      return [piece(`<div class="pa-versions">${versions.map((v, n) => `<section class="pa-version"><span class="pa-role"><b>${String.fromCharCode(65 + n)}</b>${esc(v.name)}</span><div class="pa-version-frame"><img class="pa-version-picture" src="${esc(source(v.picture.src, o))}" alt="${esc(v.picture.alt)}" style="width:100%;height:100%;max-width:none;max-height:none;margin:0;object-fit:${v.picture.fit === 'contain' ? 'contain' : 'cover'};object-position:${esc(v.picture.position || '50% 50%')}"></div><p>Describe your picture. Keep it hidden from your partner.</p></section>`).join('')}</div>`, 'Spot the difference', true)];
     }
   }
 }
