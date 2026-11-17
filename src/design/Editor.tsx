@@ -1146,7 +1146,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         </div>
         <span className="dz-grow" />
         {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? <>Not saved. <button type="button" className="btn small-btn" onClick={() => void edits.retry()}>Retry save</button></> : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
-        <DownloadMenu cx={cx} />
+        <DownloadMenu cx={cx} beforeReturn={async () => { edits.flush(); return edits.retry(); }} />
       </div>
       <div className="dz-body">
         {canEdit && <nav className="dz-rail" aria-label="Tools">

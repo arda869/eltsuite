@@ -324,7 +324,7 @@ export function LessonEditor() {
   useEffect(() => {
     const t = params.get('task');
     if (t && tasks.some((x) => x.id === t)) {
-      setParams({}, { replace: true });
+      setParams(current => { const next = new URLSearchParams(current); next.delete('task'); return next; }, { replace: true });
       select(t);
       return;
     }
@@ -949,6 +949,9 @@ export function LessonEditor() {
                     classmates={classmates}
                     classId={classId}
                     lessonId={itemId}
+                    initialDesignId={params.get('designer') || ''}
+                    designerReturnTo={`/class/${classId}/lesson/${itemId}?task=${task.id}`}
+                    onDesignHandoffDone={() => setParams(current => { const next = new URLSearchParams(current); next.delete('designer'); return next; }, { replace: true })}
                     taskContext={draft.instructions}
                     taskTitle={draft.title}
                     onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}

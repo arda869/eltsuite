@@ -61,6 +61,8 @@
 .dz-check input, .dz-checkrow input { accent-color: var(--dz); width: 15px; height: 15px; }
 .dz-dl { display: inline-flex; align-items: center; gap: 8px; background: var(--dz) !important; border-color: var(--dz) !important; color: #fff !important; border-radius: 10px; padding: 8px 16px; }
 .dz-dl:hover { filter: brightness(1.08); }
+.dz-return { flex: none; white-space: nowrap; border-color: var(--dz) !important; background: var(--dz-soft) !important; color: var(--dz-ink) !important; font-weight: 700; }
+.dz-return:hover:not(:disabled) { background: color-mix(in srgb, var(--dz) 28%, var(--dz-panel)) !important; }
 .dz-busy { font: 600 13px var(--sans); color: var(--dz); padding: 0 6px; }
 .dz-dl-scrim { position: fixed; inset: 0; z-index: 40; }
 .dz-dl-pop { position: absolute; right: 14px; top: 50px; z-index: 41; width: 320px; max-height: calc(100vh - 140px); overflow: auto; padding: 8px; border-radius: 14px; background: var(--dz-panel); box-shadow: 0 18px 50px -12px rgba(38, 36, 32, 0.4), 0 0 0 1px var(--dz-line); animation: dz-pop 0.16s ease-out; }
