@@ -29,6 +29,7 @@ export const APP_MARKS = {
   video: "<path d=\"M3.5 10h17v8.5A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5z\"></path><path d=\"M3.5 10V7.5A1.5 1.5 0 0 1 5 6h14a1.5 1.5 0 0 1 1.5 1.5V10\"></path><path d=\"M8.5 6 6.5 10M13.5 6l-2 4M18.5 6l-2 4\"></path><path d=\"M10.6 12.8v4.4l3.6-2.2z\"></path>",
   games: "<path d=\"M7.5 7.5h9a4.5 4.5 0 0 1 4.4 5.5l-.8 3.9a2.3 2.3 0 0 1-3.9 1.1l-1.7-1.8h-5l-1.7 1.8a2.3 2.3 0 0 1-3.9-1.1L3.1 13A4.5 4.5 0 0 1 7.5 7.5z\"></path><path d=\"M8 10.8v3.4M6.3 12.5h3.4\"></path><circle cx=\"15.6\" cy=\"11.4\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"17.4\" cy=\"13.6\" r=\"1\" fill=\"currentColor\" stroke=\"none\"></circle>",
   files: "<rect x=\"4\" y=\"4.5\" width=\"3.6\" height=\"15\" rx=\".8\"></rect><rect x=\"7.6\" y=\"7\" width=\"3.6\" height=\"12.5\" rx=\".8\"></rect><path d=\"M13.2 7.6l3.1-.8 3.3 12.3-3.1.8z\"></path><path d=\"M3 19.5h18\"></path><path d=\"M4 8.2h3.6M7.6 10.6h3.6\"></path>",
+  resourcehub: "<path d=\"M3.5 5.5c2.6-.8 5.4-.8 8.5.9v13c-3.1-1.7-5.9-1.7-8.5-.9v-13zM20.5 5.5c-2.6-.8-5.4-.8-8.5.9v13c3.1-1.7 5.9-1.7 8.5-.9v-13z\"></path><path d=\"M7 10.5h2M15 10.5h2M15 13.5h2\"></path>",
   messages: "<path d=\"M12 4.5c4.7 0 8.5 3 8.5 6.8s-3.8 6.8-8.5 6.8c-1 0-2-.1-2.9-.4L5 19.5l1.2-3.4c-1.6-1.3-2.7-3-2.7-4.8 0-3.8 3.8-6.8 8.5-6.8z\"></path><circle cx=\"8.3\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"12\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle><circle cx=\"15.7\" cy=\"11.3\" r=\"1.05\" fill=\"currentColor\" stroke=\"none\"></circle>",
   colleagues: "<circle cx=\"8.8\" cy=\"8.5\" r=\"3\"></circle><path d=\"M3.3 19.5a5.5 5.5 0 0 1 11 0\"></path><circle cx=\"16.6\" cy=\"7.6\" r=\"2.4\"></circle><path d=\"M15.4 12.4a4.8 4.8 0 0 1 5.4 5.6\"></path><path d=\"M16.8 20.3c-1.5-.9-2.2-1.7-2.2-2.5a1.1 1.1 0 0 1 2.2-.3 1.1 1.1 0 0 1 2.2.3c0 .8-.7 1.6-2.2 2.5z\" fill=\"currentColor\" stroke=\"none\"></path>",
   development: "<path d=\"M12 20.5v-8\"></path><path d=\"M12 14c0-3.6-2.4-6-6.5-6 0 3.7 2.6 6 6.5 6z\"></path><path d=\"M12 11.5c0-3.4 2.3-5.7 6.5-5.7 0 3.5-2.5 5.7-6.5 5.7z\"></path><path d=\"M7.5 20.5h9\"></path>",
@@ -53,6 +54,7 @@ const APPS: App[] = [
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, glyph: APP_MARKS.home, icon: I(APP_MARKS.home) },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
+  { k: 'resourcehub', group: 'share', name: 'Resource Hub', about: 'Curated teaching activities and printable resources', to: '/resource-hub', teacher: true, color: '#74762f', glyph: APP_MARKS.resourcehub, icon: I(APP_MARKS.resourcehub) },
   { k: 'collab', group: 'make', name: 'Collab', about: 'Documents and slides written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
   { k: 'development', group: 'develop', name: 'Teacher’s Companion', about: 'Reflect, plan and talk through your teaching', to: '/coach', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
   { k: 'pdf', group: 'make', name: 'PDF', about: 'PDFs to write on, alone or together', to: '/pdf', teacher: true, color: '#a6463a', glyph: APP_MARKS.pdf, icon: I(APP_MARKS.pdf) },
@@ -89,7 +91,7 @@ const GROUPS: [App['group'], string][] = [
   ['develop', 'Professional learning'],
   ['share', 'Resources and people'],
 ];
-const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'recordings', 'video', 'development', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'recordings', 'video', 'development', 'resourcehub', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // Fetch an app's code as the pointer reaches its tile, before navigation starts.
@@ -106,6 +108,7 @@ const appModules: Record<string, () => Promise<unknown>> = {
   recordings: () => import('../pages/AppFiles'),
   games: () => import('../pages/AppFiles'),
   files: () => import('../pages/MediaArchive'),
+  resourcehub: () => import('../resourceHub/ResourceHubPage'),
   messages: () => import('../pages/MessagesPage'),
   colleagues: () => import('../pages/ColleaguesPage'),
   superadmin: () => import('../pages/AdminPage'),

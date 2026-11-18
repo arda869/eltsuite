@@ -1,0 +1,172 @@
+import type { JSONContent } from '@tiptap/react';
+import type { HubActivity, HubCollection } from './catalog';
+
+type Section = NonNullable<HubActivity['editorSections']>[number];
+type PrintCollection = HubCollection & { paperAccent?: string; headerImage?: string };
+type RichPackOptions = { activity: HubActivity; collection?: PrintCollection; learnerIds: string[]; teacherIds: string[]; copies: number; paper: 'a4' | 'letter'; colour: 'colour' | 'mono' };
+type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; href?: string };
+type Block = { kind: 'text' | 'heading' | 'table'; runs?: Run[]; rows?: string[][]; level?: number };
+
+const textOf = (node: JSONContent): string => node.text ?? (node.content ?? []).map(textOf).join('');
+const runsOf = (node: JSONContent): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : (node.content ?? []).flatMap(runsOf);
+function blocksOf(content: JSONContent): Block[] {
+  const blocks: Block[] = [];
+  const visit = (node: JSONContent, prefix = '') => {
+    if (node.type === 'image' || node.type === 'picture' || node.type === 'media') throw new Error('This resource contains a picture that cannot be included in the print pack yet.');
+    if (node.type === 'table') {
+      blocks.push({ kind: 'table', rows: (node.content ?? []).map(row => (row.content ?? []).map(cell => textOf(cell).trim())) });
+      return;
+    }
+    if (node.type === 'heading') { blocks.push({ kind: 'heading', runs: runsOf(node), level: Number(node.attrs?.level) || 3 }); return; }
+    if (node.type === 'paragraph') { const runs = [...(prefix ? [{ text: prefix }] : []), ...runsOf(node)]; if (runs.some(run => run.text.trim())) blocks.push({ kind: 'text', runs }); return; }
+    if (node.type === 'bulletList' || node.type === 'orderedList') { (node.content ?? []).forEach((child, index) => visit(child, node.type === 'bulletList' ? '• ' : `${index + 1}. `)); return; }
+    if (node.type === 'listItem') { (node.content ?? []).forEach((child, index) => visit(child, index === 0 ? prefix : '')); return; }
+    for (const child of node.content ?? []) visit(child, prefix);
+  };
+  visit(content);
+  return blocks;
+}
+
+const fontData = async (path: string) => {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error('The print font could not be loaded.');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let binary = '';
+  for (let at = 0; at < bytes.length; at += 0x8000) binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+  return btoa(binary);
+};
+
+const colourOf = (hex: string | undefined): readonly [number, number, number] => /^#[0-9a-f]{6}$/i.test(hex ?? '')
+  ? [1, 3, 5].map(index => Number.parseInt((hex ?? '').slice(index, index + 2), 16)) as [number, number, number]
+  : [143, 81, 54];
+
+async function printableHeader(source: string, mono: boolean): Promise<{ data: string; width: number; height: number }> {
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('The collection header image could not be loaded for print.'));
+    image.src = source;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('The collection header image could not be prepared for print.');
+  context.drawImage(image, 0, 0);
+  if (mono) {
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    for (let at = 0; at < pixels.data.length; at += 4) {
+      const shade = Math.round(.2126 * pixels.data[at] + .7152 * pixels.data[at + 1] + .0722 * pixels.data[at + 2]);
+      pixels.data[at] = shade; pixels.data[at + 1] = shade; pixels.data[at + 2] = shade;
+    }
+    context.putImageData(pixels, 0, 0);
+  }
+  try { return { data: canvas.toDataURL('image/jpeg', .86), width: canvas.width, height: canvas.height }; }
+  catch { throw new Error('The collection header image cannot be printed from its current URL.'); }
+}
+
+/** Builds a real PDF from editor sections; learner copies are grouped first and private teacher sections last. */
+export async function makeEditorResourcePdf({ activity, collection, learnerIds, teacherIds, copies, paper, colour }: RichPackOptions): Promise<Uint8Array> {
+  const sections = activity.editorSections ?? [];
+  const learners = sections.filter(section => section.audience === 'learner' && learnerIds.includes(section.id));
+  const teachers = sections.filter(section => section.audience === 'teacher' && teacherIds.includes(section.id));
+  if (!learners.length && !teachers.length) throw new Error('Choose at least one section.');
+  if (!Number.isInteger(copies) || copies < 1 || copies > 30) throw new Error('Choose 1–30 learner copies.');
+  const [{ jsPDF }, regular, bold, italic, header] = await Promise.all([import('jspdf'), fontData('/fonts/atkinson/Regular.ttf'), fontData('/fonts/atkinson/Bold.ttf'), fontData('/fonts/atkinson/Italic.ttf'), collection?.headerImage ? printableHeader(collection.headerImage, colour === 'mono') : Promise.resolve(null)]);
+  const pdf = new jsPDF({ unit: 'mm', format: paper, orientation: 'portrait', compress: true });
+  pdf.addFileToVFS('Atkinson-Regular.ttf', regular); pdf.addFont('Atkinson-Regular.ttf', 'Atkinson', 'normal');
+  pdf.addFileToVFS('Atkinson-Bold.ttf', bold); pdf.addFont('Atkinson-Bold.ttf', 'Atkinson', 'bold');
+  pdf.addFileToVFS('Atkinson-Italic.ttf', italic); pdf.addFont('Atkinson-Italic.ttf', 'Atkinson', 'italic');
+  const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight();
+  const margin = 19, contentWidth = width - margin * 2, bottom = height - 20;
+  let started = false, y = 0;
+  const ink = colour === 'mono' ? [45, 45, 45] as const : [58, 56, 48] as const;
+  const accent = colour === 'mono' ? [70, 70, 70] as const : colourOf(collection?.paperAccent || collection?.accent);
+  const setInk = (rgb: readonly number[]) => pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
+  const begin = (section: Section) => {
+    if (started) pdf.addPage(paper, 'portrait');
+    started = true; y = 22;
+    if (header) {
+      const fitWidth = Math.min(contentWidth, 25 * header.width / header.height);
+      const fitHeight = fitWidth * header.height / header.width;
+      pdf.addImage(header.data, 'JPEG', margin, y - 8, fitWidth, fitHeight);
+      y += fitHeight + 2;
+    }
+    pdf.setFont('Atkinson', 'bold'); pdf.setFontSize(9); setInk(accent);
+    const activityLines = pdf.splitTextToSize(activity.title.toUpperCase(), contentWidth) as string[];
+    pdf.text(activityLines, margin, y); y += activityLines.length * 4 + 3;
+    pdf.setDrawColor(211, 207, 197); pdf.line(margin, y, width - margin, y); y += 11;
+    pdf.setFontSize(18); setInk(ink);
+    const titleLines = pdf.splitTextToSize(section.title, contentWidth) as string[];
+    pdf.text(titleLines, margin, y); y += titleLines.length * 8 + 2;
+    if (section.audience === 'teacher') { pdf.setFontSize(8); setInk(accent); pdf.text('TEACHER ONLY · KEEP PRIVATE', margin, y); y += 7; }
+  };
+  const nextPage = () => { pdf.addPage(paper, 'portrait'); y = 21; };
+  const lines = (text: string, fontSize = 10.5, boldLine = false, gap = 3) => {
+    pdf.setFont('Atkinson', boldLine ? 'bold' : 'normal'); pdf.setFontSize(fontSize); setInk(boldLine ? accent : ink);
+    const wrapped = pdf.splitTextToSize(text, contentWidth) as string[];
+    const lineHeight = fontSize * .45;
+    for (const line of wrapped) { if (y + lineHeight > bottom) nextPage(); pdf.text(line, margin, y); y += lineHeight; }
+    y += gap;
+  };
+  const richLines = (runs: Run[], fontSize = 10.5, heading = false) => {
+    let x = margin;
+    const lineHeight = fontSize * .48;
+    for (const run of runs) {
+      pdf.setFont('Atkinson', run.bold || heading ? 'bold' : run.italic ? 'italic' : 'normal');
+      pdf.setFontSize(fontSize); setInk(run.href ? [77, 100, 146] : heading ? accent : ink);
+      const tokens = run.text.split(/(\s+)/).filter(Boolean);
+      for (const token of tokens) {
+        if (/^\s+$/.test(token) && x === margin) continue;
+        const pieces = pdf.getTextWidth(token) > contentWidth ? pdf.splitTextToSize(token, contentWidth) as string[] : [token];
+        for (const piece of pieces) {
+          const tokenWidth = pdf.getTextWidth(piece);
+          if (x + tokenWidth > width - margin && x > margin) { y += lineHeight; x = margin; }
+          if (y + lineHeight > bottom) { nextPage(); x = margin; }
+          if (!/^\s+$/.test(piece)) {
+            pdf.text(piece, x, y);
+            if (run.underline || run.href) { pdf.setDrawColor(run.href ? 77 : ink[0], run.href ? 100 : ink[1], run.href ? 146 : ink[2]); pdf.line(x, y + .7, x + tokenWidth, y + .7); }
+            if (run.strike) { pdf.setDrawColor(ink[0], ink[1], ink[2]); pdf.line(x, y - fontSize * .15, x + tokenWidth, y - fontSize * .15); }
+            if (run.href && /^https?:\/\//i.test(run.href)) pdf.link(x, y - fontSize * .34, tokenWidth, lineHeight, { url: run.href });
+          }
+          x += tokenWidth;
+        }
+      }
+    }
+    y += lineHeight + (heading ? 4 : 3);
+  };
+  const table = (rows: string[][]) => {
+    if (!rows.length) return;
+    const columns = Math.max(1, ...rows.map(row => row.length));
+    const cellWidth = contentWidth / columns;
+    for (const [rowIndex, row] of rows.entries()) {
+      pdf.setFont('Atkinson', rowIndex === 0 ? 'bold' : 'normal'); pdf.setFontSize(8.5); setInk(ink);
+      const cells = Array.from({ length: columns }, (_, col) => pdf.splitTextToSize(row[col] ?? '', cellWidth - 5) as string[]);
+      const rowHeight = Math.max(9, ...cells.map(cell => cell.length * 4.1 + 4));
+      if (y + rowHeight > bottom) nextPage();
+      cells.forEach((cell, col) => {
+        pdf.setDrawColor(194, 191, 181); pdf.rect(margin + col * cellWidth, y, cellWidth, rowHeight);
+        cell.forEach((line, lineIndex) => pdf.text(line, margin + col * cellWidth + 2.5, y + 5 + lineIndex * 4.1));
+      });
+      y += rowHeight;
+    }
+    y += 4;
+  };
+  const draw = (section: Section) => {
+    begin(section);
+    if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, true, 7);
+    for (const block of blocksOf(section.content)) {
+      if (block.kind === 'table') table(block.rows ?? []);
+      else if (block.kind === 'heading') richLines(block.runs ?? [], block.level === 2 ? 15 : 12, true);
+      else richLines(block.runs ?? []);
+    }
+  };
+  for (let copy = 0; copy < copies; copy++) learners.forEach(draw);
+  teachers.forEach(draw);
+  const pages = pdf.getNumberOfPages();
+  for (let index = 1; index <= pages; index++) {
+    pdf.setPage(index); pdf.setFont('Atkinson', 'normal'); pdf.setFontSize(8); pdf.setTextColor(125, 122, 112);
+    pdf.text(`${index} / ${pages}`, width - margin, height - 10, { align: 'right' });
+  }
+  return new Uint8Array(pdf.output('arraybuffer'));
+}

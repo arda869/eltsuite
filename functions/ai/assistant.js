@@ -9,6 +9,8 @@ import { editUntilReady, editorialStandard } from './editorial.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
 import { rebuildMaterials } from './materials.js';
+import { resourceAdapt } from './resource-adapt.js';
+import { resourceHubImportDraft, resourceHubImportStatus } from './resource-import.js';
 import { generateChecked } from './recovery.js';
 import { taskMediaContext, taskMediaGuidance, checkTaskMediaPlan, prepareActivityAssets } from './task-media.js';
 import { mediaRequests, mediaInstructions } from './media-contract.js';
@@ -45,6 +47,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   if (req.data?.action === 'coach') return teachingCoach(req, { apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};
+  if (d.action === 'resourceHubImportDraft') return resourceHubImportDraft(req, { db, uid, apiKey: key.value(), model: model.value(), enabled: enabled.value() });
+  if (d.action === 'resourceHubImportStatus') return resourceHubImportStatus(req, { db, uid });
   if (!id(d.classId)) fail('Choose a class.');
   const [profile, account, cls, pilot] = await Promise.all([
     db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get(), db.doc(`classes/${d.classId}`).get(), db.doc(`aiPilot/${uid}`).get(),
@@ -56,6 +60,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (d.action === 'readiness') return requestReadiness(req,{db,uid,cls});
   if (['taskTools','taskToolsIdeas','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (['rebuild','rebuildStatus','importCreate'].includes(d.action)) return rebuildMaterials(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
+  if (d.action === 'resourceAdapt') return resourceAdapt(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'memories') return {memories: await collectMemories(db,d.classId)};
   if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
   if (d.action === 'profile') {

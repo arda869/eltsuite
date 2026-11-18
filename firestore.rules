@@ -63,6 +63,41 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
 
+    // Resource Hub editions are separate from working drafts. Teachers can read
+    // published editions, never unpublished notes or review changes. Only the
+    // existing super-admin role may author or publish either kind of document.
+    match /resourceHubDrafts/{id} {
+      allow read, create, update, delete: if isOwner();
+    }
+    match /resourceHubPublished/{id} {
+      allow read: if isTeacher() || isOwner();
+      allow create, update, delete: if isOwner();
+      match /editions/{edition} {
+        allow read: if isTeacher() || isOwner();
+        allow create: if isOwner();
+        allow update, delete: if false;
+      }
+    }
+    match /resourceHubNumberClaims/{id} {
+      allow read, create, update, delete: if isOwner();
+    }
+    match /resourceHubCollectionsDrafts/{id} {
+      allow read, create, update, delete: if isOwner();
+    }
+    match /resourceHubCollectionsPublished/{id} {
+      allow read: if isTeacher() || isOwner();
+      allow create, update, delete: if isOwner();
+      match /editions/{edition} {
+        allow read: if isTeacher() || isOwner();
+        allow create: if isOwner();
+        allow update, delete: if false;
+      }
+    }
+    // A teacher's shelves, follows and print basket are private to that account.
+    match /resourceHubUserState/{uid} {
+      allow read, create, update, delete: if isSelf(uid) && isTeacher();
+    }
+
     // Coaching stays private from admins and view-as sessions.
     match /teachingCoach/{uid}/conversations/{conversationId} {
       allow read: if isSelf(uid) && isTeacher() && request.auth.token.get('proxyBy', null) == null;

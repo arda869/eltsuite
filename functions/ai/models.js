@@ -35,6 +35,7 @@ export const JOB_MODEL = {
   image_review: 'gpt-6.1-sol', // test both
   // Lesson tools
   task_edit: 'gpt-6.1-sol', // candidate: Terra
+  resource_adapt: 'gpt-6.1-sol',
   task_ideas: 'gpt-6.1-sol', // candidate: Terra
   // Around the suite
   help_selection: 'gpt-6.1-sol', // candidate: Terra
