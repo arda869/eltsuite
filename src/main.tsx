@@ -87,6 +87,8 @@ const SharedRecap = lazy(() => import('./pages/RecapPages').then((m) => ({ defau
 const LearnerDiscussion = lazy(() => import('./pages/LearnerDiscussion').then((m) => ({ default: m.LearnerDiscussion })));
 const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m.PlayPage })));
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
+const ResourceHubPage = lazy(() => import('./resourceHub/ResourceHubPage'));
+const ResourceHubAdminPage = lazy(() => import('./resourceHub/ResourceHubAdminPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
@@ -272,6 +274,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
+          <Route path="/resource-hub" element={<TeacherOnly><ResourceHubPage /></TeacherOnly>} />
+          <Route path="/resource-hub/admin" element={<TeacherOnly><ResourceHubAdminPage /></TeacherOnly>} />
+          <Route path="/resource-hub/admin/:id" element={<TeacherOnly><ResourceHubAdminPage /></TeacherOnly>} />
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
