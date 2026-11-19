@@ -16,7 +16,7 @@ export type HubResourceDraft = {
   sourceReview?: { fileName: string; importedAt: number; rightsConfirmed: boolean; warnings: string[] };
 };
 export type HubResourceEdition = Omit<HubResourceDraft, 'state' | 'publishedRevision' | 'publishedAt' | 'authorUid' | 'updatedAt' | 'sourceReview'> & { edition: number; publishedAt: number; publishedBy: string };
-export type HubCollectionDraft = { id: HubCollectionId; title: string; promise: string; cover: string; accent: string; paperAccent: string; headerImage: string; state: HubEditorState; revision: number; publishedRevision: number | null; publishedAt: number | null; updatedAt: number; authorUid: string };
+export type HubCollectionDraft = { id: HubCollectionId; title: string; promise: string; cover: string; accent: string; paperAccent: string; headerImage: string; visible?: boolean; state: HubEditorState; revision: number; publishedRevision: number | null; publishedAt: number | null; updatedAt: number; authorUid: string };
 
 const blankDoc = (): JSONContent => ({ type: 'doc', content: [{ type: 'paragraph' }] });
 const newId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `rh-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -147,7 +147,7 @@ export async function publishResource(id: string, expectedRevision: number, uid:
 }
 
 export async function createCollectionDraft(uid: string, id: HubCollectionId, initial: Pick<HubCollectionDraft, 'title' | 'promise' | 'cover' | 'accent'>): Promise<HubCollectionDraft> {
-  const draft: HubCollectionDraft = { id, ...initial, paperAccent: initial.accent, headerImage: '', state: 'draft', revision: 1, publishedRevision: null, publishedAt: null, updatedAt: Date.now(), authorUid: uid };
+  const draft: HubCollectionDraft = { id, ...initial, paperAccent: initial.accent, headerImage: '', visible: true, state: 'draft', revision: 1, publishedRevision: null, publishedAt: null, updatedAt: Date.now(), authorUid: uid };
   await setDoc(collectionDraftRef(id), draft);
   return draft;
 }
@@ -190,7 +190,7 @@ export async function publishCollection(id: HubCollectionId, expectedRevision: n
     if (!draft.title.trim() || !draft.promise.trim() || !/^#[0-9a-fA-F]{6}$/.test(draft.accent) || !/^#[0-9a-fA-F]{6}$/.test(draft.paperAccent)) throw new Error('Add a name, promise and valid accent colours first.');
     if (!/^(https?:\/\/|\/|data:image\/jpeg;base64,)/i.test(draft.cover) || (draft.headerImage && !/^(https?:\/\/|\/|data:image\/jpeg;base64,)/i.test(draft.headerImage))) throw new Error('Use a valid uploaded image or image URL.');
     const publishedAt = Date.now();
-    const edition = { id, title: draft.title, promise: draft.promise, cover: draft.cover, accent: draft.accent, paperAccent: draft.paperAccent, headerImage: draft.headerImage, edition: draft.revision, publishedAt, publishedBy: uid };
+    const edition = { id, title: draft.title, promise: draft.promise, cover: draft.cover, accent: draft.accent, paperAccent: draft.paperAccent, headerImage: draft.headerImage, visible: draft.visible !== false, edition: draft.revision, publishedAt, publishedBy: uid };
     tx.set(collectionPublicRef(id), edition);
     tx.set(doc(collectionPublicRef(id), 'editions', String(draft.revision)), edition);
     tx.update(ref, { publishedRevision: draft.revision, publishedAt, state: 'draft', revision: draft.revision + 1, updatedAt: publishedAt });

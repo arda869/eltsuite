@@ -165,3 +165,6 @@
   .rhe-main--activity .rhe-editor-head p { font-size:12px; line-height:1.35; }
   .rhe-main--activity .rhe-editor-side { position:static; }
 }
+.rhe-visibility{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0;padding:15px 17px;border:1px solid var(--rh-border);border-radius:11px;background:var(--paper-soft)}
+.rhe-visibility strong,.rhe-visibility span{display:block}.rhe-visibility strong{font:700 13px var(--sans)}.rhe-visibility div>span{margin-top:4px;max-width:520px;color:var(--rh-muted);font:500 12px/1.4 var(--sans)}
+.rhe-visibility button{display:flex;align-items:center;width:44px;height:26px;flex:none;padding:3px;border:0;border-radius:99px;background:#b6b6af;transition:background .18s ease}.rhe-visibility button.on{background:var(--rh-olive)}.rhe-visibility button span{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .18s ease}.rhe-visibility button.on span{transform:translateX(18px)}

@@ -7,6 +7,7 @@ import type { HubCollection, HubCollectionId } from './catalog';
 export type PublishedCollectionOverride = Pick<HubCollection, 'id' | 'title' | 'promise' | 'cover' | 'accent'> & {
   paperAccent: string;
   headerImage: string;
+  visible?: boolean;
   edition: number;
 };
 

@@ -75,15 +75,16 @@ export function ResourceHubPage() {
   const publishedCollections = usePublishedHubCollections();
   const [staticKitOverride, setStaticKitOverride] = useState<HubStaticOverride | null>(null);
   useEffect(() => subscribeStaticKitOverride(setStaticKitOverride, () => setStaticKitOverride(null)), []);
-  const collections = useMemo(() => HUB_COLLECTIONS.map(collection => ({ ...collection, ...publishedCollections.items?.find(item => item.id === collection.id) })), [publishedCollections.items]);
+  const collections = useMemo(() => HUB_COLLECTIONS.map(collection => ({ ...collection, ...publishedCollections.items?.find(item => item.id === collection.id) })).filter(collection => collection.visible !== false), [publishedCollections.items]);
   const activities = useMemo(() => {
     const additions = (published.items ?? []).filter(item => !(item.collectionId === 'otp' && item.number === '002'));
     const replacements = new Map(additions.map(item => [item.id, item]));
     const examples = HUB_ACTIVITIES.filter(item => item.id === 'otp-002');
     const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
     const builtInIds = new Set(examples.map(item => item.id));
-    return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))];
-  }, [published.items, staticKitOverride]);
+    const visibleCollectionIds = new Set(collections.map(collection => collection.id));
+    return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))].filter(item => visibleCollectionIds.has(item.collectionId));
+  }, [published.items, staticKitOverride, collections]);
   const requestedTab = params.get('tab');
   const tab: Tab = requestedTab && requestedTab in TAB_LABELS ? requestedTab as Tab : 'discover';
   const selectedActivity = activities.find(a => a.id === params.get('activity'));
