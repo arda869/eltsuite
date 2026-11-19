@@ -171,3 +171,89 @@
 .rh-activity-art.art-table { color:#4e5825; }
 .rh-activity-art.art-cards,.rh-activity-art.art-board { color:#315d57; }
 .rh-activity-art.art-worksheet,.rh-activity-art.art-strips { color:#5e456a; }
+
+/* Resource Hub uses the shared page gutter and keeps scrolling inside its workspace. */
+:root:has(.rh-app-shell) { overflow:hidden; scrollbar-gutter:auto; }
+:root .shell.rh-app-shell {
+  width:100%;
+  height:calc(100dvh - var(--proxy-h, 0px));
+  min-height:0;
+  overflow:hidden;
+  padding:0 var(--page-gutter);
+  gap:0;
+  background:var(--bg);
+  --rh-ink:var(--ink);
+  --rh-muted:var(--muted);
+  --rh-border:var(--hair);
+  --rh-paper:var(--paper);
+  --rh-warm:var(--bg);
+}
+.rh-app-shell .rh-main { flex:1; min-height:0; overflow:hidden; }
+.rh-app-shell .rh-page-heading { flex:none; padding:var(--space-5) 0 var(--space-4); }
+.rh-app-shell .rh-tabs { flex:none; padding:0 0 var(--space-3); background:var(--bg); }
+.rh-app-shell .rh-tabs button { min-height:36px; padding:0 var(--space-4); }
+.rh-app-shell .rh-content {
+  flex:1;
+  min-height:0;
+  min-width:0;
+  max-width:none;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  margin:0;
+  padding:var(--space-5) 0 var(--space-8);
+  scrollbar-gutter:stable;
+}
+.rh-app-shell .rh-content-detail { display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; }
+.rh-app-shell .rh-section { margin-top:var(--space-7); }
+.rh-app-shell .rh-section:first-child { margin-top:0; }
+.rh-app-shell .rh-section-heading { margin-bottom:var(--space-4); }
+.rh-app-shell .rh-activity-grid,.rh-app-shell .rh-collection-grid { gap:var(--space-5); }
+.rh-app-shell .rh-discover-hero { background:transparent; }
+.rh-app-shell .rh-search { background:var(--paper); }
+.rh-app-shell .rh-quick-chip { min-height:36px; background:var(--paper); }
+.rh-app-shell .rh-describe { min-height:36px; }
+.rh-app-shell .rh-filter .sel.rh-select-filter { min-height:36px; height:36px; }
+.rh-app-shell .rh-text-button,.rh-app-shell .rh-back,
+.rh-app-shell .rh-collection-follow,.rh-app-shell .rh-collection-hero-follow,
+.rh-app-shell .rh-primary,.rh-app-shell .rh-print-desk-link { min-height:36px; }
+.rh-app-shell .rh-collection-card { height:100%; background:var(--paper); }
+.rh-app-shell .rh-collection-open { flex:1; }
+.rh-app-shell .rh-collection-open strong { min-height:2.4em; }
+.rh-app-shell .rh-collection-open>span:not(.rh-cover) { min-height:3em; }
+.rh-app-shell .rh-collection-open small { margin-top:auto; }
+.rh-app-shell .rh-activity-card,.rh-app-shell .rh-situations button,
+.rh-app-shell .rh-empty,.rh-app-shell .rh-shelf-card,
+.rh-app-shell .rh-follow-card { background:var(--paper); }
+.rh-app-shell .rh-collection-hero,.rh-app-shell .rh-create-shelf,
+.rh-app-shell .rh-shelf-empty { background:var(--paper-soft); }
+.rh-app-shell .rh-card-footer { min-height:44px; }
+.rh-app-shell .rh-icon-button { width:36px; height:36px; }
+:root[data-theme='dark'] .rh-app-shell .rh-activity-card,
+:root[data-theme='dark'] .rh-app-shell .rh-collection-card,
+:root[data-theme='dark'] .rh-app-shell .rh-situations button,
+:root[data-theme='dark'] .rh-app-shell .rh-empty,
+:root[data-theme='dark'] .rh-app-shell .rh-shelf-card,
+:root[data-theme='dark'] .rh-app-shell .rh-follow-card,
+:root[data-theme='dark'] .rh-app-shell .rh-search,
+:root[data-theme='dark'] .rh-app-shell .rh-quick-chip { background:var(--paper); color:var(--ink); }
+:root[data-theme='dark'] .rh-app-shell .rh-collection-hero,
+:root[data-theme='dark'] .rh-app-shell .rh-create-shelf,
+:root[data-theme='dark'] .rh-app-shell .rh-shelf-empty { background:var(--paper-soft); }
+@media(max-width:1024px) {
+  .rh-app-shell .rh-collection-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:600px) {
+  .rh-app-shell .rh-page-heading { padding:var(--space-4) 0 var(--space-3); }
+  .rh-app-shell .rh-tabs { padding:0 0 var(--space-3); }
+  .rh-app-shell .rh-tabs button { min-height:44px; }
+  .rh-app-shell .rh-content { padding:var(--space-4) 0 var(--space-8); }
+  .rh-app-shell .rh-content-detail { padding-bottom:0; }
+  .rh-app-shell .rh-quick-chip,.rh-app-shell .rh-describe,
+  .rh-app-shell .rh-filter .sel.rh-select-filter,
+  .rh-app-shell .rh-text-button,.rh-app-shell .rh-back,
+  .rh-app-shell .rh-collection-follow,.rh-app-shell .rh-collection-hero-follow,
+  .rh-app-shell .rh-primary,.rh-app-shell .rh-print-desk-link { min-height:44px; }
+  .rh-app-shell .rh-collection-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .rh-app-shell .rh-icon-button { width:44px; height:44px; }
+}

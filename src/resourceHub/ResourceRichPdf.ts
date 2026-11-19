@@ -8,19 +8,41 @@ type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean
 type Block = { kind: 'text' | 'heading' | 'table'; runs?: Run[]; rows?: string[][]; level?: number };
 
 const textOf = (node: JSONContent): string => node.text ?? (node.content ?? []).map(textOf).join('');
-const runsOf = (node: JSONContent): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : (node.content ?? []).flatMap(runsOf);
+const printNodes = new Set(['doc', 'text', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'gap', 'dropgap', 'choice', 'mcq', 'match', 'order', 'writing', 'wordbank']);
+export const hasDigitalOnlyItems = (node: JSONContent): boolean => !printNodes.has(node.type ?? '') || !!node.content?.some(hasDigitalOnlyItems);
+const runsOf = (node: JSONContent): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : node.type === 'gap' || node.type === 'dropgap' ? [{ text: ' __________ ' }] : node.type === 'choice' || node.type === 'mcq' ? [{ text: ` (${(node.attrs?.options ?? []).filter(Boolean).join(' / ')}) ` }] : (node.content ?? []).flatMap(runsOf);
+const questionText = (node: JSONContent): string => {
+  const a = node.attrs ?? {};
+  if (node.type === 'match') return `Match the items: ${(a.pairs ?? []).map((pair: { left: string }) => pair.left).filter(Boolean).join(' · ')} | Options: ${[...(a.pairs ?? []).map((pair: { right: string }) => pair.right), ...(a.extras ?? [])].filter(Boolean).join(' · ')}`;
+  if (node.type === 'order') return `Put the words in order: ${String(a.sentence ?? '').split(/\s+/).filter(Boolean).reverse().join(' / ')}`;
+  if (node.type === 'writing') return `Long answer${a.minWords ? ` · at least ${a.minWords} words` : ''}`;
+  if (node.type === 'pq') {
+    const data = a.data ?? {};
+    const prompt = data.instruction || data.first || data.sentence || data.text || data.prompt || '';
+    return `${String(a.kind ?? 'Question').replace(/^./, (letter: string) => letter.toUpperCase())}: ${String(prompt)}`;
+  }
+  return `${String(node.type ?? 'Interactive item').replace(/([A-Z])/g, ' $1')}: ${String(a.title || a.prompt || a.instruction || '').trim()}`.trim();
+};
 function blocksOf(content: JSONContent): Block[] {
   const blocks: Block[] = [];
+  const dropAnswers: string[] = [];
+  const findDropAnswers = (node: JSONContent) => { if (node.type === 'dropgap' && node.attrs?.answer) dropAnswers.push(String(node.attrs.answer)); node.content?.forEach(findDropAnswers); };
+  findDropAnswers(content);
   const visit = (node: JSONContent, prefix = '') => {
-    if (node.type === 'image' || node.type === 'picture' || node.type === 'media') throw new Error('This resource contains a picture that cannot be included in the print pack yet.');
+    if (node.type === 'image' || node.type === 'picture' || node.type === 'media') { blocks.push({ kind: 'text', runs: [{ text: `DIGITAL ONLY — ${node.type === 'media' ? 'Media' : 'Image'} is available in the Class activity and is not reproduced on this page.` }] }); return; }
     if (node.type === 'table') {
       blocks.push({ kind: 'table', rows: (node.content ?? []).map(row => (row.content ?? []).map(cell => textOf(cell).trim())) });
       return;
     }
+    if (node.type === 'wordbank') { blocks.push({ kind: 'text', runs: [{ text: `Word bank: ${[...dropAnswers, ...(node.attrs?.extras ?? [])].filter(Boolean).join(' · ')}` }] }); return; }
     if (node.type === 'heading') { blocks.push({ kind: 'heading', runs: runsOf(node), level: Number(node.attrs?.level) || 3 }); return; }
     if (node.type === 'paragraph') { const runs = [...(prefix ? [{ text: prefix }] : []), ...runsOf(node)]; if (runs.some(run => run.text.trim())) blocks.push({ kind: 'text', runs }); return; }
     if (node.type === 'bulletList' || node.type === 'orderedList') { (node.content ?? []).forEach((child, index) => visit(child, node.type === 'bulletList' ? '• ' : `${index + 1}. `)); return; }
     if (node.type === 'listItem') { (node.content ?? []).forEach((child, index) => visit(child, index === 0 ? prefix : '')); return; }
+    if (node.type && !['doc', 'text', 'gap', 'dropgap', 'choice', 'mcq'].includes(node.type) && node.attrs?.id) {
+      blocks.push({ kind: 'text', runs: [{ text: questionText(node) }] });
+      return;
+    }
     for (const child of node.content ?? []) visit(child, prefix);
   };
   visit(content);
@@ -154,6 +176,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
   };
   const draw = (section: Section) => {
     begin(section);
+    if (hasDigitalOnlyItems(section.content)) lines('DIGITAL ONLY CONTENT · This print page does not reproduce every interactive or visual item. Use the Class activity for the complete task.', 9.5, true, 6);
     if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, true, 7);
     for (const block of blocksOf(section.content)) {
       if (block.kind === 'table') table(block.rows ?? []);
