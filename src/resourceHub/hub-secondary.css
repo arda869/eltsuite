@@ -142,3 +142,24 @@
   .rh-app-shell .rh-create-shelf input,.rh-app-shell .rh-create-shelf .rh-primary,
   .rh-app-shell .rh-create-shelf .rh-secondary-action { height:44px; }
 }
+
+/* Shelves are a quick list of saved resources, not a second cover gallery. */
+.rh-app-shell .rh-secondary-header { margin-bottom:var(--space-4); }
+.rh-app-shell .rh-secondary-header h1 { margin:4px 0 6px; font-size:clamp(26px,2.4vw,32px); }
+.rh-app-shell .rh-secondary-header p { font-size:13px; line-height:1.4; }
+.rh-app-shell .rh-shelf-section { margin-top:var(--space-6); }
+.rh-app-shell .rh-secondary-section-title { margin-bottom:var(--space-3); }
+.rh-app-shell .rh-secondary-section-title h2 { font-size:20px; }
+.rh-app-shell .rh-shelf-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-3); }
+.rh-app-shell .rh-shelf-card { min-width:0; border-radius:12px; }
+.rh-app-shell .rh-shelf-open { display:grid; grid-template-columns:64px minmax(0,1fr); grid-template-rows:auto auto 1fr auto; align-content:start; column-gap:11px; min-height:115px; padding:11px 11px 4px; }
+.rh-app-shell .rh-shelf-art { grid-column:1; grid-row:1 / span 4; width:64px; height:88px; margin:0; border-radius:5px; font-size:25px; }
+.rh-app-shell .rh-shelf-open>.rh-kicker,.rh-app-shell .rh-shelf-open>strong,.rh-app-shell .rh-shelf-card-desc,.rh-app-shell .rh-shelf-open>.rh-secondary-pills { grid-column:2; min-width:0; }
+.rh-app-shell .rh-shelf-open>.rh-kicker { font-size:9px; }
+.rh-app-shell .rh-shelf-open>strong { margin:3px 0; font-size:16px; line-height:1.16; }
+.rh-app-shell .rh-shelf-card-desc { display:-webkit-box; overflow:hidden; min-height:0; margin:0 0 5px; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:11px; line-height:1.35; }
+.rh-app-shell .rh-shelf-open>.rh-secondary-pills span { padding:3px 5px; font-size:9px; }
+.rh-app-shell .rh-shelf-card>.rh-shelf-remove { align-self:flex-end; margin:0 11px 6px; padding:0; font-size:10px; }
+@media(max-width:1150px) { .rh-app-shell .rh-shelf-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:800px) { .rh-app-shell .rh-shelf-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:520px) { .rh-app-shell .rh-shelf-grid { grid-template-columns:1fr; } }

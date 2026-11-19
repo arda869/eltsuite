@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Select } from '../components/Select';
 import type { HubActivity, HubCollection } from './catalog';
 import { collectionFor } from './catalog';
@@ -23,6 +24,12 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   const firstLearnerIndex = learnerIndices[0] ?? 0;
   const [pageIndex, setPageIndex] = useState(firstLearnerIndex);
   const [zoom, setZoom] = useState<Zoom>('fit');
+  const changeZoom = (next: Zoom) => {
+    if (next === zoom) return;
+    if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.startViewTransition(() => flushSync(() => setZoom(next)));
+    } else setZoom(next);
+  };
   const [dialog, setDialog] = useState<'print' | 'copy' | 'adapt' | null>(null);
   const aiEnabled = useAiPilot();
   const collection = collectionOverride ?? collectionFor(activity.collectionId);
@@ -51,8 +58,8 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   return <div className="rh-detail">
     <div className="rh-detail-breadcrumb"><button type="button" onClick={onBack}>← Back to {collection.title}</button><span aria-hidden="true">/</span><span>Activity {Number(activity.number)}</span></div>
     <header className="rh-detail-header">
-      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title} · Activity {Number(activity.number)}</span><h1>{activity.title}</h1><p>{activity.summary}</p><div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div></div>
-      <div className="rh-detail-header-actions"><span className="rh-ready-pill">{ready ? 'Ready to use' : 'Activity outline'}</span>{ready && <button type="button" className="rh-secondary" onClick={() => setDialog('print')}>Print pages</button>}</div>
+      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title} · Activity {Number(activity.number)}</span><h1>{activity.title}</h1>{activity.id !== 'otp-002' && <p>{activity.summary}</p>}<div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div></div>
+      <div className="rh-detail-header-actions"><span className="rh-ready-pill">{ready ? 'Ready to use' : 'Activity outline'}</span></div>
     </header>
     {!ready ? <section className="rh-outline-panel"><div className="rh-outline-icon" aria-hidden="true">✦</div><h2>Pages are being prepared</h2><p>This activity outline is available to explore. Printable pages and editable Class tasks will appear when the complete resource is ready.</p><button type="button" className="rh-secondary" onClick={onBack}>Explore activities</button></section> : <div className="rh-detail-grid">
       <aside className="rh-detail-pages" aria-label="Activity pages"><div className="rh-side-heading"><span>In this activity</span><small>{previewCount} pages</small></div>
@@ -60,7 +67,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
         <div className="rh-page-group"><h2>Learner sheets</h2>{learnerPages.map(pageChoice)}</div>
         {teacherPagesAfter.length > 0 && <div className="rh-page-group"><h2>Answer key</h2>{teacherPagesAfter.map(pageChoice)}</div>}
       </aside>
-      <section className="rh-preview" aria-label="Activity preview"><div className="rh-preview-toolbar"><span><strong>{page.audience === 'teacher' ? `Page ${pageIndex + 1} of ${previewCount}` : `Learner page ${selectedLearnerPosition + 1} of ${learnerIndices.length}`}</strong><small>{page?.title}</small></span><div><Select value={zoom} options={[{ v: 'fit', label: 'Fit page' }, { v: 'width', label: 'Fit width' }, { v: '100', label: '100%' }]} onChange={setZoom} label="Preview zoom" />{page.audience === 'teacher' ? <button type="button" className="rh-return-learners" onClick={() => setPageIndex(firstLearnerIndex)}>Show learner sheet</button> : <><button type="button" className="rh-icon-button" aria-label="Previous learner page" disabled={selectedLearnerPosition <= 0} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition - 1])}>←</button><button type="button" className="rh-icon-button" aria-label="Next learner page" disabled={selectedLearnerPosition >= learnerIndices.length - 1} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition + 1])}>→</button></>}</div></div>
+      <section className="rh-preview" aria-label="Activity preview"><div className="rh-preview-toolbar"><span><strong>{page.audience === 'teacher' ? `Page ${pageIndex + 1} of ${previewCount}` : `Learner page ${selectedLearnerPosition + 1} of ${learnerIndices.length}`}</strong><small>{page?.title}</small></span><div><Select value={zoom} options={[{ v: 'fit', label: 'Fit page' }, { v: 'width', label: 'Fit width' }, { v: '100', label: '100%' }]} onChange={changeZoom} label="Preview zoom" />{page.audience === 'teacher' ? <button type="button" className="rh-return-learners" onClick={() => setPageIndex(firstLearnerIndex)}>Show learner sheet</button> : <><button type="button" className="rh-icon-button" aria-label="Previous learner page" disabled={selectedLearnerPosition <= 0} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition - 1])}>←</button><button type="button" className="rh-icon-button" aria-label="Next learner page" disabled={selectedLearnerPosition >= learnerIndices.length - 1} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition + 1])}>→</button></>}</div></div>
         <div className={`rh-preview-stage zoom-${zoom}`}>
           {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}{page.versionLabel ? ` · ${page.versionLabel}` : ''}</span><h2>{page.title}</h2>{page.instructions && <p>{page.instructions}</p>}</header><RichContent content={paperContent(page.content)} /></article> : null}
         </div>

@@ -3,5 +3,5 @@
 <g stroke="#1f2a3a" stroke-width="5" stroke-linecap="round" fill="none"><path d="M30 76V46h30M270 76V46h-30M30 236v30h30M270 236v30h-30"/></g></g>
 <rect x="0" y="254" width="300" height="146" fill="#e6e9f0"/><rect x="22" y="254" width="34" height="3" fill="#2f4f7a"/>
 <text x="22" y="288" font-family="Fraunces" font-weight="600" font-size="28" letter-spacing="-.6" fill="#1f2a3a">Picture<tspan x="22" dy="30">Prompts</tspan></text>
-<path d="M22 346h256" stroke="#1f2a3a" stroke-opacity=".18" stroke-width="1"/><text x="22" y="366" font-family="Karla" font-weight="800" font-size="9.5" letter-spacing="1.6" fill="#1f2a3a">BY ELT SUITE</text><text x="22" y="380" font-family="Karla" font-weight="600" font-size="9" fill="#1f2a3a" opacity=".6">Photocopiable resources</text><text x="278" y="370" text-anchor="end" font-family="Fraunces" font-weight="500" font-size="20" fill="#2f4f7a">06</text>
+<path d="M22 346h256" stroke="#1f2a3a" stroke-opacity=".18" stroke-width="1"/><text x="22" y="366" font-family="Karla" font-weight="800" font-size="9.5" letter-spacing="1.6" fill="#1f2a3a">BY ELT SUITE</text><text x="22" y="380" font-family="Karla" font-weight="600" font-size="9" fill="#1f2a3a" opacity=".6">Photocopiable resources</text>
 <rect x="0" y="0" width="7" height="400" fill="#000" opacity=".07"/></svg>

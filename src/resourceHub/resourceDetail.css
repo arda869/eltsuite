@@ -42,7 +42,8 @@
 .rh-preview-toolbar>div { display:flex; align-items:center; gap:5px; }
 .rh-preview-toolbar .sel { min-width:107px; }
 .rh-preview-toolbar .rh-icon-button { border-color:#e6e4dc; }
-.rh-preview-stage { position:relative; display:flex; justify-content:center; align-items:start; flex:1; min-height:0; overflow:auto; padding:21px; background:radial-gradient(circle at 50% 0,#f2f0eb,#e7e5df); }
+.rh-preview-stage { position:relative; display:flex; justify-content:center; align-items:start; flex:1; min-height:0; overflow:auto; overflow-anchor:none; padding:21px; background:radial-gradient(circle at 50% 0,#f2f0eb,#e7e5df); view-transition-name:rh-resource-preview-stage; }
+@media(prefers-reduced-motion:no-preference) { ::view-transition-old(rh-resource-preview-stage),::view-transition-new(rh-resource-preview-stage) { animation-duration:.22s; animation-timing-function:ease-in-out; } }
 .rh-preview-stage>img { display:block; width:auto; height:auto; max-width:100%; max-height:100%; object-fit:contain; background:#fff; box-shadow:0 13px 31px #332f261f; }
 .rh-preview-private-ribbon { position:absolute; z-index:2; top:13px; left:50%; transform:translateX(-50%); padding:8px 12px; border:1px solid #dba785; border-radius:99px; background:#fff8f1; color:#a05432; box-shadow:0 4px 12px #332f2615; font:800 11px var(--sans); white-space:nowrap; }
 .rh-return-learners { padding:8px 10px; border:1px solid #c9cbaa; border-radius:8px; background:#f5f6eb; color:#5c6533; font:700 11px var(--sans); cursor:pointer; }
