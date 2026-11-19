@@ -1,0 +1,43 @@
+/* The editor preview shares the task frame's visual hierarchy with Classes. */
+.rhe-class-preview .rhe-preview-head { align-items:center; }
+.rhe-class-preview .rhe-preview-controls { display:flex; align-items:center; gap:7px; min-width:0; }
+.rhe-class-preview .rhe-preview-expand { flex:none; min-height:36px; padding:0 9px; border:1px solid var(--rh-border, var(--hair)); border-radius:8px; background:var(--paper, #fff); color:var(--ink, #302e28); font:700 11px var(--sans); cursor:pointer; white-space:nowrap; }
+.rhe-class-preview .rhe-preview-expand:hover { border-color:var(--rh-olive, #74762f); color:var(--rh-olive, #74762f); }
+.rhe-class-preview .rhe-preview-expand:focus-visible,.rhe-class-preview .rhe-preview-switch button:focus-visible { outline:3px solid #a9b271; outline-offset:2px; }
+.rhe-class-preview .rhe-preview-scroll { min-width:0; padding:10px; background:var(--bg, #f6f5ef); }
+.rhe-class-preview .rhe-preview-task { min-width:0; width:100%; overflow:hidden; margin:0 0 12px; border:1px solid var(--rh-border, var(--hair)); border-radius:12px; background:var(--paper, #fff); box-shadow:0 5px 18px #302e2810; }
+.rhe-class-preview .rhe-preview-task:last-child { margin-bottom:0; }
+.rhe-class-preview .rhe-preview-paper { min-height:390px; aspect-ratio:auto; padding:0; border-radius:3px; }
+.rhe-class-preview .rhe-preview-learner { padding:0; }
+.rhe-class-preview .rhe-preview-task-top { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 15px; border-bottom:1px solid var(--rh-border, var(--hair)); color:var(--rh-muted, var(--muted)); font:700 10px/1.3 var(--sans); letter-spacing:.04em; }
+.rhe-class-preview .rhe-preview-task-top span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rhe-class-preview .rhe-preview-task-top span:last-child { flex:none; color:var(--rh-olive, #74762f); font-size:9px; letter-spacing:.1em; }
+.rhe-class-preview .rhe-preview-task-head { margin:0; padding:17px 17px 14px; border-bottom:1px solid var(--rh-border, var(--hair)); background:linear-gradient(180deg,var(--paper-soft, #f9f8f4),var(--paper, #fff)); }
+.rhe-class-preview .rhe-preview-task-heading { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rhe-class-preview .rhe-preview-task-head h4 { margin:0; color:var(--ink, #302e28); font:600 clamp(18px,1.8vw,25px)/1.24 var(--serif); }
+.rhe-class-preview .rhe-preview-task-head p { margin:9px 0 0; color:var(--rh-olive, #74762f); font:600 13px/1.5 var(--sans); overflow-wrap:anywhere; }
+.rhe-class-preview .rhe-preview-version-name { margin:0; }
+.rhe-class-preview .rhe-preview-task-body { min-width:0; padding:17px; }
+.rhe-class-preview .rhe-preview-task-body .task-body { min-width:0; padding:0; color:var(--ink, #302e28); font:400 16px/1.65 var(--serif); }
+.rhe-class-preview .rhe-preview-task-body :is(img,svg,canvas,table,video) { max-width:100%; }
+.rhe-class-preview .rhe-preview-task-body :is(p,li,td,th) { overflow-wrap:break-word; }
+.rhe-class-preview .rhe-preview-task-body :is(.tableWrapper,.table-wrap-task) { max-width:100%; overflow-x:auto; }
+.rhe-preview-overlay { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:clamp(12px,3vw,40px); background:#16150fcc; backdrop-filter:blur(8px); }
+.rhe-preview-overlay .rhe-class-preview { display:flex; flex-direction:column; width:min(1200px,100%); height:min(900px,100%); min-height:0; margin:0; padding:clamp(14px,2vw,24px); border:1px solid var(--hair); border-radius:18px; background:var(--paper); color:var(--ink); box-shadow:0 24px 70px #0004; }
+.rhe-preview-overlay .rhe-preview-head { flex:none; }
+.rhe-preview-overlay .rhe-preview-scroll { flex:1; min-height:0; height:auto; padding:clamp(12px,2vw,25px); }
+.rhe-preview-overlay .rhe-preview-task { width:min(920px,100%); margin:0 auto 18px; }
+.rhe-preview-overlay .rhe-preview-task-head { padding:24px clamp(20px,3vw,38px) 19px; }
+.rhe-preview-overlay .rhe-preview-task-head h4 { font-size:clamp(24px,2.5vw,34px); }
+.rhe-preview-overlay .rhe-preview-task-head p { font-size:16px; }
+.rhe-preview-overlay .rhe-preview-task-body { padding:clamp(20px,3vw,38px); }
+.rhe-preview-overlay .rhe-preview-task-body .task-body { font-size:18px; }
+.rhe-preview-overlay .rhe-preview-note { flex:none; }
+@media(max-width:520px) {
+  .rhe-class-preview .rhe-preview-controls { width:100%; justify-content:space-between; }
+  .rhe-class-preview .rhe-preview-switch { flex:1; }
+  .rhe-class-preview .rhe-preview-switch button { flex:1; }
+  .rhe-preview-overlay { padding:0; }
+  .rhe-preview-overlay .rhe-class-preview { width:100%; height:100%; border:0; border-radius:0; }
+  .rhe-preview-overlay .rhe-preview-task-body { padding:20px; }
+}
