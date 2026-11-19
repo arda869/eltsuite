@@ -34,7 +34,7 @@ export function publishedResourceToActivity(edition: HubResourceEdition): HubAct
     minutes: edition.minutes, summary: edition.summary, prep: edition.prep, energy: edition.energy,
     mode: edition.mode, status: 'ready', pages: [], tags: [edition.focus.toLowerCase(), edition.title.toLowerCase()],
     notes: [...teacherNotes, ...(answerKey.length ? ['Key and suggested answers', ...answerKey] : [])], worksheet,
-    editorSections: edition.sections.map(section => ({ id: section.id, title: section.title, audience: section.audience, kind: section.kind, instructions: section.instructions, content: section.content })),
+    editorSections: edition.sections.map(section => ({ id: section.id, title: section.title, audience: section.audience, kind: section.kind, instructions: section.instructions, printInstructions: section.printInstructions, versionGroup: section.versionGroup, versionLabel: section.versionLabel, content: section.content })),
     authoredParts,
   } as HubActivity;
 }

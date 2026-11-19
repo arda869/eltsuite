@@ -119,3 +119,26 @@
 .rh-desk-fineprint { margin:13px 0 0; color:#747668; font:400 11px/1.45 var(--sans); }
 @media(max-width:900px) { .rh-basket-layout,.rh-desk-layout { grid-template-columns:1fr; }.rh-desk-summary { position:static; }.rh-shelf-grid,.rh-follow-grid,.rh-recent-row { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:580px) { .rh-secondary-header { align-items:start; flex-direction:column; }.rh-shelf-grid,.rh-follow-grid,.rh-recent-row,.rh-named-shelf-grid { grid-template-columns:1fr; }.rh-secondary-card { grid-template-columns:85px minmax(0,1fr); gap:13px; }.rh-secondary-card-preview { height:135px; }.rh-secondary-card-body h2 { font-size:22px; }.rh-desk-card { padding:16px; }.rh-desk-settings { grid-template-columns:1fr; }.rh-desk-page-list { margin-left:0; }.rh-desk-page { flex-wrap:wrap; }.rh-desk-page>span:nth-last-child(2) { flex-basis:calc(100% - 80px); } }
+
+/* Shelf cards and actions use the same rhythm as Discover. */
+.rh-app-shell .rh-shelf-grid,.rh-app-shell .rh-follow-grid,
+.rh-app-shell .rh-named-shelf-grid,.rh-app-shell .rh-recent-row { gap:var(--space-5); }
+.rh-app-shell .rh-shelf-card { display:flex; flex-direction:column; height:100%; }
+.rh-app-shell .rh-shelf-open { flex:1; }
+.rh-app-shell .rh-shelf-card-desc { flex:1; }
+.rh-app-shell .rh-secondary-action,.rh-app-shell .rh-shelf-remove,
+.rh-app-shell .rh-shelf-empty button,.rh-app-shell .rh-named-shelf-head button,
+.rh-app-shell .rh-recent-row button { min-height:36px; }
+.rh-app-shell .rh-create-shelf input,.rh-app-shell .rh-create-shelf .rh-primary,
+.rh-app-shell .rh-create-shelf .rh-secondary-action { height:36px; }
+.rh-app-shell .rh-desk .rh-secondary-header { margin-bottom:var(--space-5); }
+.rh-app-shell .rh-desk .rh-secondary-header .rh-back { display:block; width:max-content; margin-bottom:var(--space-3); }
+.rh-app-shell .rh-desk .rh-secondary-header h1 { margin:var(--space-2) 0 var(--space-2); font-size:clamp(32px,3vw,44px); }
+.rh-app-shell .rh-desk .rh-secondary-header p { font-size:14px; }
+@media(max-width:600px) {
+  .rh-app-shell .rh-secondary-action,.rh-app-shell .rh-shelf-remove,
+  .rh-app-shell .rh-shelf-empty button,.rh-app-shell .rh-named-shelf-head button,
+  .rh-app-shell .rh-recent-row button { min-height:44px; }
+  .rh-app-shell .rh-create-shelf input,.rh-app-shell .rh-create-shelf .rh-primary,
+  .rh-app-shell .rh-create-shelf .rh-secondary-action { height:44px; }
+}

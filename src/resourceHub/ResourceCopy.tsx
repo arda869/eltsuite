@@ -4,9 +4,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../lib/auth';
 import { db } from '../lib/firebase';
 import { allTeacherClasses } from '../lib/coteach';
-import { addTask, saveNotes, tasksCol } from '../lib/tasks';
+import { tasksCol } from '../lib/tasks';
 import { updateItem, type ClassDoc, type Item } from '../lib/classes';
-import { createLessonFromImport } from '../lib/transfer';
+import { appendTasksFromImport, createLessonFromImport, visibleTaskCount } from '../lib/transfer';
 import { Select } from '../components/Select';
 import type { HubActivity } from './catalog';
 import { copyParts, publishedTasks, resourceTasks } from './resourceTasks';
@@ -21,7 +21,7 @@ export function ResourceCopy({ activity, onClose, preferredClassId }: { activity
   const [lessons, setLessons] = useState<ClassLesson[] | null>(null);
   const [destination, setDestination] = useState('new');
   const [newTitle, setNewTitle] = useState(activity.title);
-  const availableParts = activity.editorSections?.length ? activity.editorSections.filter(section => section.audience === 'learner').map(section => ({ id: section.id, title: section.title, detail: section.instructions || 'Editable learner section' })) : [...copyParts];
+  const availableParts = activity.editorSections?.length ? activity.editorSections.filter(section => section.audience === 'learner').map(section => ({ id: section.id, title: section.versionLabel ? `${section.title} · ${section.versionLabel}` : section.title, detail: section.instructions || 'Editable learner section' })) : [...copyParts];
   const [parts, setParts] = useState<Set<string>>(() => new Set(availableParts.map(part => part.id)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -73,15 +73,10 @@ export function ResourceCopy({ activity, onClose, preferredClassId }: { activity
         await updateItem(selectedClass.id, itemId, { hidden: false });
       } else {
         const existing = await getDocs(tasksCol(selectedClass.id, itemId));
-        let order = existing.docs.reduce((max, task) => Math.max(max, Number(task.data().order) || 0), -1) + 1;
-        for (const task of chosen) {
-          const taskId = await addTask(selectedClass.id, itemId, order++, 'task', {
-            title: task.title, instructions: task.instructions ?? '', content: task.content,
-          });
-          if (task.notes) await saveNotes(selectedClass.id, itemId, taskId, task.notes);
-        }
+        const order = existing.docs.reduce((max, task) => Math.max(max, Number(task.data().order) || 0), -1) + 1;
+        await appendTasksFromImport(selectedClass.id, itemId, chosen, order);
         const existingVisible = existing.docs.filter(task => task.data().kind !== 'section' && !task.data().hidden).length;
-        await updateItem(selectedClass.id, itemId, { taskCount: existingVisible + chosen.length });
+        await updateItem(selectedClass.id, itemId, { taskCount: existingVisible + visibleTaskCount(chosen) });
       }
       setResult({ classId: selectedClass.id, itemId, title });
     } catch (cause) {
@@ -100,7 +95,7 @@ export function ResourceCopy({ activity, onClose, preferredClassId }: { activity
         {result ? <div className="rh-copy-success">
           <div className="rh-success-mark" aria-hidden="true">✓</div>
           <h3>Ready to edit in {selectedClass?.name}</h3>
-          <p>{selectedCount} task{selectedCount === 1 ? '' : 's'} copied to “{result.title}”. The answer key and teaching notes are stored in the lesson’s private teacher area.</p>
+          <p>{selectedCount} task{selectedCount === 1 ? '' : 's'} copied to “{result.title}”. The answer key and teaching notes are stored in the lesson’s private teacher area. For A/B versions, choose how to give them to learners in the Class task’s “Who sees this” settings.</p>
           <div className="rh-dialog-actions"><button type="button" className="rh-secondary" onClick={onClose}>Done</button><a className="rh-primary" href={`/class/${result.classId}/lesson/${result.itemId}`}>Open editable lesson ↗</a></div>
         </div> : <>
           <div className="rh-copy-body">

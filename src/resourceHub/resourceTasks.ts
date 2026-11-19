@@ -107,9 +107,12 @@ const plainText = (node: JSONContent): string => node.text ?? (node.content ?? [
 export function publishedTasks(activity: HubActivity, selected: Set<string>): ImportedTask[] {
   const sections = activity.editorSections ?? [];
   const privateNotes = sections.filter(section => section.audience === 'teacher').map(section => `${section.title}\n${section.instructions}\n${plainText(section.content)}`.trim()).join('\n\n');
-  return sections.filter(section => section.audience === 'learner' && selected.has(section.id)).map((section, index) => ({
-    line: index + 1, kind: 'task', title: section.title, instructions: section.instructions,
+  const chosen = sections.filter(section => section.audience === 'learner' && selected.has(section.id));
+  return chosen.map((section, index) => ({
+    id: section.id, line: index + 1, kind: 'task', title: section.title, instructions: section.instructions,
+    ...(section.versionGroup && chosen.filter(item => item.versionGroup === section.versionGroup).length > 1 ? { family: section.versionGroup, variant: section.versionLabel || String.fromCharCode(65 + index) } : {}),
     content: structuredClone(section.content), notes: index === 0 ? privateNotes : '', hidden: false, locked: false,
+    ...(section.printInstructions?.trim() ? { print: { instr: section.printInstructions.trim() } } : {}),
   }));
 }
 

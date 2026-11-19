@@ -78,6 +78,10 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+    match /resourceHubStaticOverrides/{id} {
+      allow read: if isTeacher() || isOwner();
+      allow create, update, delete: if isOwner() && id == 'otp-002';
+    }
     match /resourceHubNumberClaims/{id} {
       allow read, create, update, delete: if isOwner();
     }

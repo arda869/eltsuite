@@ -33,6 +33,12 @@ try {
   await no('Learner cannot read published resource', getDoc(doc(learner, 'resourceHubPublished', 'edition')));
   await no('Visitor cannot read published resource', getDoc(doc(visitor, 'resourceHubPublished', 'edition')));
   await no('Teacher cannot change published resource', updateDoc(doc(teacher, 'resourceHubPublished', 'edition'), { title: 'Forged' }));
+  await yes('Owner updates built-in source pages', setDoc(doc(owner, 'resourceHubStaticOverrides', 'otp-002'), { title: 'Have You Ever…?' }));
+  await yes('Teacher reads built-in source pages', getDoc(doc(teacher, 'resourceHubStaticOverrides', 'otp-002')));
+  await no('Learner cannot read built-in source pages or answer key', getDoc(doc(learner, 'resourceHubStaticOverrides', 'otp-002')));
+  await no('Visitor cannot read built-in source pages', getDoc(doc(visitor, 'resourceHubStaticOverrides', 'otp-002')));
+  await no('Teacher cannot update built-in source pages', updateDoc(doc(teacher, 'resourceHubStaticOverrides', 'otp-002'), { title: 'Forged' }));
+  await no('Owner cannot create unrelated source overrides', setDoc(doc(owner, 'resourceHubStaticOverrides', 'otp-003'), { title: 'Other' }));
   await yes('Owner saves immutable edition', setDoc(doc(owner, 'resourceHubPublished', 'edition', 'editions', '1'), { title: 'Published' }));
   await no('Owner cannot edit history', updateDoc(doc(owner, 'resourceHubPublished', 'edition', 'editions', '1'), { title: 'Changed' }));
   await yes('Owner creates private collection draft', setDoc(doc(owner, 'resourceHubCollectionsDrafts', 'otp'), { title: 'Off the Page' }));
@@ -44,6 +50,6 @@ try {
   await yes('Teacher reads own shelves', getDoc(doc(teacher, 'resourceHubUserState', 'teacher')));
   await no('Other teacher cannot read shelves', getDoc(doc(other, 'resourceHubUserState', 'teacher')));
   await no('Learner cannot create shelves', setDoc(doc(learner, 'resourceHubUserState', 'learner'), { savedIds: [] }));
-  assert.equal(checks, 19);
+  assert.equal(checks, 25);
   console.log(`${checks} Resource Hub access checks passed`);
 } finally { await env.cleanup(); }

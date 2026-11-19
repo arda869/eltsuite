@@ -46,34 +46,62 @@ export function download(name: string, text: string) {
 
 // Creates a new lesson (hidden) from imported tasks.
 export async function createLessonFromImport(classId: string, topicId: string | null, title: string, tasks: ImportedTask[]) {
-  tasks=await Promise.all(tasks.map(async task=>({...task,content:await rehomeActivityPictures(task.content,classId)})));
   const items = await getDocs(collection(db, 'classes', classId, 'items'));
   const order = items.docs.reduce((m, d) => Math.max(m, (d.data().order as number) ?? 0), -1) + 1;
   const itemRef = doc(collection(db, 'classes', classId, 'items'));
   const b0 = writeBatch(db);
-  b0.set(itemRef, { topicId, type: 'lesson', title: title || 'Imported lesson', order, hidden: true, locked: false, taskCount: tasks.filter((t) => t.kind !== 'section' && !t.hidden).length, createdAt: serverTimestamp() });
+  b0.set(itemRef, { topicId, type: 'lesson', title: title || 'Imported lesson', order, hidden: true, locked: false, taskCount: visibleTaskCount(tasks), createdAt: serverTimestamp() });
   await b0.commit();
-  let i = 0;
-  for (const t of tasks) {
-    const ref = doc(tasksCol(classId, itemRef.id));
+  await appendTasksFromImport(classId, itemRef.id, tasks, 0);
+  return itemRef.id;
+}
+
+/** Copies a complete version family together. Unassigned companions stay in private bodies until the teacher sets distribution in Classes. */
+export async function appendTasksFromImport(classId: string, itemId: string, tasks: ImportedTask[], startOrder: number) {
+  tasks=await Promise.all(tasks.map(async task=>({...task,content:await rehomeActivityPictures(task.content,classId)})));
+  const refs = tasks.map(() => doc(tasksCol(classId, itemId)));
+  const grouped = new Map<string, number[]>();
+  tasks.forEach((task, index) => { if (task.family) grouped.set(task.family, [...(grouped.get(task.family) ?? []), index]); });
+  let i = startOrder;
+  for (const [index, t] of tasks.entries()) {
+    const ref = refs[index];
+    const family = t.family ? grouped.get(t.family) ?? [] : [];
+    const mainIndex = family[0];
+    const isVersion = family.length > 1;
+    const isOtherVersion = isVersion && mainIndex !== index;
     const { content, key, activities } = splitKey(t.content);
     const b = writeBatch(db);
     b.set(ref, {
       kind: t.kind === 'section' ? 'section' : 'task',
       title: t.title || 'Untitled task',
       instructions: t.instructions ?? '',
-      content,
+      ...(t.print ? { print: t.print } : {}),
+      content: isOtherVersion ? null : content,
       order: i++,
       hidden: !!t.hidden,
       locked: !!t.locked,
+      ...(isVersion ? { family: refs[mainIndex].id, variant: t.variant || String.fromCharCode(65 + family.indexOf(index)) } : {}),
+      ...(isVersion && !isOtherVersion ? { variants: family.slice(1).map(position => refs[position].id), dist: { mode: 'same', sameId: ref.id } } : {}),
+      ...(isOtherVersion ? { restricted: true, allowed: [] } : {}),
       ...(t.layout && t.layout !== 'single' ? { layout: t.layout } : {}),
       ...(t.exam ? { exam: t.exam } : {}),
       createdAt: serverTimestamp(),
     });
-    b.set(keyRef(classId, itemRef.id, ref.id), key);
-    b.set(activityContentRef(classId, itemRef.id, ref.id), { nodes: activities });
-    if (t.notes) b.set(notesRef(classId, itemRef.id, ref.id), { text: t.notes, updatedAt: serverTimestamp() });
+    b.set(keyRef(classId, itemId, ref.id), key);
+    b.set(activityContentRef(classId, itemId, ref.id), { nodes: activities });
+    if (isOtherVersion) b.set(doc(ref, 'private', 'body'), { content });
+    if (t.notes) b.set(notesRef(classId, itemId, ref.id), { text: t.notes, updatedAt: serverTimestamp() });
     await b.commit();
   }
-  return itemRef.id;
+}
+
+export function visibleTaskCount(tasks: ImportedTask[]) {
+  const seen = new Set<string>();
+  return tasks.filter(task => {
+    if (task.kind === 'section' || task.hidden) return false;
+    if (!task.family) return true;
+    if (seen.has(task.family)) return false;
+    seen.add(task.family);
+    return true;
+  }).length;
 }

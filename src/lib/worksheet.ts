@@ -112,6 +112,19 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   const cutouts: NonNullable<WsTask['cutouts']> = [];
   // Every word to drag in the task, read first: the word box usually comes before its gaps.
   const bank: string[] = [];
+  // Keep answer spaces consistent within this task. Use the average space needed
+  // by its printable gaps; an explicit teacher-selected paper size still wins.
+  const neededGapWidths: number[] = [];
+  const measureGaps = (node: JSONContent) => {
+    if (!node.attrs?.example && (node.type === 'gap' || node.type === 'dropgap') && !(node.type === 'gap' && node.attrs?.letters && node.attrs?.pattern)) {
+      const answers = node.type === 'gap' ? (node.attrs?.answers ?? []) : [node.attrs?.answer ?? ''];
+      const longest = Math.max(0, ...answers.map((answer: unknown) => String(answer ?? '').length));
+      neededGapWidths.push(longest ? Math.max(8, (longest + 4) * 2) : 14);
+    }
+    node.content?.forEach(measureGaps);
+  };
+  measureGaps(t.content);
+  const averageGapWidth = neededGapWidths.length ? Math.round(neededGapWidths.reduce((total, width) => total + width, 0) / neededGapWidths.length) : 14;
   const findDrops = (x: JSONContent) => {
     if (x.type === 'dropgap' && x.attrs?.answer) bank.push(String(x.attrs.answer));
     x.content?.forEach(findDrops);
@@ -178,7 +191,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           marks++;
           answers.push({ n, text: (a.answers ?? []).join(' / ') });
           if (a.letters && a.pattern) out.push({ num: n }, { letters: String(a.pattern) });
-          else out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
+          else out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? averageGapWidth });
           if (a.stem) out.push({ t: ' ' }, { t: String(a.stem), bold: true, kw: true, stem: true }, { t: ' ' });
           break;
           }
@@ -190,7 +203,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           n++;
           marks++;
           answers.push({ n, text: a.answer ?? '' });
-          out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? 14 });
+          out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? averageGapWidth });
           break;
         }
         case 'inlineMedia':
