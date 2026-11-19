@@ -35,7 +35,7 @@ export function ResourceHubAdminPage() {
   const [params] = useSearchParams();
   if (isSuper === null) return <Loader full label="Checking Resource Hub editor access" />;
   if (!user || !isSuper) return <div className="shell rhe-shell"><TopBar /><main className="rhe-denied"><h1>Resource Hub editor</h1><p>This workspace is available to ELT Suite super admins only.</p><Link to="/resource-hub">Return to Resource Hub</Link></main></div>;
-  return <div className="shell rhe-shell"><TopBar><nav className="rhe-top"><Link to="/resource-hub">Resource Hub</Link><span>/</span><Link to="/resource-hub/admin">Editor</Link></nav></TopBar><main className="rhe-main">{id ? <ResourceEditor key={id} id={id} uid={user.uid} /> : params.get('source') === 'otp-002' ? <StaticKitEditor /> : params.get('import') ? <ResourceImport uid={user.uid} onCreated={createdId => { window.location.assign(`/resource-hub/admin/${createdId}`); }} onCancel={() => window.location.assign('/resource-hub/admin')} /> : params.get('collection') ? <CollectionEditor id={params.get('collection') as HubCollectionId} uid={user.uid} /> : <EditorIndex uid={user.uid} />}</main></div>;
+  return <div className="shell rhe-shell"><TopBar><nav className="rhe-top"><Link to="/resource-hub">Resource Hub</Link><span>/</span><Link to="/resource-hub/admin">Editor</Link></nav></TopBar><main className={`rhe-main${id ? ' rhe-main--activity' : ''}`}>{id ? <ResourceEditor key={id} id={id} uid={user.uid} /> : params.get('source') === 'otp-002' ? <StaticKitEditor /> : params.get('import') ? <ResourceImport uid={user.uid} onCreated={createdId => { window.location.assign(`/resource-hub/admin/${createdId}`); }} onCancel={() => window.location.assign('/resource-hub/admin')} /> : params.get('collection') ? <CollectionEditor id={params.get('collection') as HubCollectionId} uid={user.uid} /> : <EditorIndex uid={user.uid} />}</main></div>;
 }
 
 function EditorIndex({ uid }: { uid: string }) {
@@ -80,6 +80,37 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
     return () => { live = false; };
   }, [id]);
   const dirty = !!saved && !!draft && JSON.stringify(draft) !== JSON.stringify(saved);
+  useEffect(() => {
+    if (!dirty) return;
+    const question = 'You have unsaved changes to this activity. Leave without saving?';
+    const warnOnUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    const warnOnLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[href]');
+      if (!link || link.hasAttribute('download') || link.getAttribute('target') === '_blank') return;
+      const destination = new URL(link.href, window.location.href);
+      if (destination.href === window.location.href) return;
+      if (window.confirm(question)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    // Browser back does not unload a React Router page. A same-URL history entry
+    // lets us ask before the previous page is reached.
+    const guard = `resource-draft-${Date.now()}`;
+    const guardedState = { ...window.history.state, resourceDraftGuard: guard };
+    window.history.pushState(guardedState, '', window.location.href);
+    const warnOnBack = () => {
+      if (window.confirm(question)) {
+        window.removeEventListener('beforeunload', warnOnUnload);
+        window.removeEventListener('popstate', warnOnBack);
+        window.history.back();
+      } else window.history.pushState(guardedState, '', window.location.href);
+    };
+    window.addEventListener('beforeunload', warnOnUnload);
+    window.addEventListener('popstate', warnOnBack);
+    document.addEventListener('click', warnOnLink, true);
+    return () => { window.removeEventListener('beforeunload', warnOnUnload); window.removeEventListener('popstate', warnOnBack); document.removeEventListener('click', warnOnLink, true); };
+  }, [dirty]);
   const validation = useMemo(() => draft ? validateResource(draft) : [], [draft]);
   const editable = draft?.state === 'draft';
   const patch = (value: Partial<HubResourceDraft>) => { setKeyReviewed(false); setDraft(current => current ? { ...current, ...value } : current); };
