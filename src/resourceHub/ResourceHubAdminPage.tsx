@@ -97,19 +97,26 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
     // Browser back does not unload a React Router page. A same-URL history entry
     // lets us ask before the previous page is reached.
     const guard = `resource-draft-${Date.now()}`;
+    const guardedUrl = window.location.href;
     const guardedState = { ...window.history.state, resourceDraftGuard: guard };
-    window.history.pushState(guardedState, '', window.location.href);
+    window.history.pushState(guardedState, '', guardedUrl);
     const warnOnBack = () => {
       if (window.confirm(question)) {
         window.removeEventListener('beforeunload', warnOnUnload);
         window.removeEventListener('popstate', warnOnBack);
         window.history.back();
-      } else window.history.pushState(guardedState, '', window.location.href);
+      } else window.history.pushState(guardedState, '', guardedUrl);
     };
     window.addEventListener('beforeunload', warnOnUnload);
     window.addEventListener('popstate', warnOnBack);
     document.addEventListener('click', warnOnLink, true);
-    return () => { window.removeEventListener('beforeunload', warnOnUnload); window.removeEventListener('popstate', warnOnBack); document.removeEventListener('click', warnOnLink, true); };
+    return () => {
+      window.removeEventListener('beforeunload', warnOnUnload);
+      window.removeEventListener('popstate', warnOnBack);
+      document.removeEventListener('click', warnOnLink, true);
+      // Saving removes the same-URL guard entry, so Back still takes one press.
+      if (window.location.href === guardedUrl && window.history.state?.resourceDraftGuard === guard) window.history.back();
+    };
   }, [dirty]);
   const validation = useMemo(() => draft ? validateResource(draft) : [], [draft]);
   const editable = draft?.state === 'draft';
