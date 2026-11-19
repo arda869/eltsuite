@@ -106,14 +106,23 @@ const plainText = (node: JSONContent): string => node.text ?? (node.content ?? [
 /** Published learner sections retain their rich editor content; teacher sections become private notes. */
 export function publishedTasks(activity: HubActivity, selected: Set<string>): ImportedTask[] {
   const sections = activity.editorSections ?? [];
-  const privateNotes = sections.filter(section => section.audience === 'teacher').map(section => `${section.title}\n${section.instructions}\n${plainText(section.content)}`.trim()).join('\n\n');
+  const standaloneNotes = sections.filter(section => section.audience === 'teacher').flatMap(section => {
+    const manualContent = { ...section.content, content: (section.content.content ?? []).filter(node => node.attrs?.hubGeneratedAnswer !== true) };
+    const notes = [section.instructions.trim(), plainText(manualContent).trim()].filter(Boolean).join('\n\n');
+    // A generated key belongs beside its learner task, rather than as a duplicate hidden task.
+    if (!notes) return [];
+    return [{ line: 0, kind: 'task', title: section.title || 'Teacher notes', instructions: section.instructions, content: { type: 'doc', content: [] }, notes, hidden: true, locked: false } as ImportedTask];
+  });
   const chosen = sections.filter(section => section.audience === 'learner' && selected.has(section.id));
-  return chosen.map((section, index) => ({
+  const learnerTasks: ImportedTask[] = chosen.map((section, index) => ({
     id: section.id, line: index + 1, kind: 'task', title: section.title, instructions: section.instructions,
     ...(section.versionGroup && chosen.filter(item => item.versionGroup === section.versionGroup).length > 1 ? { family: section.versionGroup, variant: section.versionLabel || String.fromCharCode(65 + index) } : {}),
-    content: structuredClone(section.content), notes: index === 0 ? privateNotes : '', hidden: false, locked: false,
+    content: structuredClone(section.content),
+    // Class export prints these answers from the private key directly after this task.
+    hidden: false, locked: false,
     ...(section.printInstructions?.trim() ? { print: { instr: section.printInstructions.trim() } } : {}),
   }));
+  return [...standaloneNotes, ...learnerTasks].map((task, index) => ({ ...task, line: index + 1 }));
 }
 
 export type AdaptedResource = {

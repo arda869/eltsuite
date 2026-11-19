@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
 import type { HubActivity, HubCollection } from './catalog';
+import { generatedAnswerLinesForSection } from './hubAnswerKey';
 
 type Section = NonNullable<HubActivity['editorSections']>[number];
 type PrintCollection = HubCollection & { paperAccent?: string; headerImage?: string };
@@ -200,15 +201,47 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     }
     y += 4;
   };
+  const drawBlocks = (content: JSONContent) => {
+    for (const block of blocksOf(content, gapChars)) {
+      if (block.kind === 'table') table(block.rows ?? []);
+      else if (block.kind === 'heading') richLines(block.runs ?? [], block.level === 2 ? 15 : 12, true);
+      else richLines(block.runs ?? []);
+    }
+  };
   const draw = (section: Section, placement: 'full' | 'top' | 'bottom' = 'full') => {
     begin(section, placement);
     if (hasDigitalOnlyItems(section.content)) lines('DIGITAL ONLY CONTENT · This print page does not reproduce every interactive or visual item. Use the Class activity for the complete task.', 9.5, true, 6);
     const instruction = section.printInstructions?.trim() || section.instructions.trim();
     if (instruction) lines(instruction, 10.5, true, 7);
-    for (const block of blocksOf(section.content, gapChars)) {
-      if (block.kind === 'table') table(block.rows ?? []);
-      else if (block.kind === 'heading') richLines(block.runs ?? [], block.level === 2 ? 15 : 12, true);
-      else richLines(block.runs ?? []);
+    drawBlocks(section.content);
+  };
+  const drawTeacherGuide = () => {
+    if (!teachers.length) return;
+    begin({ id: 'teacher-guide', title: 'Teacher notes', audience: 'teacher', kind: 'notes', instructions: '', content: { type: 'doc', content: [] } });
+    // Teacher-led phases can stand alone; they do not need a matching learner page.
+    for (const section of teachers.filter(item => item.kind === 'notes')) {
+      lines(section.title, 13, true, 4);
+      if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, false, 5);
+      drawBlocks(section.content);
+      y += 4;
+    }
+    // Keep each key directly under its task's instruction, as in the Class teacher export.
+    for (const section of learners) {
+      const answers = generatedAnswerLinesForSection(section);
+      if (!answers.length) continue;
+      lines(section.versionLabel ? `${section.title} · ${section.versionLabel}` : section.title, 13, true, 4);
+      const instruction = section.printInstructions?.trim() || section.instructions.trim();
+      if (instruction) lines(instruction, 10.5, false, 4);
+      answers.forEach(answer => lines(answer, 10.5, false, 1));
+      y += 5;
+    }
+    // Preserve teacher-authored suggested answers without repeating the generated key.
+    for (const section of teachers.filter(item => item.kind === 'answer-key')) {
+      const manual = { ...section.content, content: (section.content.content ?? []).filter(node => node.attrs?.hubGeneratedAnswer !== true) };
+      if (!manual.content?.length && !section.instructions.trim()) continue;
+      lines(section.title, 13, true, 4);
+      if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, false, 4);
+      drawBlocks(manual);
     }
   };
   const groups = new Map<string, Section[]>();
@@ -243,7 +276,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
       });
     }
   }
-  teachers.forEach(section => draw(section));
+  drawTeacherGuide();
   const pages = pdf.getNumberOfPages();
   for (let index = 1; index <= pages; index++) {
     pdf.setPage(index); pdf.setFont('Atkinson', 'normal'); pdf.setFontSize(8); pdf.setTextColor(125, 122, 112);

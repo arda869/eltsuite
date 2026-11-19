@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 const out = `/tmp/resource-hub-answer-key-${process.pid}.mjs`;
 await build({ entryPoints: ['src/resourceHub/hubAnswerKey.ts'], outfile: out, bundle: true, platform: 'node', format: 'esm' });
-const { generatedAnswerLines, withGeneratedAnswerKey } = await import(pathToFileURL(out));
+const { generatedAnswerLines, generatedAnswerLinesForSection, withGeneratedAnswerKey } = await import(pathToFileURL(out));
 const sections = [
   { id: 'learner', title: 'Practice A', audience: 'learner', kind: 'task', instructions: '', content: { type: 'doc', content: [
     { type: 'paragraph', content: [{ type: 'text', text: 'I have ' }, { type: 'gap', attrs: { id: 'q1', answers: ['been'] } }] },
@@ -13,6 +13,7 @@ const sections = [
   { id: 'key', title: 'Answer key', audience: 'teacher', kind: 'answer-key', instructions: '', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Suggested response: I have been to Japan.' }] }] } },
 ];
 assert.deepEqual(generatedAnswerLines(sections), ['Practice A', '1. been', '2. walked']);
+assert.deepEqual(generatedAnswerLinesForSection(sections[0]), ['1. been', '2. walked']);
 const once = withGeneratedAnswerKey(sections);
 assert.deepEqual(withGeneratedAnswerKey(once), once, 'regenerating must not duplicate generated lines');
 assert.equal(once.find(section => section.id === 'key').content.content.at(-1).content[0].text, 'Suggested response: I have been to Japan.', 'manual guidance must remain');
@@ -28,4 +29,19 @@ assert.equal(copied.key.q2.correct, 1);
 assert.equal(copied.content.content[0].content[1].attrs.answers.length, 0, 'learner Class copy must not contain the gap key');
 assert.equal(copied.content.content[1].content[0].attrs.correct, -1, 'learner Class copy must not contain the choice key');
 assert.equal(JSON.stringify(copied.content).includes('Suggested response'), false, 'teacher guidance must not enter learner content');
+const tasksFile = `/tmp/resource-hub-class-tasks-${process.pid}.cjs`;
+await build({ entryPoints: ['src/resourceHub/resourceTasks.ts'], outfile: tasksFile, bundle: true, platform: 'node', format: 'cjs' });
+const { publishedTasks } = await import(pathToFileURL(tasksFile));
+const imported = publishedTasks({ editorSections: [
+  { id: 'lead', title: 'Lead-in', audience: 'teacher', kind: 'notes', instructions: 'Introduce the topic.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tell a short story.' }] }] } },
+  ...once,
+] }, new Set(['learner']));
+assert.equal(imported.length, 3, 'standalone lead-in and manual key remain distinct from learner task');
+assert.equal(imported[0].hidden, true, 'standalone teacher guidance is hidden from learners');
+assert.match(imported[0].notes, /Introduce the topic[\s\S]*Tell a short story/);
+assert.equal(imported[1].hidden, true, 'manual suggested answer remains private');
+assert.match(imported[1].notes, /Suggested response/);
+assert.equal(imported[2].hidden, false);
+assert.equal(imported[2].notes, undefined, 'generated key lives with its task, not as duplicate notes');
+assert.equal(JSON.stringify(imported[2].content).includes('Tell a short story'), false);
 console.log('PASS Resource Hub generated key is idempotent, preserves manual guidance, and Class split hides answers.');
