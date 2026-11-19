@@ -89,9 +89,9 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   </button>;
 
   return <div className="rh-detail">
-    <div className="rh-detail-breadcrumb"><button type="button" onClick={onBack}>← Back to {collection.title}</button><span aria-hidden="true">/</span><span>Activity {Number(activity.number)}</span></div>
+    <div className="rh-detail-breadcrumb"><button type="button" onClick={onBack}>← Back to {collection.title}</button><span aria-hidden="true">/</span><span>{activity.title}</span></div>
     <header className="rh-detail-header">
-      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title} · Activity {Number(activity.number)}</span><h1>{activity.title}</h1>{activity.id !== 'otp-002' && <p>{activity.summary}</p>}<div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div></div>
+      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title}</span><h1>{activity.title}</h1>{activity.id !== 'otp-002' && <p>{activity.summary}</p>}<div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div></div>
       <div className="rh-detail-header-actions"><span className="rh-ready-pill">{ready ? 'Ready to use' : 'Activity outline'}</span></div>
     </header>
     {!ready ? <section className="rh-outline-panel"><div className="rh-outline-icon" aria-hidden="true">✦</div><h2>Pages are being prepared</h2><p>This activity outline is available to explore. Printable pages and editable Class tasks will appear when the complete resource is ready.</p><button type="button" className="rh-secondary" onClick={onBack}>Explore activities</button></section> : <div className="rh-detail-grid">
