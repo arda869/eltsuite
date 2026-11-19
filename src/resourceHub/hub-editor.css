@@ -144,3 +144,27 @@
   .rhe-mobile-preview-link { margin-top:var(--space-3); }
   .rhe-preview-back { width:100%; justify-content:flex-end; }
 }
+
+/* Keep the activity workspace in the viewport. Each work area has its own scroll. */
+.rhe-shell .rhe-main--activity { display:flex; flex-direction:column; overflow:hidden; padding-bottom:var(--space-4); }
+.rhe-main--activity .rhe-editor { display:flex; flex:1; flex-direction:column; min-height:0; min-width:0; overflow:hidden; }
+.rhe-main--activity .rhe-editor-head { flex:none; }
+.rhe-main--activity .rhe-editor-layout { flex:1; min-height:0; min-width:0; align-items:stretch; overflow:hidden; }
+.rhe-main--activity :is(.rhe-editor-side,.rhe-editor-body,.rhe-check-panel) { min-height:0; max-height:none; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.rhe-main--activity .rhe-editor-side,.rhe-main--activity .rhe-check-panel { position:static; }
+.rhe-main--activity .rhe-editor-body { min-width:0; }
+@media(max-width:1200px) {
+  .rhe-main--activity .rhe-editor-layout { overflow-y:auto; align-content:start; }
+  .rhe-main--activity :is(.rhe-editor-side,.rhe-editor-body,.rhe-check-panel) { height:auto; overflow:visible; }
+  .rhe-main--activity .rhe-editor-side { position:sticky; top:0; align-self:start; }
+}
+@media(max-width:760px) {
+  .rhe-main--activity .rhe-editor-head { gap:var(--space-2); margin-bottom:var(--space-3); }
+  .rhe-main--activity .rhe-editor-head .rh-back { margin-bottom:var(--space-1); }
+  .rhe-main--activity .rhe-editor-head h1 { margin:var(--space-1) 0; font-size:clamp(25px,7vw,32px); }
+  .rhe-main--activity .rhe-editor-head p { font-size:12px; line-height:1.35; }
+  .rhe-main--activity .rhe-editor-side { position:static; }
+}
+.rhe-visibility{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0;padding:15px 17px;border:1px solid var(--rh-border);border-radius:11px;background:var(--paper-soft)}
+.rhe-visibility strong,.rhe-visibility span{display:block}.rhe-visibility strong{font:700 13px var(--sans)}.rhe-visibility div>span{margin-top:4px;max-width:520px;color:var(--rh-muted);font:500 12px/1.4 var(--sans)}
+.rhe-visibility button{display:flex;align-items:center;width:44px;height:26px;flex:none;padding:3px;border:0;border-radius:99px;background:#b6b6af;transition:background .18s ease}.rhe-visibility button.on{background:var(--rh-olive)}.rhe-visibility button span{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .18s ease}.rhe-visibility button.on span{transform:translateX(18px)}

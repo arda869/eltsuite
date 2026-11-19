@@ -56,7 +56,7 @@ function ActivityCard({ activity, saved, onOpen, onSave }: { activity: HubActivi
 }
 
 function CollectionCard({ collection, onClick, followed, onFollow, readyCount }: { collection: HubCollection; onClick: () => void; followed: boolean; onFollow: () => void; readyCount: number }) {
-  return <article className="rh-collection-card" style={{ '--rh-collection-accent': collection.accent } as CSSProperties}><button type="button" className="rh-collection-open" onClick={onClick}><span className="rh-cover"><img src={collection.cover} alt="" /></span><strong>{collection.title}</strong><span>{collection.promise}</span><small>{readyCount ? `${readyCount} printable ${readyCount === 1 ? 'activity' : 'activities'}` : 'Coming soon'} <Icon name="arrow" size={13} /></small></button><button type="button" className="rh-collection-follow" aria-pressed={followed} onClick={onFollow}>{followed ? '✓ Following' : '+ Follow collection'}</button></article>;
+  return <article className="rh-collection-card" style={{ '--rh-collection-accent': collection.accent } as CSSProperties}><button type="button" className="rh-collection-open" onClick={onClick}><span className="rh-cover"><img src={collection.cover} alt="" /></span><span className="rh-collection-copy"><strong>{collection.title}</strong><span>{collection.promise}</span><small>{readyCount ? `${readyCount} printable ${readyCount === 1 ? 'activity' : 'activities'}` : 'Coming soon'} <Icon name="arrow" size={13} /></small></span></button><button type="button" className="rh-collection-follow" aria-pressed={followed} onClick={onFollow}>{followed ? '✓ Following' : '+ Follow collection'}</button></article>;
 }
 
 export function ResourceHubPage() {
@@ -75,15 +75,16 @@ export function ResourceHubPage() {
   const publishedCollections = usePublishedHubCollections();
   const [staticKitOverride, setStaticKitOverride] = useState<HubStaticOverride | null>(null);
   useEffect(() => subscribeStaticKitOverride(setStaticKitOverride, () => setStaticKitOverride(null)), []);
-  const collections = useMemo(() => HUB_COLLECTIONS.map(collection => ({ ...collection, ...publishedCollections.items?.find(item => item.id === collection.id) })), [publishedCollections.items]);
+  const collections = useMemo(() => HUB_COLLECTIONS.map(collection => ({ ...collection, ...publishedCollections.items?.find(item => item.id === collection.id) })).filter(collection => collection.visible !== false), [publishedCollections.items]);
   const activities = useMemo(() => {
     const additions = (published.items ?? []).filter(item => !(item.collectionId === 'otp' && item.number === '002'));
     const replacements = new Map(additions.map(item => [item.id, item]));
     const examples = HUB_ACTIVITIES.filter(item => item.id === 'otp-002');
     const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
     const builtInIds = new Set(examples.map(item => item.id));
-    return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))];
-  }, [published.items, staticKitOverride]);
+    const visibleCollectionIds = new Set(collections.map(collection => collection.id));
+    return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))].filter(item => visibleCollectionIds.has(item.collectionId));
+  }, [published.items, staticKitOverride, collections]);
   const requestedTab = params.get('tab');
   const tab: Tab = requestedTab && requestedTab in TAB_LABELS ? requestedTab as Tab : 'discover';
   const selectedActivity = activities.find(a => a.id === params.get('activity'));
@@ -120,8 +121,8 @@ export function ResourceHubPage() {
   const clearDetail = () => setRoute({ tab, collection: selectedCollection?.id });
   return <div className="shell rh-app-shell"><TopBar><nav className="rh-top-links" aria-label="Resource Hub"><Link to="/archive">My files</Link></nav></TopBar>
     <main className="rh-main">
-      <div className="rh-page-heading"><div><h1>Resource Hub</h1><p>Ready-made materials for your next lesson.</p></div><div className="rh-heading-actions">{preferredClass && <span className="rh-class-context" title={`Finding for ${preferredClass.name}`}>Finding for {preferredClass.name}</span>}{isSuper === true && <Link className="rh-print-desk-link" to="/resource-hub/admin">Editor</Link>}<button type="button" className="rh-print-desk-link" aria-pressed={showPrintDesk} onClick={() => setShowPrintDesk(true)}><Icon name="print" size={16} /> Print Desk</button></div></div>
-      <div className="rh-tabs" role="tablist" aria-label="Resource Hub sections">{VISIBLE_TABS.map(k => <button key={k} type="button" role="tab" aria-selected={tab === k && !selectedCollection && !selectedActivity && !showPrintDesk} className={tab === k && !selectedCollection && !selectedActivity && !showPrintDesk ? 'active' : ''} onClick={() => setRoute({ tab: k })}>{TAB_LABELS[k]}</button>)}</div>
+      <div className="rh-page-heading"><div className="rh-heading-actions">{preferredClass && <span className="rh-class-context" title={`Finding for ${preferredClass.name}`}>Finding for {preferredClass.name}</span>}{isSuper === true && <Link className="rh-print-desk-link" to="/resource-hub/admin">Editor</Link>}<button type="button" className="rh-print-desk-link" aria-pressed={showPrintDesk} onClick={() => setShowPrintDesk(true)}><Icon name="print" size={16} /> Print Desk</button></div></div>
+      {tab !== 'collections' && !selectedCollection && !selectedActivity && !showPrintDesk && <div className="rh-tabs" role="tablist" aria-label="Resource Hub sections">{VISIBLE_TABS.map(k => <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => setRoute({ tab: k })}>{TAB_LABELS[k]}</button>)}</div>}
       <div className={selectedActivity && !showPrintDesk ? 'rh-content rh-content-detail' : 'rh-content'} key={`${tab}-${selectedCollection?.id || ''}-${selectedActivity?.id || ''}-${showPrintDesk}`}>
         {published.error && <p className="rh-disclosure" role="status">Recently published activities could not be loaded. The built-in collection is still available.</p>}
         {publishedCollections.error && <p className="rh-disclosure" role="status">Collection updates could not be loaded. The built-in covers are still available.</p>}
@@ -142,7 +143,7 @@ export function ResourceHubPage() {
             <section className="rh-section"><div className="rh-section-heading"><div><h2>For your next lesson</h2><p>Start with a complete activity, ready to use.</p></div><button type="button" className="rh-text-button" onClick={() => setRoute({ tab: 'collections', collection: 'otp' })}>See Off the Page <Icon name="arrow" size={15} /></button></div>{activityCards(activities.filter(a => a.status === 'ready').slice(0, 3))}</section>
             <section className="rh-section"><div className="rh-section-heading"><div><h2>Collections</h2><p>Photocopiable books by ELT Suite</p></div><button type="button" className="rh-text-button" onClick={() => setRoute({ tab: 'collections' })}>All collections <Icon name="arrow" size={15} /></button></div>{collectionCards(collections)}</section>
           </>}
-        </> : tab === 'collections' ? <section className="rh-section"><div className="rh-section-heading"><div><span className="rh-kicker">THE RESOURCE HUB</span><h1>Collections</h1></div></div><p className="rh-intro">Thoughtful activities for different moments in your teaching day.</p>{collectionCards(collections)}</section> : <HubShelves activities={activities} collections={collections} syncStatus={hub.syncStatus} savedIds={hub.savedIds} followedIds={hub.followedIds} recentIds={hub.recentIds} namedShelves={hub.namedShelves} onCreateShelf={hub.createShelf} onRemoveShelf={hub.removeShelf} onToggleShelfActivity={hub.toggleShelfActivity} onOpen={openActivity} onRemove={hub.toggleSaved} onFollow={hub.toggleFollowed} onCollection={id => setRoute({ tab: 'collections', collection: id as HubCollectionId })} onDiscover={() => setRoute({ tab: 'discover' })} />}
+        </> : tab === 'collections' ? <section className="rh-section"><button type="button" className="rh-back" onClick={() => setRoute({ tab: 'discover' })}>← Discover</button><div className="rh-section-heading"><div><span className="rh-kicker">THE RESOURCE HUB</span><h1>Collections</h1></div></div><p className="rh-intro">Thoughtful activities for different moments in your teaching day.</p>{collectionCards(collections)}</section> : <HubShelves activities={activities} collections={collections} syncStatus={hub.syncStatus} savedIds={hub.savedIds} followedIds={hub.followedIds} recentIds={hub.recentIds} namedShelves={hub.namedShelves} onCreateShelf={hub.createShelf} onRemoveShelf={hub.removeShelf} onToggleShelfActivity={hub.toggleShelfActivity} onOpen={openActivity} onRemove={hub.toggleSaved} onFollow={hub.toggleFollowed} onCollection={id => setRoute({ tab: 'collections', collection: id as HubCollectionId })} onDiscover={() => setRoute({ tab: 'discover' })} />}
       </div>
     </main>
   </div>;

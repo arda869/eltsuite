@@ -2,7 +2,7 @@ import { doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { HubPage } from './catalog';
 
-export type HubStaticOverride = { id: 'otp-002'; title: string; summary: string; pages: HubPage[]; updatedAt: number };
+export type HubStaticOverride = { id: 'otp-002'; title: string; summary: string; pages: HubPage[]; updatedAt: number; focus?: string; level?: string; minutes?: number; interaction?: string; prep?: 'No prep' | 'Print' | 'Print and cut'; mode?: 'Face-to-face and online' | 'Face-to-face only' | 'Online only'; energy?: 1 | 2 | 3 };
 const ref = () => doc(db, 'resourceHubStaticOverrides', 'otp-002');
 
 export function subscribeStaticKitOverride(onValue: (value: HubStaticOverride | null) => void, onError: (error: Error) => void): Unsubscribe {
@@ -11,6 +11,7 @@ export function subscribeStaticKitOverride(onValue: (value: HubStaticOverride | 
 
 export async function saveStaticKitOverride(value: HubStaticOverride): Promise<void> {
   if (!value.title.trim() || !value.summary.trim()) throw new Error('Add a title and summary.');
+  if (value.minutes !== undefined && (!Number.isFinite(value.minutes) || value.minutes < 1 || value.minutes > 240)) throw new Error('Set a time from 1 to 240 minutes.');
   if (!value.pages.length || value.pages.some(page => !page.title.trim() || !page.image.trim())) throw new Error('Each source page needs a title and image.');
   if (JSON.stringify(value).length > 850_000) throw new Error('The page images are too large for one edition. Use smaller images.');
   await setDoc(ref(), { ...value, updatedAt: Date.now() });

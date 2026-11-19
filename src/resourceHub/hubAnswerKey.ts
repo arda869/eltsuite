@@ -35,19 +35,23 @@ function expectedAnswer(node: JSONContent): string | null {
 }
 
 /** Answers are derived locally from the fields teachers fill in while authoring questions. */
+export function generatedAnswerLinesForSection(section: HubEditorSection): string[] {
+  if (section.audience !== 'learner') return [];
+  const answers: string[] = [];
+  const visit = (node: JSONContent) => {
+    const answer = expectedAnswer(node);
+    if (answer) answers.push(`${answers.length + 1}. ${answer}`);
+    node.content?.forEach(visit);
+  };
+  visit(section.content);
+  return answers;
+}
+
 export function generatedAnswerLines(sections: HubEditorSection[]): string[] {
-  const lines: string[] = [];
-  for (const section of sections.filter(item => item.audience === 'learner')) {
-    const answers: string[] = [];
-    const visit = (node: JSONContent) => {
-      const answer = expectedAnswer(node);
-      if (answer) answers.push(`${answers.length + 1}. ${answer}`);
-      node.content?.forEach(visit);
-    };
-    visit(section.content);
-    if (answers.length) lines.push(section.title, ...answers);
-  }
-  return lines;
+  return sections.filter(item => item.audience === 'learner').flatMap(section => {
+    const answers = generatedAnswerLinesForSection(section);
+    return answers.length ? [section.title, ...answers] : [];
+  });
 }
 
 export function generatedAnswerDocument(sections: HubEditorSection[]): JSONContent {
