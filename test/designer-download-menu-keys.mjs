@@ -70,6 +70,9 @@ test('Designer Download menu supports arrows, Escape and natural Tab order', asy
     assert.equal(await options.count(), 0);
     await page.keyboard.press('Enter');
     await options.first().waitFor();
+    // The menu moves focus on the next animation frame. Wait for that frame
+    // before deliberately focusing the last option for the Tab-order check.
+    await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem');
     await options.last().focus();
     await page.keyboard.press('Tab');
     await page.waitForFunction(() => document.activeElement?.id === 'after-download');
