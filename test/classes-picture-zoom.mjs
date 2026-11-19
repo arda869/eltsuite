@@ -33,7 +33,11 @@ test('Classes pictures open at a readable size without widening the phone page',
         await page.goto(`${base}/test/lesson-style-check.html`);
         await page.waitForFunction(() => typeof window.setFixture === 'function');
         await page.evaluate(src => window.setFixture({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt: 'Map of the park', size: 'full', w: 560 } }] }] }), image);
-        try { await opener.waitFor({ timeout: 10000 }); break; }
+        try {
+          await opener.waitFor({ timeout: 10000 });
+          await page.locator('.pic-enlarge-cue').waitFor({ timeout: 10000 });
+          break;
+        }
         catch (error) { if (attempt === 2) throw error; errors.length = 0; await page.waitForTimeout(750); }
       }
       assert.equal(await page.locator('.pic-enlarge-cue').count(), 1, 'the picture has a visible enlargement cue');

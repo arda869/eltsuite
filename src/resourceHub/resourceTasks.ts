@@ -51,6 +51,7 @@ const answerNotes = [
 /** Fresh nodes and question IDs on every copy: the original collection is never linked or edited. */
 export function resourceTasks(selected: Set<string>): ImportedTask[] {
   const out: ImportedTask[] = [];
+  if (selected.size) out.push({ line: 1, kind: 'task', title: 'Teacher notes · Have You Ever…?', instructions: '', content: doc(), notes: teacherNotes, hidden: true, locked: false });
   const push = (title: string, instructions: string, content: JSONContent, notes = '') =>
     out.push({ line: out.length + 1, kind: 'task', title, instructions, content, notes, hidden: false, locked: false });
 
@@ -58,7 +59,6 @@ export function resourceTasks(selected: Set<string>): ImportedTask[] {
     'Lead-in · Have you ever…?',
     'Ask questions to find which of your teacher’s three experiences is false.',
     doc(heading('Two true experiences and one false one'), para(txt('Listen to your teacher. Ask “Have you ever…?” questions and use follow-up questions to find the false experience.'))),
-    teacherNotes,
   );
   if (selected.has('practice-a')) push(
     'Practice A · Past participles',

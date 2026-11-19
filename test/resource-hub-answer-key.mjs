@@ -31,7 +31,13 @@ assert.equal(copied.content.content[1].content[0].attrs.correct, -1, 'learner Cl
 assert.equal(JSON.stringify(copied.content).includes('Suggested response'), false, 'teacher guidance must not enter learner content');
 const tasksFile = `/tmp/resource-hub-class-tasks-${process.pid}.cjs`;
 await build({ entryPoints: ['src/resourceHub/resourceTasks.ts'], outfile: tasksFile, bundle: true, platform: 'node', format: 'cjs' });
-const { publishedTasks } = await import(pathToFileURL(tasksFile));
+const { publishedTasks, resourceTasks } = await import(pathToFileURL(tasksFile));
+const selectedPractice = resourceTasks(new Set(['practice-a']));
+assert.equal(selectedPractice.length, 2, 'copying one built-in practice includes its teacher guidance');
+assert.equal(selectedPractice[0].hidden, true, 'standalone built-in lead-in stays private');
+assert.match(selectedPractice[0].notes, /Lead-in · 5 minutes/);
+assert.equal(selectedPractice[1].hidden, false);
+assert.match(selectedPractice[1].notes, /Practice A:/, 'the selected practice retains its answer notes');
 const imported = publishedTasks({ editorSections: [
   { id: 'lead', title: 'Lead-in', audience: 'teacher', kind: 'notes', instructions: 'Introduce the topic.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tell a short story.' }] }] } },
   ...once,
