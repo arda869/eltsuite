@@ -111,7 +111,7 @@ export function publishedTasks(activity: HubActivity, selected: Set<string>): Im
     const notes = [section.instructions.trim(), plainText(manualContent).trim()].filter(Boolean).join('\n\n');
     // A generated key belongs beside its learner task, rather than as a duplicate hidden task.
     if (!notes) return [];
-    return [{ line: 0, kind: 'task', title: section.title || 'Teacher notes', instructions: section.instructions, content: { type: 'doc', content: [] }, notes, hidden: true, locked: false } as ImportedTask];
+    return [{ line: 0, kind: 'task', title: section.title || 'Teacher notes', instructions: '', content: { type: 'doc', content: [] }, notes, hidden: true, locked: false } as ImportedTask];
   });
   const chosen = sections.filter(section => section.audience === 'learner' && selected.has(section.id));
   const learnerTasks: ImportedTask[] = chosen.map((section, index) => ({

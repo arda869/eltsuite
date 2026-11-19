@@ -4,7 +4,6 @@ import type { JSONContent } from '@tiptap/react';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { LocalActivityMode } from '../communicative/LocalActivity';
 import { splitKey, type Response, type Responses } from '../lib/questions';
-import { withGeneratedAnswerKey } from './hubAnswerKey';
 import type { HubResourceDraft } from './hubEditorData';
 import './resource-live-preview.css';
 
@@ -21,6 +20,7 @@ export function ResourceLivePreview({ draft, activeSectionId }: { draft: HubReso
   const [view, setView] = useState<View>('page');
   const [responses, setResponses] = useState<Responses>({});
   const [chosenVersions, setChosenVersions] = useState<Record<string, string>>({});
+  const [previewSectionId, setPreviewSectionId] = useState(activeSectionId);
   const [expanded, setExpanded] = useState(false);
   const expandButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -42,21 +42,25 @@ export function ResourceLivePreview({ draft, activeSectionId }: { draft: HubReso
       requestAnimationFrame(() => expandButton.current?.focus());
     };
   }, [expanded]);
-  const previewSections = useMemo(() => withGeneratedAnswerKey(draft.sections), [draft.sections]);
-  const selected = previewSections.find(section => section.id === activeSectionId) ?? previewSections[0];
+  useEffect(() => setPreviewSectionId(activeSectionId), [activeSectionId]);
   const learnerSections = draft.sections.filter(section => section.audience === 'learner');
-  const selectedLearner = selected?.audience === 'learner' ? selected : previewSections.find(section => section.audience === 'learner');
+  const selectedLearner = learnerSections.find(section => section.id === previewSectionId) ?? learnerSections[0];
   const versionGroups = [...new Set(learnerSections.map(section => section.versionGroup).filter((group): group is string => !!group))].map(group => ({
     group,
     versions: learnerSections.filter(section => section.versionGroup === group),
   }));
-  const pages = view === 'page' ? selectedLearner ? [selectedLearner] : [] : learnerSections.filter(section => !section.versionGroup || section.id === (chosenVersions[section.versionGroup] ?? (selectedLearner?.versionGroup === section.versionGroup ? selectedLearner.id : versionGroups.find(item => item.group === section.versionGroup)?.versions[0]?.id)));
+  const visibleLearnerSections = learnerSections.filter(section => !section.versionGroup || section.id === (chosenVersions[section.versionGroup] ?? (selectedLearner?.versionGroup === section.versionGroup ? selectedLearner.id : versionGroups.find(item => item.group === section.versionGroup)?.versions[0]?.id)));
+  const navSections = view === 'page' ? learnerSections : visibleLearnerSections;
+  const currentSection = navSections.find(section => section.id === previewSectionId) ?? navSections[0];
+  const pageIndex = currentSection ? navSections.indexOf(currentSection) : -1;
+  const pages = currentSection ? [currentSection] : [];
   const learnerDocuments = useMemo(() => new Map(learnerSections.map(section => [section.id, splitKey(section.content).content])), [learnerSections]);
   const onAnswer = (id: string, value: Response) => setResponses(current => ({ ...current, [id]: value }));
 
   const preview = <section id="resource-live-preview" className={`rhe-live-preview rhe-class-preview${expanded ? ' is-expanded' : ''}`} aria-label="Live activity preview">
     <div className="rhe-preview-head"><div><strong>Live preview</strong><span>Updates as you edit</span></div><div className="rhe-preview-controls"><div className="rhe-preview-switch" role="tablist" aria-label="Preview view"><button type="button" role="tab" aria-selected={view === 'page'} className={view === 'page' ? 'on' : ''} onClick={() => setView('page')}>Page</button><button type="button" role="tab" aria-selected={view === 'learner'} className={view === 'learner' ? 'on' : ''} onClick={() => setView('learner')}>Learner</button></div>{expanded ? <button ref={closeButton} type="button" className="rhe-preview-expand" onClick={() => setExpanded(false)} aria-label="Close large preview">Close preview <span aria-hidden="true">×</span></button> : <button ref={expandButton} type="button" className="rhe-preview-expand" onClick={() => setExpanded(true)}>Expand ↗</button>}</div>{!expanded && <button type="button" className="rhe-preview-back" onClick={() => document.getElementById('resource-editor-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Back to editor ↑</button>}</div>
-    {view === 'learner' && versionGroups.map(({ group, versions }) => <div className="rhe-preview-versions" key={group}><span>View as</span>{versions.map(section => <button type="button" key={section.id} className={pages.includes(section) ? 'on' : ''} aria-pressed={pages.includes(section)} onClick={() => setChosenVersions(current => ({ ...current, [group]: section.id }))}>{section.versionLabel || section.title}</button>)}</div>)}
+    {view === 'learner' && versionGroups.map(({ group, versions }) => <div className="rhe-preview-versions" key={group}><span>View as</span>{versions.map(section => <button type="button" key={section.id} className={pages.includes(section) ? 'on' : ''} aria-pressed={pages.includes(section)} onClick={() => { setChosenVersions(current => ({ ...current, [group]: section.id })); setPreviewSectionId(section.id); }}>{section.versionLabel || section.title}</button>)}</div>)}
+    {navSections.length > 1 && <div className="rhe-preview-task-nav" role="group" aria-label="Preview task navigation"><span>Task {pageIndex + 1} of {navSections.length}</span><div><button type="button" aria-label="Previous preview task" disabled={pageIndex <= 0} onClick={() => setPreviewSectionId(navSections[pageIndex - 1].id)}>←</button><button type="button" aria-label="Next preview task" disabled={pageIndex >= navSections.length - 1} onClick={() => setPreviewSectionId(navSections[pageIndex + 1].id)}>→</button></div></div>}
     <div className="rhe-preview-scroll" role="tabpanel" aria-label={view === 'page' ? 'Page preview' : 'Learner view'}>
       {pages.length ? pages.map(section => {
         // The learner view excludes teacher sections and splits the answer key before rendering.

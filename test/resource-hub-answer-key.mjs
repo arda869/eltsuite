@@ -38,6 +38,7 @@ const imported = publishedTasks({ editorSections: [
 ] }, new Set(['learner']));
 assert.equal(imported.length, 3, 'standalone lead-in and manual key remain distinct from learner task');
 assert.equal(imported[0].hidden, true, 'standalone teacher guidance is hidden from learners');
+assert.equal(imported[0].instructions, '', 'teacher-only wording stays in the private notes document');
 assert.match(imported[0].notes, /Introduce the topic[\s\S]*Tell a short story/);
 assert.equal(imported[1].hidden, true, 'manual suggested answer remains private');
 assert.match(imported[1].notes, /Suggested response/);
