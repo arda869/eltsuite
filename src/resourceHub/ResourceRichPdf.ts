@@ -8,9 +8,22 @@ type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean
 type Block = { kind: 'text' | 'heading' | 'table'; runs?: Run[]; rows?: string[][]; level?: number };
 
 const textOf = (node: JSONContent): string => node.text ?? (node.content ?? []).map(textOf).join('');
-const printNodes = new Set(['doc', 'text', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'gap', 'dropgap', 'choice', 'mcq', 'match', 'order', 'writing', 'wordbank']);
+const printNodes = new Set(['doc', 'text', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'gap', 'dropgap', 'choice', 'mcq', 'match', 'order', 'writing', 'wordbank', 'subTask']);
 export const hasDigitalOnlyItems = (node: JSONContent): boolean => !printNodes.has(node.type ?? '') || !!node.content?.some(hasDigitalOnlyItems);
-const runsOf = (node: JSONContent): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : node.type === 'gap' || node.type === 'dropgap' ? [{ text: ' __________ ' }] : node.type === 'choice' || node.type === 'mcq' ? [{ text: ` (${(node.attrs?.options ?? []).filter(Boolean).join(' / ')}) ` }] : (node.content ?? []).flatMap(runsOf);
+const runsOf = (node: JSONContent, gapChars: number): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : node.type === 'gap' || node.type === 'dropgap' ? [{ text: ` ${'_'.repeat(gapChars)} ` }] : node.type === 'choice' || node.type === 'mcq' ? [{ text: ` (${(node.attrs?.options ?? []).filter(Boolean).join(' / ')}) ` }] : (node.content ?? []).flatMap(child => runsOf(child, gapChars));
+/** One paper width per resource, based on the mean answer length rather than the longest outlier. */
+export function averageGapChars(sections: Section[]): number {
+  const lengths: number[] = [];
+  const visit = (node: JSONContent) => {
+    if (!node.attrs?.example && (node.type === 'gap' || node.type === 'dropgap')) {
+      const answers = node.type === 'gap' ? node.attrs?.answers ?? [] : [node.attrs?.answer];
+      lengths.push(Math.max(0, ...answers.map((answer: unknown) => String(answer ?? '').trim().length)) || 8);
+    }
+    node.content?.forEach(visit);
+  };
+  sections.forEach(section => visit(section.content));
+  return Math.max(8, Math.min(30, Math.round(lengths.reduce((total, value) => total + value, 0) / (lengths.length || 1)) + 3));
+}
 const questionText = (node: JSONContent): string => {
   const a = node.attrs ?? {};
   if (node.type === 'match') return `Match the items: ${(a.pairs ?? []).map((pair: { left: string }) => pair.left).filter(Boolean).join(' · ')} | Options: ${[...(a.pairs ?? []).map((pair: { right: string }) => pair.right), ...(a.extras ?? [])].filter(Boolean).join(' · ')}`;
@@ -23,20 +36,28 @@ const questionText = (node: JSONContent): string => {
   }
   return `${String(node.type ?? 'Interactive item').replace(/([A-Z])/g, ' $1')}: ${String(a.title || a.prompt || a.instruction || '').trim()}`.trim();
 };
-function blocksOf(content: JSONContent): Block[] {
+function blocksOf(content: JSONContent, gapChars: number): Block[] {
   const blocks: Block[] = [];
+  let subTaskIndex = 0;
   const dropAnswers: string[] = [];
   const findDropAnswers = (node: JSONContent) => { if (node.type === 'dropgap' && node.attrs?.answer) dropAnswers.push(String(node.attrs.answer)); node.content?.forEach(findDropAnswers); };
   findDropAnswers(content);
   const visit = (node: JSONContent, prefix = '') => {
+    if (node.type === 'subTask') {
+      const letter = String.fromCharCode(97 + subTaskIndex++);
+      const instruction = String(node.attrs?.paperInstr || node.attrs?.instr || '').trim();
+      blocks.push({ kind: 'text', runs: [{ text: `${letter}. ${instruction}`.trim() }] });
+      node.content?.forEach(child => visit(child));
+      return;
+    }
     if (node.type === 'image' || node.type === 'picture' || node.type === 'media') { blocks.push({ kind: 'text', runs: [{ text: `DIGITAL ONLY — ${node.type === 'media' ? 'Media' : 'Image'} is available in the Class activity and is not reproduced on this page.` }] }); return; }
     if (node.type === 'table') {
       blocks.push({ kind: 'table', rows: (node.content ?? []).map(row => (row.content ?? []).map(cell => textOf(cell).trim())) });
       return;
     }
     if (node.type === 'wordbank') { blocks.push({ kind: 'text', runs: [{ text: `Word bank: ${[...dropAnswers, ...(node.attrs?.extras ?? [])].filter(Boolean).join(' · ')}` }] }); return; }
-    if (node.type === 'heading') { blocks.push({ kind: 'heading', runs: runsOf(node), level: Number(node.attrs?.level) || 3 }); return; }
-    if (node.type === 'paragraph') { const runs = [...(prefix ? [{ text: prefix }] : []), ...runsOf(node)]; if (runs.some(run => run.text.trim())) blocks.push({ kind: 'text', runs }); return; }
+    if (node.type === 'heading') { blocks.push({ kind: 'heading', runs: runsOf(node, gapChars), level: Number(node.attrs?.level) || 3 }); return; }
+    if (node.type === 'paragraph') { const runs = [...(prefix ? [{ text: prefix }] : []), ...runsOf(node, gapChars)]; if (runs.some(run => run.text.trim())) blocks.push({ kind: 'text', runs }); return; }
     if (node.type === 'bulletList' || node.type === 'orderedList') { (node.content ?? []).forEach((child, index) => visit(child, node.type === 'bulletList' ? '• ' : `${index + 1}. `)); return; }
     if (node.type === 'listItem') { (node.content ?? []).forEach((child, index) => visit(child, index === 0 ? prefix : '')); return; }
     if (node.type && !['doc', 'text', 'gap', 'dropgap', 'choice', 'mcq'].includes(node.type) && node.attrs?.id) {
@@ -92,22 +113,28 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
   const sections = activity.editorSections ?? [];
   const learners = sections.filter(section => section.audience === 'learner' && learnerIds.includes(section.id));
   const teachers = sections.filter(section => section.audience === 'teacher' && teacherIds.includes(section.id));
+  const gapChars = averageGapChars(learners);
   if (!learners.length && !teachers.length) throw new Error('Choose at least one section.');
   if (!Number.isInteger(copies) || copies < 1 || copies > 30) throw new Error('Choose 1–30 learner copies.');
   const [{ jsPDF }, regular, bold, italic, header] = await Promise.all([import('jspdf'), fontData('/fonts/atkinson/Regular.ttf'), fontData('/fonts/atkinson/Bold.ttf'), fontData('/fonts/atkinson/Italic.ttf'), collection?.headerImage ? printableHeader(collection.headerImage, colour === 'mono') : Promise.resolve(null)]);
-  const pdf = new jsPDF({ unit: 'mm', format: paper, orientation: 'portrait', compress: true });
-  pdf.addFileToVFS('Atkinson-Regular.ttf', regular); pdf.addFont('Atkinson-Regular.ttf', 'Atkinson', 'normal');
-  pdf.addFileToVFS('Atkinson-Bold.ttf', bold); pdf.addFont('Atkinson-Bold.ttf', 'Atkinson', 'bold');
-  pdf.addFileToVFS('Atkinson-Italic.ttf', italic); pdf.addFont('Atkinson-Italic.ttf', 'Atkinson', 'italic');
+  const createPdf = () => {
+    const file = new jsPDF({ unit: 'mm', format: paper, orientation: 'portrait', compress: true });
+    file.addFileToVFS('Atkinson-Regular.ttf', regular); file.addFont('Atkinson-Regular.ttf', 'Atkinson', 'normal');
+    file.addFileToVFS('Atkinson-Bold.ttf', bold); file.addFont('Atkinson-Bold.ttf', 'Atkinson', 'bold');
+    file.addFileToVFS('Atkinson-Italic.ttf', italic); file.addFont('Atkinson-Italic.ttf', 'Atkinson', 'italic');
+    return file;
+  };
+  let pdf = createPdf();
   const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight();
   const margin = 19, contentWidth = width - margin * 2, bottom = height - 20;
-  let started = false, y = 0;
+  let started = false, y = 0, sectionBottom = bottom;
   const ink = colour === 'mono' ? [45, 45, 45] as const : [58, 56, 48] as const;
   const accent = colour === 'mono' ? [70, 70, 70] as const : colourOf(collection?.paperAccent || collection?.accent);
   const setInk = (rgb: readonly number[]) => pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
-  const begin = (section: Section) => {
-    if (started) pdf.addPage(paper, 'portrait');
-    started = true; y = 22;
+  const begin = (section: Section, placement: 'full' | 'top' | 'bottom' = 'full') => {
+    if (started && placement !== 'bottom') pdf.addPage(paper, 'portrait');
+    started = true; y = placement === 'bottom' ? height / 2 + 15 : 22;
+    sectionBottom = placement === 'top' ? height / 2 - 9 : bottom;
     if (header) {
       const fitWidth = Math.min(contentWidth, 25 * header.width / header.height);
       const fitHeight = fitWidth * header.height / header.width;
@@ -119,16 +146,15 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     pdf.text(activityLines, margin, y); y += activityLines.length * 4 + 3;
     pdf.setDrawColor(211, 207, 197); pdf.line(margin, y, width - margin, y); y += 11;
     pdf.setFontSize(18); setInk(ink);
-    const titleLines = pdf.splitTextToSize(section.title, contentWidth) as string[];
+    const titleLines = pdf.splitTextToSize(section.versionLabel ? `${section.title} · ${section.versionLabel}` : section.title, contentWidth) as string[];
     pdf.text(titleLines, margin, y); y += titleLines.length * 8 + 2;
-    if (section.audience === 'teacher') { pdf.setFontSize(8); setInk(accent); pdf.text('TEACHER ONLY · KEEP PRIVATE', margin, y); y += 7; }
   };
-  const nextPage = () => { pdf.addPage(paper, 'portrait'); y = 21; };
+  const nextPage = () => { pdf.addPage(paper, 'portrait'); y = 21; sectionBottom = bottom; };
   const lines = (text: string, fontSize = 10.5, boldLine = false, gap = 3) => {
     pdf.setFont('Atkinson', boldLine ? 'bold' : 'normal'); pdf.setFontSize(fontSize); setInk(boldLine ? accent : ink);
     const wrapped = pdf.splitTextToSize(text, contentWidth) as string[];
     const lineHeight = fontSize * .45;
-    for (const line of wrapped) { if (y + lineHeight > bottom) nextPage(); pdf.text(line, margin, y); y += lineHeight; }
+    for (const line of wrapped) { if (y + lineHeight > sectionBottom) nextPage(); pdf.text(line, margin, y); y += lineHeight; }
     y += gap;
   };
   const richLines = (runs: Run[], fontSize = 10.5, heading = false) => {
@@ -144,7 +170,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
         for (const piece of pieces) {
           const tokenWidth = pdf.getTextWidth(piece);
           if (x + tokenWidth > width - margin && x > margin) { y += lineHeight; x = margin; }
-          if (y + lineHeight > bottom) { nextPage(); x = margin; }
+          if (y + lineHeight > sectionBottom) { nextPage(); x = margin; }
           if (!/^\s+$/.test(piece)) {
             pdf.text(piece, x, y);
             if (run.underline || run.href) { pdf.setDrawColor(run.href ? 77 : ink[0], run.href ? 100 : ink[1], run.href ? 146 : ink[2]); pdf.line(x, y + .7, x + tokenWidth, y + .7); }
@@ -165,7 +191,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
       pdf.setFont('Atkinson', rowIndex === 0 ? 'bold' : 'normal'); pdf.setFontSize(8.5); setInk(ink);
       const cells = Array.from({ length: columns }, (_, col) => pdf.splitTextToSize(row[col] ?? '', cellWidth - 5) as string[]);
       const rowHeight = Math.max(9, ...cells.map(cell => cell.length * 4.1 + 4));
-      if (y + rowHeight > bottom) nextPage();
+      if (y + rowHeight > sectionBottom) nextPage();
       cells.forEach((cell, col) => {
         pdf.setDrawColor(194, 191, 181); pdf.rect(margin + col * cellWidth, y, cellWidth, rowHeight);
         cell.forEach((line, lineIndex) => pdf.text(line, margin + col * cellWidth + 2.5, y + 5 + lineIndex * 4.1));
@@ -174,18 +200,50 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     }
     y += 4;
   };
-  const draw = (section: Section) => {
-    begin(section);
+  const draw = (section: Section, placement: 'full' | 'top' | 'bottom' = 'full') => {
+    begin(section, placement);
     if (hasDigitalOnlyItems(section.content)) lines('DIGITAL ONLY CONTENT · This print page does not reproduce every interactive or visual item. Use the Class activity for the complete task.', 9.5, true, 6);
-    if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, true, 7);
-    for (const block of blocksOf(section.content)) {
+    const instruction = section.printInstructions?.trim() || section.instructions.trim();
+    if (instruction) lines(instruction, 10.5, true, 7);
+    for (const block of blocksOf(section.content, gapChars)) {
       if (block.kind === 'table') table(block.rows ?? []);
       else if (block.kind === 'heading') richLines(block.runs ?? [], block.level === 2 ? 15 : 12, true);
       else richLines(block.runs ?? []);
     }
   };
-  for (let copy = 0; copy < copies; copy++) learners.forEach(draw);
-  teachers.forEach(draw);
+  const groups = new Map<string, Section[]>();
+  learners.forEach(section => { if (section.versionGroup) groups.set(section.versionGroup, [...(groups.get(section.versionGroup) ?? []), section]); });
+  const shortGroups = new Set<string>();
+  for (const [groupId, versions] of groups) {
+    if (versions.length < 2) continue;
+    const short = versions.every(section => {
+      pdf = createPdf(); started = false; y = 0; sectionBottom = bottom;
+      draw(section);
+      return pdf.getNumberOfPages() === 1 && y <= height / 2 - 9;
+    });
+    if (short) shortGroups.add(groupId);
+  }
+  pdf = createPdf(); started = false; y = 0; sectionBottom = bottom;
+  for (let copy = 0; copy < copies; copy++) {
+    const renderedGroups = new Set<string>();
+    for (const section of learners) {
+      const groupId = section.versionGroup;
+      if (!groupId || !groups.has(groupId) || groups.get(groupId)!.length < 2) { draw(section); continue; }
+      if (renderedGroups.has(groupId)) continue;
+      renderedGroups.add(groupId);
+      const versions = groups.get(groupId)!;
+      versions.forEach((version, index) => {
+        if (!shortGroups.has(groupId) || index % 2 === 0 && index === versions.length - 1) { draw(version); return; }
+        if (index % 2 === 0) { draw(version, 'top'); return; }
+        pdf.setDrawColor(111, 106, 100); pdf.setLineWidth(.28); pdf.setLineDashPattern([2, 1.2], 0);
+        pdf.line(margin, height / 2, width - margin, height / 2); pdf.setLineDashPattern([], 0);
+        pdf.circle(margin - 6, height / 2 - 1.8, 1.2); pdf.circle(margin - 6, height / 2 + 1.8, 1.2);
+        pdf.line(margin - 5, height / 2 - 1, margin - 2, height / 2 + 1.5); pdf.line(margin - 5, height / 2 + 1, margin - 2, height / 2 - 1.5);
+        draw(version, 'bottom');
+      });
+    }
+  }
+  teachers.forEach(section => draw(section));
   const pages = pdf.getNumberOfPages();
   for (let index = 1; index <= pages; index++) {
     pdf.setPage(index); pdf.setFont('Atkinson', 'normal'); pdf.setFontSize(8); pdf.setTextColor(125, 122, 112);

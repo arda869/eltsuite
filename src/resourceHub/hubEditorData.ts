@@ -6,7 +6,7 @@ import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 
 /** Draft and public editions live in different collections. Public reads never expose draft text. */
 export type HubEditorState = 'draft' | 'in-review';
-export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; content: JSONContent };
+export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; printInstructions?: string; versionGroup?: string; versionLabel?: string; content: JSONContent };
 export type HubResourceDraft = {
   id: string; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
   level: string; minutes: number; interaction: string; prep: 'No prep' | 'Print' | 'Print and cut';
@@ -41,6 +41,21 @@ export function blankResourceDraft(uid: string, collectionId: HubCollectionId = 
 export function newSection(audience: 'learner' | 'teacher'): HubEditorSection {
   return { id: newId(), title: audience === 'learner' ? 'New learner task' : 'New teacher note', audience, kind: audience === 'learner' ? 'task' : 'notes', instructions: '', content: blankDoc() };
 }
+/** A named, blank companion task. A fresh document avoids duplicating question IDs or answers. */
+export function addLearnerVersion(sections: HubEditorSection[], sourceId: string): { sections: HubEditorSection[]; id: string } {
+  const at = sections.findIndex(section => section.id === sourceId);
+  const source = sections[at];
+  if (!source || source.audience !== 'learner') throw new Error('Choose a learner task before adding a version.');
+  const group = source.versionGroup || newId();
+  const siblings = sections.filter(section => section.versionGroup === group);
+  const used = new Set(siblings.map(section => section.versionLabel?.trim()));
+  const letter = 'BCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(label => !used.has(label) && !used.has(`Learner ${label}`));
+  const added: HubEditorSection = { ...newSection('learner'), title: source.title, instructions: source.instructions, printInstructions: source.printInstructions ?? '', versionGroup: group, versionLabel: letter ? `Learner ${letter}` : `Version ${siblings.length + 1}` };
+  const next = sections.map(section => section.id === sourceId && !section.versionGroup ? { ...section, versionGroup: group, versionLabel: 'Learner A' } : section);
+  const lastSibling = next.reduce((last, section, index) => section.versionGroup === group ? index : last, at);
+  next.splice(lastSibling + 1, 0, added);
+  return { sections: next, id: added.id };
+}
 export function validateResource(draft: HubResourceDraft): string[] {
   const errors: string[] = [];
   if (!draft.title.trim()) errors.push('Add an activity title.');
@@ -51,6 +66,10 @@ export function validateResource(draft: HubResourceDraft): string[] {
   if (!draft.sections.some(section => section.audience === 'learner' && (contentText(section.content).trim().length > 1 || hasAuthoredNode(section.content)))) errors.push('Add at least one learner task with content.');
   if (!generatedAnswerLines(draft.sections).length && !draft.sections.some(section => section.audience === 'teacher' && section.kind === 'answer-key' && contentText(section.content).trim().length > 1)) errors.push('Add answers to the learner questions or write suggested responses in the answer key.');
   if (draft.sections.some(section => !section.title.trim())) errors.push('Give every section a title.');
+  for (const group of new Set(draft.sections.map(section => section.versionGroup).filter(Boolean))) {
+    const versions = draft.sections.filter(section => section.versionGroup === group);
+    if (versions.length < 2 || versions.some(section => section.audience !== 'learner' || !section.versionLabel?.trim()) || new Set(versions.map(section => section.versionLabel?.trim().toLowerCase())).size !== versions.length) errors.push('Each learner version set needs at least two learner tasks with different version names.');
+  }
   if (draft.sections.some(section => section.content.type !== 'doc')) errors.push('A section has invalid editor content. Reopen it and save again.');
   if (draft.sections.some(section => textLength(section.content) > 300_000)) errors.push('One section is too large. Split it before saving.');
   if (draft.sections.length > 40) errors.push('Use at most 40 sections in one activity.');

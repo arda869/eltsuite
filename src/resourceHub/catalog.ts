@@ -38,7 +38,7 @@ export interface HubActivity {
   notes: string[];
   worksheet: string[];
   tags: string[];
-  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; content: JSONContent }[];
+  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; printInstructions?: string; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
   authoredParts?: { id: string; title: string; audience: 'learner' | 'teacher'; lines: string[] }[];
 }
 

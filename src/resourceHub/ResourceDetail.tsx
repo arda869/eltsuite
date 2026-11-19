@@ -11,10 +11,14 @@ import type { JSONContent } from '@tiptap/react';
 import './resourceDetail.css';
 
 type Zoom = 'fit' | 'width' | '100';
-type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; content?: JSONContent };
+type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; content?: JSONContent; versionLabel?: string };
+const paperContent = (node: JSONContent): JSONContent => ({ ...node,
+  ...(node.type === 'subTask' ? { attrs: { ...node.attrs, instr: node.attrs?.paperInstr?.trim() || node.attrs?.instr || '' } } : {}),
+  ...(node.content ? { content: node.content.map(paperContent) } : {}),
+});
 
 export function ResourceDetail({ activity, collection: collectionOverride, onBack, saved = false, onSaveChange, preferredClassId }: { activity: HubActivity; collection?: HubCollection; onBack: () => void; saved?: boolean; onSaveChange?: () => void; preferredClassId?: string }) {
-  const previewPages: PreviewEntry[] = useMemo(() => activity.editorSections?.length ? activity.editorSections.map(section => ({ id: section.id, title: section.title, audience: section.audience, instructions: section.instructions, content: section.content })) : activity.pages, [activity.editorSections, activity.pages]);
+  const previewPages: PreviewEntry[] = useMemo(() => activity.editorSections?.length ? activity.editorSections.map(section => ({ id: section.id, title: section.title, audience: section.audience, instructions: section.printInstructions?.trim() || section.instructions, content: section.content, versionLabel: section.versionLabel })) : activity.pages, [activity.editorSections, activity.pages]);
   const learnerIndices = useMemo(() => previewPages.flatMap((page, index) => page.audience === 'learner' ? [index] : []), [previewPages]);
   const firstLearnerIndex = learnerIndices[0] ?? 0;
   const [pageIndex, setPageIndex] = useState(firstLearnerIndex);
@@ -41,7 +45,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   }, [learnerIndices, dialog, ready]);
 
   const pageChoice = ({ item, index }: { item: PreviewEntry; index: number }) => <button type="button" key={item.id} className={`rh-page-choice ${index === pageIndex ? 'selected' : ''} ${item.audience === 'teacher' ? 'teacher' : ''}`} onClick={() => setPageIndex(index)} aria-current={index === pageIndex ? 'page' : undefined}>
-    {item.image ? <img src={item.image} alt="" /> : <span className="rh-section-icon" aria-hidden="true">≡</span>}<span><b>{item.title}</b><small>Page {index + 1}</small></span>
+    {item.image ? <img src={item.image} alt="" /> : <span className="rh-section-icon" aria-hidden="true">≡</span>}<span><b>{item.title}</b><small>{item.versionLabel ? `${item.versionLabel} · ` : ''}Page {index + 1}</small></span>
   </button>;
 
   return <div className="rh-detail">
@@ -58,7 +62,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
       </aside>
       <section className="rh-preview" aria-label="Activity preview"><div className="rh-preview-toolbar"><span><strong>{page.audience === 'teacher' ? `Page ${pageIndex + 1} of ${previewCount}` : `Learner page ${selectedLearnerPosition + 1} of ${learnerIndices.length}`}</strong><small>{page?.title}</small></span><div><Select value={zoom} options={[{ v: 'fit', label: 'Fit page' }, { v: 'width', label: 'Fit width' }, { v: '100', label: '100%' }]} onChange={setZoom} label="Preview zoom" />{page.audience === 'teacher' ? <button type="button" className="rh-return-learners" onClick={() => setPageIndex(firstLearnerIndex)}>Show learner sheet</button> : <><button type="button" className="rh-icon-button" aria-label="Previous learner page" disabled={selectedLearnerPosition <= 0} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition - 1])}>←</button><button type="button" className="rh-icon-button" aria-label="Next learner page" disabled={selectedLearnerPosition >= learnerIndices.length - 1} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition + 1])}>→</button></>}</div></div>
         <div className={`rh-preview-stage zoom-${zoom}`}>
-          {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}</span><h2>{page.title}</h2>{page.instructions && <p>{page.instructions}</p>}</header><RichContent content={page.content} /></article> : null}
+          {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}{page.versionLabel ? ` · ${page.versionLabel}` : ''}</span><h2>{page.title}</h2>{page.instructions && <p>{page.instructions}</p>}</header><RichContent content={paperContent(page.content)} /></article> : null}
         </div>
       </section>
       <aside className="rh-detail-aside"><div className="rh-detail-actions"><h2>Use this activity</h2><button type="button" className="rh-primary" onClick={() => setDialog('print')}>Print activity pages <span aria-hidden="true">↗</span></button><button type="button" className="rh-secondary" onClick={() => setDialog('copy')}>Copy editable tasks to a Class</button>{aiEnabled && activity.id === 'otp-002' && <button type="button" className="rh-secondary" onClick={() => setDialog('adapt')}>✦ Adapt with AI</button>}{onSaveChange && <button type="button" className="rh-secondary rh-detail-save" aria-pressed={saved} onClick={onSaveChange}>{saved ? '✓ Saved' : '♡ Save'}</button>}<p>Class copies include learner pages only.</p></div>
