@@ -15,11 +15,17 @@ export type ActivityItem = {
   question?: string; followUp?: string; options?: string[];
 };
 export type Difference = { id: string; x: number; y: number; radius: number; label: string };
+// Colours for the activity's game pieces. 'class' follows the class colour, as before.
+export type ActivityColours = 'class' | 'coral' | 'ocean' | 'forest' | 'plum' | 'sunshine' | 'slate';
+export const ACTIVITY_COLOURS: { v: ActivityColours; label: string }[] = [
+  { v: 'class', label: 'Class colour' }, { v: 'coral', label: 'Coral' }, { v: 'ocean', label: 'Ocean' }, { v: 'forest', label: 'Forest' },
+  { v: 'plum', label: 'Plum' }, { v: 'sunshine', label: 'Sunshine' }, { v: 'slate', label: 'Slate' },
+];
 export type ActivitySettings = {
   mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'path'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';
-  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; scoring?: boolean; useful?: string; listenerTask?: string;
+  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; colours?: ActivityColours; scoring?: boolean; useful?: string; listenerTask?: string;
   nameOnce?: boolean; showFollowUp?: boolean; layout?: 'list' | 'grid' | 'diamond';
   noCorrectAnswer?: boolean; showNames?: boolean; lowLabel?: string; highLabel?: string; askReason?: boolean;
   versions?: { name: string; picture: ActivityPicture }[]; differences?: Difference[]; printCards?: number; printDie?: boolean;

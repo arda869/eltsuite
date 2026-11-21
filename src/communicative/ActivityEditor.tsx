@@ -7,7 +7,7 @@ import { newId } from '../lib/tasks';
 import { PictureField, preparePicture, useImageSrc } from '../editor/PackNode';
 import { useEditorClass } from '../editor/context';
 import { ActivityStage } from './ActivityStage';
-import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, sameActivityPictureFrame, parseItemList, plainText, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem } from './model';
+import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, sameActivityPictureFrame, parseItemList, plainText, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem, ACTIVITY_COLOURS } from './model';
 import { configForLearner, initialActivity, stateForLearner, transition, type ActivityAction } from './state';
 
 export const ActivityCardAttributes = Extension.create({
@@ -130,6 +130,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
     <div className="ca-editor" contentEditable={false}>
       <div className="ca-editor-side">
         <label className="ca-setting">Instruction<input value={c.instruction} placeholder={`For example: ${defaults[c.kind]}`} onChange={e => updateAttributes({ instruction: e.target.value })} /></label>
+        <div className="ca-setting ca-colour-setting"><span>Colours</span><span className="ca-swatches" role="radiogroup" aria-label="Colours">{ACTIVITY_COLOURS.map(o => <button key={o.v} type="button" role="radio" aria-checked={(c.settings.colours ?? 'class') === o.v} aria-label={o.label} title={o.label} className={`ca-swatch ca-pal-${o.v} ${(c.settings.colours ?? 'class') === o.v ? 'on' : ''}`} onClick={() => settings({ colours: o.v })} />)}</span></div>
         <label className="ca-setting">Play with<select value={c.settings.mode} onChange={e => settings({ mode: e.target.value as ActivitySettings['mode'] })}><option value="class">Whole class</option><option value="groups">Pairs or groups</option><option value="individual">Individual learners</option></select></label>
         {c.kind === 'board' && <><label className="ca-setting">Number of squares<input key={c.items.length} type="number" min="12" max="48" defaultValue={c.items.length} onBlur={e=>resizeBoard(Number(e.target.value))}/><small>12 to 48 squares, including Start and Finish.</small></label><label className="ca-setting">Board style<select value={c.settings.boardStyle ?? 'snake'} onChange={e => settings({ boardStyle: e.target.value as ActivitySettings['boardStyle'] })}><option value="snake">Winding path</option><option value="spiral">Spiral</option><option value="path">Classic grid</option></select></label><label className="ca-setting">Turn order<select value={c.settings.turnOrder ?? 'fixed'} onChange={e => settings({ turnOrder: e.target.value as ActivitySettings['turnOrder'] })}><option value="fixed">Set order</option><option value="random">Random</option></select></label></>}
         {['memory','taboo'].includes(c.kind)&&<label className="ca-setting">Turn order<select value={c.settings.turnOrder??'fixed'} onChange={e=>settings({turnOrder:e.target.value as 'fixed'|'random'})}><option value="fixed">Set order</option><option value="random">Random</option></select></label>}

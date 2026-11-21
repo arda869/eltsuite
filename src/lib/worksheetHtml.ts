@@ -499,6 +499,8 @@ img { filter: grayscale(1) contrast(1.18); }
 .pa-die polygon { fill: #fff !important; stroke: #1d1b18 !important; }
 .pa-die rect { stroke: #1d1b18 !important; }
 .cut-card, .pa-strip { border-color: #1d1b18 !important; }
+.pa-bingo-head, .pa-taboo h3 { background: #fff !important; color: #1d1b18 !important; border-bottom: 1.2pt solid #1d1b18 !important; }
+.pa-dom::after { background: #1d1b18 !important; }
 :is(.pill, .wb-pill, .chip, .kw) { background: #fff !important; border: .8pt solid #1d1b18 !important; color: #1d1b18 !important; }
 `;
 

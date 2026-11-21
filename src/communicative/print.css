@@ -195,3 +195,19 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 
 /* Keep each Bingo picture in the same frame as its on-screen card, even in a 5 × 5 grid. */
 .pa-bingo-grid .pa-picture {width:100%;height:auto;aspect-ratio:4 / 3;}
+
+/* 2026-11: the paper versions echo the live pieces (Cards / Open the box language). In black and white
+   (MONO_CSS in worksheetHtml.ts) the coloured bands become outlined white bands, so no toner is wasted. */
+.pa-bingo { padding: 0; gap: 0; }
+.pa-bingo-head { padding: 2.2mm 4mm; background: var(--accent); color: #fff; font: 800 8pt Karla, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.pa-bingo-head b { font: 800 11pt Karla, sans-serif; letter-spacing: .5em; }
+.pa-bingo-grid { margin: 3mm 4mm 4mm; }
+.pa-bingo .pa-bingo-grid span:nth-child(n):nth-child(n) { background: #fff; }
+.pa-dom { position: relative; }
+.pa-dom > span:first-child { border-right-color: var(--hair); }
+.pa-dom::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2.2mm; height: 2.2mm; margin: -1.1mm 0 0 -1.1mm; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 .8mm #fff; }
+.pa-taboo h3 { margin: 0; padding: 3.4mm 3mm 3mm; background: var(--accent); color: #fff; border-bottom: 0; font: 600 14pt/1.2 Fraunces, serif; }
+.pa-taboo-words { padding: 2.4mm 3mm 3.2mm; gap: .6mm; }
+.pa-taboo-words span:not(.pa-label) { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1pt; }
+.pa-cut-grid > .pa-caller-strip { gap: 3mm; flex-direction: row; justify-content: space-between; }
+.pa-cut-grid > .pa-caller-strip small { font: 400 8.4pt/1.3 Karla, sans-serif; color: var(--muted); text-align: right; }

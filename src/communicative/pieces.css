@@ -30,7 +30,7 @@
   background: var(--tint);
 }
 .ca-board-stage .ca-board .ca-sq {
-  aspect-ratio: auto; overflow: hidden; display: flex; flex-direction: column; gap: 3px;
+  aspect-ratio: auto; overflow: visible; display: flex; flex-direction: column; gap: 3px;
   padding: calc(var(--sq) * .09) calc(var(--sq) * .1); border: 0; border-radius: 14px;
   background: var(--paper); box-shadow: var(--cp-lift-low);
   font: 400 clamp(10px, calc(var(--sq) * .135), 15px)/1.25 var(--serif); color: var(--ink);
@@ -38,7 +38,9 @@
 }
 .ca-board-stage .ca-board-snake .ca-sq:nth-child(odd) { background: var(--paper); }
 .ca-board-stage .ca-board-snake .ca-sq:nth-child(even) { background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
-.ca-board-stage .ca-board-spiral .ca-sq { border-radius: 50% 50% 18px 18px / 30% 30% 18px 18px; }
+/* Spiral: round spaces winding in to the middle, like a classic race game. */
+.ca-board-stage .ca-board-spiral .ca-sq { border-radius: 50%; align-items: center; justify-content: center; text-align: center; padding: calc(var(--sq) * .14); }
+.ca-board-stage .ca-board-spiral .ca-sq-n { position: absolute; top: 9%; left: 0; right: 0; text-align: center; }
 .ca-board-stage .ca-board-path .ca-sq { border-radius: 6px; }
 .ca-board-stage .ca-sq-n { font: 700 clamp(9px, calc(var(--sq) * .11), 12px) var(--sans); color: var(--accent-text); letter-spacing: .04em; }
 .ca-board-stage .ca-sq-text { -webkit-line-clamp: 3; }
@@ -46,23 +48,26 @@
 .ca-board-stage .ca-board .ca-sq.start, .ca-board-stage .ca-board .ca-sq.finish {
   justify-content: center; align-items: center; text-align: center; color: #fff;
   font: 700 clamp(10px, calc(var(--sq) * .13), 14px) var(--sans); letter-spacing: .14em; text-transform: uppercase;
-  background: linear-gradient(90deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--ca-charcoal);
-  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, .45);
+  background: var(--accent);
+  box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--accent) 70%, #000);
 }
-.ca-board-stage .ca-board .ca-sq.finish { background: linear-gradient(0deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), linear-gradient(90deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--ca-charcoal); }
-.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { padding: 3px 9px; border-radius: 6px; background: #2b2a29; }
+.ca-board-stage .ca-board .ca-sq.finish { background: linear-gradient(0deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), linear-gradient(90deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--accent); }
+.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 80%, #000); }
 .ca-board-stage .ca-sq.start .ca-sq-n, .ca-board-stage .ca-sq.finish .ca-sq-n { display: none; }
 .ca-board-stage .ca-sq.special { background: var(--tint-strong); color: var(--accent-text); font-style: italic; }
 /* The square someone has just landed on lifts and pops, like a drawn card. */
 .ca-board-stage .ca-board .ca-sq.here { transform: translateY(-3px); box-shadow: 0 0 0 2.5px var(--accent), var(--ca-lift); animation: cp-pop .35s var(--ca-ease); }
 .ca-board-stage .ca-board .ca-sq.start.here, .ca-board-stage .ca-board .ca-sq.finish.here { animation: none; }
-.ca-board-stage .ca-sq .ca-pins { position: absolute; right: 6px; bottom: 6px; margin: 0; display: flex; }
+/* Counters sit on the square's top-right corner, so they never cover the words. */
+.ca-board-stage .ca-sq .ca-pins { position: absolute; top: -8px; left: auto; right: -6px; bottom: auto; margin: 0; display: flex; z-index: 1; }
 .ca-board-stage .ca-sq .ca-pinname { margin-left: -8px; max-width: none; }
 .ca-board-stage .ca-sq .ca-pinname:first-child { margin-left: 0; }
-.ca-board-stage .ca-sq .ca-pin { width: clamp(22px, calc(var(--sq) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; box-shadow: 0 3px 6px rgba(0, 0, 0, .28); animation: cp-pop .3s var(--ca-ease); }
-/* The die: a charcoal cube with white pips and the accent ring of the card backs. */
-.ca-board-side .ca-die { border: 0; border-radius: 18px; background: var(--ca-charcoal); box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6px rgba(255, 255, 255, .16), 0 10px 22px -8px rgba(0, 0, 0, .45); }
-.ca-board-side .ca-die i { background: #fff; }
+.ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-player .ca-pin { width: clamp(22px, calc(var(--sq, 80px) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; border-radius: 50%; transform: none; border: 2px solid var(--paper); background: var(--c); box-shadow: 0 3px 6px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
+.ca-board-stage .ca-sq .ca-pin > span, .ca-board-side .ca-player .ca-pin > span { transform: none; }
+.ca-board-side .ca-player .ca-pin { width: 22px; animation: none; }
+/* The die: white, like the wheel's hub, with ink pips and an accent one. */
+.ca-board-side .ca-die { border: 0; border-radius: 18px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong), 0 10px 22px -10px rgba(0, 0, 0, .3); }
+.ca-board-side .ca-die i { background: var(--ink); }
 .ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: var(--accent); width: 17px; height: 17px; }
 .ca-board-side button.ca-die.ready:hover { animation: cp-wiggle .5s ease; }
 .ca-board-side .ca-prompt { border: 0; position: relative; overflow: hidden; animation: cp-pop .45s var(--ca-ease); }
@@ -74,7 +79,7 @@
 /* the charcoal band across the top, with the letters in the accent */
 .ca-bingo::before {
   content: 'B I N G O'; grid-column: 1 / -1; padding: 11px 10px 10px; text-align: center; letter-spacing: .55em; text-indent: .55em;
-  font: 800 clamp(14px, 3vw, 19px)/1 var(--sans); color: var(--accent); background: var(--ca-charcoal);
+  font: 800 clamp(14px, 3vw, 19px)/1 var(--sans); color: #fff; background: var(--accent);
 }
 .ca-bingo .ca-cell {
   position: relative; aspect-ratio: 1; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transform: none;
@@ -108,24 +113,21 @@
 .ca-calls button.on::after { content: ''; position: absolute; right: -5px; top: -7px; width: 18px; height: 18px; background: var(--cp-tick) center / contain no-repeat; }
 @media (prefers-reduced-motion: reduce) { .ca-bingo .ca-cell.on::after, .ca-call-now { animation: none; } }
 
-/* ---------------------------------------------------------------- Dominoes: charcoal tiles, like the card backs */
+/* ---------------------------------------------------------------- Dominoes: paper tiles with an accent pin */
 .ca-chain { gap: 12px; }
 .ca-domino {
-  position: relative; border: 0; border-radius: 14px; min-height: 80px; width: 300px; overflow: visible; color: #fff;
-  background: var(--ca-charcoal); box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6px rgba(255, 255, 255, .16), 0 10px 22px -8px rgba(0, 0, 0, .45);
-  transition: transform .2s var(--ca-ease);
+  position: relative; border: 0; border-radius: 14px; min-height: 80px; width: 300px; overflow: visible;
+  background: var(--paper); box-shadow: 0 0 0 1px var(--hair), var(--ca-lift); transition: transform .2s var(--ca-ease);
 }
-.ca-domino > span { font: 400 15px/1.25 var(--serif); color: #fff; padding: 10px 16px; }
+.ca-domino > span { font: 400 15px/1.25 var(--serif); color: var(--ink); padding: 10px 16px; }
 .ca-domino > span + span:not(.ca-move-tools) { border-left: 0; font: 400 15px/1.25 var(--serif); }
-/* the line down the middle and its accent pin */
-.ca-domino::before { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 1.5px; margin-left: -.75px; background: rgba(255, 255, 255, .28); }
-.ca-domino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px #2b2a29; }
-.ca-domino .n { position: absolute; left: -8px; top: -8px; z-index: 1; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--paper); color: var(--ink); font: 700 11px var(--sans); box-shadow: var(--cp-lift-low); }
-.ca-domino.end > span:first-child { color: var(--accent); }
+.ca-domino::before { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 1.5px; margin-left: -.75px; background: var(--hair-strong); }
+.ca-domino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--paper); }
+.ca-domino .n { position: absolute; left: -8px; top: -8px; z-index: 1; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; font: 700 11px var(--sans); box-shadow: var(--cp-lift-low); }
+.ca-domino.end > span:first-child { color: var(--accent-text); }
 .ca-domino:hover { transform: translateY(-2px); }
 .ca-domino.lift { transform: rotate(-2deg) translateY(-3px); }
-.ca-domino.ok { box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6.5px color-mix(in srgb, var(--right) 80%, #fff), 0 10px 22px -8px rgba(0, 0, 0, .45); }
-.ca-domino .ca-move-tools button { color: #fff; }
+.ca-domino.ok { box-shadow: 0 0 0 2px color-mix(in srgb, var(--right) 60%, transparent), var(--ca-lift); }
 
 /* ---------------------------------------------------------------- Pelmanism: the Cards deck's backs and paper faces */
 .ca-memory { gap: 12px; }
@@ -149,8 +151,8 @@
 
 /* ---------------------------------------------------------------- Taboo: the card the describer holds */
 .ca-taboo { position: relative; border-radius: 16px; box-shadow: var(--ca-lift); animation: cp-pop .45s var(--ca-ease); }
-.ca-taboo-word { color: #fff; background: var(--ca-charcoal); border-bottom: 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .08); }
-.ca-taboo-word small { color: var(--accent); }
+.ca-taboo-word { color: #fff; background: var(--accent); border-bottom: 0; }
+.ca-taboo-word small { color: rgba(255, 255, 255, .85); }
 .ca-taboo li { color: var(--muted); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
 
 /* ---------------------------------------------------------------- Ranking: torn paper you put in order */
@@ -165,8 +167,8 @@
 }
 .ca-rank-item:nth-child(even) { transform: rotate(.35deg); }
 .ca-rank-item:nth-child(3n) { transform: rotate(-.4deg); }
-.ca-rank-n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--ca-charcoal); color: #fff; font: 700 12px var(--sans); }
-.ca-rank-item:first-child .ca-rank-n { background: var(--accent); }
+.ca-rank-n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--tint-strong); color: var(--accent-text); font: 700 12px var(--sans); }
+.ca-rank-item:first-child .ca-rank-n { background: var(--accent); color: #fff; }
 .ca-diamond-live .ca-rank-item { clip-path: none; border-radius: 14px; box-shadow: var(--cp-lift-low); filter: none; }
 .ca-diamond .tile { border: 0; border-radius: 14px; box-shadow: var(--cp-lift-low); }
 
@@ -181,7 +183,7 @@
 .ca-opt.on i::after { content: ''; position: absolute; inset: -6px -8px -2px -2px; background: var(--cp-tick) center / contain no-repeat; animation: cp-draw .25s ease-out both; }
 
 /* ---------------------------------------------------------------- Opinion line */
-.ca-line { height: 8px; border-radius: 4px; background: var(--ca-charcoal); box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .4); }
+.ca-line { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--tint-strong), var(--accent)); }
 .ca-line::before, .ca-line::after { top: -6px; height: 20px; width: 3px; background: var(--accent); }
 .ca-mark .ca-pin { animation: cp-pop .3s var(--ca-ease); }
 
@@ -222,3 +224,20 @@
 .ca.ca-inline { margin: 6px 0 10px; }
 .ca-inline-say { margin: 0 0 4px; font: 400 16px/1.5 var(--serif); }
 .ca-inline .ca-timer-line { margin: 0; }
+
+/* ---------------------------------------------------------------- Colours the teacher can choose */
+.ca-pal-coral { --accent: #e07a5f; --accent-text: #a94a33; --tint: #fbefea; --tint-strong: #f6dbd1; }
+.ca-pal-ocean { --accent: #3d7fc1; --accent-text: #285e98; --tint: #ebf3fb; --tint-strong: #d3e3f5; }
+.ca-pal-forest { --accent: #4a9468; --accent-text: #2f6e4a; --tint: #ecf5ef; --tint-strong: #d2e8da; }
+.ca-pal-plum { --accent: #8d5aa8; --accent-text: #6b3d86; --tint: #f4edf7; --tint-strong: #e5d5ee; }
+.ca-pal-sunshine { --accent: #dea32a; --accent-text: #8c600a; --tint: #fdf6e2; --tint-strong: #f8e7b8; }
+.ca-pal-slate { --accent: #5b6b7a; --accent-text: #3e4a56; --tint: #eff1f4; --tint-strong: #dbe0e6; }
+.ca-colour-setting { display: flex; align-items: center; gap: 12px; }
+.ca-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 3px solid var(--paper); background: var(--accent); box-shadow: 0 0 0 1px var(--hair-strong); cursor: pointer; }
+.ca-swatch.ca-pal-class { background: conic-gradient(var(--accent) 0 50%, var(--tint-strong) 0); }
+.ca-swatch.on { box-shadow: 0 0 0 2px var(--ink); }
+.ca-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ca-domino > span.n { padding: 0; }
+.ca-bingo::before { white-space: nowrap; overflow: hidden; }
+.ca-bingo .ca-cell { overflow-wrap: normal; word-break: normal; hyphens: auto; }
