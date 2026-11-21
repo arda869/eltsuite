@@ -585,6 +585,7 @@ function initialActivity(c, people, random = Math.random) {
   };
 }
 var currentPerson = (s) => s.people[s.turn % Math.max(1, s.people.length)];
+var learnerCallVisibility = (c) => c.settings.learnerCalls ?? (c.settings.showCalls ? "current" : "none");
 var sameIds = (a, b) => a.length === b.length && new Set(a).size === a.length && a.every((id) => b.includes(id));
 var cardPair = (s, id) => s.deckMap?.[id]?.itemId ?? id.slice(0, -2);
 function transition(c, state, a, actor, now, random = Math.random) {
@@ -834,15 +835,23 @@ function stateForLearner(c, s, learnerId) {
   if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.map((item) => [item.id, surveyCounts(s, item.id)]));
   if (c.kind === "opinion" && s.phase !== "revealed") out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === "opinion" && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
-  if (c.kind === "bingo" && c.settings.showCalls === false && s.phase !== "revealed") {
-    out.currentCall = null;
-    out.called = [];
+  if (c.kind === "bingo") {
+    const visibility = learnerCallVisibility(c);
+    out.currentCall = visibility === "current" ? s.currentCall : null;
+    out.called = visibility === "list" ? [...s.called] : visibility === "current" && s.currentCall ? [s.currentCall] : [];
   }
   return out;
 }
 function configForLearner(c, s, learnerId) {
   const out = structuredClone(c);
   out.items = out.items.map((item) => ({ ...item, ...item.content ? { content: splitKey({ type: "doc", content: item.content }).content.content } : {} }));
+  if (c.kind === "bingo") {
+    const visibility = learnerCallVisibility(c);
+    const visibleCalls = visibility === "list" ? s.called : visibility === "current" && s.currentCall ? [s.currentCall] : [];
+    const visibleIds = /* @__PURE__ */ new Set([...s.cards[learnerId] ?? [], ...visibleCalls]);
+    const callIds = new Set(visibleCalls);
+    out.items = out.items.filter((item) => visibleIds.has(item.id)).map((item) => ({ ...item, call: callIds.has(item.id) ? item.call : void 0 }));
+  }
   if (c.kind === "memory") {
     const visible = Object.entries(s.deckMap ?? {}).filter(([id, entry]) => s.faceUp.includes(id) || s.won[entry.itemId]);
     if (s.deckMap) out.items = out.items.filter((item) => visible.some(([, entry]) => entry.itemId === item.id)).map((item) => {
@@ -889,6 +898,7 @@ export {
   currentPerson,
   dominoTiles,
   initialActivity,
+  learnerCallVisibility,
   oppositePairs,
   parseItemList,
   plainText,
