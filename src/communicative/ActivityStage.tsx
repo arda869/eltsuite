@@ -13,6 +13,14 @@ const vars = (v: Record<string, string | number>) => v as CSSProperties;
 const initials = (name: string) => name.split(/\s+/).map(w => w[0]).slice(0, 2).join('');
 const colour = (n: number) => `var(--team-${n % 6 + 1})`;
 
+// A picture added in the card with / (the editor preview has no rich renderer, so show the first one).
+function richPicture(nodes: ActivityItem['content'] = []): ActivityPicture | undefined {
+  for (const n of nodes) {
+    if (['picture', 'image'].includes(n.type ?? '') && typeof n.attrs?.src === 'string' && n.attrs.src) return { src: n.attrs.src, alt: String(n.attrs.alt ?? ''), fit: 'cover' };
+    const inner = richPicture(n.content); if (inner) return inner;
+  }
+  return undefined;
+}
 function Picture({ item }: { item: ActivityItem }) {
   const src = useImageSrc(useContext(MediaClass), item.picture?.src ?? '');
   return src ? <img className="ca-pic" src={src} alt={item.picture?.alt} style={{ objectFit: item.picture?.fit ?? 'cover', objectPosition: item.picture?.position ?? '50% 50%' }} /> : null;
@@ -26,6 +34,44 @@ function Private({ children, label }: { children: ReactNode; label: string }) {
 }
 function Wait({ title, children }: { title: string; children: ReactNode }) { return <div className="ca-wait"><b>{title}</b><span>{children}</span></div>; }
 
+// Speaking timer, 2026-11 feedback: just a timer. The teacher chooses whether it counts up or down and who
+// it is for; anyone with it on their screen can start it. Each screen keeps its own time, so a learner's
+// or a group's timer never waits for the network.
+function fmt(total: number) { const t = Math.max(0, Math.round(total)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
+export function SimpleTimer({ config: c, teacher }: { config: ActivityConfig; teacher: boolean }) {
+  const down = c.settings.timerDirection !== 'up', total = c.settings.seconds ?? 60;
+  const scope = c.settings.timerFor ?? (c.settings.mode === 'individual' ? 'individual' : c.settings.mode === 'groups' ? 'group' : 'class');
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [banked, setBanked] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const audio = useRef<AudioContext | null>(null), rang = useRef(false);
+  const elapsed = banked + (startedAt === null ? 0 : (now - startedAt) / 1000);
+  const shown = down ? Math.max(0, total - elapsed) : elapsed;
+  const finished = down && shown <= 0;
+  useEffect(() => { if (startedAt === null) return; const tick = window.setInterval(() => setNow(Date.now()), 200); return () => window.clearInterval(tick); }, [startedAt]);
+  useEffect(() => {
+    if (!finished || rang.current) return;
+    rang.current = true; setBanked(total); setStartedAt(null);
+    const context = audio.current; if (!context || context.state !== 'running') return;
+    const tone = context.createOscillator(), gain = context.createGain();
+    tone.type = 'sine'; tone.frequency.value = 523.25;
+    gain.gain.setValueAtTime(0, context.currentTime); gain.gain.linearRampToValueAtTime(0.12, context.currentTime + 0.03); gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.65);
+    tone.connect(gain); gain.connect(context.destination); tone.start(); tone.stop(context.currentTime + 0.7);
+  }, [finished, total]);
+  useEffect(() => () => { void audio.current?.close(); }, []);
+  const start = () => { try { audio.current ??= new AudioContext(); void audio.current.resume(); } catch { /* no sound on this device */ } if (finished) { setBanked(0); rang.current = false; } setNow(Date.now()); setStartedAt(Date.now()); };
+  const pause = () => { setBanked(elapsed); setStartedAt(null); };
+  const reset = () => { setBanked(0); setStartedAt(null); rang.current = false; };
+  const who = scope === 'class' ? 'Whole-class timer' : scope === 'group' ? (teacher ? 'Group timer · each group starts its own' : 'Your group’s timer') : (teacher ? 'Learner timer · each learner starts their own' : 'Your timer');
+  const progress = down ? 100 * shown / Math.max(1, total) : 100 * ((elapsed % 60) / 60);
+  return <div className={`ca-timer ${finished ? 'done' : ''} ${down && shown <= 10 && !finished && startedAt !== null ? 'soon' : ''}`}>
+    <span className="eyebrow">{who}</span>
+    <div className="ca-ring-timer ca-timer-face" style={vars({ '--p': progress })}><svg viewBox="0 0 36 36" aria-hidden="true"><circle className="t" cx="18" cy="18" r="15.9155" /><circle className="f" cx="18" cy="18" r="15.9155" /></svg><b role="timer" aria-live="off">{fmt(shown)}</b><small>{down ? `from ${fmt(total)}` : 'counting up'}</small></div>
+    {finished && <p role="status" className="ca-timer-end">Time’s up.</p>}
+    <div className="ca-timer-actions">{startedAt === null ? <button type="button" className="btn primary" onClick={start}>{finished ? 'Start again' : elapsed > 0 ? 'Carry on' : 'Start'}</button> : <button type="button" className="btn primary" onClick={pause}>Pause</button>}<button type="button" className="btn" disabled={elapsed === 0} onClick={reset}>Reset</button></div>
+  </div>;
+}
+
 export function ActivityStage({ config: c, state: s, selfId, teacher = false, send, busy = false, error, renderItem, classId = '' }: ActivityStageProps) {
   const [now, setNow] = useState(Date.now());
   const [reason, setReason] = useState(s.opinions[selfId]?.reason ?? '');
@@ -36,9 +82,9 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
   const [positions, setPositions] = useState(s.positions);
   const displayedPositions = useRef(s.positions);
   const [rolling, setRolling] = useState(false);
-  const sendNow=useRef(send);sendNow.current=send;
-  const sounded = useRef<number | null>(null);
-  const audio = useRef<AudioContext | null>(null);
+  const [tumble, setTumble] = useState(1);
+  const [dragging, setDragging] = useState('');
+  const [dropAt, setDropAt] = useState(-1);
   useEffect(() => {
     if (s.endsAt === null || s.phase !== 'running') return;
     const tick = window.setInterval(() => setNow(Date.now()), 250); return () => window.clearInterval(tick);
@@ -58,32 +104,14 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
   }, [c.kind,s.positions,s.phase]);
   useEffect(()=>{
     if(c.kind!=='board'||s.die===null||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    setRolling(true);const timer=window.setTimeout(()=>setRolling(false),600);return ()=>window.clearTimeout(timer);
+    setRolling(true);const spin=window.setInterval(()=>setTumble(1+Math.floor(Math.random()*6)),85);const timer=window.setTimeout(()=>{window.clearInterval(spin);setRolling(false);},900);return ()=>{window.clearInterval(spin);window.clearTimeout(timer);};
   },[c.kind,s.die]);
   const active = currentPerson(s), myTurn = teacher || active?.id === selfId;
   const running = s.phase === 'running', canAct = running && !busy;
   const remaining = s.endsAt === null ? null : Math.max(0, Math.ceil((s.endsAt - now) / 1000));
-  useEffect(() => {
-    if (c.kind !== 'speaking' || s.phase !== 'running' || remaining !== 0 || !s.endsAt || sounded.current === s.endsAt) return;
-    sounded.current = s.endsAt;
-    const context = audio.current;
-    if (!context || context.state !== 'running') return;
-    const tone = context.createOscillator(), gain = context.createGain();
-    tone.type = 'sine'; tone.frequency.value = 523.25;
-    gain.gain.setValueAtTime(0, context.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12, context.currentTime + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.65);
-    tone.connect(gain); gain.connect(context.destination); tone.start(); tone.stop(context.currentTime + 0.7);
-  }, [c.kind, s.phase, s.endsAt, remaining]);
-  useEffect(() => () => { void audio.current?.close(); }, []);
-  const enableSound = async () => { audio.current ??= new AudioContext(); await audio.current.resume(); };
   const respondent = teacher ? (s.people.find(p => p.id === inspected) ?? s.people[0])?.id ?? '' : selfId;
-  useEffect(()=>{
-    if(c.kind!=='speaking'||c.settings.mode!=='groups'||s.people.length!==2||s.phase!=='running'||remaining!==0||busy)return;
-    const timer=window.setTimeout(()=>sendNow.current({type:'timerElapsed'}),700);return ()=>window.clearTimeout(timer);
-  },[c.kind,c.settings.mode,s.people.length,s.phase,s.endsAt,remaining,busy]);
   const itemById = (id: string) => c.items.find(i => i.id === id);
-  const body = (item: ActivityItem) => <><Picture item={item} />{item.title && (!renderItem || item.title !== plainText(item.content)) && <span>{item.title}</span>}{renderItem ? renderItem(item) : plainText(item.content) && plainText(item.content)!==item.title ? <span>{plainText(item.content)}</span> : null}</>;
+  const body = (item: ActivityItem) => <><Picture item={!item.picture?.src && !renderItem ? { ...item, picture: richPicture(item.content) } : item} />{item.title && (!renderItem || item.title !== plainText(item.content)) && <span>{item.title}</span>}{renderItem ? renderItem(item) : plainText(item.content) && plainText(item.content)!==item.title ? <span>{plainText(item.content)}</span> : null}</>;
   const move = (from: number, to: number) => {
     if (!canAct || from < 0 || to < 0 || to >= s.order.length || from === to) return;
     const ids = [...s.order]; const [id] = ids.splice(from, 1); ids.splice(to, 0, id); send({ type: 'order', ids });
@@ -98,10 +126,15 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
   let inner: ReactNode;
   switch (c.kind) {
     case 'board': {
-      const { cols, cells } = boardLayout(c.items.length, c.settings.boardStyle);
+      const { cols, rows, cells } = boardLayout(c.items.length, c.settings.boardStyle);
       const layout = (n: number) => ({ gridRow: cells[n].row, gridColumn: cells[n].col });
       const square = c.items[s.positions[active?.id ?? ''] ?? 0];
-      inner = <><div className={`ca-die ${rolling ? 'rolling' : ''}`} data-face={s.die ?? 1} role="img" aria-label={s.die === null ? 'Ready to roll the die' : `Die: ${s.die}`}>{Array.from({length:9},(_,n)=><i key={n}/>)}</div><div className={`ca-board ca-board-${c.settings.boardStyle ?? 'snake'}`} style={vars({ '--cols': cols })}>{c.items.map((item, n) => <div key={item.id} className={`ca-sq ${item.special ?? ''} ${Object.values(positions).includes(n) ? 'here' : ''}`} style={layout(n)}><span className="ca-sq-n">{n + 1}</span><Picture item={item} /><span>{item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title}</span><span className="ca-pins">{s.people.filter(p => positions[p.id] === n).map(p => <span key={p.id} className="ca-pinname" title={p.name}><span className="ca-pin" style={vars({ '--c': colour(s.people.indexOf(p)) })}><span>{initials(p.name)}</span></span><span className="ca-token-name">{p.name.split(/\s+/)[0]}</span><span className="sr-only">{p.name}</span></span>)}</span></div>)}</div>{s.die !== null && square && <div className="ca-prompt ca-paper"><span className="eyebrow">Square {(s.positions[active?.id ?? ''] ?? 0) + 1}</span><div className="ca-prompt-text">{body(square)}</div></div>}{myTurn && running ? <button type="button" className="btn primary ca-go" disabled={busy || rolling} onClick={() => s.die === null ? send({ type: 'roll', die: 0 }) : send({ type: 'nextTurn' })}>{s.die === null ? 'Roll the die' : 'Finish turn'}{s.die !== null && ` · ${s.die}`}</button> : running && <Wait title={`${active?.name ?? 'Your partner'} is playing`}>Watch their token, then listen to their answer.</Wait>}</>;
+      const canRoll = myTurn && running && s.die === null && !busy && !rolling;
+      const roll = () => { if (canRoll) send({ type: 'roll', die: 0 }); };
+      // The die is the button: click it (or the button beside it) to roll. It tumbles, then lands.
+      const die = <button type="button" className={`ca-die ${rolling ? 'rolling' : ''} ${canRoll ? 'ready' : ''}`} data-face={rolling ? tumble : s.die ?? 1} disabled={!canRoll} onClick={roll} aria-label={s.die === null ? (canRoll ? 'Roll the die' : 'Die') : `Die: ${s.die}`}>{Array.from({length:9},(_,n)=><i key={n}/>)}</button>;
+      inner = <><div className="ca-board-wrap"><div className={`ca-board ca-board-${c.settings.boardStyle ?? 'snake'}`} style={vars({ '--cols': cols, '--rows': rows })}>{c.items.map((item, n) => <div key={item.id} className={`ca-sq ${item.special ?? ''} ${Object.values(positions).includes(n) ? 'here' : ''}`} style={layout(n)}><span className="ca-sq-n">{n + 1}</span><Picture item={item} /><span className="ca-sq-text">{item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title}</span><span className="ca-pins">{s.people.filter(p => positions[p.id] === n).map(p => <span key={p.id} className="ca-pinname" title={p.name}><span className="ca-pin" style={vars({ '--c': colour(s.people.indexOf(p)) })}><span>{initials(p.name)}</span></span><span className="sr-only">{p.name}</span></span>)}</span></div>)}</div>
+        <aside className="ca-board-side"><div className="ca-dice-row">{die}{myTurn && running ? <button type="button" className="btn primary ca-roll" disabled={busy || rolling} onClick={() => s.die === null ? roll() : send({ type: 'nextTurn' })}>{s.die === null ? 'Roll' : 'Finish turn'}</button> : null}</div>{s.die !== null && square && !rolling && <div className="ca-prompt ca-paper"><span className="eyebrow">Square {(s.positions[active?.id ?? ''] ?? 0) + 1}</span><div className="ca-prompt-text">{body(square)}</div></div>}{!myTurn && running && <Wait title={`${active?.name ?? 'Your partner'} is playing`}>Watch their token, then listen to their answer.</Wait>}<div className="ca-players">{s.people.map((p, n) => <span key={p.id} className={`ca-player ${active?.id === p.id ? 'now' : ''}`} style={vars({ '--c': colour(n) })}><span className="ca-pin"><span>{initials(p.name)}</span></span>{p.name.split(/\s+/)[0]}<small>{(positions[p.id] ?? 0) + 1}</small></span>)}</div></aside></div></>;
       break;
     }
     case 'bingo': {
@@ -112,7 +145,14 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
       inner = <>{teacher && <><div className="ca-call"><span className="eyebrow">Current call</span><div className="ca-call-now">{currentCall ? callBody(currentCall) : 'Start the first call'}</div><button type="button" className="btn primary" disabled={!canAct || s.called.length === c.items.length} onClick={() => { const available = c.items.filter(i => !s.called.includes(i.id)); if (available.length) send({ type: 'call', itemId: '' }); }}>Draw a call</button></div><div className="ca-calls">{c.items.map((item, n) => <button type="button" key={item.id} aria-label={item.call || item.title || plainText(item.content) || `Call ${n + 1}`} className={s.called.includes(item.id) ? 'on' : ''} disabled={!canAct || s.called.includes(item.id)} onClick={() => send({ type: 'call', itemId: item.id })}>{callBody(item)}</button>)}</div><details className="ca-bingo-review" open={Object.keys(s.claims).length>0}><summary>Check a learner’s card</summary><label className="ca-setting">Learner<select value={respondent} onChange={e=>setInspected(e.target.value)}>{s.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><div className="ca-bingo" style={vars({'--size':size})}>{(s.cards[respondent]??[]).map((id,n)=>{const marked=id==='__free__'||s.marked[respondent]?.includes(id),called=id==='__free__'||s.called.includes(id);return <div key={n} className={`ca-cell ${marked?'on':''} ${marked&&!called?'uncalled':''}`}>{id==='__free__'?'Free':itemById(id)?body(itemById(id)!):''}<small>{marked?(called?'Marked · called':'Marked · not called'):called?'Called':'Not called'}</small></div>;})}</div></details><div className="ca-claims">{Object.entries(s.claims).map(([id, claim]) => <p key={id}><b>{s.people.find(p => p.id === id)?.name}</b>: {claim.valid ? 'Bingo checked' : 'Not yet — check the marked squares'}</p>)}</div></>}{!teacher && card && <><div className="ca-bingo" style={vars({ '--size': size })}>{card.map((id, n) => <button key={n} type="button" className={`ca-cell ${(s.marked[selfId] ?? []).includes(id) || id === '__free__' ? 'on' : ''}`} disabled={!canAct || id === '__free__'} aria-label={id === '__free__' ? 'Free square' : itemById(id)?.title || plainText(itemById(id)?.content) || `Square ${n + 1}`} aria-pressed={(s.marked[selfId] ?? []).includes(id) || id === '__free__'} onClick={() => send({ type: 'mark', itemId: id })}>{id === '__free__' ? 'Free' : itemById(id) ? body(itemById(id)!) : ''}</button>)}</div>{(c.settings.showCalls || s.phase==='revealed') && s.currentCall && <div className="ca-say">{currentCall && callBody(currentCall)}</div>}<button type="button" className="btn primary ca-go" disabled={!canAct} onClick={() => send({ type: 'claim' })}>Bingo</button>{s.claims[selfId] && <p role="status">{s.claims[selfId].valid ? 'Your card has a winning pattern. Your teacher can check it now.' : 'Not yet. Listen to the calls and check your marked squares.'}</p>}</>}{!teacher && s.phase==='revealed'&&<div className="ca-calls" aria-label="Called items">{c.items.filter(item=>s.called.includes(item.id)).map(item=><span key={item.id}>{callBody(item)}</span>)}</div>}{!teacher && !card && <Wait title="Your card is not ready">Your teacher will add you to this game.</Wait>}</>;
       break;
     }
-    case 'dominoes': case 'strips':
+    case 'strips':
+      // Torn paper strips you drag into order. Keyboard: focus a strip and use the up and down arrows.
+      inner = <><ol className={`ca-strips ca-torn ${dragging ? 'is-dragging' : ''}`} aria-label="Story strips">{s.order.map((id, n) => {
+        const item = itemById(id); if (!item) return null;
+        return <li key={id} className={`ca-strip ${dragging === id ? 'lift' : ''} ${dropAt === n && dragging !== id ? 'drop' : ''} ${s.checked && s.correct ? 'ok' : ''}`} tabIndex={canAct ? 0 : -1} draggable={canAct} aria-label={`Strip ${n + 1}: ${item.title || plainText(item.content)}. Use the arrow keys to move it.`} onKeyDown={e => { if (e.key === 'ArrowUp') { e.preventDefault(); move(n, n - 1); } if (e.key === 'ArrowDown') { e.preventDefault(); move(n, n + 1); } }} onDragStart={e => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; setDragging(id); }} onDragEnd={() => { setDragging(''); setDropAt(-1); }} onDragOver={e => { e.preventDefault(); if (dropAt !== n) setDropAt(n); }} onDrop={e => { e.preventDefault(); move(s.order.indexOf(e.dataTransfer.getData('text/plain')), n); setDragging(''); setDropAt(-1); }}><span className="ca-strip-grip" aria-hidden="true"><i /><i /><i /><i /><i /><i /></span><span className="ca-strip-text">{body(item)}</span></li>;
+      })}</ol><button type="button" className="btn primary ca-go" disabled={!canAct} onClick={() => send({ type: 'check' })}>Check the order</button>{s.checked && <p role="status">{s.correct ? 'The order is correct.' : 'Not quite. Move the strips and try again.'}</p>}</>;
+      break;
+    case 'dominoes':
       inner = <><div className={c.kind === 'dominoes' ? 'ca-chain' : 'ca-strips'}>{s.order.map((id, n) => {
         const item = itemById(id); if (!item) return null;
         const tile = item.dominoRight ? {left:item.title,leftPicture:item.picture,right:item.dominoRight.text,rightPicture:item.dominoRight.picture} : dominoTiles(c.items).find(t => t.id === id)!;
@@ -149,16 +189,14 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
       inner = myTurn && item ? <Private label={teacher ? `${active?.name ?? 'Describer'}’s card` : 'Only you can see this'}><div className="ca-taboo"><div className="ca-taboo-word"><small>Describe this word</small>{item.title}</div><Picture item={item} /><ul>{item.taboo?.map(word => <li key={word}>{word}</li>)}</ul><div className="ca-taboo-actions"><button type="button" className="btn primary" disabled={!canAct || remaining === 0} onClick={() => send({ type: 'gotIt' })}>Got it</button><button type="button" className="btn" disabled={!canAct || remaining === 0} onClick={() => send({ type: 'skip' })}>Skip</button></div></div></Private> : <Wait title={`Listen to ${active?.name ?? 'the describer'}`}>Guess the word. The describer keeps the card hidden.</Wait>;
       break;
     }
-    case 'speaking': {
-      const item = itemById(s.order[s.round % Math.max(1,s.order.length)]);
-      inner = <div className="ca-speak"><button type="button" className="btn small-btn" onClick={() => void enableSound()}>Enable end sound</button><div className={`ca-ring-timer ${remaining !== null && remaining <= 10 ? 'soon' : ''}`} style={vars({ '--p': remaining === null ? 100 : 100 * remaining / (c.settings.seconds ?? 60) })}><svg viewBox="0 0 36 36" aria-hidden="true"><circle className="t" cx="18" cy="18" r="15.9155" /><circle className="f" cx="18" cy="18" r="15.9155" /></svg><b>{remaining ?? c.settings.seconds ?? 60}</b></div><div><div className="ca-speak-prompt">{item ? body(item) : null}</div><div className="ca-roles"><span className="now">Speaker: {active?.name}</span><span>Listen: {s.people.filter(p => p.id !== active?.id).map(p => p.name).join(', ')}</span></div><Useful text={c.settings.useful} /><p>{c.settings.listenerTask || 'Ask one follow-up question.'}</p>{remaining === 0 && <p role="status">The speaking turn has finished.</p>}</div></div>;
+    case 'speaking':
+      inner = <SimpleTimer config={c} teacher={teacher} />;
       break;
-    }
   }
   return <MediaClass.Provider value={classId}><section className={`ca ca-kind-${c.kind}`} aria-label={ACTIVITY_LABELS[c.kind]}>
-    {teacher && <div className="ca-run"><span className={`ca-state ${running ? 'live' : ''}`}><i aria-hidden="true" />{s.phase === 'ready' ? 'Ready' : running ? 'Running' : s.phase === 'revealed' ? 'Comparing' : 'Ended'}</span><button type="button" className="btn small-btn" disabled={busy} onClick={() => send({ type: 'reset' })}>Reset</button>{running && <button type="button" className="btn small-btn" disabled={busy} onClick={() => send({ type: 'end' })}>End</button>}{(!running||['cue','spot','opinion','strips','dominoes','memory','bingo','ranking'].includes(c.kind))&&<button type="button" className="btn primary ca-next" disabled={busy} onClick={() => send({ type: s.phase === 'ready' ? 'start' : running ? 'reveal' : 'reset' })}>{s.phase === 'ready' ? 'Start' : running ? (['cue','spot'].includes(c.kind)?'Compare versions':c.kind==='opinion'?'Reveal positions':['strips','dominoes'].includes(c.kind)?'Show correct order':c.kind==='memory'?'Reveal cards':c.kind==='bingo'?'Reveal calls':c.kind==='ranking'?'Compare rankings':'Show results') : 'Play again'}</button>}{['speaking', 'taboo'].includes(c.kind) && s.phase !== 'ready' && <button type="button" className="btn" disabled={busy} onClick={() => send({ type: 'swap' })}>Swap roles</button>}</div>}
-    <div className="ca-you">{teacher ? 'Teacher view' : <>With {s.people.filter(p => p.id !== selfId).map(p => p.name).join(', ') || 'your class'}</>}{c.settings.noCorrectAnswer && <span className="ca-nca">No correct answer</span>}</div>
-    <div className="ca-head"><span className="eyebrow accent">{ACTIVITY_LABELS[c.kind]}</span><div className="ca-say">{c.instruction}</div></div>
+    {teacher && <div className="ca-run"><span className={`ca-state ${running ? 'live' : ''}`}><i aria-hidden="true" />{s.phase === 'ready' ? 'Ready' : running ? 'Running' : s.phase === 'revealed' ? 'Comparing' : 'Ended'}</span><button type="button" className="btn small-btn" disabled={busy} onClick={() => send({ type: 'reset' })}>Reset</button>{running && <button type="button" className="btn small-btn" disabled={busy} onClick={() => send({ type: 'end' })}>End</button>}{(!running||['cue','spot','opinion','strips','dominoes','memory','bingo','ranking'].includes(c.kind))&&<button type="button" className="btn primary ca-next" disabled={busy} onClick={() => send({ type: s.phase === 'ready' ? 'start' : running ? 'reveal' : 'reset' })}>{s.phase === 'ready' ? 'Start' : running ? (['cue','spot'].includes(c.kind)?'Compare versions':c.kind==='opinion'?'Reveal positions':['strips','dominoes'].includes(c.kind)?'Show correct order':c.kind==='memory'?'Reveal cards':c.kind==='bingo'?'Reveal calls':c.kind==='ranking'?'Compare rankings':'Show results') : 'Play again'}</button>}{c.kind === 'taboo' && s.phase !== 'ready' && <button type="button" className="btn" disabled={busy} onClick={() => send({ type: 'swap' })}>Swap roles</button>}</div>}
+    <div className="ca-head ca-head-row"><span className="eyebrow accent">{ACTIVITY_LABELS[c.kind]}</span><span className="ca-you">{teacher ? 'Teacher view' : <>With {s.people.filter(p => p.id !== selfId).map(p => p.name).join(', ') || 'your class'}</>}</span>{c.settings.noCorrectAnswer && <span className="ca-nca">No correct answer</span>}</div>
+    {c.instruction.trim() && <div className="ca-say">{c.instruction}</div>}
     {error && <p role="alert" className="ca-error">{error}</p>}
     {turn}
     {!teacher && s.phase === 'ready' ? <Wait title="Your teacher will start">Keep this activity open. It will update here.</Wait> : inner}

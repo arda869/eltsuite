@@ -12,7 +12,7 @@ const text = (item: ActivityItem, o: ActivityPrintOptions) => o.renderItem?.(ite
 const useful = (value?: string) => value?.trim() ? `<div class="pa-useful"><b>Useful language</b>${value.split('\n').filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '';
 const card = (content: string, cls = '', label = '') => `<article class="cut-card ${cls}">${label ? `<span class="pa-label">${esc(label)}</span>` : ''}${content}</article>`;
 const grid = (cards: string[], cols: number) => `<div class="pa-cut-grid" style="--pa-cols:${cols}">${cards.join('')}</div>`;
-const section = (lead: string, html: string) => `<div class="pa-activity"><p class="pa-lead">${esc(lead)}</p>${html}</div>`;
+const section = (lead: string, html: string) => `<div class="pa-activity">${lead.trim() ? `<p class="pa-lead">${esc(lead)}</p>` : ''}${html}</div>`;
 function dieNet() {
   const faces=[{x:30,y:5,n:2},{x:5,y:30,n:3},{x:30,y:30,n:1},{x:55,y:30,n:4},{x:30,y:55,n:5},{x:30,y:80,n:6}];
   const pips: Record<number,number[]>={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
@@ -32,15 +32,20 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
       const board = `<div class="pa-board pa-board-${esc(c.settings.boardStyle || 'snake')}" style="grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},minmax(19mm,1fr));--pa-board-font:${c.items.length > 36 ? '8' : '9.2'}pt">${c.items.map((item, n) => {
         const { row, col: column } = cells[n];
         return `<div class="pa-sq ${item.special ? 'special' : ''} ${esc(item.special || '')}" style="grid-row:${row};grid-column:${column}"><b class="n">${n + 1}</b>${picture(item, o)}<span>${esc(item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title || plainText(item.content))}</span></div>`;
-      }).join('')}</div><ol class="pa-rules"><li>Take turns. Roll a die and move.</li><li>Read your square and answer.</li><li>Follow the special squares.</li><li>Reach or pass Finish to win.</li></ol>`;
-      const counters = grid(Array.from({ length: 12 }, (_, n) => card(`<span class="pa-counter-number">${n + 1}</span><span class="pa-write-name">Name</span>`, 'pa-counter-card')), 4);
-      return [piece(board, 'Board game'), piece(counters + '<p class="pa-soft">Cut out a counter for each learner. You will also need a six-sided die.</p>', 'Counters', true), ...(c.settings.printDie ? [piece(dieNet(),'Die net',true)] : [])];
+      }).join('')}</div>`;
+      // No cut-out counters: learners use a coin or a rubber.
+      return [piece(board, 'Board game'), ...(c.settings.printDie ? [piece(dieNet(),'Die net',true)] : [])];
     }
     case 'bingo': {
       const count = Math.max(1, Math.min(100, o.cards ?? c.settings.printCards ?? 12));
       const people: Participant[] = Array.from({ length: count }, (_, n) => ({ id: String(n), name: `Card ${n + 1}` }));
       const cards = bingoCards(c, people, random), size = c.settings.gridSize ?? 4;
-      const pages = chunks(people.map(p => card(`<div class="pa-bingo-head"><b>Bingo</b><span>${esc(p.name)}</span></div><div class="pa-bingo-grid" style="grid-template-columns:repeat(${size},1fr)">${cards[p.id].map(id => { const item = c.items.find(i => i.id === id); return `<span>${id === '__free__' ? 'Free' : item ? picture(item, o) + esc(item.title) : ''}</span>`; }).join('')}</div>`, 'pa-bingo')), 4).map(group => piece(grid(group, 2), 'Bingo cards', true));
+      // As many cards on a page as stay readable: small grids and short words fit more.
+      const longest = Math.max(0, ...c.items.map(item => (item.title || plainText(item.content)).length));
+      const pictures = c.items.some(item => item.picture?.src);
+      const perCol = size === 3 ? 3 : 2;
+      const perPage = size === 3 ? (pictures || longest > 18 ? 6 : 9) : size === 4 ? (pictures || longest > 22 ? 4 : 6) : (longest > 14 || pictures ? 2 : 4);
+      const pages = chunks(people.map(p => card(`<div class="pa-bingo-head"><b>Bingo</b><span>${esc(p.name)}</span></div><div class="pa-bingo-grid" style="grid-template-columns:repeat(${size},1fr)">${cards[p.id].map(id => { const item = c.items.find(i => i.id === id); return `<span>${id === '__free__' ? 'Free' : item ? picture(item, o) + esc(item.title) : ''}</span>`; }).join('')}</div>`, 'pa-bingo')), perPage).map(group => piece(grid(group, perCol), 'Bingo cards', true));
       const calls = shuffled(c.items, random).map(item => card(`${picture(item, o)}<span>${text(item, o)}</span>${item.call?.trim() && item.call !== (plainText(item.content) || item.title) ? `<small>${esc(item.call)}</small>` : ''}`, 'pa-caller-strip'));
       return [...pages, ...chunks(calls, 24).map(group => piece(grid(group, 2), 'Caller strips', true))];
     }

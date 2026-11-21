@@ -138,7 +138,8 @@ export function PictureField({ value, onChange, label = 'Picture', size, onSize,
     <span className="pq-pic-wrap">
       <span className="pq-pic">
         <span className="pq-lab">{label}</span>
-        <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={(value.startsWith('media:') || isActivityPicture(value)) ? 'Uploaded picture' : value} readOnly={value.startsWith('media:') || isActivityPicture(value)} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
+        {/* Teachers never type a picture address: upload, paste, drop or pick from their resources. */}
+        <span className={'pq-pic-state' + (value ? ' has' : '')} aria-live="polite">{value ? 'Picture added' : 'No picture yet'}</span>
         <button type="button" className="btn small-btn" disabled={!!busy || !classId} onClick={() => file.current?.click()}>
           {busy === 'Uploading…' ? busy : 'Upload'}
         </button>

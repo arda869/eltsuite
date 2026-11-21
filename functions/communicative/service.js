@@ -72,7 +72,8 @@ export async function runCommunicativeActivity(db, auth, data, now = Date.now())
       const used = new Set();
       rooms = (set.get('groups') ?? []).map(g => ({ id: g.id, name: g.name, people: people.filter(p => (g.members ?? []).includes(p.learnerId)).filter(p => { if (!p || used.has(p.id)) return false; used.add(p.id); return true; }) })).filter(g => g.people.length && validId(g.id));
       if (!rooms.length) throw new HttpsError('failed-precondition', 'Put learners into the groups before starting.');
-    } else rooms = [{ id: 'class', name: 'Whole class', people }];
+    } else if (config.settings.mode === 'individual') rooms = people.map(p => ({ id: `solo-${p.learnerId}`, name: p.name, people: [p] }));
+    else rooms = [{ id: 'class', name: 'Whole class', people }];
     const distributed = new Set(rooms.flatMap(r => r.people.map(p => p.id)));
     await db.runTransaction(async tx => {
       const existing = await tx.get(a.run);

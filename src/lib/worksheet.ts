@@ -77,7 +77,7 @@ export type Paper = 'A4' | 'Letter' | 'A5';
 export type MediaMap = Record<string, { data: string; w: number; h: number }>;
 // Sounds and videos: a QR code that opens them, and their script for the answer key.
 export type MediaInfo = { url: string; svg: string; png: string; title: string; video: boolean; script: string[] };
-export type Options = { lessonStyle?: import('./lessonStyle').LessonStyle; header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
+export type Options = { lessonStyle?: import('./lessonStyle').LessonStyle; header: boolean; mono?: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
 
 const abc = (x: string, y: string) => x.localeCompare(y, undefined, { sensitivity: 'base' });
 // The same order every time for the same words (a jumbled sentence stays jumbled the same way).

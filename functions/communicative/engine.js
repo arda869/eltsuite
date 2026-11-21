@@ -20,7 +20,6 @@ function validateActivity(c) {
   const out = [];
   const issue = (field, message) => out.push({ field, message });
   if (!c.id) issue("id", "Save the activity before starting.");
-  if (!c.instruction.trim()) issue("instruction", "Add a short instruction.");
   if (new Set(c.items.map((i) => i.id)).size !== c.items.length || c.items.some((i) => !i.id)) issue("items", "Give each item its own identifier.");
   c.items.forEach((i, n) => {
     const hasRichPicture = (nodes = []) => nodes.some((n2) => ["picture", "image"].includes(n2.type ?? "") && !!n2.attrs?.src || hasRichPicture(n2.content));
@@ -36,13 +35,13 @@ function validateActivity(c) {
   if (c.kind === "bingo") {
     const size = c.settings.gridSize ?? 4;
     if (![3, 4, 5].includes(size)) issue("gridSize", "Choose a 3 \xD7 3, 4 \xD7 4 or 5 \xD7 5 card.");
-    if (c.items.length <= size * size) issue("items", `Add more than ${size * size} items for different Bingo cards.`);
+    if (c.items.length <= size * size) issue("items", `A ${size} \xD7 ${size} card needs at least ${size * size + 1} items, so every learner gets a different card. You have ${c.items.length}.`);
     if (c.settings.freeCentre && size === 4) issue("freeCentre", "Use a 3 \xD7 3 or 5 \xD7 5 card for a free centre.");
   }
   if (["dominoes", "memory"].includes(c.kind)) {
     if (c.items.length < 2) issue("items", "Add at least two matching pairs.");
     c.items.forEach((i, n) => {
-      if (!i.match?.trim() && !i.matchPicture?.src) issue(`items.${n}.match`, `Add the matching half of pair ${n + 1}.`);
+      if (!i.match?.trim() && !i.matchPicture?.src) issue(`items.${n}.match`, `Pair ${n + 1} needs its other half. Add the word or picture it matches under \u201CPairs\u201D.`);
     });
   }
   if (c.kind === "strips" && c.items.length < 2) issue("items", "Add at least two strips in their correct order.");
@@ -51,7 +50,7 @@ function validateActivity(c) {
     if (c.settings.layout === "diamond" && c.items.length !== 9) issue("layout", "Diamond 9 needs exactly nine items.");
   }
   if (c.kind === "findSomeone" && (c.items.length < 6 || c.items.length > 16)) issue("items", "Use between 6 and 16 prompts.");
-  if (["cue", "taboo", "survey", "opinion", "speaking"].includes(c.kind) && !c.items.length) issue("items", "Add at least one item.");
+  if (["cue", "taboo", "survey", "opinion"].includes(c.kind) && !c.items.length) issue("items", "Add at least one item.");
   if (c.kind === "taboo") c.items.forEach((i, n) => {
     if ((i.taboo?.length ?? 0) > 5) issue(`items.${n}.taboo`, "Use up to five taboo words.");
   });
@@ -59,7 +58,7 @@ function validateActivity(c) {
     if ((i.options?.length ?? 0) < 2 || i.options?.some((x) => !x.trim()) || new Set(i.options?.map((x) => x.trim())).size !== i.options?.length) issue(`items.${n}.options`, `Add at least two different answers to question ${n + 1}, without blank lines.`);
   });
   if (c.kind === "taboo" && (!Number.isInteger(c.settings.seconds ?? 60) || (c.settings.seconds ?? 60) < 15 || (c.settings.seconds ?? 60) > 180)) issue("seconds", "Choose a turn from 15 seconds to 3 minutes.");
-  if (c.kind === "speaking" && ((c.settings.seconds ?? 60) < 30 || (c.settings.seconds ?? 60) > 180)) issue("seconds", "Choose a time from 30 seconds to 3 minutes.");
+  if (c.kind === "speaking" && c.settings.timerDirection !== "up" && (!Number.isFinite(c.settings.seconds ?? 60) || (c.settings.seconds ?? 60) < 5 || (c.settings.seconds ?? 60) > 3600)) issue("seconds", "Choose a time from 5 seconds to 60 minutes.");
   if (c.kind === "spot") {
     if (c.settings.versions?.length !== 2 || c.settings.versions.some((v) => !v.name.trim() || !v.picture.src)) issue("versions", "Add and name both pictures.");
     if (!c.settings.differences?.length) issue("differences", "Mark at least one difference on picture B.");
@@ -84,8 +83,9 @@ function configFromNode(node) {
     items: (node.content ?? []).map((card, n) => ({
       ...card.attrs,
       id: String(card.attrs?.activityItemId ?? `${attrs.id}:${n}`),
-      title: String(card.attrs?.title ?? plainText(card.content)),
+      title: String(card.attrs?.title || plainText(card.content)),
       content: card.content
+      // an empty title falls back to the card's text
     }))
   };
   if (kind === "spot" && (config.items.length || !config.settings.versions?.length)) {

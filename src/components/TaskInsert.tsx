@@ -1,5 +1,6 @@
 import {useEffect, useRef} from 'react';
 import {UiIcon} from './UiIcon';
+// Create with AI lives in AI tools in the lesson editor's top bar (2026-11 feedback).
 
 type InsertKind = 'blank'|'import'|'ai'|'section'|'lesson'|'quiz';
 
@@ -13,5 +14,5 @@ export function TaskInsert({label,onChoose,ai=true,open,onOpenChange}:{label:str
   document.addEventListener('keydown',escape);
   return ()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
  },[open,onOpenChange]);
- return <details ref={ref} className="task-insert" open={open}><summary aria-label={label} title={label} onClick={e=>{e.preventDefault();onOpenChange(!open);}}><span aria-hidden="true">+</span></summary><div className="task-insert-menu" role="group" aria-label={label}>{([['blank','New task','plus'],['import','Import a task','upload'],['ai','Create with AI','videoSparkles'],['section','Section','textSize'],['lesson','From another lesson','copyall'],['quiz','Game','pick']] as const).map(([kind,text,icon])=><button type="button" className="btn small-btn" aria-label={text} data-tip={text} key={kind} disabled={!ai&&(kind==='import'||kind==='ai')} onClick={()=>{onOpenChange(false);onChoose(kind);}}><UiIcon name={icon}/><span className="task-insert-label">{text}</span></button>)}{!ai&&<small>AI creation and import are not enabled for this account.</small>}</div></details>;
+ return <details ref={ref} className="task-insert" open={open}><summary aria-label={label} title={label} onClick={e=>{e.preventDefault();onOpenChange(!open);}}><span aria-hidden="true">+</span></summary><div className="task-insert-menu" role="group" aria-label={label}>{([['blank','New task','plus'],['import','Import a task','upload'],['section','Section','textSize'],['lesson','From another lesson','copyall'],['quiz','Game','pick']] as const).map(([kind,text,icon])=><button type="button" className="btn small-btn" aria-label={text} data-tip={text} key={kind} disabled={!ai&&kind==='import'} onClick={()=>{onOpenChange(false);onChoose(kind);}}><UiIcon name={icon}/><span className="task-insert-label">{text}</span></button>)}{!ai&&<small>Import is not enabled for this account.</small>}</div></details>;
 }
