@@ -27,7 +27,7 @@ const communicativeFields={
  opinion:{cards:list(obj(cardBase),1,30),lowLabel:short,highLabel:short},
  spot:{cards:list(obj(cardBase),2,2),differences:list(obj({x:number(),y:number(),radius:number(1,50),label:short}),0,30)},
  taboo:{cards:list(obj({...cardBase,taboo:list(word,0,5)}),1,30),seconds:integer(15,180)},
- speaking:{cards:list(obj(cardBase),1,30),seconds:integer(5,3600),timerDirection:choice('down','up'),timerFor:choice('class','individual','group')},
+ speaking:{cards:list(obj(cardBase),1,30),seconds:integer(5,3600),timerDirection:choice('down','up'),timerFor:choice('class','individual','group'),timerSize:choice('large','inline')},
 };
 const communicativeLabels={board:'Board game',bingo:'Bingo',dominoes:'Dominoes',memory:'Pelmanism',strips:'Strip story',cue:'Cue cards',survey:'Communicative survey',findSomeone:'Find someone who',ranking:'Ranking',opinion:'Opinion line',spot:'Spot the difference',taboo:'Taboo cards',speaking:'Speaking timer'};
 const entries=[

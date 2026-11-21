@@ -19,7 +19,7 @@ export type ActivitySettings = {
   mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'path'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';
-  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; scoring?: boolean; useful?: string; listenerTask?: string;
+  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; scoring?: boolean; useful?: string; listenerTask?: string;
   nameOnce?: boolean; showFollowUp?: boolean; layout?: 'list' | 'grid' | 'diamond';
   noCorrectAnswer?: boolean; showNames?: boolean; lowLabel?: string; highLabel?: string; askReason?: boolean;
   versions?: { name: string; picture: ActivityPicture }[]; differences?: Difference[]; printCards?: number; printDie?: boolean;

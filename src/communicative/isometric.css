@@ -1,0 +1,233 @@
+/* ELT Suite – isometric game pieces (Nov 2026).
+   Board game, Bingo, card decks and Pelmanism are drawn as physical, isometric objects: a raised board
+   seen from 45°, standing pawns, extruded tiles, counters that drop onto squares, thick card stock.
+   One shared signature ties them together: the "tumbling cubes" pattern (--iso-cubes) on every board
+   edge, bingo frame and card back. Loaded after activities.css, so it only overrides. */
+
+:root {
+  --iso-a: color-mix(in srgb, var(--accent) 88%, #1b1a18);
+  --iso-b: color-mix(in srgb, var(--accent) 62%, #1b1a18);
+  --iso-c: color-mix(in srgb, var(--accent) 38%, #1b1a18);
+  --iso-edge: color-mix(in srgb, var(--accent) 30%, #141311);
+  --iso-paper: #fffdf8;
+  --iso-paper-2: #f4f0e7;
+  --iso-lip: #ddd5c6;
+  --iso-lip-2: #cbc2b1;
+  /* Tumbling cubes: three shades of the accent make rows of little isometric blocks. */
+  --iso-cubes:
+    linear-gradient(30deg, var(--iso-a) 12%, transparent 12.5%, transparent 87%, var(--iso-a) 87.5%, var(--iso-a)) 0 0 / 22px 38px,
+    linear-gradient(150deg, var(--iso-a) 12%, transparent 12.5%, transparent 87%, var(--iso-a) 87.5%, var(--iso-a)) 0 0 / 22px 38px,
+    linear-gradient(30deg, var(--iso-a) 12%, transparent 12.5%, transparent 87%, var(--iso-a) 87.5%, var(--iso-a)) 11px 19px / 22px 38px,
+    linear-gradient(150deg, var(--iso-a) 12%, transparent 12.5%, transparent 87%, var(--iso-a) 87.5%, var(--iso-a)) 11px 19px / 22px 38px,
+    linear-gradient(60deg, var(--iso-c) 25%, transparent 25.5%, transparent 75%, var(--iso-c) 75%, var(--iso-c)) 0 0 / 22px 38px,
+    linear-gradient(60deg, var(--iso-c) 25%, transparent 25.5%, transparent 75%, var(--iso-c) 75%, var(--iso-c)) 11px 19px / 22px 38px,
+    var(--iso-b);
+}
+
+/* ---------------------------------------------------------------- Board game */
+.ca-board-wrap { align-items: center; }
+.ca-iso {
+  container-type: inline-size; position: relative; width: 100%;
+  aspect-ratio: 1.62; max-height: calc(100dvh - 200px); min-height: 280px;
+}
+/* A soft pool of shadow under the board, like a game on a table. */
+.ca-iso::before { content: ''; position: absolute; left: 8%; right: 8%; top: 30%; bottom: 4%; border-radius: 50%; background: radial-gradient(closest-side, rgba(30, 26, 20, .22), transparent); filter: blur(6px); }
+.ca-board-wrap .ca-iso .ca-board {
+  --n: calc(var(--cols, 6) + var(--rows, 5)); --g: 8px; --pad: 20px;
+  --sq: max(44px, min(calc((100cqw * 1.3 - (var(--n) - 2) * var(--g) - 4 * var(--pad)) / var(--n)), calc(((100dvh - 230px) * 2.3 - (var(--n) - 2) * var(--g) - 4 * var(--pad)) / var(--n))));
+  position: absolute; left: 50%; top: 50%; width: auto; max-height: none;
+  grid-template-columns: repeat(var(--cols, 6), var(--sq)); grid-template-rows: repeat(var(--rows, 5), var(--sq));
+  gap: var(--g); padding: var(--pad); border-radius: 18px;
+  background: var(--iso-cubes);
+  transform: translate(-50%, -46%) rotateX(56deg) rotateZ(45deg); transform-style: preserve-3d;
+  /* The board's thickness, then its shadow on the table. */
+  box-shadow: inset 0 0 0 6px var(--iso-edge), inset 0 0 0 7px rgba(255, 255, 255, .18),
+    1px 1px 0 var(--iso-edge), 2px 2px 0 var(--iso-edge), 3px 3px 0 var(--iso-edge), 4px 4px 0 var(--iso-edge),
+    5px 5px 0 var(--iso-edge), 6px 6px 0 var(--iso-edge), 7px 7px 0 var(--iso-edge), 8px 8px 0 var(--iso-edge),
+    9px 9px 0 var(--iso-edge), 10px 10px 0 var(--iso-edge), 26px 26px 30px rgba(20, 16, 10, .28);
+}
+.ca-iso .ca-board .ca-sq {
+  --hue: var(--team-1);
+  aspect-ratio: auto; overflow: visible; transform-style: preserve-3d; isolation: auto;
+  display: flex; flex-direction: column; gap: 2px; padding: calc(var(--sq) * .08) calc(var(--sq) * .09);
+  border: 0; border-radius: 9px; color: #2a2723;
+  font: 600 clamp(8px, calc(var(--sq) * .125), 14px)/1.18 var(--sans);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--hue) 10%, var(--iso-paper)), color-mix(in srgb, var(--hue) 24%, var(--iso-paper-2)));
+  box-shadow: 1px 1px 0 color-mix(in srgb, var(--hue) 30%, var(--iso-lip)), 2px 2px 0 color-mix(in srgb, var(--hue) 30%, var(--iso-lip)),
+    3px 3px 0 color-mix(in srgb, var(--hue) 34%, var(--iso-lip-2)), 4px 4px 0 color-mix(in srgb, var(--hue) 34%, var(--iso-lip-2)),
+    5px 5px 0 color-mix(in srgb, var(--hue) 40%, var(--iso-lip-2)), 9px 9px 10px rgba(0, 0, 0, .28);
+  transition: transform .25s var(--ca-ease, ease), box-shadow .25s;
+}
+/* Five soft colours run along the path, so learners can follow it at a glance. */
+.ca-iso .ca-sq:nth-child(5n+2) { --hue: var(--team-2); }
+.ca-iso .ca-sq:nth-child(5n+3) { --hue: var(--team-4); }
+.ca-iso .ca-sq:nth-child(5n+4) { --hue: var(--team-3); }
+.ca-iso .ca-sq:nth-child(5n+5) { --hue: #4f9a7a; }
+.ca-iso .ca-board-snake .ca-sq:nth-child(odd) { background: linear-gradient(135deg, color-mix(in srgb, var(--hue) 10%, var(--iso-paper)), color-mix(in srgb, var(--hue) 24%, var(--iso-paper-2))); }
+.ca-iso .ca-board-path .ca-sq { border-radius: 4px; }
+.ca-iso .ca-board-spiral .ca-sq { border-radius: 40% 12px 40% 12px; }
+.ca-iso .ca-sq-n { position: absolute; right: calc(var(--sq) * .07); bottom: calc(var(--sq) * .05); font: 800 clamp(9px, calc(var(--sq) * .16), 16px) var(--sans); color: color-mix(in srgb, var(--hue) 55%, #2a2723); opacity: .55; }
+.ca-iso .ca-sq-text { -webkit-line-clamp: 3; }
+.ca-iso .ca-sq .ca-pic { max-height: 46%; border-radius: 5px; }
+.ca-iso .ca-board .ca-sq.start, .ca-iso .ca-board .ca-sq.finish {
+  color: #fff; font: 800 clamp(10px, calc(var(--sq) * .17), 17px) var(--sans); letter-spacing: .02em; justify-content: center; align-items: center; text-align: center;
+  background: linear-gradient(135deg, #34312d, #1f1d1a);
+  box-shadow: 1px 1px 0 #0f0e0c, 2px 2px 0 #0f0e0c, 3px 3px 0 #0f0e0c, 4px 4px 0 #0f0e0c, 5px 5px 0 #0f0e0c, 6px 6px 0 #0f0e0c, 10px 10px 12px rgba(0, 0, 0, .35);
+}
+.ca-iso .ca-board .ca-sq.finish { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 90%, #fff), var(--accent)); box-shadow: 1px 1px 0 var(--iso-edge), 2px 2px 0 var(--iso-edge), 3px 3px 0 var(--iso-edge), 4px 4px 0 var(--iso-edge), 5px 5px 0 var(--iso-edge), 6px 6px 0 var(--iso-edge), 10px 10px 12px rgba(0, 0, 0, .35); }
+.ca-iso .ca-sq.start .ca-sq-n, .ca-iso .ca-sq.finish .ca-sq-n { display: none; }
+.ca-iso .ca-sq.finish::before { content: ''; position: absolute; inset: 6px; border-radius: 6px; background: repeating-conic-gradient(rgba(255, 255, 255, .22) 0 25%, transparent 0 50%) 0 0 / 14px 14px; }
+.ca-iso .ca-sq.special { color: var(--accent-text); }
+.ca-iso .ca-sq.ladder::after, .ca-iso .ca-sq.snake::after { right: auto; left: calc(var(--sq) * .08); bottom: calc(var(--sq) * .04); font-size: clamp(11px, calc(var(--sq) * .2), 20px); }
+/* The square someone is standing on rises a little and glows in their colour. */
+.ca-iso .ca-board .ca-sq.here { transform: translateZ(5px); box-shadow: 0 0 0 2.5px var(--iso-paper), 0 0 0 5px color-mix(in srgb, var(--accent) 70%, #fff), 1px 1px 0 var(--iso-lip-2), 2px 2px 0 var(--iso-lip-2), 3px 3px 0 var(--iso-lip-2), 4px 4px 0 var(--iso-lip-2), 5px 5px 0 var(--iso-lip-2), 6px 6px 0 var(--iso-lip-2), 14px 14px 16px rgba(0, 0, 0, .3); }
+
+/* Pawns stand up off the board: each one undoes the board's tilt, so it faces the class. */
+.ca-iso .ca-sq .ca-pins { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0; transform-style: preserve-3d; pointer-events: none; }
+.ca-iso .ca-sq .ca-pinname { transform-style: preserve-3d; max-width: none; margin-left: calc(var(--sq) * -.08); }
+.ca-iso .ca-sq .ca-pinname:first-child { margin-left: 0; }
+.ca-iso .ca-sq .ca-pin {
+  --h: clamp(30px, calc(var(--sq) * .62), 58px);
+  position: relative; width: calc(var(--h) * .62); height: var(--h); margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  transform-origin: 50% 100%; transform: translateY(-30%) rotateZ(-45deg) rotateX(-56deg);
+  animation: iso-hop .32s cubic-bezier(.3, .7, .35, 1.25);
+}
+/* body */
+.ca-iso .ca-sq .ca-pin::before {
+  content: ''; position: absolute; left: 6%; right: 6%; bottom: 0; height: 62%;
+  border-radius: 46% 46% 14% 14% / 70% 70% 14% 14%;
+  background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--c) 45%, #fff) 0 12%, transparent 40%), linear-gradient(90deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c) 45%, color-mix(in srgb, var(--c) 62%, #000));
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--c) 55%, #000);
+}
+/* head, with the player's initials */
+.ca-iso .ca-sq .ca-pin > span {
+  position: absolute; left: 50%; top: 0; width: 64%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
+  display: grid; place-items: center; color: #fff; font: 800 clamp(7px, calc(var(--sq) * .1), 11px) var(--sans);
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 40%, #fff) 0 14%, var(--c) 46%, color-mix(in srgb, var(--c) 62%, #000));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .18); text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+}
+@keyframes iso-hop { 0% { translate: 0 0 26px; } 60% { translate: 0 0 -2px; } 100% { translate: 0 0 0; } }
+
+/* The die is a small isometric cube: the face you read, plus its top and side. */
+.ca-board-side .ca-die { border-radius: 14px; border: 0; overflow: visible; background: linear-gradient(145deg, #fff, #f1ede5); box-shadow: 0 0 0 1px rgba(0, 0, 0, .06), 0 18px 24px -12px rgba(0, 0, 0, .35); transform-style: preserve-3d; margin: 16px 16px 0 0; }
+.ca-board-side .ca-die::before { content: ''; position: absolute; left: 7px; right: -9px; top: -16px; height: 16px; border-radius: 10px 10px 2px 2px; background: linear-gradient(90deg, #fbf8f2, #e9e4da); transform: skewX(-45deg); transform-origin: 0 100%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05); }
+.ca-board-side .ca-die::after { content: ''; position: absolute; top: -8px; bottom: 7px; right: -16px; width: 16px; border-radius: 2px 10px 10px 2px; background: linear-gradient(180deg, #d9d2c4, #c4bba9); transform: skewY(-45deg); transform-origin: 0 0; }
+.ca-board-side .ca-die i { background: radial-gradient(circle at 35% 35%, #4a4743, #1d1b19); box-shadow: inset 0 1px 1px rgba(0, 0, 0, .4); }
+.ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent)); width: 18px; height: 18px; }
+.ca-board-side .ca-player .ca-pin { border-radius: 50%; transform: none; background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 40%, #fff) 0 14%, var(--c) 48%, color-mix(in srgb, var(--c) 62%, #000)); }
+.ca-board-side .ca-player .ca-pin > span { transform: none; }
+.ca-board-side .ca-prompt { border-radius: 16px; background: var(--iso-paper); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 16px 24px -14px rgba(0, 0, 0, .3); border: 0; }
+@media (max-width: 860px) { .ca-iso { aspect-ratio: 1.45; max-height: none; } }
+@media (prefers-reduced-motion: reduce) { .ca-iso .ca-sq .ca-pin { animation: none; } }
+
+/* ---------------------------------------------------------------- Bingo */
+.ca-bingo {
+  position: relative; padding: 12px; gap: 8px; border-radius: 22px; background: var(--iso-cubes);
+  box-shadow: inset 0 0 0 5px var(--iso-edge), inset 0 0 0 6px rgba(255, 255, 255, .18),
+    0 2px 0 var(--iso-edge), 0 4px 0 var(--iso-edge), 0 6px 0 var(--iso-edge), 0 8px 0 var(--iso-edge), 0 10px 0 var(--iso-edge), 0 30px 36px -18px rgba(20, 16, 10, .5);
+}
+/* The card's name plate: “BINGO” on a raised bar along the top. */
+.ca-bingo::before {
+  content: 'B  I  N  G  O'; white-space: pre; grid-column: 1 / -1; justify-self: center; margin: 2px 0 4px; padding: 6px 22px 8px; border-radius: 12px;
+  font: 900 clamp(15px, 3.4vw, 22px)/1 var(--sans); letter-spacing: .08em; color: var(--iso-edge);
+  background: linear-gradient(180deg, #fff, var(--iso-paper-2)); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 10px 14px -8px rgba(0, 0, 0, .4);
+}
+.ca-bingo .ca-cell {
+  position: relative; isolation: isolate; border: 0; border-radius: 12px; color: #2a2723;
+  background: linear-gradient(160deg, #fff, var(--iso-paper-2));
+  box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 5px 0 var(--iso-lip-2), 0 10px 12px -6px rgba(0, 0, 0, .35);
+  transition: transform .14s var(--ca-ease, ease), box-shadow .14s;
+}
+.ca-bingo button.ca-cell:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 5px 0 var(--iso-lip-2), 0 6px 0 var(--iso-lip-2), 0 7px 0 var(--iso-lip-2), 0 14px 16px -6px rgba(0, 0, 0, .35); }
+.ca-bingo button.ca-cell:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip-2), 0 4px 6px -3px rgba(0, 0, 0, .35); }
+/* Marked: the tile is pressed down and a glossy counter drops onto it, under the word. */
+.ca-bingo .ca-cell.on { transform: translateY(3px); background: linear-gradient(160deg, #fff, var(--iso-paper-2)); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip-2), 0 5px 8px -4px rgba(0, 0, 0, .35); }
+.ca-bingo .ca-cell.on::after {
+  content: ''; position: absolute; z-index: -1; inset: 12%; border: 0; border-radius: 50%; transform: none;
+  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .75) 0 10%, transparent 26%), radial-gradient(circle, color-mix(in srgb, var(--accent) 52%, #fff) 0 52%, color-mix(in srgb, var(--accent) 80%, #fff) 54% 62%, color-mix(in srgb, var(--accent) 60%, #fff) 64%);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 55%, #000), 0 6px 8px -2px rgba(0, 0, 0, .3);
+  animation: iso-drop .34s cubic-bezier(.3, .7, .35, 1.3);
+}
+@keyframes iso-drop { from { transform: translateY(-40%) scale(1.25); opacity: 0; } to { transform: none; opacity: 1; } }
+.ca-bingo .ca-cell.free, .ca-bingo .ca-cell[aria-label='Free square'] { color: #fff; font: 900 clamp(13px, 2.6vw, 18px) var(--sans); letter-spacing: .06em; background: linear-gradient(160deg, #34312d, #1f1d1a); box-shadow: 0 1px 0 #0f0e0c, 0 2px 0 #0f0e0c, 0 3px 0 #0f0e0c, 0 4px 0 #0f0e0c, 0 10px 12px -6px rgba(0, 0, 0, .4); transform: none; }
+.ca-bingo .ca-cell.free::after, .ca-bingo .ca-cell[aria-label='Free square']::after { content: '★'; position: absolute; z-index: 0; inset: auto 0 10% 0; background: none; box-shadow: none; animation: none; font-size: .75em; color: var(--accent); text-align: center; }
+/* The learner's card leans back a little on the desk; tapping still lands where you look. */
+.ca:not(:has(.ca-call)) .ca-bingo { transform: perspective(1400px) rotateX(9deg); transform-origin: 50% 100%; margin-top: 8px; margin-bottom: 18px; }
+.ca-bingo-review .ca-bingo { transform: none; }
+.ca-bingo.mini { padding: 6px; gap: 4px; border-radius: 12px; box-shadow: inset 0 0 0 3px var(--iso-edge), 0 2px 0 var(--iso-edge), 0 4px 0 var(--iso-edge), 0 12px 16px -10px rgba(0, 0, 0, .45); }
+.ca-bingo.mini::before { display: none; }
+.ca-bingo.mini .ca-cell { box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip-2); }
+.ca-bingo.mini .ca-cell.on::after { display: block; inset: 16%; animation: none; }
+/* Teacher's caller: each call is a little raised chip; called ones are pressed and ticked. */
+.ca-call { border-radius: 20px; background: var(--iso-paper); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 18px 26px -16px rgba(0, 0, 0, .35); }
+.ca-calls button { border-radius: 999px; border: 0; background: linear-gradient(180deg, #fff, var(--iso-paper-2)); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip-2), 0 3px 0 var(--iso-lip-2), 0 6px 8px -4px rgba(0, 0, 0, .25); transition: transform .12s, box-shadow .12s; }
+.ca-calls button.on { transform: translateY(2px); color: #fff; background: linear-gradient(180deg, var(--iso-a), var(--iso-b)); box-shadow: 0 1px 0 var(--iso-edge), 0 3px 5px -3px rgba(0, 0, 0, .4); }
+@media (prefers-reduced-motion: reduce) { .ca-bingo .ca-cell.on::after { animation: none; } }
+
+/* ---------------------------------------------------------------- Cards and Pelmanism */
+/* Card backs share the tumbling cubes, framed in a cream border like a real deck. */
+.pk-back, .pk-face-back, .ca-mcard .pk-back {
+  background: var(--iso-cubes);
+  box-shadow: inset 0 0 0 5px var(--iso-paper), inset 0 0 0 6px var(--iso-lip), inset 0 0 0 9px var(--iso-edge), 0 1px 1px rgba(0, 0, 0, .2);
+}
+.pk-back::after, .pk-face-back::after, .ca-mcard .pk-back::after {
+  content: '✦'; inset: 50% auto auto 50%; width: 46px; height: 46px; transform: translate(-50%, -50%) rotate(45deg); border-radius: 10px;
+  color: var(--accent); background: var(--iso-paper); box-shadow: 0 0 0 3px var(--iso-edge), 0 6px 10px rgba(0, 0, 0, .3); font-size: 18px;
+}
+/* The deck is a thick stack: each card sits up and to the right of the one below, isometric style. */
+.pk-deck { margin: 6px 10px 0 0; }
+.pk-back { transform: translate(calc(var(--i) * 1.6px), calc(var(--i) * -1.6px)); }
+.pk-back:not(:last-child) { background: linear-gradient(135deg, var(--iso-paper), var(--iso-lip)); box-shadow: inset 0 0 0 1px var(--iso-lip-2), 1px 1px 0 var(--iso-lip-2); }
+.pk-back:not(:last-child)::after { display: none; }
+.pk-deck .pk-back:last-child { box-shadow: inset 0 0 0 5px var(--iso-paper), inset 0 0 0 6px var(--iso-lip), inset 0 0 0 9px var(--iso-edge), -14px 18px 26px -10px rgba(0, 0, 0, .45); }
+.pk-deck.can:hover .pk-back:last-child { transform: translate(calc(var(--i) * 1.6px + 6px), calc(var(--i) * -1.6px - 12px)) rotate(4deg); }
+.pk-deck.can:hover .pk-back:nth-last-child(2) { transform: translate(calc(var(--i) * 1.6px), calc(var(--i) * -1.6px)); }
+/* The drawn card is real card stock: a cream face with a visible edge. */
+.pk-card { border: 0; background: linear-gradient(170deg, #fff, var(--iso-paper)); box-shadow: 0 1px 0 var(--iso-lip), 0 2px 0 var(--iso-lip), 0 3px 0 var(--iso-lip-2), 0 4px 0 var(--iso-lip-2), 0 22px 34px -18px rgba(0, 0, 0, .35); }
+.pk-card::before { width: 5px; background: var(--iso-cubes); }
+:root[data-theme='dark'] .pk-card { background: var(--paper); }
+/* Pelmanism: a table of thick tiles that flip in 3D. */
+.ca-memory { gap: 12px; perspective: 1400px; }
+.ca-memory .ca-mcard { transition: transform .2s var(--ca-ease, ease); }
+.ca-memory .ca-mcard:not(:disabled):hover { transform: translateY(-4px) rotate(-1deg); }
+.ca-mcard .pk-back, .ca-mcard .face { border-radius: 14px; }
+.ca-mcard > span { box-shadow: 0 1px 0 var(--iso-lip-2), 0 2px 0 var(--iso-lip-2), 0 3px 0 var(--iso-edge), 0 14px 18px -10px rgba(0, 0, 0, .4); border-radius: 14px; }
+.ca-memory .ca-mcard .face { background: linear-gradient(170deg, #fff, var(--iso-paper)); box-shadow: inset 0 0 0 1px var(--iso-lip); place-items: center; align-content: center; gap: 4px; padding: 10px; height: 100%; text-align: center; font: 500 clamp(14px, 1.6vw, 19px)/1.25 var(--serif); color: #2a2723; backface-visibility: visible; }
+/* Only one side of a card is drawn at a time, so the turn is played as a quarter-turn into view. */
+.ca-memory .ca-mcard.up > span, .ca-memory .ca-mcard.won > span { transform: none; animation: iso-flip .42s var(--ca-ease, ease); }
+@keyframes iso-flip { from { transform: rotateY(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ca-memory .ca-mcard.up > span, .ca-memory .ca-mcard.won > span { animation: none; } }
+.ca-mcard.won > span { box-shadow: 0 1px 0 color-mix(in srgb, var(--right) 40%, var(--iso-lip)), 0 2px 0 color-mix(in srgb, var(--right) 50%, var(--iso-lip-2)), 0 10px 14px -10px rgba(0, 0, 0, .3); }
+
+/* ---------------------------------------------------------------- Timer, large */
+.ca-timer { gap: 18px; padding: 26px 12px; }
+.ca-timer-face { --size: min(320px, 70vw); border-radius: 50%; background: radial-gradient(circle at 50% 38%, #fff, var(--iso-paper-2)); box-shadow: 0 2px 0 var(--iso-lip), 0 4px 0 var(--iso-lip), 0 6px 0 var(--iso-lip-2), 0 8px 0 var(--iso-lip-2), 0 30px 40px -20px rgba(0, 0, 0, .35); }
+.ca-timer-face svg { inset: 7%; width: 86%; height: 86%; }
+.ca-timer-face .t { stroke: color-mix(in srgb, var(--accent) 14%, var(--iso-paper-2)); stroke-width: 3.2; }
+.ca-timer-face .f { stroke-width: 3.2; }
+.ca-timer-face b { font-size: calc(var(--size) * .21); letter-spacing: -.03em; }
+
+/* ---------------------------------------------------------------- Timer, one line */
+.ca-timer-line {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 8px 0; padding: 6px 6px 6px 14px;
+  border-radius: 999px; background: var(--paper); border: 1px solid var(--hair); font-family: var(--sans);
+}
+.ca-tl-who { flex: none; font: 600 12px var(--sans); color: var(--muted); max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-tl-time { flex: none; min-width: 3.4em; font: 800 20px/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.ca-tl-track { flex: 1; min-width: 40px; height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.ca-tl-track > span { display: block; height: 100%; width: var(--p); border-radius: inherit; background: var(--accent); transition: width .25s linear; }
+.ca-tl-from, .ca-tl-end { flex: none; font: 500 12px var(--sans); color: var(--muted); }
+.ca-tl-end { font-weight: 700; color: var(--accent-text); }
+.ca-tl-actions { flex: none; display: flex; gap: 4px; }
+.ca-tl-btn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); cursor: pointer; }
+.ca-tl-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.ca-tl-btn.primary { border: 0; background: var(--ink); color: var(--paper); }
+.ca-tl-btn:disabled { opacity: .4; cursor: default; }
+.ca-tl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ca-timer-line.soon .ca-tl-track > span { background: #c46a3c; }
+.ca-timer-line.soon .ca-tl-time { color: #c46a3c; }
+.ca-timer-line.done .ca-tl-time { color: var(--accent-text); animation: ca-pop .3s var(--ca-ease, ease); }
+@media (max-width: 520px) { .ca-tl-who, .ca-tl-from { display: none; } }
+.ca.ca-inline { margin: 6px 0 10px; }
+.ca-inline-say { margin: 0 0 4px; font: 400 16px/1.5 var(--serif); }
+.ca-inline .ca-timer-line { margin: 0; }

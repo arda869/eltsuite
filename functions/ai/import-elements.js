@@ -75,7 +75,7 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
   else if(e.kind==='speaking')nodes=[...paragraphs(e.prompt),{type:'speakingPractice',attrs:{id,...d,contextSeeded:true,contextApplied:true,feedbackMode:'task',focusOptions:[d.focus],lessonId:''}}];
   else if(e.kind.startsWith('ca-')){
    const kind=e.kind.slice(3),settings={mode:'class'};
-   for(const field of ['boardStyle','learnerCalls','gridSize','layout','lowLabel','highLabel','seconds','timerDirection','timerFor'])if(d[field]!==undefined)settings[field]=d[field];
+   for(const field of ['boardStyle','learnerCalls','gridSize','layout','lowLabel','highLabel','seconds','timerDirection','timerFor','timerSize'])if(d[field]!==undefined)settings[field]=d[field];
    if(kind==='spot')settings.differences=(d.differences??[]).map((difference,n)=>({id:id+'_difference'+n,...difference}));
    nodes=[{type:'communicativeActivity',attrs:{id,kind,instruction:d.instruction,settings},content:d.cards.map((card,n)=>communicativeCard(card,id,kind,n))}];
   }
