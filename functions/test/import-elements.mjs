@@ -4,10 +4,13 @@ import { build } from 'esbuild';
 import { IMPORT_TYPES, newImportElement } from '../ai/import-types.js';
 import { nativeImportedElements } from '../ai/import-elements.js';
 import { checkImportElements } from '../ai/import-validation.js';
+import { checkImportPictures, resolveImportPictures, taskPictureIds } from '../ai/import-pictures.js';
+import { nativeTask } from '../ai/activities.js';
+import { importTask } from '../../test/ai/import-types-fixture.mjs';
 
 // Every element a teacher can add by hand in the task editor, and the import kind (or import
 // field) that makes it. Keep this in step with COMMANDS in src/editor/TaskEditor.tsx.
-// Not importable on purpose: a PDF, a game, a storyboard, a column break, recordings and videos
+// Not importable on purpose: a PDF, a storyboard, a column break, recordings and videos
 // (an import never invents media) and items from the teacher's own question bank.
 const EDITOR_TO_IMPORT = {
   gap: 'gap', lettergap: 'lettergap', wordform: 'wordform', radio: 'radio', dropdown: 'dropdown', truefalse: 'truefalse',
@@ -25,11 +28,70 @@ const EDITOR_TO_IMPORT = {
   'learner-development': 'investigation', research: 'investigation',
   'tt-analysis': 'tt-analysis', 'tt-plan': 'tt-plan', 'tt-loop': 'tt-loop', 'tt-rehearsal': 'tt-rehearsal', 'tt-exam': 'tt-exam',
   'tt-reflection': 'tt-reflection',
+  ...Object.fromEntries(['board','bingo','dominoes','memory','strips','cue','survey','findSomeone','ranking','opinion','spot','taboo','speaking'].map(kind=>['communicative-'+kind,'ca-'+kind])),
 };
 
 test('every editor element maps to an import kind that exists', () => {
   const kinds = new Set(IMPORT_TYPES.map((t) => t.kind));
   for (const [editor, kind] of Object.entries(EDITOR_TO_IMPORT)) assert.ok(kinds.has(kind), `${editor} → ${kind} is not an import kind`);
+});
+
+test('AI import and Create with AI convert every communicative kind into editable native cards', () => {
+  const kinds=['board','bingo','dominoes','memory','strips','cue','survey','findSomeone','ranking','opinion','spot','taboo','speaking'];
+  for(const kind of kinds){
+    const element=newImportElement('ca-'+kind,'');
+    element.data.instruction='';
+    element.data.cards=element.data.cards.map((card,n)=>({
+      ...card,title:`Card ${n+1}`,text:`Talk about card ${n+1}.`,
+      ...('match'in card?{match:`Pair ${n+1}`}:{}),
+      ...('options'in card?{options:['Yes','No']}:{}),
+    }));
+    if(kind==='spot'){
+      element.data.cards.forEach((card,n)=>{card.picture=`https://example.com/picture-${n}.png`;card.alt=`Picture ${n+1}`;});
+      element.data.differences=[{x:30,y:40,radius:5,label:'Changed object'}];
+    }
+    assert.doesNotThrow(()=>checkImportElements([element],false),kind);
+    const result=nativeImportedElements([element],'ca');
+    const activity=Object.values(result.activities)[0];
+    assert.ok(activity,kind);
+    assert.equal(result.content[0].attrs.sealed,true,'learner content is a sealed placeholder');
+    assert.equal(activity.attrs.kind,kind);
+    assert.equal(activity.attrs.instruction,'');
+    assert.equal(activity.content.length,element.data.cards.length);
+    assert.ok(activity.content.every(card=>card.type==='pickCard'&&card.attrs.activityItemId));
+    const task=nativeTask(importTask([element]),0,'roundtrip');
+    assert.equal(Object.values(task.activities)[0].attrs.kind,kind,'private card content survives full task creation');
+    assert.equal(task.content.content.find(node=>node.type==='communicativeActivity')?.attrs.sealed,true);
+  }
+});
+
+test('communicative cards preserve source picture references, teacher instructions and speaking timer settings',()=>{
+  const e=newImportElement('ca-speaking');
+  e.data.instruction='Describe the image to your partner.';
+  e.data.cards=[{title:'',text:'',picture:'picture:scene',alt:'A crowded station'}];
+  e.data.seconds=95;e.data.timerDirection='up';e.data.timerFor='individual';
+  const picture=newImportElement('picture');picture.data={ref:'scene',sourceImage:1,x:0,y:0,width:100,height:100,alt:'A crowded station',recreationPrompt:'A station',asset:'a'.repeat(64)};
+  const rebuilt={tasks:[{inlineElements:[picture,e],subTasks:[]}]};
+  assert.doesNotThrow(()=>checkImportPictures(rebuilt));
+  assert.deepEqual(taskPictureIds(rebuilt.tasks[0],[picture.data]),[picture.data.asset]);
+  const activity=Object.values(nativeImportedElements([e],'ca').activities)[0];
+  assert.equal(activity.attrs.instruction,e.data.instruction);
+  assert.deepEqual([activity.attrs.settings.seconds,activity.attrs.settings.timerDirection,activity.attrs.settings.timerFor],[95,'up','individual']);
+  const resolved=resolveImportPictures(activity,[picture.data],{[picture.data.asset]:'https://example.com/resolved.png'});
+  assert.equal(resolved.content[0].content[0].content[0].attrs.src,'https://example.com/resolved.png');
+});
+
+test('prepared Create with AI pictures are inserted into rich communicative card content',()=>{
+ const e=newImportElement('ca-spot');
+ e.data.cards=[{title:'A',text:'',picture:'',alt:''},{title:'B',text:'',picture:'',alt:''}];
+ e.data.differences=[{x:40,y:60,radius:5,label:'Extra window'}];
+ const task=importTask([e]);
+ task.preparedMedia=[{kind:'image',mediaId:'one',alt:'Before'},{kind:'image',mediaId:'two',alt:'After'}];
+ const native=nativeTask(task,0,'prepared');
+ const cards=Object.values(native.activities)[0].content;
+ assert.equal(native.content.content.filter(node=>node.type==='paragraph'&&node.content?.some(child=>child.type==='picture')).length,0,'prepared images are not duplicated outside the cards');
+ assert.deepEqual(cards.map(card=>card.content[0].content[0].attrs.src),['media:one','media:two']);
+ assert.deepEqual(cards.map(card=>card.attrs.picture.src),['media:one','media:two']);
 });
 
 test('every import kind becomes editor content', () => {

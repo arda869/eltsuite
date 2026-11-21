@@ -6,6 +6,11 @@ export function checkImportElements(elements,training){
  validate({type:'array',items:IMPORT_ELEMENT_SCHEMA,minItems:0,maxItems:60},elements);
  for(const e of elements){const d=e.data;
   if(e.kind==='picture'&&(!/^[a-zA-Z0-9_-]{1,60}$/.test(d.ref)||d.x+d.width>100.01||d.y+d.height>100.01||d.asset&&!/^[a-f0-9]{64}$/.test(d.asset)))throw Error('Choose a valid source illustration reference and crop within its page.');
+  if(e.kind.startsWith('ca-')){
+   if(d.cards.some(card=>!validImage(card.picture)||'matchPicture'in card&&!validImage(card.matchPicture)))throw Error('Communicative card pictures need a source picture reference or public HTTPS URL.');
+   if(e.kind==='ca-bingo'&&d.cards.length<=d.gridSize*d.gridSize)throw Error('Bingo needs more items than card spaces.');
+   if(e.kind==='ca-ranking'&&d.layout==='diamond'&&d.cards.length!==9)throw Error('Diamond 9 needs exactly nine items.');
+  }
   if(e.kind==='dialogue'){
    if(new Set(d.turns.map(turn=>turn.speaker.trim())).size>4||d.turns.some(turn=>!turn.speaker.trim()||!turn.text.trim()||(turn.answers.length!==0&&(turn.text.match(/___/g)||[]).length!==turn.answers.length)))throw Error('A dialogue needs 2–4 speakers and either no key or one answer for each ___ gap in its turns.');
   }

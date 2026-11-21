@@ -60,6 +60,7 @@ SUB-TASKS: When an activity has subTasks, leave its main instructions empty. Put
 VISUALS: visuals contains complete editable tables, including a title, two to four headers and equal-width rows. Use for timetables, decision grids or planning frames when relevant; [] when not useful. Learner instructions must use the visual. Tables display information; provide a writing or discussion question for any requested learner entries rather than implying plain table cells are answer fields. Empty discovery cells should contain an em dash, not the answer.
 VERSIONS: versions contains zero to two COMPLETE replacements for this activity's learner input, instructions, questions and visuals. Supported changes the scaffold; Stretch removes support or deepens the SAME objective. Supply each version's own valid keys. Do not append tasks. Keep roughly the same completion time and a shared feedback outcome. Do not create versions for exams or information gaps (use roles). Prefer one useful Supported version over two automatic versions. Use concise materials so the whole response fits.
 NATIVE ELEMENTS: use blocks for structured learner input. A reading passage belongs in a reading block, an email in an email block, and a web text in a webpage block. A conversation belongs in a dialogue block, with one speaker turn per items entry as "Name: words"; use two to four distinct names, at least two turns, and no speaker labels inside text. This becomes the editable native Dialogue element, including in an AI-generated task. Keep any answer key private: dialogue text must not contain solved answers to its own questions. numberedList and bulletList contain one item per items entry; do not simulate numbering in a paragraph. Other blocks use text and optional title, with items empty. For list and dialogue blocks use items with text empty. blocks replaces input when nonempty; keep input a brief plain-text synopsis for legacy previews, never duplicate the full passage. Use usefulLanguage only when it does not reveal discovery answers.
+COMMUNICATIVE ACTIVITIES: when the teacher asks for a board game, Bingo, dominoes, Pelmanism, strip story, cue cards, communicative survey, find-someone-who, ranking, opinion line, spot-the-difference, Taboo or speaking timer, choose the corresponding ca- kind in inlineElements. Include complete editable cards. An activity instruction may be empty when the teacher wants to write it later; otherwise preserve their wording. For a speaking timer set seconds, timerDirection and timerFor. For card pictures request enough images through mediaPlan and leave card picture empty; prepared images are placed into card content. Do not invent image URLs. Spot-the-difference needs two pictures and at least one difference mark.
 Use subTasks for connected parts a/b/c within one activity (understand, examine, discuss), each with its own short instruction, input/blocks and questions. Keep shared reading input at activity level so it remains available to all parts. Empty top-level questions are valid when subTasks supply the response. Do not duplicate questions between parent and subtasks. Do not put a later revealed transcript or answer into shared input; use a later activity or teacher-only notes.
 Use question format discussion for oral questions, pair comparison, pointing, noticing and prompts requiring no submitted text. These become a numbered prompt list, NOT writing boxes. Never choose writing merely because an answer is open-ended. Use writing only when learners must actually compose and submit written text. Keep question formats matched to the response, not the topic. Use native choices, gaps, matching and ordering where appropriate, including inside subtasks. Not every task needs every element.
 LISTENING: use format listening with a complete private script, matching spoken lines in mediaPlan, and at least one listening question. Scripts belong in teacherOnlyInput, not shared input. The server prepares the recording before creation in Classes. Later transcript work belongs in a separate later task.` + "\n" + materialsPrinciples + "\n" + contentStandards + "\n" + mediaInstructions + "\nRESPONSE TOOL: use shortAnswer for a word, number or short phrase, with all valid alternatives. Use categorise for sorting: each prompt is an item, options are category labels, and answer is its category. Do not use a writing box for sorting, oral discussion or copying item numbers into a grid. Use writing only for genuinely extended written production with a named genre, reader and purpose. Short choice options become inline slash-style choices; use ___ in the prompt for the insertion point. Do not add duplicate Sentence 1 labels. Separate independent messages into individual message blocks or subtasks; keep a message and its question together. Each change of learner action needs a clear subtask instruction. GLOSSARY: use definitions for vocabulary support, with separate term, meaning and optional original example. These create interactive native definition marks on terms in the reading text. Do not flatten definitions into a paragraph or generic Words box. Do not supply a definition that reveals an answer in a vocabulary-discovery task.";
@@ -89,11 +90,13 @@ export function checkActivities(value, plan, training=false, taskCreation=false)
       if(taskCreation){
         if(body.inlineElements?.length&&body.questions.length)throw Error('Use native inline elements or simple questions in each activity part, not both.');
         checkImportElements(body.inlineElements??[],training);
-        if((body.inlineElements??[]).some(e=>e.kind==='pq-label'&&e.data.image.trim()||e.kind==='pq-speaking'&&e.data.images.length))
+        if((body.inlineElements??[]).some(e=>e.kind==='pq-label'&&e.data.image.trim()||e.kind==='pq-speaking'&&e.data.images.length||e.kind.startsWith('ca-')&&e.data.cards.some(card=>card.picture||card.matchPicture)))
           throw Error('Attach task pictures through the prepared media plan.');
         if((body.inlineElements??[]).some(e=>e.needs?.length))throw Error('A new activity needs complete content, not missing media or setup.');
         const requirements=importRequirements(body.inlineElements??[]).filter(message=>
           !(message.startsWith('Label the image: attach')&&t.mediaPlan.some(a=>a.kind==='image'))
+          && !(message.startsWith('Complete the empty communicative cards')&&body.inlineElements.some(e=>e.kind.startsWith('ca-')&&t.mediaPlan.filter(a=>a.kind==='image').length>=e.data.cards.length))
+          && !(message.startsWith('Spot the difference: add both pictures')&&t.mediaPlan.filter(a=>a.kind==='image').length>=2&&body.inlineElements.some(e=>e.kind==='ca-spot'&&e.data.differences.length))
           // Unlike an imported worksheet, AI task creation supplies the full speaking setup.
           && !message.startsWith('AI conversation: open the editor')
         );
@@ -146,7 +149,7 @@ function inputNodes(body, fallbackReading=false) {
 }
 export function activityMainInstruction(t) { return t.subTasks?.length ? '' : t.instructions; }
 export function nativeTask(t, index, namespace = '') {
-  const key = {};
+  const key = {}, importedActivities = {};
   const imported=[t,...(t.subTasks??[])].some(b=>b.inlineElements?.length);
   let bankWritten=[t,...(t.subTasks??[])].some(b=>b.inlineElements?.some(e=>e.kind==='bank'));
   const notes = [t.subTasks?.length&&t.instructions?.trim()?'Activity context: '+t.instructions:'',`Stage ${t.stageId} · ${t.minutes} minutes`,t.teacherNotes,t.teacherOnlyInput,t.roles.length?'Assign the A/B role versions before teaching this information-gap task.':'',`Optional support: ${t.support||'None required.'}`,`Optional challenge: ${t.challenge||'None required.'}`];
@@ -167,7 +170,7 @@ export function nativeTask(t, index, namespace = '') {
     if(body===t){
       const images=(t.preparedMedia??[]).filter(m=>m.kind==='image').map((m,i)=>({type:'picture',attrs:{src:'media:'+m.mediaId,alt:m.alt,size:t.imageLayout==='stacked'?'full':'m',mark:String(i+1)}}));
       const imageQuestion=[t,...(t.subTasks??[])].some(part=>part.inlineElements?.some(e=>
-        e.kind==='pq-label'||e.kind==='pq-speaking'&&/\b(?:photos?|pictures?|images?)\b/i.test(`${e.prompt} ${e.data?.prompt??''}`)
+        e.kind==='pq-label'||e.kind.startsWith('ca-')&&images.length>=e.data.cards?.length&&e.data.cards?.some(card=>!card.picture)||e.kind==='pq-speaking'&&/\b(?:photos?|pictures?|images?)\b/i.test(`${e.prompt} ${e.data?.prompt??''}`)
       ));
       if(images.length&&!imageQuestion)content.unshift(...(t.imageLayout==='stacked'?images.map(image=>({type:'paragraph',content:[image]})):[{type:'paragraph',content:images}]));
       for(const m of (t.preparedMedia??[]).filter(m=>m.kind==='image'&&m.credit))content.push(p('Photo: '+m.credit));
@@ -240,11 +243,12 @@ export function nativeTask(t, index, namespace = '') {
       const elements=body.inlineElements.map(e=>{
         if(e.kind==='pq-label'&&!e.data.image&&pictures.length)return {...e,data:{...e.data,image:pictures[0]}};
         if(e.kind==='pq-speaking'&&!e.data.images.length&&pictures.length)return {...e,data:{...e.data,images:pictures}};
+        if(e.kind.startsWith('ca-')&&pictures.length>=e.data.cards.length&&e.data.cards.some(card=>!card.picture))return {...e,data:{...e.data,cards:e.data.cards.map((card,n)=>({...card,picture:card.picture||pictures[n],alt:card.alt||t.preparedMedia?.filter(m=>m.kind==='image')[n]?.alt||card.title||'Activity picture'}))}};
         return e;
       });
       const inline=nativeImportedElements(elements,(namespace?namespace+'_':'')+prefix,{addBank:!bankWritten});
       if(body.inlineElements.some(e=>['drop','bank'].includes(e.kind)))bankWritten=true;
-      content.push(...inline.content);Object.assign(key,inline.key);notes.push(inline.notes,...inline.requirements);
+      content.push(...inline.content);Object.assign(key,inline.key);Object.assign(importedActivities,inline.activities);notes.push(inline.notes,...inline.requirements);
     }
     return content;
   }
@@ -257,7 +261,7 @@ export function nativeTask(t, index, namespace = '') {
   const doc={type:'doc',content};
   const hasActivity=node=>node?.type==='communicativeActivity'||node?.content?.some(hasActivity);
   const separated=imported||hasActivity(doc)?splitKey(mergeKey(doc,key)):{content:doc,key,activities:{}};
-  return {...separated,notes:notes.join('\n\n')};
+  return {...separated,activities:{...separated.activities,...importedActivities},notes:notes.join('\n\n')};
 }
 
 // Each alternative owns its learner body AND key; no appended support paragraphs.

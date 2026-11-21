@@ -31,6 +31,12 @@ const data={
  'tt-custom':{title:'Observation notes',fields:[{label:'Evidence observed',kind:'long',hint:'Record what happened, not an interpretation.',value:''}]}
 };
 for(const kind of ['analysis','plan','observe','loop','rehearsal','exam','reflection'])data['tt-'+kind]={title:'Teacher development',mode:'complete',fields:[]};
+for(const kind of ['board','bingo','dominoes','memory','strips','cue','survey','findSomeone','ranking','opinion','spot','taboo','speaking']){
+ const value=newImportElement('ca-'+kind).data;
+ value.cards=value.cards.map((card,n)=>({...card,title:'Card '+(n+1),text:'Discuss this place.',...('match'in card?{match:'Matching place '+(n+1)}:{}),...('options'in card?{options:['Yes','No']}:{}),...('picture'in card&&kind==='spot'?{picture:'https://example.com/spot-'+n+'.png',alt:'Version '+(n+1)}:{})}));
+ if(kind==='spot')value.differences=[{x:35,y:45,radius:5,label:'Changed sign'}];
+ data['ca-'+kind]=value;
+}
 export const importElements=Object.fromEntries(Object.entries(data).map(([kind,value])=>[kind,{...newImportElement(kind),prompt:['gap','lettergap','wordform','drop','dropdown','subst'].includes(kind)?'Yesterday, we ___ to school.':'Complete the source activity.',reason:'Matches the response requested in the source.',data:value}]));
 export function importTask(elements=Object.values(importElements)){
  return {...structuredClone(rebuilt.tasks[0]),title:'Native task types',input:'',blocks:[],definitions:[],visuals:[],questions:[],inlineElements:structuredClone(elements),subTasks:[]};

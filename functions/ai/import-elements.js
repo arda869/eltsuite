@@ -3,6 +3,18 @@ import { IMPORT_TYPE_BY_KIND } from './import-types.js';
 const textNodes=text=>String(text||'').split('\n').flatMap((line,i)=>[...(i?[{type:'hardBreak'}]:[]),...(line?[{type:'text',text:line}]:[])]);
 const p=text=>({type:'paragraph',content:textNodes(text)});
 const paragraphs=text=>String(text||'').split(/\n\s*\n/).filter(Boolean).map(p);
+const communicativePicture=(src,alt)=>src?{src,alt:alt||'Activity picture'}:undefined;
+function communicativeCard(card,id,kind,index){
+ const {title,text,picture,alt,matchPicture,matchAlt,...extra}=card;
+ const content=[...paragraphs(text)];
+ if(picture)content.push({type:'paragraph',content:[{type:'picture',attrs:{src:picture,alt:alt||title||'Activity picture',size:'m',mark:''}}]});
+ if(!content.length)content.push(p(''));
+ const attrs={title,activityItemId:id+'_card'+index};
+ for(const [key,value] of Object.entries(extra))if(value!==''&&!(Array.isArray(value)&&!value.length))attrs[key]=value;
+ if(matchPicture)attrs.matchPicture=communicativePicture(matchPicture,matchAlt||'Matching picture');
+ if(kind==='spot'&&picture)attrs.picture=communicativePicture(picture,alt||title||'Comparison picture');
+ return {type:'pickCard',attrs,content};
+}
 const gapLine=(prompt,node)=>{const [before,after]=prompt.includes('___')?prompt.split('___'):[prompt+' ',''];return {type:'paragraph',content:[...textNodes(before),node,...textNodes(after)]};};
 function letterPattern(answer,firstLetter){let start=true;return Array.from(answer.trim()).map(ch=>{const letter=/[\p{L}\p{N}]/u.test(ch),out=letter?(firstLetter&&start?ch:'_'):ch;start=!letter&&!/['’-]/.test(ch)?true:letter?false:start;return out;}).join('');}
 export function importRequirements(elements=[]){
@@ -22,6 +34,14 @@ export function importRequirements(elements=[]){
   if(e.kind==='pq-label'&&!e.data.image)return [...explicit,'Label the image: attach the source picture and check label positions before making this task visible.'];
   if(e.kind==='investigation')return [...explicit,'Language investigation: open the task and choose or make the investigation before making this task visible.'];
   if(e.kind==='speaking')return [...explicit,'AI conversation: open the editor and save its Classroom speaking setup before making this task visible.'];
+  if(e.kind.startsWith('ca-')){
+   const kind=e.kind.slice(3),cards=d.cards??[];
+   if(kind==='spot'&&(cards.length!==2||cards.some(card=>!card.picture)||!d.differences?.length))return [...explicit,'Spot the difference: add both pictures and mark differences before starting.'];
+   if(cards.some(card=>!card.title?.trim()&&!card.text?.trim()&&!card.picture))return [...explicit,'Complete the empty communicative cards before starting.'];
+   if(['dominoes','memory'].includes(kind)&&cards.some(card=>!card.match&&!card.matchPicture))return [...explicit,'Add the matching half of each pair before starting.'];
+   if(kind==='bingo'&&cards.length<=d.gridSize*d.gridSize)return [...explicit,'Add more Bingo items than spaces on the card before starting.'];
+   if(kind==='survey'&&cards.some(card=>card.options.length<2||card.options.some(option=>!option.trim())))return [...explicit,'Give each survey question at least two answers before starting.'];
+  }
   if(e.kind==='collab'&&e.data.scope==='group')return [...explicit,'Shared document: create the class groups or choose whole-class collaboration before making this task visible.'];
   return explicit;
  }))];
@@ -53,6 +73,12 @@ export function nativeImportedElements(elements=[],prefix='import',{addBank=true
   else if(e.kind==='survey')nodes=[...paragraphs(e.prompt),{type:'survey',attrs:{id,title:d.title,anonymous:d.anonymous,questions:d.questions.map((v,j)=>({...v,id:id+'_s'+j}))}}];
   else if(['drawcard','wheel','boxes'].includes(e.kind))nodes=[...paragraphs(e.prompt),{type:'randomPick',attrs:{id,mode:e.kind==='drawcard'?'cards':e.kind,repeat:d.repeat,play:'own',whoDraws:'teacher'},content:d.cards.map(c=>({type:'pickCard',attrs:{title:c.title},content:paragraphs(c.text)}))}];
   else if(e.kind==='speaking')nodes=[...paragraphs(e.prompt),{type:'speakingPractice',attrs:{id,...d,contextSeeded:true,contextApplied:true,feedbackMode:'task',focusOptions:[d.focus],lessonId:''}}];
+  else if(e.kind.startsWith('ca-')){
+   const kind=e.kind.slice(3),settings={mode:'class'};
+   for(const field of ['boardStyle','learnerCalls','gridSize','layout','lowLabel','highLabel','seconds','timerDirection','timerFor'])if(d[field]!==undefined)settings[field]=d[field];
+   if(kind==='spot')settings.differences=(d.differences??[]).map((difference,n)=>({id:id+'_difference'+n,...difference}));
+   nodes=[{type:'communicativeActivity',attrs:{id,kind,instruction:d.instruction,settings},content:d.cards.map((card,n)=>communicativeCard(card,id,kind,n))}];
+  }
   else if(e.kind.startsWith('tt-')){
    const kind=e.kind.slice(3);
    const data=Object.fromEntries(d.fields.map((f,j)=>[kind==='custom'?'field_'+j:f.name,f.value]));
