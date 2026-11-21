@@ -1,0 +1,224 @@
+/* ELT Suite – communicative activities in the Cards / Open the box / Spin the wheel language (Nov 2026).
+   The same pieces everywhere:
+   - paper: white cards with the .pk-card shadow (--ca-lift), a thin accent bar on cards you read;
+   - charcoal: hidden or "game" things (card backs, gift boxes, Start, dice) in --ca-charcoal with accent rings;
+   - torn paper: things you put in order (strip story, ranking), as in the strip story;
+   - a blue biro for what learners mark by hand (bingo circles, ticks, names);
+   - small physical moments: pop in, wiggle, the box's confetti burst.
+   Loaded after activities.css, so it only overrides. Card decks and boxes keep their own styles.css. */
+
+:root {
+  --cp-biro: #2348b4;
+  --cp-paper: var(--paper);
+  --cp-lift-low: 0 1px 2px rgba(0, 0, 0, .05), 0 6px 14px -8px rgba(0, 0, 0, .22);
+  --cp-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M55 8C79 9 94 27 92 51 90 76 70 93 46 92 21 91 6 71 8 47 10 24 30 9 58 11 67 12 75 16 82 23' fill='none' stroke='%232348b4' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round' opacity='.9'/%3E%3C/svg%3E");
+  --cp-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 13.5c2.2 1.4 3.6 3 4.6 5 2.6-6 6.4-10.6 11.4-14' fill='none' stroke='%232348b4' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cp-torn: polygon(0 6%, 4% 0, 9% 5%, 15% 1%, 22% 6%, 29% 0, 36% 4%, 43% 1%, 51% 6%, 58% 2%, 65% 5%, 72% 0, 80% 5%, 87% 1%, 94% 6%, 100% 2%, 100% 95%, 95% 100%, 89% 95%, 82% 99%, 75% 94%, 68% 100%, 61% 96%, 54% 99%, 46% 94%, 39% 100%, 31% 95%, 24% 99%, 17% 94%, 10% 100%, 4% 95%, 0 99%);
+}
+@keyframes cp-pop { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes cp-wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes cp-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+
+/* ---------------------------------------------------------------- Board game */
+/* Paper squares on the grey table; Start and Finish are charcoal with the accent, like the gift boxes. */
+.ca-board-stage { container-type: inline-size; width: 100%; display: grid; justify-items: center; }
+.ca-board-wrap .ca-board-stage .ca-board {
+  --g: 8px;
+  --sq: min(calc((100cqw - 32px - (var(--cols, 6) - 1) * var(--g)) / var(--cols, 6)), calc((100dvh - 250px) / var(--rows, 5)));
+  width: auto; max-height: none; gap: var(--g); padding: 16px; border-radius: 22px;
+  grid-template-columns: repeat(var(--cols, 6), var(--sq)); grid-template-rows: repeat(var(--rows, 5), var(--sq));
+  background: var(--tint);
+}
+.ca-board-stage .ca-board .ca-sq {
+  aspect-ratio: auto; overflow: hidden; display: flex; flex-direction: column; gap: 3px;
+  padding: calc(var(--sq) * .09) calc(var(--sq) * .1); border: 0; border-radius: 14px;
+  background: var(--paper); box-shadow: var(--cp-lift-low);
+  font: 400 clamp(10px, calc(var(--sq) * .135), 15px)/1.25 var(--serif); color: var(--ink);
+  transition: transform .2s var(--ca-ease), box-shadow .2s;
+}
+.ca-board-stage .ca-board-snake .ca-sq:nth-child(odd) { background: var(--paper); }
+.ca-board-stage .ca-board-snake .ca-sq:nth-child(even) { background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
+.ca-board-stage .ca-board-spiral .ca-sq { border-radius: 50% 50% 18px 18px / 30% 30% 18px 18px; }
+.ca-board-stage .ca-board-path .ca-sq { border-radius: 6px; }
+.ca-board-stage .ca-sq-n { font: 700 clamp(9px, calc(var(--sq) * .11), 12px) var(--sans); color: var(--accent-text); letter-spacing: .04em; }
+.ca-board-stage .ca-sq-text { -webkit-line-clamp: 3; }
+.ca-board-stage .ca-sq .ca-pic { max-height: 44%; border-radius: 8px; }
+.ca-board-stage .ca-board .ca-sq.start, .ca-board-stage .ca-board .ca-sq.finish {
+  justify-content: center; align-items: center; text-align: center; color: #fff;
+  font: 700 clamp(10px, calc(var(--sq) * .13), 14px) var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  background: linear-gradient(90deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--ca-charcoal);
+  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, .45);
+}
+.ca-board-stage .ca-board .ca-sq.finish { background: linear-gradient(0deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), linear-gradient(90deg, transparent 0 calc(50% - 6px), var(--accent) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--ca-charcoal); }
+.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { padding: 3px 9px; border-radius: 6px; background: #2b2a29; }
+.ca-board-stage .ca-sq.start .ca-sq-n, .ca-board-stage .ca-sq.finish .ca-sq-n { display: none; }
+.ca-board-stage .ca-sq.special { background: var(--tint-strong); color: var(--accent-text); font-style: italic; }
+/* The square someone has just landed on lifts and pops, like a drawn card. */
+.ca-board-stage .ca-board .ca-sq.here { transform: translateY(-3px); box-shadow: 0 0 0 2.5px var(--accent), var(--ca-lift); animation: cp-pop .35s var(--ca-ease); }
+.ca-board-stage .ca-board .ca-sq.start.here, .ca-board-stage .ca-board .ca-sq.finish.here { animation: none; }
+.ca-board-stage .ca-sq .ca-pins { position: absolute; right: 6px; bottom: 6px; margin: 0; display: flex; }
+.ca-board-stage .ca-sq .ca-pinname { margin-left: -8px; max-width: none; }
+.ca-board-stage .ca-sq .ca-pinname:first-child { margin-left: 0; }
+.ca-board-stage .ca-sq .ca-pin { width: clamp(22px, calc(var(--sq) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; box-shadow: 0 3px 6px rgba(0, 0, 0, .28); animation: cp-pop .3s var(--ca-ease); }
+/* The die: a charcoal cube with white pips and the accent ring of the card backs. */
+.ca-board-side .ca-die { border: 0; border-radius: 18px; background: var(--ca-charcoal); box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6px rgba(255, 255, 255, .16), 0 10px 22px -8px rgba(0, 0, 0, .45); }
+.ca-board-side .ca-die i { background: #fff; }
+.ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: var(--accent); width: 17px; height: 17px; }
+.ca-board-side button.ca-die.ready:hover { animation: cp-wiggle .5s ease; }
+.ca-board-side .ca-prompt { border: 0; position: relative; overflow: hidden; animation: cp-pop .45s var(--ca-ease); }
+.ca-board-side .ca-prompt::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .ca-board-stage .ca-sq, .ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-prompt { animation: none !important; } }
+
+/* ---------------------------------------------------------------- Bingo: a printed card, circled in biro */
+.ca-bingo { gap: 0; padding: 0; overflow: hidden; border-radius: 16px; background: var(--paper); border: 0; box-shadow: var(--ca-lift); }
+/* the charcoal band across the top, with the letters in the accent */
+.ca-bingo::before {
+  content: 'B I N G O'; grid-column: 1 / -1; padding: 11px 10px 10px; text-align: center; letter-spacing: .55em; text-indent: .55em;
+  font: 800 clamp(14px, 3vw, 19px)/1 var(--sans); color: var(--accent); background: var(--ca-charcoal);
+}
+.ca-bingo .ca-cell {
+  position: relative; aspect-ratio: 1; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transform: none;
+  border-right: 1px solid var(--hair-strong); border-bottom: 1px solid var(--hair-strong);
+  font: 400 clamp(12px, 2.3vw, 17px)/1.15 var(--serif); color: var(--ink); padding: 6px; cursor: pointer;
+}
+.ca-bingo[style*='--size: 3'] .ca-cell:nth-child(3n), .ca-bingo[style*='--size:3'] .ca-cell:nth-child(3n),
+.ca-bingo[style*='--size: 4'] .ca-cell:nth-child(4n), .ca-bingo[style*='--size:4'] .ca-cell:nth-child(4n),
+.ca-bingo[style*='--size: 5'] .ca-cell:nth-child(5n), .ca-bingo[style*='--size:5'] .ca-cell:nth-child(5n) { border-right: 0; }
+.ca-bingo button.ca-cell:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.ca-bingo .ca-cell.on { background: transparent; }
+.ca-bingo .ca-cell.on::after {
+  content: ''; position: absolute; inset: 8% 6%; border: 0; border-radius: 0; transform: rotate(-4deg);
+  background: var(--cp-circle) center / 100% 100% no-repeat; box-shadow: none; animation: cp-draw .3s ease-out both;
+}
+.ca-bingo .ca-cell.on:nth-child(3n)::after { transform: rotate(7deg) scaleX(1.04); }
+.ca-bingo .ca-cell.on:nth-child(4n+1)::after { transform: rotate(-11deg) scaleY(.96); }
+.ca-bingo .ca-cell[aria-label='Free square'], .ca-bingo .ca-cell.free { color: var(--accent-text); background: var(--tint); font: 700 clamp(10px, 1.8vw, 13px) var(--sans); letter-spacing: .14em; text-transform: uppercase; }
+.ca-bingo .ca-cell[aria-label='Free square']::after, .ca-bingo .ca-cell.free::after { content: '✦'; position: absolute; inset: auto 0 14% 0; background: none; animation: none; transform: none; font-size: 1.3em; text-align: center; color: var(--accent); }
+.ca:not(:has(.ca-call)) .ca-bingo { transform: none; margin: 6px auto 16px; }
+.ca-bingo.mini { border-radius: 10px; }
+.ca-bingo.mini::before { padding: 4px; font-size: 9px; letter-spacing: .3em; }
+.ca-bingo.mini .ca-cell { font-size: 9px; padding: 1px; }
+.ca-bingo.mini .ca-cell.on::after { display: block; animation: none; inset: 4%; }
+/* The caller: the current call is a drawn card; the calls so far are chips that get ticked. */
+.ca-call { border: 0; position: relative; overflow: hidden; border-radius: 16px; background: var(--paper); box-shadow: var(--ca-lift); }
+.ca-call::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-call-now { animation: cp-pop .45s var(--ca-ease); }
+.ca-calls button { position: relative; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); font-family: var(--serif); color: var(--ink); }
+.ca-calls button.on { border-color: var(--ink); color: var(--ink); }
+.ca-calls button.on::after { content: ''; position: absolute; right: -5px; top: -7px; width: 18px; height: 18px; background: var(--cp-tick) center / contain no-repeat; }
+@media (prefers-reduced-motion: reduce) { .ca-bingo .ca-cell.on::after, .ca-call-now { animation: none; } }
+
+/* ---------------------------------------------------------------- Dominoes: charcoal tiles, like the card backs */
+.ca-chain { gap: 12px; }
+.ca-domino {
+  position: relative; border: 0; border-radius: 14px; min-height: 80px; width: 300px; overflow: visible; color: #fff;
+  background: var(--ca-charcoal); box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6px rgba(255, 255, 255, .16), 0 10px 22px -8px rgba(0, 0, 0, .45);
+  transition: transform .2s var(--ca-ease);
+}
+.ca-domino > span { font: 400 15px/1.25 var(--serif); color: #fff; padding: 10px 16px; }
+.ca-domino > span + span:not(.ca-move-tools) { border-left: 0; font: 400 15px/1.25 var(--serif); }
+/* the line down the middle and its accent pin */
+.ca-domino::before { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 1.5px; margin-left: -.75px; background: rgba(255, 255, 255, .28); }
+.ca-domino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px #2b2a29; }
+.ca-domino .n { position: absolute; left: -8px; top: -8px; z-index: 1; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--paper); color: var(--ink); font: 700 11px var(--sans); box-shadow: var(--cp-lift-low); }
+.ca-domino.end > span:first-child { color: var(--accent); }
+.ca-domino:hover { transform: translateY(-2px); }
+.ca-domino.lift { transform: rotate(-2deg) translateY(-3px); }
+.ca-domino.ok { box-shadow: inset 0 0 0 5px #2a2928, inset 0 0 0 6.5px color-mix(in srgb, var(--right) 80%, #fff), 0 10px 22px -8px rgba(0, 0, 0, .45); }
+.ca-domino .ca-move-tools button { color: #fff; }
+
+/* ---------------------------------------------------------------- Pelmanism: the Cards deck's backs and paper faces */
+.ca-memory { gap: 12px; }
+.ca-memory .ca-mcard:not(:disabled):hover { animation: cp-wiggle .5s ease; }
+.ca-memory .ca-mcard .face { background: var(--paper); box-shadow: var(--ca-lift); border-radius: 14px; place-items: center; align-content: center; gap: 4px; padding: 10px; height: 100%; text-align: center; font: 400 clamp(14px, 1.6vw, 19px)/1.25 var(--serif); color: var(--ink); backface-visibility: visible; overflow: hidden; }
+.ca-memory .ca-mcard .face::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-memory .ca-mcard.won .face { box-shadow: inset 0 0 0 2px var(--right), var(--ca-lift); background: color-mix(in srgb, var(--right) 6%, var(--paper)); }
+.ca-memory .ca-mcard.won .face::before { background: var(--right); }
+/* Only one side is drawn at a time, so turning over plays as a quarter-turn into view. */
+.ca-memory .ca-mcard.up > span, .ca-memory .ca-mcard.won > span { transform: none; animation: cp-flip .4s var(--ca-ease); }
+@keyframes cp-flip { from { transform: rotateY(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ca-memory .ca-mcard, .ca-memory .ca-mcard > span { animation: none !important; } }
+
+/* ---------------------------------------------------------------- Cue cards: a drawn card in a private sleeve */
+.ca-private { border-radius: 16px; }
+.ca-cue { position: relative; }
+.ca-cue::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-cue-title { font: 500 21px/1.25 var(--serif); }
+.ca-cues > * { animation: cp-pop .45s var(--ca-ease) both; }
+.ca-cues > *:nth-child(2) { animation-delay: .06s; } .ca-cues > *:nth-child(3) { animation-delay: .12s; }
+
+/* ---------------------------------------------------------------- Taboo: the card the describer holds */
+.ca-taboo { position: relative; border-radius: 16px; box-shadow: var(--ca-lift); animation: cp-pop .45s var(--ca-ease); }
+.ca-taboo-word { color: #fff; background: var(--ca-charcoal); border-bottom: 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .08); }
+.ca-taboo-word small { color: var(--accent); }
+.ca-taboo li { color: var(--muted); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+
+/* ---------------------------------------------------------------- Ranking: torn paper you put in order */
+/* The shadow goes on the list, not on each strip, so the torn edge keeps its outline (as on torn pages). */
+.ca-rank:not(.ca-diamond-live), .ca-torn { filter: drop-shadow(0 0 .7px rgba(51, 48, 44, .4)) drop-shadow(0 6px 10px rgba(51, 48, 44, .1)); }
+.ca-torn .ca-strip { filter: none; }
+.ca-rank { gap: 10px; }
+.ca-rank-item {
+  border: 0; border-radius: 0; background: var(--paper); padding: 15px 18px 15px 14px;
+  clip-path: var(--cp-torn); filter: none;
+  font: 400 17px/1.4 var(--serif); transition: transform .18s var(--ca-ease);
+}
+.ca-rank-item:nth-child(even) { transform: rotate(.35deg); }
+.ca-rank-item:nth-child(3n) { transform: rotate(-.4deg); }
+.ca-rank-n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--ca-charcoal); color: #fff; font: 700 12px var(--sans); }
+.ca-rank-item:first-child .ca-rank-n { background: var(--accent); }
+.ca-diamond-live .ca-rank-item { clip-path: none; border-radius: 14px; box-shadow: var(--cp-lift-low); filter: none; }
+.ca-diamond .tile { border: 0; border-radius: 14px; box-shadow: var(--cp-lift-low); }
+
+/* ---------------------------------------------------------------- Find someone who and survey: paper, filled in with a biro */
+.ca-fsw-row { border: 0; border-radius: 14px; background: var(--paper); box-shadow: var(--cp-lift-low); }
+.ca-fsw-row.done { background: var(--paper); border: 0; box-shadow: var(--cp-lift-low); }
+.ca-fsw-row.done .ca-fsw-name { box-shadow: none; background: transparent; color: var(--cp-biro); font: italic 600 18px var(--serif); border-bottom: 1.5px solid var(--hair-strong); border-radius: 0; animation: cp-pop .3s var(--ca-ease); }
+.ca-kind-survey section { padding: 16px 18px; margin-bottom: 12px; border-radius: 16px; background: var(--paper); box-shadow: var(--ca-lift); position: relative; overflow: hidden; }
+.ca-kind-survey section::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-opt i { border-radius: 4px; position: relative; }
+.ca-opt.on i { border: 1.5px solid var(--ink); }
+.ca-opt.on i::after { content: ''; position: absolute; inset: -6px -8px -2px -2px; background: var(--cp-tick) center / contain no-repeat; animation: cp-draw .25s ease-out both; }
+
+/* ---------------------------------------------------------------- Opinion line */
+.ca-line { height: 8px; border-radius: 4px; background: var(--ca-charcoal); box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .4); }
+.ca-line::before, .ca-line::after { top: -6px; height: 20px; width: 3px; background: var(--accent); }
+.ca-mark .ca-pin { animation: cp-pop .3s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Spot the difference: a photo on paper */
+.ca-spot { border-radius: 14px; border: 8px solid var(--paper); box-shadow: var(--ca-lift); }
+.ca-ring { border: 3px solid var(--accent); box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Turn banner */
+.ca-turn { border: 0; box-shadow: var(--cp-lift-low); }
+.ca-turn.mine { box-shadow: 0 0 0 2px var(--c, var(--accent)), var(--cp-lift-low); animation: cp-pop .35s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Timer, large: the wheel's hub, made big */
+.ca-timer { gap: 18px; padding: 24px 12px; }
+.ca-timer-face { --size: min(300px, 68vw); border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 10px var(--paper), 0 0 0 11px var(--hair-strong), 0 14px 22px rgba(0, 0, 0, .12); margin: 14px; }
+.ca-timer-face svg { inset: 6%; width: 88%; height: 88%; }
+.ca-timer-face .t { stroke: var(--track); stroke-width: 3; }
+.ca-timer-face .f { stroke-width: 3; }
+.ca-timer-face b { font-size: calc(var(--size) * .2); }
+
+/* ---------------------------------------------------------------- Timer, one line */
+.ca-timer-line { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 8px 0; padding: 6px 6px 6px 14px; border-radius: 999px; background: var(--paper); border: 1px solid var(--hair); font-family: var(--sans); }
+.ca-tl-who { flex: none; font: 600 12px var(--sans); color: var(--muted); max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-tl-time { flex: none; min-width: 3.4em; font: 800 20px/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.ca-tl-track { flex: 1; min-width: 40px; height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.ca-tl-track > span { display: block; height: 100%; width: var(--p); border-radius: inherit; background: var(--accent); transition: width .25s linear; }
+.ca-tl-from, .ca-tl-end { flex: none; font: 500 12px var(--sans); color: var(--muted); }
+.ca-tl-end { font-weight: 700; color: var(--accent-text); }
+.ca-tl-actions { flex: none; display: flex; gap: 4px; }
+.ca-tl-btn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); cursor: pointer; }
+.ca-tl-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.ca-tl-btn.primary { border: 0; background: var(--ink); color: var(--paper); }
+.ca-tl-btn:disabled { opacity: .4; cursor: default; }
+.ca-tl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ca-timer-line.soon .ca-tl-track > span { background: #c46a3c; }
+.ca-timer-line.soon .ca-tl-time { color: #c46a3c; }
+.ca-timer-line.done .ca-tl-time { color: var(--accent-text); animation: ca-pop .3s ease; }
+@media (max-width: 520px) { .ca-tl-who, .ca-tl-from { display: none; } }
+.ca.ca-inline { margin: 6px 0 10px; }
+.ca-inline-say { margin: 0 0 4px; font: 400 16px/1.5 var(--serif); }
+.ca-inline .ca-timer-line { margin: 0; }
