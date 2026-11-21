@@ -2,12 +2,14 @@ import {savePrivateActivityPicture,copyPrivateActivityPicture} from './privatePi
 import { Extension, Node, mergeAttributes } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useState } from 'react';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { Grip } from '../editor/nodes';
 import { newId } from '../lib/tasks';
 import { PictureField, preparePicture, useImageSrc } from '../editor/PackNode';
 import { useEditorClass } from '../editor/context';
 import { ActivityStage } from './ActivityStage';
-import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, sameActivityPictureFrame, parseItemList, plainText, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem, ACTIVITY_COLOURS, boardStyleOf } from './model';
+import { ItemGrid, gridColumns, type GridChange } from './ItemGrid';
+import { ACTIVITY_LABELS, ACTIVITY_KINDS, configFromNode, sameActivityPictureFrame, validateActivity, type ActivityKind, type ActivitySettings, type ActivityItem, ACTIVITY_COLOURS, boardStyleOf } from './model';
 import { configForLearner, initialActivity, stateForLearner, transition, type ActivityAction } from './state';
 
 export const ActivityCardAttributes = Extension.create({
@@ -57,10 +59,10 @@ function ActivityPicturePicker({item, onChange}: {item: ActivityItem; onChange: 
 
 function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
   const c = configFromNode(node.toJSON());
-  const [paste, setPaste] = useState('');
   const [preview, setPreview] = useState(false);
   const [differencePosition, setDifferencePosition] = useState({x:50,y:50});
   const [error, setError] = useState('');
+  const [showCards, setShowCards] = useState(false);
   const [previewState, setPreviewState] = useState<ReturnType<typeof initialActivity> | null>(null);
   const [previewRole, setPreviewRole] = useState('teacher');
   const { classId, classmates } = useEditorClass();
@@ -91,15 +93,6 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
     editor.chain().focus().insertContentAt(pos + node.nodeSize - 1, items.map(i => ({ type: 'pickCard', attrs: { ...i, activityItemId: newId() }, content: [{ type: 'paragraph' }] }))).run();
     setPreview(false);
   };
-  const pasteList = () => {
-    let items = parseItemList(paste); if (!items.length) return;
-    const pos = typeof getPos === 'function' ? getPos() : undefined; if (typeof pos !== 'number') return;
-    const blank = c.items.every(i => (!i.title.trim() || ['start','finish'].includes(i.special??'')) && !i.picture?.src && !plainText(i.content));
-    if(blank&&c.kind==='board'){if(items[0]?.title.toLowerCase()!=='start')items=[{title:'Start'},...items];if(items.at(-1)?.title.toLowerCase()!=='finish')items=[...items,{title:'Finish'}];}
-    if (blank) editor.chain().focus().insertContentAt({ from: pos + 1, to: pos + node.nodeSize - 1 }, items.map((i,n) => ({ type: 'pickCard', attrs: { ...i, activityItemId: newId(),...(c.kind==='board'&&(n===0||n===items.length-1)?{special:n===0?'start':'finish'}:{}) }, content: [{ type: 'paragraph' }] }))).run();
-    else add(items);
-    setPaste(''); setPreview(false);
-  };
   const resizeBoard=(count:number)=>{
     if(!Number.isInteger(count)||count<12||count>48){setError('Use between 12 and 48 squares.');return;}
     const pos=typeof getPos==='function'?getPos():undefined;if(typeof pos!=='number')return;
@@ -111,6 +104,52 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
       return card;
     });
     editor.chain().focus().insertContentAt({from:pos+1,to:pos+node.nodeSize-1},cards).run();setPreview(false);setError('');
+  };
+  // The item grid writes straight into the cards: new cards first (at the end, or before Finish on a board),
+  // then each changed cell. Everything is one step, so one undo takes it back.
+  const applyGrid = (changes: GridChange[], add: number) => {
+    const pos = typeof getPos === 'function' ? getPos() : undefined; if (typeof pos !== 'number') return;
+    editor.commands.command(({ tr, state }) => {
+      const { pickCard, paragraph } = state.schema.nodes;
+      const here = () => tr.doc.nodeAt(pos);
+      const childAt = (n: number) => { const parent = here(); if (!parent || n >= parent.childCount) return null; let at = pos + 1; for (let i = 0; i < n; i++) at += parent.child(i).nodeSize; return { at, node: parent.child(n) }; };
+      if (add > 0) {
+        const parent = here(); if (!parent) return false;
+        const index = c.kind === 'board' ? Math.max(0, parent.childCount - 1) : parent.childCount;
+        const at = index < parent.childCount ? childAt(index)!.at : pos + parent.nodeSize - 1;
+        tr.insert(at, Array.from({ length: add }, () => pickCard.create({ activityItemId: newId(), title: '' }, paragraph.create())));
+      }
+      // A card holds only plain text (no picture, list or table), so the grid can safely rewrite it.
+      const plain = (n: PMNode) => { let ok = true; n.content.forEach(child => { if (child.type.name !== 'paragraph') ok = false; else child.content.forEach(t => { if (!t.isText) ok = false; }); }); return ok; };
+      for (const ch of [...changes].sort((a, b) => b.row - a.row)) {
+        const card = childAt(ch.row); if (!card) continue;
+        const attrs = { ...card.node.attrs }, v = ch.value;
+        let text: string | null = null;
+        if (ch.key === 'title') { if (!attrs.title && c.kind !== 'cue' && plain(card.node)) text = ''; attrs.title = v; }
+        else if (ch.key === 'special') { attrs.special = v || null; if (v === 'back' && !attrs.move) attrs.move = 2; }
+        else if (ch.key === 'move') attrs.move = Math.max(1, Math.min(48, Number.parseInt(v, 10) || 2));
+        else if (ch.key === 'options') attrs.options = v.split(/;|\n/).map(x => x.trim()).filter(Boolean);
+        else if (ch.key === 'taboo') attrs.taboo = v.split(/,|;|\n/).map(x => x.trim()).filter(Boolean).slice(0, 5);
+        else if (ch.key === 'useful') attrs.useful = v.split(/\s*\/\s*|\n/).map(x => x.trim()).filter(Boolean).join('\n');
+        else if (ch.key === 'text') { if (!plain(card.node)) continue; text = v; }
+        else attrs[ch.key] = v;
+        tr.setNodeMarkup(card.at, undefined, attrs);
+        if (text !== null) { const fresh = childAt(ch.row)!; tr.replaceWith(fresh.at + 1, fresh.at + fresh.node.nodeSize - 1, paragraph.create(null, text ? state.schema.text(text) : null)); }
+      }
+      return true;
+    });
+    setPreview(false);
+  };
+  const removeRows = (rows: number[]) => {
+    const pos = typeof getPos === 'function' ? getPos() : undefined; if (typeof pos !== 'number') return;
+    const keep = Math.max(c.kind === 'board' ? 12 : 1, 1);
+    const drop = [...new Set(rows)].sort((a, b) => b - a).slice(0, Math.max(0, c.items.length - keep));
+    if (!drop.length) { setError(c.kind === 'board' ? 'A board needs at least 12 squares.' : 'Keep at least one item.'); return; }
+    editor.commands.command(({ tr }) => {
+      for (const n of drop) { const parent = tr.doc.nodeAt(pos); if (!parent || n >= parent.childCount) continue; let at = pos + 1; for (let i = 0; i < n; i++) at += parent.child(i).nodeSize; tr.delete(at, at + parent.child(n).nodeSize); }
+      return true;
+    });
+    setPreview(false); setError('');
   };
   const markDifference=(x:number,y:number)=>settings({differences:[...c.settings.differences??[],{id:newId(),x,y,radius:5,label:`Difference ${(c.settings.differences?.length??0)+1}`}]});
   const orderedPeople=[...(c.settings.turnOrderIds??[]).map(id=>classmates.find(p=>p.id===id)).filter((p):p is {id:string;name:string}=>!!p),...classmates.filter(p=>!c.settings.turnOrderIds?.includes(p.id))];
@@ -125,7 +164,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
     const actual = a.type === 'roll' ? { ...a, die: Math.ceil(Math.random() * 6) } : a.type === 'call' && !a.itemId ? { ...a, itemId: c.items.find(i => !previewState.called.includes(i.id))?.id ?? '' } : a;
     try { setPreviewState(transition(c, previewState, actual, { id: previewRole, teacher: previewRole === 'teacher' }, Date.now())); setError(''); } catch (e) { setError((e as Error).message); }
   };
-  return <NodeViewWrapper className={`ca ca-editor-node block-node ca-editing-${c.kind}`}>
+  return <NodeViewWrapper className={`ca ca-editor-node block-node ca-editing-${c.kind} ${showCards || !gridColumns(c.kind).length ? '' : 'ca-cards-hidden'}`}>
     <div className="mcq-tools" contentEditable={false}><Grip editor={editor} getPos={getPos} /><span className="block-label">{ACTIVITY_LABELS[c.kind]}</span><button type="button" className="btn small-btn" onClick={deleteNode}>Remove</button></div>
     <div className="ca-editor" contentEditable={false}>
       <div className="ca-editor-side">
@@ -146,11 +185,11 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
         {c.kind === 'findSomeone' && <><label className="ca-switch"><input type="checkbox" checked={!!c.settings.nameOnce} onChange={e => settings({ nameOnce: e.target.checked })} />Use each name once</label><label className="ca-switch"><input type="checkbox" checked={!!c.settings.showFollowUp} onChange={e => settings({ showFollowUp: e.target.checked })} />Ask for one extra detail</label></>}
         {c.kind === 'opinion' && <><label className="ca-setting">Learners see other pins<select value={c.settings.pinsVisible ?? 'reveal'} onChange={e => settings({ pinsVisible: e.target.value as 'reveal' | 'after' | 'always' })}><option value="reveal">When you reveal them</option><option value="after">After they save their own pin</option><option value="always">All the time</option></select></label><label className="ca-setting">After saving, learners can<select value={c.settings.pinMove === false ? 'no' : 'yes'} onChange={e => settings({ pinMove: e.target.value === 'yes' })}><option value="yes">Move their pin</option><option value="no">Not move their pin</option></select></label><label className="ca-setting">Left label<input value={c.settings.lowLabel ?? ''} placeholder="Strongly disagree" onChange={e => settings({ lowLabel: e.target.value })} /></label><label className="ca-setting">Right label<input value={c.settings.highLabel ?? ''} placeholder="Strongly agree" onChange={e => settings({ highLabel: e.target.value })} /></label><label className="ca-switch"><input type="checkbox" checked={c.settings.showNames !== false} onChange={e => settings({ showNames: e.target.checked })} />Show names after revealing</label><label className="ca-switch"><input type="checkbox" checked={!!c.settings.askReason} onChange={e => settings({ askReason: e.target.checked })} />Ask for a reason</label></>}
         {['ranking', 'cue', 'findSomeone'].includes(c.kind) && <label className="ca-setting">Useful language (optional)<textarea rows={3} value={c.settings.useful ?? ''} onChange={e => settings({ useful: e.target.value })} /></label>}
-        {c.kind !== 'speaking' && <div className="ca-paste"><label>{['dominoes','memory'].includes(c.kind) ? 'Paste your pairs' : 'Paste a list'}<textarea rows={3} value={paste} placeholder={['dominoes','memory'].includes(c.kind) ? 'One pair per line, for example:\nhappy = feeling good\ntired = needing sleep' : c.kind === 'strips' ? 'One strip per line, in the correct order' : 'One item per line'} onChange={e => setPaste(e.target.value)} /></label><button className="btn" type="button" onClick={pasteList}>Add list</button></div>}
       </div>
       <div className="ca-editor-preview"><div className="ca-preview-bar"><strong>Live preview</strong>{preview && previewState ? <span className="ca-view-as" role="radiogroup" aria-label="View the preview as">{[{ id: 'teacher', name: 'Teacher view' }, ...people.map(p => ({ id: p.id, name: `As ${p.name}` }))].map(v => <button key={v.id} type="button" role="radio" aria-checked={previewRole === v.id} className={previewRole === v.id ? 'on' : ''} onClick={() => setPreviewRole(v.id)}>{v.name}</button>)}</span> : <span className="hint">Type / in a card to add a picture.</span>}<button className="btn primary small-btn" type="button" onClick={startPreview}>{preview ? 'Start again' : 'Try the activity'}</button></div>{issues.length > 0 && <div className="ca-validation" role="status"><b>Before starting</b><ul>{issues.map((issue, n) => <li key={n}>{issue.message}</li>)}</ul></div>}{error && <p role="alert">{error}</p>}{preview && previewState && <div className="ca-preview-screen"><ActivityStage classId={classId} teacher={previewRole === 'teacher'} config={previewRole === 'teacher' ? c : configForLearner(c, previewState, previewRole)} state={previewRole === 'teacher' ? previewState : stateForLearner(c, previewState, previewRole)} selfId={previewRole} send={previewAction} error={error} /></div>}</div>
     </div>
-    {(PER_ITEM.includes(c.kind) || c.items.some(i => i.picture?.src)) && <div className="ca-item-settings" contentEditable={false}><p className="ca-item-settings-head">{c.kind === 'board' ? 'Special squares' : ['dominoes', 'memory'].includes(c.kind) ? 'Pairs: each card and the half it matches' : 'More for each card'}</p>{c.items.map((item, n) => <details key={item.id} className="ca-item" open={['dominoes', 'memory'].includes(c.kind) && !item.match?.trim() && !item.matchPicture?.src}><summary>{c.kind === 'board' ? 'Square' : ['dominoes', 'memory'].includes(c.kind) ? 'Pair' : 'Card'} {n + 1}{item.title ? ` · ${item.title}` : ''}{item.match ? ` = ${item.match}` : ''}{item.special ? ` · ${item.special === 'back' ? 'Go back' : item.special === 'miss' ? 'Miss a turn' : item.special === 'again' ? 'Roll again' : item.special === 'start' ? 'Start' : 'Finish'}` : ''}</summary>
+    {gridColumns(c.kind).length > 0 && <div className="ca-grid-wrap" contentEditable={false}><div className="ca-grid-head"><b>{c.kind === 'board' ? 'Squares' : ['dominoes', 'memory'].includes(c.kind) ? 'Pairs' : c.kind === 'strips' ? 'Strips, in the correct order' : 'Items'}</b><span className="hint">{c.items.length} {c.kind === 'board' ? 'squares' : c.items.length === 1 ? 'item' : 'items'}</span><button type="button" className="btn small-btn ca-cards-toggle" aria-expanded={showCards} onClick={() => setShowCards(v => !v)}>{showCards ? 'Hide pictures and formatting' : 'Pictures and formatting'}</button></div><ItemGrid kind={c.kind} items={c.items} maxRows={c.kind === 'board' ? 48 : 200} minRows={c.kind === 'board' ? 12 : 1} onChange={applyGrid} onRemove={removeRows} /></div>}
+    {(showCards || c.kind === 'spot') && (PER_ITEM.includes(c.kind) || c.items.some(i => i.picture?.src)) && <div className="ca-item-settings" contentEditable={false}><p className="ca-item-settings-head">{c.kind === 'board' ? 'Special squares' : ['dominoes', 'memory'].includes(c.kind) ? 'Pairs: each card and the half it matches' : 'More for each card'}</p>{c.items.map((item, n) => <details key={item.id} className="ca-item" open={['dominoes', 'memory'].includes(c.kind) && !item.match?.trim() && !item.matchPicture?.src}><summary>{c.kind === 'board' ? 'Square' : ['dominoes', 'memory'].includes(c.kind) ? 'Pair' : 'Card'} {n + 1}{item.title ? ` · ${item.title}` : ''}{item.match ? ` = ${item.match}` : ''}{item.special ? ` · ${item.special === 'back' ? 'Go back' : item.special === 'miss' ? 'Miss a turn' : item.special === 'again' ? 'Roll again' : item.special === 'start' ? 'Start' : 'Finish'}` : ''}</summary>
       {c.kind === 'spot' && <ActivityPicturePicker item={item} onChange={picture => itemAttrs(n, {picture: picture ?? null})} />}
       {item.picture?.src && <><label>Picture description<input value={item.picture.alt} onChange={e => itemAttrs(n, { picture: { ...item.picture, alt: e.target.value } })} /></label><button type="button" className="btn small-btn" onClick={() => itemAttrs(n, { picture: null })}>Remove this picture</button><label>Fit<select value={item.picture.fit ?? 'cover'} onChange={e => itemAttrs(n, { picture: { ...item.picture, fit: e.target.value } })}><option value="cover">Fill the frame</option><option value="contain">Show the whole picture</option></select></label></>}
       {['dominoes', 'memory'].includes(c.kind) && <><label>Matching half<input value={item.match ?? ''} onChange={e => itemAttrs(n, { match: e.target.value })} /></label><ActivityPicturePicker item={{...item,title:'Matching half',picture:item.matchPicture}} onChange={picture=>itemAttrs(n,{matchPicture:picture??null})}/>{item.matchPicture?.src&&<label>Matching picture description<input value={item.matchPicture.alt} onChange={e=>itemAttrs(n,{matchPicture:{...item.matchPicture,alt:e.target.value}})}/></label>}</>}
@@ -163,7 +202,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
     </details>)}</div>}
     {c.kind === 'spot' && <div contentEditable={false}><p>Mark the differences on picture B. Select a circle to remove it.</p>{pictureB && <><div className="ca-crop-controls">{(['x','y'] as const).map((axis,n)=><label key={axis}>{n===0?'Horizontal position':'Vertical position'}<input type="range" min="0" max="100" value={differencePosition[axis]} onChange={e=>setDifferencePosition({...differencePosition,[axis]:Number(e.target.value)})}/></label>)}<button className="btn" type="button" onClick={()=>markDifference(differencePosition.x,differencePosition.y)}>Mark this point</button></div><div className="ca-spot ca-spot-editor" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); markDifference(100 * (e.clientX-r.left)/r.width,100*(e.clientY-r.top)/r.height); }}><img src={pictureB} alt={spotPictureB?.alt || 'Picture B'} style={{width:'100%',height:'100%',maxWidth:'none',maxHeight:'none',margin:0,objectFit:spotPictureB?.fit ?? 'cover',objectPosition:spotPictureB?.position ?? '50% 50%'}} />{c.settings.differences?.map(d => <button key={d.id} type="button" className="ca-ring" style={{ left: `${d.x}%`, top: `${d.y}%` }} aria-label={`Remove ${d.label}`} onClick={e => { e.stopPropagation(); settings({ differences: c.settings.differences?.filter(x => x.id !== d.id) }); }} />)}</div></>}</div>}
     <NodeViewContent className="pick-cards ca-rich-items" />
-    <div contentEditable={false}><button className="btn dashed" type="button" disabled={c.kind==='board'&&c.items.length>=48} onClick={() => c.kind==='board'?resizeBoard(c.items.length+1):add()}>Add item</button>{c.kind==='board'&&c.items.length>=48&&<p className="hint">A board can have up to 48 squares.</p>}</div>
+    <div contentEditable={false} hidden={!showCards && gridColumns(c.kind).length > 0 && c.kind !== 'board'}><button className="btn dashed" type="button" disabled={c.kind==='board'&&c.items.length>=48} onClick={() => c.kind==='board'?resizeBoard(c.items.length+1):add()}>Add item</button>{c.kind==='board'&&c.items.length>=48&&<p className="hint">A board can have up to 48 squares.</p>}</div>
   </NodeViewWrapper>;
 }
 

@@ -142,7 +142,7 @@ function bingoClaim(card, marked, called, size, rule) {
   return { valid: !uncalled.length && (rule === "full" ? card.every((_, n) => on(n)) : lines >= (rule === "twoLines" ? 2 : 1)), lines, uncalled };
 }
 function dominoTiles(items) {
-  return items.map((item, n) => ({ id: item.id, left: item.title, leftPicture: item.picture, rightPicture: items[(n + 1) % items.length]?.matchPicture, right: items[(n + 1) % items.length]?.match ?? "", leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? "" }));
+  return items.map((item, n) => ({ id: item.id, left: item.match ?? "", leftPicture: item.matchPicture, rightPicture: items[(n + 1) % items.length]?.picture, right: items[(n + 1) % items.length]?.title ?? "", leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? "" }));
 }
 function checkDominoes(items, order) {
   if (order.length !== items.length || new Set(order).size !== items.length) return false;
@@ -829,7 +829,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
       s.endsAt = now + (c.settings.seconds ?? 60) * 1e3;
       break;
     case "swap":
-      teacherOnly();
+      if (!actor.teacher && !(c.kind === "taboo" && state.phase === "running" && state.endsAt !== null && now >= state.endsAt)) teacherOnly();
       if (!["speaking", "taboo"].includes(c.kind) || !["running", "ended"].includes(s.phase)) throw new Error("Start the speaking turns first.");
       advance();
       s.round++;
@@ -888,7 +888,7 @@ function configForLearner(c, s, learnerId) {
     const tiles = dominoTiles(c.items);
     out.items = s.order.map((id) => out.items.find((item) => item.id === id)).filter(Boolean).map((item) => {
       const tile = tiles.find((t) => t.id === item.id);
-      return { ...item, match: void 0, matchPicture: void 0, dominoRight: { text: tile.right, ...tile.rightPicture ? { picture: tile.rightPicture } : {} } };
+      return { ...item, title: tile.left, picture: tile.leftPicture, content: [], match: void 0, matchPicture: void 0, dominoRight: { text: tile.right, ...tile.rightPicture ? { picture: tile.rightPicture } : {} } };
     });
   }
   if (c.kind === "strips" && s.phase !== "revealed") out.items = s.order.map((id) => out.items.find((item) => item.id === id)).filter(Boolean);

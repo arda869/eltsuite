@@ -154,8 +154,10 @@ export function bingoClaim(card: readonly string[], marked: readonly string[], c
   return { valid: !uncalled.length && (rule === 'full' ? card.every((_, n) => on(n)) : lines >= (rule === 'twoLines' ? 2 : 1)), lines, uncalled };
 }
 
+// A tile is the end of one pair, then the start of the next pair, so the join between two tiles reads as
+// the pair ("catch | a train"). The chain is a closed loop.
 export function dominoTiles(items: readonly ActivityItem[]) {
-  return items.map((item, n) => ({ id: item.id, left: item.title, leftPicture: item.picture, rightPicture: items[(n + 1) % items.length]?.matchPicture, right: items[(n + 1) % items.length]?.match ?? '', leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? '' }));
+  return items.map((item, n) => ({ id: item.id, left: item.match ?? '', leftPicture: item.matchPicture, rightPicture: items[(n + 1) % items.length]?.picture, right: items[(n + 1) % items.length]?.title ?? '', leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? '' }));
 }
 export function checkDominoes(items: readonly ActivityItem[], order: readonly string[]): boolean {
   if (order.length !== items.length || new Set(order).size !== items.length) return false;

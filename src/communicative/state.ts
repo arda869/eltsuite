@@ -198,7 +198,8 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       if(c.kind!=='speaking'||c.settings.mode!=='groups'||s.people.length!==2||s.endsAt===null||now<s.endsAt)throw new Error('Wait for this speaking turn to finish.');
       advance();s.round++;s.startedAt=now;s.endsAt=now+(c.settings.seconds??60)*1000;break;
     case 'swap':
-      teacherOnly();
+      // A learner can pass the Taboo card on once the turn's time is up, so groups never wait for the teacher.
+      if (!actor.teacher && !(c.kind === 'taboo' && state.phase === 'running' && state.endsAt !== null && now >= state.endsAt)) teacherOnly();
       if (!['speaking', 'taboo'].includes(c.kind) || !['running', 'ended'].includes(s.phase)) throw new Error('Start the speaking turns first.');
       advance(); s.round++; s.phase = 'running'; s.startedAt = now; s.endsAt = now + (c.settings.seconds ?? 60) * 1000; break;
     default:
@@ -253,7 +254,7 @@ export function configForLearner(c: ActivityConfig, s: ActivityState, learnerId:
   }
   if (c.kind==='dominoes') {
     const tiles=dominoTiles(c.items);
-    out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean).map(item=>{const tile=tiles.find(t=>t.id===item.id)!;return {...item,match:undefined,matchPicture:undefined,dominoRight:{text:tile.right,...(tile.rightPicture?{picture:tile.rightPicture}:{})}};});
+    out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean).map(item=>{const tile=tiles.find(t=>t.id===item.id)!;return {...item,title:tile.left,picture:tile.leftPicture,content:[],match:undefined,matchPicture:undefined,dominoRight:{text:tile.right,...(tile.rightPicture?{picture:tile.rightPicture}:{})}};});
   }
   if (c.kind==='strips'&&s.phase!=='revealed') out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean);
   if (s.phase === 'revealed') return out;

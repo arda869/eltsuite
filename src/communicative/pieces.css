@@ -24,7 +24,7 @@
 .ca-board-stage { container-type: inline-size; width: 100%; display: grid; justify-items: center; }
 .ca-board-wrap .ca-board-stage .ca-board {
   --g: 8px;
-  --sq: min(calc((100cqw - 32px - (var(--cols, 6) - 1) * var(--g)) / var(--cols, 6)), calc((100dvh - 250px) / var(--rows, 5)));
+  --sq: min(calc((100cqw - 32px - (var(--cols, 6) - 1) * var(--g)) / var(--cols, 6)), max(64px, calc((100dvh - 400px) / var(--rows, 5))));
   position: relative; width: auto; max-height: none; gap: var(--g); padding: 16px; border-radius: 22px;
   grid-template-columns: repeat(var(--cols, 6), var(--sq)); grid-template-rows: repeat(var(--rows, 5), var(--sq));
   background: color-mix(in srgb, var(--ink) 7%, var(--paper));
@@ -296,3 +296,89 @@
 .ca-mark.me.dropped { animation: cp-drop .38s cubic-bezier(.3, .7, .35, 1.3); }
 @keyframes cp-drop { from { transform: translate(-50%, -28px); opacity: 0; } 70% { transform: translate(-50%, 3px); opacity: 1; } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .ca-mark.me.dropped { animation: none; } }
+
+/* ---------------------------------------------------------------- Review fixes, 2026-11 */
+/* Settings switches in the editor: a label with a checkbox drawn as a switch (not the bare switch button). */
+label.ca-switch { width: auto; height: auto; border-radius: 0; background: none; display: flex; align-items: center; gap: 10px; font: 500 13px/1.3 var(--sans); color: var(--ink); cursor: pointer; }
+label.ca-switch::after { content: none; }
+label.ca-switch input { appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--hair-strong); cursor: pointer; transition: background .15s; }
+label.ca-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s var(--ca-ease); }
+label.ca-switch input:checked { background: var(--accent); }
+label.ca-switch input:checked::after { transform: translateX(14px); }
+label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Start and Finish never break across lines on small squares. */
+.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { white-space: nowrap; letter-spacing: .08em; font-size: clamp(8px, calc(var(--sq) * .11), 13px); }
+.ca-next-roll { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--tint); color: var(--accent-text); font: 600 13px/1.4 var(--sans); }
+/* Bingo: the word and its call on two lines; learners read only the call. */
+.ca-callbody { display: inline-flex; flex-direction: column; gap: 2px; text-align: left; }
+.ca-call-word { font-weight: 600; }
+.ca-callbody .ca-call-text { font: 400 .82em/1.3 var(--sans); color: var(--muted); }
+.ca-call-now .ca-callbody .ca-call-word { font-size: 1em; }
+.ca-call-now .ca-callbody .ca-call-text { font: 400 20px/1.35 var(--serif); color: var(--ink); }
+.ca-calls button .ca-callbody { padding: 2px 0; }
+.ca-learner-call { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 14px; background: var(--paper); box-shadow: var(--cp-lift-low); }
+.ca-learner-call .ca-call-text { font: 400 22px/1.35 var(--serif); color: var(--ink); }
+/* Pelmanism: the whole deck fits on the screen. */
+.ca-kind-memory .ca-memory { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); max-width: 1000px; margin-inline: auto; }
+.ca-kind-memory .ca-memory .ca-mcard { aspect-ratio: 4 / 5; min-height: 0; max-height: calc((100dvh - 380px) / 2); }
+/* Survey answers are single choice. */
+.ca-opt.ca-radio i { border-radius: 50%; }
+/* Opinion line: readable pins and the teacher's list of positions. */
+.ca-kind-opinion .ca-statement { max-width: 46ch; }
+.ca-kind-opinion .ca-mark .ca-pin { width: 28px; height: 28px; font: 700 10px var(--sans); }
+.ca-kind-opinion .ca-mark.me .ca-pin { width: 36px; height: 36px; }
+.ca-opinion-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ca-opinion-list li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--paper); box-shadow: var(--cp-lift-low); font: 500 13px/1.35 var(--sans); }
+.ca-opinion-list .ca-pin { grid-row: span 3; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #fff; display: grid; place-items: center; font: 700 10px var(--sans); }
+.ca-opinion-list .ca-opinion-where { color: var(--accent-text); font-size: 12px; }
+.ca-opinion-list q { font: italic 400 14px/1.35 var(--serif); color: var(--ink); quotes: '“' '”'; }
+/* Spot the difference: the picture fits in the window. */
+.ca-kind-spot > .ca-private { max-width: min(100%, calc((100dvh - 440px) * 4 / 3)); margin-inline: auto; }
+/* Taboo: pass the card on when the time is up. */
+.ca-pass { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.ca-pass p { margin: 0; font: 600 14px var(--sans); }
+/* The teacher's controls above a live activity sit in one compact row. */
+.ca-live-host { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ca-live-host > * { margin-top: 0; margin-bottom: 0; }
+.ca-live-host > :is(section.ca, .ca-rooms, .ca-ranking-comparison, .ca-room, .ca-error, .ca-paper, .ca-run, p, div:not(.lp-rooms):not(.ca-share-screen)) { flex-basis: 100%; }
+.ca-live-host > .ca-share-screen { margin: 0 0 0 auto; align-items: center; gap: 8px; }
+.ca-live-host > .ca-share-screen .ca-setting { flex-direction: row; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
+.ca-live-host > .ca-share-screen .ca-setting select { height: 30px; width: auto; }
+.ca-live-host > .ca-share-screen .hint { flex-basis: auto; font-size: 11px; max-width: 260px; }
+
+/* ---------------------------------------------------------------- Item grid (editor) */
+/* Items as a calm spreadsheet: type, Tab, paste from Excel. Paper, hairlines and one accent, like the packs. */
+.ca-grid-wrap { margin: 14px 0 6px; }
+.ca-grid-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 8px; }
+.ca-grid-head b { font: 700 12px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+.ca-grid-head .ca-cards-toggle { margin-left: auto; }
+.ig { --ig-line: color-mix(in srgb, var(--ink) 10%, transparent); position: relative; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--ig-line), var(--cp-lift-low); overflow: hidden; user-select: none; }
+.ig-row { display: grid; grid-template-columns: var(--ig-cols); align-items: stretch; border-top: 1px solid var(--ig-line); }
+.ig-row:first-child { border-top: 0; }
+.ig-head { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--accent) 7%, var(--paper)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.ig-h { padding: 9px 12px 8px; font: 700 10.5px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); border-left: 1px solid var(--ig-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-n { display: grid; place-items: center; font: 600 11px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); background: color-mix(in srgb, var(--ink) 2.5%, var(--paper)); }
+.ig-row.ig-on .ig-n { color: #fff; background: var(--accent); }
+.ig-cell { position: relative; display: flex; min-width: 0; border-left: 1px solid var(--ig-line); transition: background .12s; }
+.ig-cell input, .ig-cell select { flex: 1; min-width: 0; width: 100%; height: 40px; margin: 0; padding: 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; font: 400 15px/1.2 var(--serif); color: var(--ink); user-select: text; }
+.ig-cell input::placeholder { color: color-mix(in srgb, var(--ink) 32%, transparent); font-style: italic; }
+.ig-cell input:disabled { cursor: default; }
+.ig-pick select { font: 500 13px var(--sans); cursor: pointer; padding-right: 26px; appearance: none; -webkit-appearance: none; background: no-repeat right 10px center / 10px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2366615b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.ig-row:not(.ig-head):hover .ig-cell { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.ig-cell.ig-sel { background: color-mix(in srgb, var(--accent) 12%, var(--paper)) !important; }
+.ig-cell.ig-focus { background: var(--paper) !important; z-index: 1; }
+.ig-cell.ig-focus::after { content: ''; position: absolute; inset: -1px; border: 2px solid var(--accent); border-radius: 3px; pointer-events: none; box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 60%, transparent); }
+.ig-x { align-self: center; justify-self: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: 400 16px/1 var(--sans); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+.ig-row:hover .ig-x, .ig-row.ig-on .ig-x { opacity: 1; }
+.ig-x:hover { background: color-mix(in srgb, var(--wrong, #c0392b) 12%, transparent); color: var(--wrong, #c0392b); }
+.ig-ghost { border-top: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent); }
+.ig-ghost .ig-n { color: var(--accent); font-size: 15px; background: transparent; }
+.ig-ghost .ig-cell { background: color-mix(in srgb, var(--accent) 2.5%, transparent); }
+.ig-ghost select { opacity: .35; }
+.ig-help { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; padding: 9px 14px; border-top: 1px solid var(--ig-line); font: 500 11.5px var(--sans); color: var(--muted); background: color-mix(in srgb, var(--ink) 2%, var(--paper)); }
+.ig-help kbd { display: inline-block; min-width: 20px; margin-right: 4px; padding: 1px 6px; border-radius: 5px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong), 0 1px 0 1px var(--hair-strong); font: 600 10.5px/1.5 var(--sans); color: var(--ink); text-align: center; }
+.ig-help span { position: relative; padding-left: 14px; }
+.ig-help span::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--hair-strong); }
+/* The cards themselves (for pictures and formatting) open on request. */
+.ca-cards-hidden > .ca-rich-items { display: none; }
+.ca-editor-preview, .ca-editor-side { min-width: 0; }
