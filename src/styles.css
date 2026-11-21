@@ -8695,7 +8695,7 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
   .pq-mm-row { display: grid; grid-template-columns: subgrid; }
   .pq-mm-text { flex: none; }
 }
-.para.q-lead .stacked-choice { margin-left: 1.1em; }
+.para.q-lead .stacked-choice, .para.q-follow .stacked-choice { margin-left: 1.1em; }
 
 /* Question pictures: upload, choose from your resources, and choose the size */
 .pq-pic-wrap { display: flex; flex-direction: column; gap: 6px; }

@@ -313,6 +313,33 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     node.content?.forEach((c) => walk(c, childOl, line));
   };
   if (content) walk(content, false);
+  // A separate paragraph may hold only the stacked choices. Put its question number
+  // beside the preceding question sentence rather than on a line of its own.
+  const leadByParagraph = new WeakMap<JSONContent, string>();
+  const followingChoiceIds = new Set<string>();
+  const hasPrompt = (node: JSONContent) => node.type === 'paragraph'
+    && !!node.content?.some(child => child.type === 'text' && !!child.text?.trim())
+    && !node.content?.some(child => !!child.attrs?.id && QTYPES.includes(child.type ?? ''));
+  const loneStackedChoice = (node: JSONContent) => {
+    if (node.type !== 'paragraph') return null;
+    const meaningful = (node.content ?? []).filter(child => child.type !== 'text' || !!child.text?.trim());
+    return meaningful.length === 1 && meaningful[0].type === 'choice'
+      && meaningful[0].attrs?.display === 'radio' && !meaningful[0].attrs?.example
+      ? String(meaningful[0].attrs?.id ?? '') : null;
+  };
+  const pairQuestionParagraphs = (node: JSONContent) => {
+    const children = node.content ?? [];
+    children.forEach((child, index) => {
+      const id = loneStackedChoice(child);
+      const previous = children[index - 1];
+      if (id && previous && hasPrompt(previous)) {
+        leadByParagraph.set(previous, id);
+        followingChoiceIds.add(id);
+      }
+      pairQuestionParagraphs(child);
+    });
+  };
+  if (content) pairQuestionParagraphs(content);
   // One question in the whole task: nothing to tell apart, so no number.
   const numbered = Object.keys(numbers);
   if (!asExample && !hasExample && numbered.length === 1 && n === 1 && !subOf[numbered[0]]) listed.add(numbered[0]);
@@ -943,10 +970,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         // A question whose options are listed under it (multiple choice as a list, true or false…):
         // its number goes at the start of the question, as on paper, not beside the options.
         const qs = (node.content ?? []).filter((c) => c.attrs?.id && QTYPES.includes(c.type ?? '') && !c.attrs.example);
-        const lead = qs.length === 1 && qs[0].type === 'choice' && (qs[0].attrs?.display ?? 'dropdown') === 'radio' ? String(qs[0].attrs!.id) : '';
+        const localLead = qs.length === 1 && qs[0].type === 'choice' && (qs[0].attrs?.display ?? 'dropdown') === 'radio' ? String(qs[0].attrs!.id) : '';
+        const lead = leadByParagraph.get(node) ?? (followingChoiceIds.has(localLead) ? '' : localLead);
         if (lead) leadNum.add(lead);
         return (
-          <div key={key} className={'para' + (lead ? ' q-lead' : '')} data-bk={key}>
+          <div key={key} className={'para' + (lead ? ' q-lead' : '') + (followingChoiceIds.has(localLead) ? ' q-follow' : '')} data-bk={key}>
             <p style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>{lead && num(lead)}{kids()}</p>
             {notesFor(node)}
           </div>

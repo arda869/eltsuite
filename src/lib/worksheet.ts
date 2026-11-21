@@ -270,7 +270,13 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         if (questionRuns.length === 1 && runs.some(run => run.stack)) {
           const marker = questionRuns[0];
           runs.splice(runs.indexOf(marker), 1);
-          runs.unshift(marker);
+          const hasQuestionText = runs.some(run => !!run.t?.trim());
+          const previous = cur[cur.length - 1];
+          // The question sentence can be its own paragraph immediately before a
+          // paragraph containing only A/B/C choices. Keep the number with that sentence.
+          if (!hasQuestionText && previous?.kind === 'p' && previous.runs.some(run => !!run.t?.trim())
+            && !previous.runs.some(run => run.num !== undefined || run.stack)) previous.runs.unshift(marker);
+          else runs.unshift(marker);
         }
         if (runs.length) cur.push({ kind: 'p', runs, list, mark });
         return;
