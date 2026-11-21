@@ -1,5 +1,5 @@
 import {splitKey} from '../lib/questions';
-import { bingoCards, bingoClaim, checkDominoes, dominoTiles, shuffled, validateActivity, type ActivityConfig, type Participant } from './model';
+import { bingoCards, bingoClaim, checkDominoes, dominoTiles, shuffled, validateActivity, type ActivityConfig, type Participant, boardJumps, boardStyleOf } from './model';
 
 export type ActivityState = {
   actorRevisions?: Record<string, number>;
@@ -102,6 +102,7 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       const who = currentPerson(s)!.id;
       const pos = Math.min(c.items.length - 1, (s.positions[who] ?? 0) + a.die);
       const item = c.items[pos]; s.positions[who] = pos; s.die = a.die;
+      if (boardStyleOf(c.settings.boardStyle) === 'ladders') { const jump = boardJumps(c.items.length)[pos]; if (jump !== undefined) s.positions[who] = jump; }
       if (item.special === 'back') s.positions[who] = Math.max(0, pos - Math.max(1, item.move ?? 2));
       if (item.special === 'miss') s.skip[who] = true;
       if (pos === c.items.length - 1 || item.special === 'finish') { s.phase = 'ended'; s.scores[currentPerson(s)?.teamId ?? who] = 1; }

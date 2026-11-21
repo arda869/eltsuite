@@ -211,3 +211,24 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-taboo-words span:not(.pa-label) { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1pt; }
 .pa-cut-grid > .pa-caller-strip { gap: 3mm; flex-direction: row; justify-content: space-between; }
 .pa-cut-grid > .pa-caller-strip small { font: 400 8.4pt/1.3 Karla, sans-serif; color: var(--muted); text-align: right; }
+
+/* Spiral and Snakes and ladders boards */
+.pa-board { position: relative; }
+.pa-board-spiral { display: block; width: min(100%, 158mm); aspect-ratio: 1; margin: 0 auto; padding: 0; border-radius: 50%; }
+.pa-board-spiral .pa-sq { box-sizing: border-box; position: absolute; aspect-ratio: auto; min-height: 0; z-index: 1; font-size: 7.6pt; padding: 1.2mm 1.4mm; }
+.pa-board-spiral .pa-sq .n { top: .8mm; left: 1.2mm; font-size: 6pt; }
+.pa-board-art { position: absolute; inset: 3mm; pointer-events: none; z-index: 2; }
+.pa-board-spiral .pa-board-art { inset: 0; z-index: 0; }
+.pa-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pa-board-art .track { stroke: var(--tint); }
+.pa-board-art .guide { stroke: var(--accent); }
+.pa-board-art .ladder line { stroke: #8a5f35; stroke-width: 1.4pt; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.pa-board-art .snake polyline { fill: none; stroke: #3f8a5c; stroke-width: 3.2pt; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.pa-board-art .snake circle { fill: #3f8a5c; } .pa-board-art .snake .eye { fill: #fff; }
+.pa-board .pa-sq:nth-child(even of .pa-sq):not(.special):not(.start):not(.finish) { background: var(--tint); }
+/* Start and Finish print solid in the accent (outlined in black and white). */
+.pa-board .pa-sq.start, .pa-board .pa-sq.finish { background: var(--accent); color: #fff; }
+.pa-board .pa-sq.start .n, .pa-board .pa-sq.finish .n { color: #fff; }
+.pa-board.pa-board-spiral { background: #fff; box-shadow: inset 0 0 0 .8pt var(--hair); }
+.pa-board-spiral .pa-sq { box-shadow: 0 0 0 .6pt var(--hair); }
+.pa-board-art .track { stroke: var(--tint-line); }

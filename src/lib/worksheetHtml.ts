@@ -501,6 +501,10 @@ img { filter: grayscale(1) contrast(1.18); }
 .cut-card, .pa-strip { border-color: #1d1b18 !important; }
 .pa-bingo-head, .pa-taboo h3 { background: #fff !important; color: #1d1b18 !important; border-bottom: 1.2pt solid #1d1b18 !important; }
 .pa-dom::after { background: #1d1b18 !important; }
+.pa-board-art .track { stroke: none !important; }
+.pa-board-art .guide, .pa-board-art .ladder line { stroke: #1d1b18 !important; }
+.pa-board-art .snake polyline { stroke: #1d1b18 !important; stroke-width: 1.2pt !important; stroke-dasharray: 2pt 1.4pt; }
+.pa-board-art .snake circle { fill: #fff !important; stroke: #1d1b18; stroke-width: .9pt; vector-effect: non-scaling-stroke; } .pa-board-art .snake .eye { fill: #1d1b18 !important; stroke: none; }
 :is(.pill, .wb-pill, .chip, .kw) { background: #fff !important; border: .8pt solid #1d1b18 !important; color: #1d1b18 !important; }
 `;
 

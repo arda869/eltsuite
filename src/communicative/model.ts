@@ -22,7 +22,7 @@ export const ACTIVITY_COLOURS: { v: ActivityColours; label: string }[] = [
   { v: 'plum', label: 'Plum' }, { v: 'sunshine', label: 'Sunshine' }, { v: 'slate', label: 'Slate' },
 ];
 export type ActivitySettings = {
-  mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'path'; turnOrder?: 'fixed' | 'random';
+  mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'ladders'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';
   seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; colours?: ActivityColours; scoring?: boolean; useful?: string; listenerTask?: string;
@@ -187,7 +187,75 @@ export function boardLayout(count: number, style: ActivitySettings['boardStyle']
     }
   } else for (let n = 0; n < count; n++) {
     const row = Math.floor(n / cols), col = n % cols;
-    cells.push({ row: rows - row, col: style === 'path' || row % 2 === 0 ? col + 1 : cols - col });
+    cells.push({ row: rows - row, col: row % 2 === 0 ? col + 1 : cols - col });
   }
   return { cols, rows, cells: cells.slice(0, count) };
+}
+
+// Board styles. Old boards saved as 'path' (a grid read left to right) now show as the winding path.
+export type BoardStyle = 'snake' | 'spiral' | 'ladders';
+export const boardStyleOf = (style?: string): BoardStyle => style === 'spiral' || style === 'ladders' ? style : 'snake';
+
+// Snakes and ladders: the same fixed jumps for every board of this size, so the board, the print and the
+// server agree. Square numbers are 0-based. Ladders go up about one row and a bit; snakes come down.
+export function boardJumps(count: number): Record<number, number> {
+  const cols = Math.ceil(Math.sqrt(count)), jumps: Record<number, number> = {}, used = new Set([0, count - 1]);
+  const pairs = count < 30 ? 2 : count < 42 ? 3 : 4;
+  const free = (n: number, dir: number) => { while (used.has(n) && n > 0 && n < count - 1) n += dir; return n; };
+  const ladders = [.1, .36, .6, .78].slice(0, pairs), snakes = [.46, .72, .93, .3].slice(0, pairs);
+  ladders.forEach((f, k) => {
+    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), to = free(Math.min(count - 2, from + cols + 1 + k % 2), -1);
+    if (to > from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
+  });
+  snakes.forEach((f, k) => {
+    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), to = free(Math.max(1, from - cols - 1 - k % 2), 1);
+    if (to < from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
+  });
+  return jumps;
+}
+
+// Spiral: squares placed along a spiral, from the outside edge in to Finish in the middle. Points are
+// tile centres in a unit square; size is a tile's width as a share of the board.
+export function spiralLayout(count: number): { size: number; points: { x: number; y: number }[] } {
+  for (let size = .22; size > .04; size -= .002) {
+    const k = size * 1.55 / (2 * Math.PI), step = size * 1.3, start = Math.PI * .75;
+    let r = .5 - size / 2 - .004, th = 0;
+    const points: { x: number; y: number }[] = [];
+    while (points.length < count - 1 && r > size * 1.05) {
+      points.push({ x: .5 + r * Math.cos(start + th), y: .5 + r * Math.sin(start + th) });
+      let d = 0; while (d < step && r > 0) { const dt = .002; d += Math.hypot(r, k) * dt; th += dt; r -= k * dt; }
+    }
+    if (points.length === count - 1) points.push({ x: .5, y: .5 });
+    if (points.length === count) return { size, points };
+  }
+  return { size: .05, points: Array.from({ length: count }, (_, n) => ({ x: (n % 10) / 10 + .05, y: Math.floor(n / 10) / 10 + .05 })) };
+}
+
+// The drawing on top of (or under) the squares: the spiral's track, or the ladders and snakes.
+export function boardArt(count: number, style?: string): string {
+  const kind = boardStyleOf(style);
+  if (kind === 'spiral') {
+    const { size, points } = spiralLayout(count);
+    const d = points.map((p, n) => `${n ? 'L' : 'M'}${p.x.toFixed(4)} ${p.y.toFixed(4)}`).join(' ');
+    return `<svg class="board-art board-art-spiral" viewBox="0 0 1 1" aria-hidden="true"><path class="track" d="${d}" fill="none" stroke-width="${(size * .5).toFixed(4)}" stroke-linecap="round" stroke-linejoin="round"/><path class="guide" d="${d}" fill="none" stroke-width="${(size * .03).toFixed(4)}" stroke-dasharray="${(size * .12).toFixed(4)} ${(size * .1).toFixed(4)}" stroke-linecap="round"/></svg>`;
+  }
+  if (kind !== 'ladders') return '';
+  const { cols, rows, cells } = boardLayout(count, 'snake');
+  const at = (n: number) => ({ x: cells[n].col - .5, y: cells[n].row - .5 });
+  let art = '';
+  for (const [a, b] of Object.entries(boardJumps(count))) {
+    const from = at(Number(a)), to = at(b), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+    if (b > Number(a)) {
+      // a ladder: two rails and rungs every quarter square
+      const w = .13, rails = [-1, 1].map(s => `<line x1="${from.x + nx * w * s}" y1="${from.y + ny * w * s}" x2="${to.x + nx * w * s}" y2="${to.y + ny * w * s}"/>`).join('');
+      const rungs = Array.from({ length: Math.max(2, Math.floor(len / .28)) }, (_, i) => { const t = (i + .5) / Math.max(2, Math.floor(len / .28)); const x = from.x + dx * t, y = from.y + dy * t; return `<line x1="${x - nx * w}" y1="${y - ny * w}" x2="${x + nx * w}" y2="${y + ny * w}"/>`; }).join('');
+      art += `<g class="ladder">${rails}${rungs}</g>`;
+    } else {
+      // a snake: a wavy body from its head (the higher square) to its tail
+      const waves = Math.max(1.5, len * 1.3), pts: string[] = [];
+      for (let i = 0; i <= 40; i++) { const t = i / 40, amp = .16 * Math.sin(Math.PI * t) + .04, o = amp * Math.sin(t * waves * 2 * Math.PI); pts.push(`${(from.x + dx * t + nx * o).toFixed(3)} ${(from.y + dy * t + ny * o).toFixed(3)}`); }
+      art += `<g class="snake"><polyline points="${pts.join(' ')}"/><circle cx="${from.x}" cy="${from.y}" r=".13"/><circle class="eye" cx="${from.x + nx * .05 + dx / len * .04}" cy="${from.y + ny * .05 + dy / len * .04}" r=".025"/><circle class="eye" cx="${from.x - nx * .05 + dx / len * .04}" cy="${from.y - ny * .05 + dy / len * .04}" r=".025"/></g>`;
+    }
+  }
+  return `<svg class="board-art board-art-ladders" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${art}</svg>`;
 }

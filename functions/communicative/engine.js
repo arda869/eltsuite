@@ -158,6 +158,23 @@ function oppositePairs(values) {
   }
   return pairs;
 }
+// Snakes and ladders: keep in step with boardJumps in src/communicative/model.ts.
+function boardJumps(count) {
+  const cols = Math.ceil(Math.sqrt(count)), jumps = {}, used = new Set([0, count - 1]);
+  const pairs = count < 30 ? 2 : count < 42 ? 3 : 4;
+  const free = (n, dir) => { while (used.has(n) && n > 0 && n < count - 1) n += dir; return n; };
+  const ladders = [.1, .36, .6, .78].slice(0, pairs), snakes = [.46, .72, .93, .3].slice(0, pairs);
+  ladders.forEach((f, k) => {
+    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), to = free(Math.min(count - 2, from + cols + 1 + k % 2), -1);
+    if (to > from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
+  });
+  snakes.forEach((f, k) => {
+    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), to = free(Math.max(1, from - cols - 1 - k % 2), 1);
+    if (to < from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
+  });
+  return jumps;
+}
+
 function boardLayout(count, style = "snake") {
   const cols = Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
   const cells = [];
@@ -179,7 +196,7 @@ function boardLayout(count, style = "snake") {
     }
   } else for (let n = 0; n < count; n++) {
     const row = Math.floor(n / cols), col = n % cols;
-    cells.push({ row: rows - row, col: style === "path" || row % 2 === 0 ? col + 1 : cols - col });
+    cells.push({ row: rows - row, col: row % 2 === 0 ? col + 1 : cols - col });
   }
   return { cols, rows, cells: cells.slice(0, count) };
 }
@@ -664,6 +681,10 @@ function transition(c, state, a, actor, now, random = Math.random) {
       const item = c.items[pos];
       s.positions[who] = pos;
       s.die = a.die;
+      if (c.settings?.boardStyle === "ladders") {
+        const jump = boardJumps(c.items.length)[pos];
+        if (jump !== undefined) s.positions[who] = jump;
+      }
       if (item.special === "back") s.positions[who] = Math.max(0, pos - Math.max(1, item.move ?? 2));
       if (item.special === "miss") s.skip[who] = true;
       if (pos === c.items.length - 1 || item.special === "finish") {

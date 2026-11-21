@@ -20,14 +20,14 @@
 @keyframes cp-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 
 /* ---------------------------------------------------------------- Board game */
-/* Paper squares on the grey table; Start and Finish are charcoal with the accent, like the gift boxes. */
+/* Paper squares on a soft board. Start is the accent, Finish is wrapped like a gift box. */
 .ca-board-stage { container-type: inline-size; width: 100%; display: grid; justify-items: center; }
 .ca-board-wrap .ca-board-stage .ca-board {
   --g: 8px;
   --sq: min(calc((100cqw - 32px - (var(--cols, 6) - 1) * var(--g)) / var(--cols, 6)), calc((100dvh - 250px) / var(--rows, 5)));
-  width: auto; max-height: none; gap: var(--g); padding: 16px; border-radius: 22px;
+  position: relative; width: auto; max-height: none; gap: var(--g); padding: 16px; border-radius: 22px;
   grid-template-columns: repeat(var(--cols, 6), var(--sq)); grid-template-rows: repeat(var(--rows, 5), var(--sq));
-  background: var(--tint);
+  background: color-mix(in srgb, var(--ink) 7%, var(--paper));
 }
 .ca-board-stage .ca-board .ca-sq {
   aspect-ratio: auto; overflow: visible; display: flex; flex-direction: column; gap: 3px;
@@ -36,39 +36,61 @@
   font: 400 clamp(10px, calc(var(--sq) * .135), 15px)/1.25 var(--serif); color: var(--ink);
   transition: transform .2s var(--ca-ease), box-shadow .2s;
 }
-.ca-board-stage .ca-board-snake .ca-sq:nth-child(odd) { background: var(--paper); }
-.ca-board-stage .ca-board-snake .ca-sq:nth-child(even) { background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
-/* Spiral: round spaces winding in to the middle, like a classic race game. */
-.ca-board-stage .ca-board-spiral .ca-sq { border-radius: 50%; align-items: center; justify-content: center; text-align: center; padding: calc(var(--sq) * .14); }
-.ca-board-stage .ca-board-spiral .ca-sq-n { position: absolute; top: 9%; left: 0; right: 0; text-align: center; }
-.ca-board-stage .ca-board-path .ca-sq { border-radius: 6px; }
+/* Every other square takes a clear tint of the accent, so the path is easy to follow. */
+.ca-board-stage .ca-board .ca-sq:nth-child(even of .ca-sq):not(.start):not(.finish):not(.special) { background: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
 .ca-board-stage .ca-sq-n { font: 700 clamp(9px, calc(var(--sq) * .11), 12px) var(--sans); color: var(--accent-text); letter-spacing: .04em; }
 .ca-board-stage .ca-sq-text { -webkit-line-clamp: 3; }
 .ca-board-stage .ca-sq .ca-pic { max-height: 44%; border-radius: 8px; }
 .ca-board-stage .ca-board .ca-sq.start, .ca-board-stage .ca-board .ca-sq.finish {
   justify-content: center; align-items: center; text-align: center; color: #fff;
   font: 700 clamp(10px, calc(var(--sq) * .13), 14px) var(--sans); letter-spacing: .14em; text-transform: uppercase;
-  background: var(--accent);
-  box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--accent) 70%, #000);
+  background: var(--accent); box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--accent) 70%, #000);
 }
 .ca-board-stage .ca-board .ca-sq.finish { background: linear-gradient(0deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), linear-gradient(90deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--accent); }
 .ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 80%, #000); }
 .ca-board-stage .ca-sq.start .ca-sq-n, .ca-board-stage .ca-sq.finish .ca-sq-n { display: none; }
-.ca-board-stage .ca-sq.special { background: var(--tint-strong); color: var(--accent-text); font-style: italic; }
+.ca-board-stage .ca-board .ca-sq.special { background: var(--paper); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), var(--cp-lift-low); color: var(--accent-text); font-style: italic; }
 /* The square someone has just landed on lifts and pops, like a drawn card. */
 .ca-board-stage .ca-board .ca-sq.here { transform: translateY(-3px); box-shadow: 0 0 0 2.5px var(--accent), var(--ca-lift); animation: cp-pop .35s var(--ca-ease); }
 .ca-board-stage .ca-board .ca-sq.start.here, .ca-board-stage .ca-board .ca-sq.finish.here { animation: none; }
 /* Counters sit on the square's top-right corner, so they never cover the words. */
-.ca-board-stage .ca-sq .ca-pins { position: absolute; top: -8px; left: auto; right: -6px; bottom: auto; margin: 0; display: flex; z-index: 1; }
+.ca-board-stage .ca-sq .ca-pins { position: absolute; top: -8px; left: auto; right: -6px; bottom: auto; margin: 0; display: flex; z-index: 2; }
 .ca-board-stage .ca-sq .ca-pinname { margin-left: -8px; max-width: none; }
 .ca-board-stage .ca-sq .ca-pinname:first-child { margin-left: 0; }
 .ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-player .ca-pin { width: clamp(22px, calc(var(--sq, 80px) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; border-radius: 50%; transform: none; border: 2px solid var(--paper); background: var(--c); box-shadow: 0 3px 6px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
 .ca-board-stage .ca-sq .ca-pin > span, .ca-board-side .ca-player .ca-pin > span { transform: none; }
 .ca-board-side .ca-player .ca-pin { width: 22px; animation: none; }
-/* The die: white, like the wheel's hub, with ink pips and an accent one. */
-.ca-board-side .ca-die { border: 0; border-radius: 18px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong), 0 10px 22px -10px rgba(0, 0, 0, .3); }
-.ca-board-side .ca-die i { background: var(--ink); }
-.ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: var(--accent); width: 17px; height: 17px; }
+/* Drawings on the board: the spiral's track, and the ladders and snakes. */
+.ca-board-art { position: absolute; inset: 16px; pointer-events: none; z-index: 1; opacity: .72; }
+.ca-board-spiral .ca-board-art { opacity: 1; }
+.ca-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.board-art .track { stroke: color-mix(in srgb, var(--accent) 22%, var(--paper)); }
+.board-art .guide { stroke: color-mix(in srgb, var(--accent) 55%, transparent); }
+.board-art .ladder line { stroke: #a9794a; stroke-width: 3px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.board-art .ladder line:nth-child(-n+2) { stroke: #8a5f35; stroke-width: 4px; }
+.board-art .snake polyline { fill: none; stroke: #4c9a6a; stroke-width: 7px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .92; }
+.board-art .snake circle { fill: #3f8a5c; }
+.board-art .snake .eye { fill: #fff; }
+.ca-board-stage .ca-board-ladders .ca-sq-text { opacity: .95; }
+/* Spiral: the squares follow a curving track that winds in to Finish in the middle. */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral {
+  display: block; container-type: inline-size; padding: 0; aspect-ratio: 1; border-radius: 50%;
+  width: min(100cqw - 16px, 100dvh - 220px); min-width: 300px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ink) 4%, var(--paper)) 0 70%, color-mix(in srgb, var(--ink) 8%, var(--paper)));
+}
+.ca-board-stage .ca-board-spiral .ca-board-art { inset: 0; z-index: 0; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq { --sq: calc(var(--t) * 100cqw); position: absolute; z-index: 1; border-radius: 12px; padding: calc(var(--sq) * .1); font-size: clamp(8px, calc(var(--sq) * .14), 14px); }
+/* The die: white with rounded edges and depth, like a real one; the one is the accent. */
+.ca-board-side .ca-die {
+  border: 0; border-radius: 18px; margin: 0 10px 10px 0;
+  background: radial-gradient(circle at 30% 25%, #fff, #f6f4ef 60%, #ebe7df);
+  box-shadow: inset 0 2px 1px #fff, inset 0 -3px 6px rgba(0, 0, 0, .06),
+    1px 1px 0 #e2ded6, 2px 2px 0 #dcd7ce, 3px 3px 0 #d6d1c7, 4px 4px 0 #d0cbc0, 5px 5px 0 #cac4b8, 6px 6px 0 #c3bdb1,
+    10px 12px 18px -4px rgba(40, 30, 20, .35);
+}
+.ca-board-side .ca-die i { background: radial-gradient(circle at 45% 40%, #3a3835, #1d1b19); box-shadow: inset 0 1.5px 2px rgba(0, 0, 0, .6), 0 1px 0 #fff; }
+.ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); width: 18px; height: 18px; }
+.ca-board-side button.ca-die.ready { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 2px 1px #fff, 1px 1px 0 #e2ded6, 2px 2px 0 #dcd7ce, 3px 3px 0 #d6d1c7, 4px 4px 0 #d0cbc0, 5px 5px 0 #cac4b8, 6px 6px 0 #c3bdb1, 10px 12px 18px -4px rgba(40, 30, 20, .35); }
 .ca-board-side button.ca-die.ready:hover { animation: cp-wiggle .5s ease; }
 .ca-board-side .ca-prompt { border: 0; position: relative; overflow: hidden; animation: cp-pop .45s var(--ca-ease); }
 .ca-board-side .ca-prompt::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
@@ -241,3 +263,14 @@
 .ca-domino > span.n { padding: 0; }
 .ca-bingo::before { white-space: nowrap; overflow: hidden; }
 .ca-bingo .ca-cell { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+.ca-board-stage .ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board-spiral .ca-sq.finish { font-size: clamp(8px, calc(var(--sq) * .11), 12px); letter-spacing: .06em; }
+.ca-board-stage .ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board-spiral .ca-sq.finish .ca-sq-text { white-space: nowrap; padding: 2px 5px; }
+/* Dominoes in play: tiles are dragged into a chain. The up and down buttons stay for keyboards and
+   touch, as a small pair under the tile that appears on hover or focus. */
+.ca-domino { cursor: grab; display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.ca-domino:active { cursor: grabbing; }
+.ca-domino > .ca-move-tools { position: absolute; right: 10px; bottom: -15px; z-index: 2; display: flex; gap: 4px; padding: 0; opacity: 0; transition: opacity .15s; }
+.ca-domino:hover > .ca-move-tools, .ca-domino:focus-within > .ca-move-tools { opacity: 1; }
+.ca-domino > .ca-move-tools button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); box-shadow: var(--cp-lift-low); }
+@media (hover: none) { .ca-domino > .ca-move-tools { opacity: 1; } }
+.ca-chain { row-gap: 22px; }

@@ -15,7 +15,7 @@ const records=list(obj({name:word,value:str}),0,30);
 // source illustration (picture:ref) or be left blank for the teacher to add.
 const cardBase={title:short,text:str,picture:short,alt:short};
 const communicativeFields={
- board:{cards:list(obj({...cardBase,special:choice('','start','finish','back','miss','again'),move:integer(1,48)}),12,48),boardStyle:choice('snake','spiral','path')},
+ board:{cards:list(obj({...cardBase,special:choice('','start','finish','back','miss','again'),move:integer(1,48)}),12,48),boardStyle:choice('snake','spiral','ladders')},
  bingo:{cards:list(obj({...cardBase,call:short}),10,50),gridSize:{...integer(3,5),enum:[3,4,5]},learnerCalls:choice('none','current','list')},
  dominoes:{cards:list(obj({...cardBase,match:short,matchPicture:short,matchAlt:short}),2,30)},
  memory:{cards:list(obj({...cardBase,match:short,matchPicture:short,matchAlt:short}),2,30)},
