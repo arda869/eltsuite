@@ -1,6 +1,6 @@
 import {LocalActivityMode} from '../communicative/LocalActivity';
 import '../communicative/activities.css';
-import '../communicative/isometric.css';
+import '../communicative/tabletop.css';
 import {useEffect,useState,type CSSProperties} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
