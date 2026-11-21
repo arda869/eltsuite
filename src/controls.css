@@ -1,0 +1,27 @@
+/* One height and one look for every one-line text box and drop-down (2026-11 feedback).
+   Loaded last so it settles the different heights that grew up across the apps.
+   Textareas, checkboxes, radios, ranges and colour pickers keep their own shapes. */
+:root { --control-h: 40px; --control-r: 10px; }
+/* Form fields: inputs inside a label or a field row, and every app drop-down. Answer boxes inside tasks
+   (gaps, inline inputs) are part of the text and are left alone. */
+:is(label,.field,.ca-setting,.rad-fields,.rhe-form-grid,.rhe-wide-field) :is(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=image],[type=submit],[type=button],[type=reset]),select):not(.task-content *),
+.sel:not(.type-pick,.compact) {
+  box-sizing: border-box;
+  height: var(--control-h);
+  min-height: var(--control-h);
+  border-radius: var(--control-r);
+}
+:is(label,.field,.ca-setting,.rad-fields,.rhe-form-grid,.rhe-wide-field) :is(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=image],[type=submit],[type=button],[type=reset]),select):not(.task-content *) {
+  padding-top: 0; padding-bottom: 0; border: 1px solid var(--hair-strong);
+}
+.sel-multi .sel-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-tick.sel-box { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid var(--hair-strong); border-radius: 4px; }
+.sel-o.on .sel-tick.sel-box { border-color: var(--accent); background: var(--accent); color: var(--on-accent, #fff); }
+.pq-pic-state { flex: 1; min-width: 0; color: var(--muted); font: 500 13px var(--sans); }
+.pq-pic-state.has { color: var(--ink); }
+
+/* Learner live lesson (2026-11 feedback): the "Live · teaching" box and the hand / stuck / reaction bar
+   had no room above them and touched the line above. */
+.center-col > .live-who { margin-top: 12px; padding: 12px 12px 11px; }
+.live-float { padding-top: 8px; }
+.live-float .signal-bar { margin-top: 6px; }

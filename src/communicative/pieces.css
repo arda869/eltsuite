@@ -1,0 +1,385 @@
+/* ELT Suite – communicative activities in the Cards / Open the box / Spin the wheel language (Nov 2026).
+   The same pieces everywhere:
+   - paper: white cards with the .pk-card shadow (--ca-lift), a thin accent bar on cards you read;
+   - charcoal: hidden or "game" things (card backs, gift boxes, Start, dice) in --ca-charcoal with accent rings;
+   - torn paper: things you put in order (strip story, ranking), as in the strip story;
+   - a blue biro for what learners mark by hand (bingo circles, ticks, names);
+   - small physical moments: pop in, wiggle, the box's confetti burst.
+   Loaded after activities.css, so it only overrides. Card decks and boxes keep their own styles.css. */
+
+:root {
+  --cp-biro: #2348b4;
+  --cp-paper: var(--paper);
+  --cp-lift-low: 0 1px 2px rgba(0, 0, 0, .05), 0 6px 14px -8px rgba(0, 0, 0, .22);
+  --cp-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M55 8C79 9 94 27 92 51 90 76 70 93 46 92 21 91 6 71 8 47 10 24 30 9 58 11 67 12 75 16 82 23' fill='none' stroke='%232348b4' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round' opacity='.9'/%3E%3C/svg%3E");
+  --cp-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 13.5c2.2 1.4 3.6 3 4.6 5 2.6-6 6.4-10.6 11.4-14' fill='none' stroke='%232348b4' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cp-torn: polygon(0 6%, 4% 0, 9% 5%, 15% 1%, 22% 6%, 29% 0, 36% 4%, 43% 1%, 51% 6%, 58% 2%, 65% 5%, 72% 0, 80% 5%, 87% 1%, 94% 6%, 100% 2%, 100% 95%, 95% 100%, 89% 95%, 82% 99%, 75% 94%, 68% 100%, 61% 96%, 54% 99%, 46% 94%, 39% 100%, 31% 95%, 24% 99%, 17% 94%, 10% 100%, 4% 95%, 0 99%);
+}
+@keyframes cp-pop { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes cp-wiggle { 0%, 100% { transform: none; } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes cp-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+
+/* ---------------------------------------------------------------- Board game */
+/* Paper squares on a soft board. Start is the accent, Finish is wrapped like a gift box. */
+.ca-board-stage { container-type: inline-size; width: 100%; display: grid; justify-items: center; }
+.ca-board-wrap .ca-board-stage .ca-board {
+  --g: 8px;
+  --sq: min(calc((100cqw - 32px - (var(--cols, 6) - 1) * var(--g)) / var(--cols, 6)), max(64px, calc((100dvh - 400px) / var(--rows, 5))));
+  position: relative; width: auto; max-height: none; gap: var(--g); padding: 16px; border-radius: 22px;
+  grid-template-columns: repeat(var(--cols, 6), var(--sq)); grid-template-rows: repeat(var(--rows, 5), var(--sq));
+  background: color-mix(in srgb, var(--ink) 7%, var(--paper));
+}
+.ca-board-stage .ca-board .ca-sq {
+  aspect-ratio: auto; overflow: visible; display: flex; flex-direction: column; gap: 3px;
+  padding: calc(var(--sq) * .09) calc(var(--sq) * .1); border: 0; border-radius: 14px;
+  background: var(--paper); box-shadow: var(--cp-lift-low);
+  font: 400 clamp(10px, calc(var(--sq) * .135), 15px)/1.25 var(--serif); color: var(--ink);
+  transition: transform .2s var(--ca-ease), box-shadow .2s;
+}
+/* Every other square takes a clear tint of the accent, so the path is easy to follow. */
+.ca-board-stage .ca-board:not(.ca-board-spiral) .ca-sq:nth-child(even of .ca-sq):not(.start):not(.finish):not(.special) { background: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
+.ca-board-stage .ca-sq-n { font: 700 clamp(9px, calc(var(--sq) * .11), 12px) var(--sans); color: var(--accent-text); letter-spacing: .04em; }
+.ca-board-stage .ca-sq-text { -webkit-line-clamp: 3; }
+.ca-board-stage .ca-sq .ca-pic { max-height: 44%; border-radius: 8px; }
+.ca-board-stage .ca-board .ca-sq.start, .ca-board-stage .ca-board .ca-sq.finish {
+  justify-content: center; align-items: center; text-align: center; color: #fff;
+  font: 700 clamp(10px, calc(var(--sq) * .13), 14px) var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  background: var(--accent); box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--accent) 70%, #000);
+}
+.ca-board-stage .ca-board .ca-sq.finish { background: linear-gradient(0deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), linear-gradient(90deg, transparent 0 calc(50% - 6px), rgba(255, 255, 255, .85) calc(50% - 6px) calc(50% + 6px), transparent calc(50% + 6px)), var(--accent); }
+.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 80%, #000); }
+.ca-board-stage .ca-sq.start .ca-sq-n, .ca-board-stage .ca-sq.finish .ca-sq-n { display: none; }
+.ca-board-stage .ca-board .ca-sq.special { background: var(--paper); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), var(--cp-lift-low); color: var(--accent-text); font-style: italic; }
+/* The square someone has just landed on lifts and pops, like a drawn card. */
+.ca-board-stage .ca-board .ca-sq.here { transform: translateY(-3px); box-shadow: 0 0 0 2.5px var(--accent), var(--ca-lift); animation: cp-pop .35s var(--ca-ease); }
+.ca-board-stage .ca-board .ca-sq.start.here, .ca-board-stage .ca-board .ca-sq.finish.here { animation: none; }
+/* Counters sit on the square's top-right corner, so they never cover the words. */
+.ca-board-stage .ca-sq .ca-pins { position: absolute; top: -8px; left: auto; right: -6px; bottom: auto; margin: 0; display: flex; z-index: 2; }
+.ca-board-stage .ca-sq .ca-pinname { margin-left: -8px; max-width: none; }
+.ca-board-stage .ca-sq .ca-pinname:first-child { margin-left: 0; }
+.ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-player .ca-pin { width: clamp(22px, calc(var(--sq, 80px) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; border-radius: 50%; transform: none; border: 2px solid var(--paper); background: var(--c); box-shadow: 0 3px 6px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
+.ca-board-stage .ca-sq .ca-pin > span, .ca-board-side .ca-player .ca-pin > span { transform: none; }
+.ca-board-side .ca-player .ca-pin { width: 22px; animation: none; }
+/* Drawings on the board: the spiral track, and the snakes and ladders. */
+.ca-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.ca-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* Spiral: one rounded track, cut into spaces, winding in from Start to Finish in the centre (like a printed
+   race game). The track is drawn by boardArt; the words sit on a gap-free grid over it. */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral { --g: 0px; --pad: 18px; gap: 0; padding: var(--pad); border-radius: 18px; background: color-mix(in srgb, var(--ink) 7%, var(--paper)); }
+.ca-board-spiral .ca-board-art { inset: var(--pad); z-index: 0; }
+.board-art .sp-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 62%, var(--paper)); stroke-linejoin: miter; stroke-linecap: round; }
+.board-art .sp-cell { fill: none; stroke-linejoin: miter; stroke-linecap: butt; }
+.board-art .sp-cell.odd { stroke: var(--paper); }
+.board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 24%, var(--paper)); }
+.board-art .sp-cell.start, .board-art .sp-cell.finish { stroke: var(--accent); }
+.board-art .sp-cap { stroke-linecap: round; }
+.board-art .sp-div { stroke: color-mix(in srgb, var(--ink) 45%, var(--paper)); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq, .ca-board-stage .ca-board.ca-board-spiral .ca-sq:nth-child(n) { z-index: 1; background: transparent; box-shadow: none; border-radius: 0; padding: calc(var(--sq) * .12) calc(var(--sq) * .13); justify-content: center; align-items: center; text-align: center; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq-n { position: absolute; top: calc(var(--sq) * .1); left: calc(var(--sq) * .13); }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish .ca-sq-text { background: none; padding: 0; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special { color: var(--accent-text); }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.here { transform: none; box-shadow: none; animation: none; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.here::before { content: ""; position: absolute; inset: 9%; border-radius: 30%; box-shadow: 0 0 0 2.5px var(--accent); animation: cp-pop .35s var(--ca-ease); }
+/* Snakes and ladders: one ruled grid with bold lines between rows, like the printed board. */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-ladders { gap: 0; padding: 0; border-radius: 6px; background: var(--paper); border: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); overflow: hidden; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq { border-radius: 0; box-shadow: none; border-right: 1px solid var(--hair-strong); border-bottom: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.start, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish { background: color-mix(in srgb, var(--accent) 22%, var(--paper)); color: var(--ink); box-shadow: none; font: 800 clamp(11px, calc(var(--sq) * .16), 18px) var(--sans); }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish .ca-sq-text { background: none; padding: 0; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.here { transform: none; box-shadow: inset 0 0 0 3px var(--accent); animation: none; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.special { box-shadow: none; }
+.board-art .lad-out { stroke: #6b4423; stroke-width: .085; stroke-linecap: round; }
+.board-art .lad-in { stroke: #e0b27a; stroke-width: .048; stroke-linecap: round; }
+.board-art .sn-body { fill: #8cc79a; stroke: #2f6b45; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.board-art .sn-back { fill: none; stroke: #2f6b45; stroke-width: .05; stroke-dasharray: .07 .07; stroke-linecap: round; opacity: .8; }
+.board-art .sn-head { fill: #8cc79a; stroke: #2f6b45; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.board-art .sn-eye { fill: #1f2a22; }
+.board-art .sn-tongue { fill: none; stroke: #c8352a; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+/* The die: white with rounded edges and depth, like a real one; the one is the accent. */
+.ca-board-side .ca-die {
+  border: 0; border-radius: 18px; margin: 0 10px 10px 0;
+  background: radial-gradient(circle at 30% 25%, #fff, #f6f4ef 60%, #ebe7df);
+  box-shadow: inset 0 2px 1px #fff, inset 0 -3px 6px rgba(0, 0, 0, .06),
+    1px 1px 0 #e2ded6, 2px 2px 0 #dcd7ce, 3px 3px 0 #d6d1c7, 4px 4px 0 #d0cbc0, 5px 5px 0 #cac4b8, 6px 6px 0 #c3bdb1,
+    10px 12px 18px -4px rgba(40, 30, 20, .35);
+}
+.ca-board-side .ca-die i { background: radial-gradient(circle at 45% 40%, #3a3835, #1d1b19); box-shadow: inset 0 1.5px 2px rgba(0, 0, 0, .6), 0 1px 0 #fff; }
+.ca-board-side .ca-die[data-face='1'] i:nth-child(5) { background: radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); width: 18px; height: 18px; }
+.ca-board-side button.ca-die.ready { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 2px 1px #fff, 1px 1px 0 #e2ded6, 2px 2px 0 #dcd7ce, 3px 3px 0 #d6d1c7, 4px 4px 0 #d0cbc0, 5px 5px 0 #cac4b8, 6px 6px 0 #c3bdb1, 10px 12px 18px -4px rgba(40, 30, 20, .35); }
+.ca-board-side button.ca-die.ready:hover { animation: cp-wiggle .5s ease; }
+.ca-board-side .ca-prompt { border: 0; position: relative; overflow: hidden; animation: cp-pop .45s var(--ca-ease); }
+.ca-board-side .ca-prompt::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .ca-board-stage .ca-sq, .ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-prompt { animation: none !important; } }
+
+/* ---------------------------------------------------------------- Bingo: a printed card, circled in biro */
+.ca-bingo { gap: 0; padding: 0; overflow: hidden; border-radius: 16px; background: var(--paper); border: 0; box-shadow: var(--ca-lift); }
+/* the charcoal band across the top, with the letters in the accent */
+.ca-bingo::before {
+  content: 'B I N G O'; grid-column: 1 / -1; padding: 11px 10px 10px; text-align: center; letter-spacing: .55em; text-indent: .55em;
+  font: 800 clamp(14px, 3vw, 19px)/1 var(--sans); color: #fff; background: var(--accent);
+}
+.ca-bingo .ca-cell {
+  position: relative; aspect-ratio: 1; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; transform: none;
+  border-right: 1px solid var(--hair-strong); border-bottom: 1px solid var(--hair-strong);
+  font: 400 clamp(12px, 2.3vw, 17px)/1.15 var(--serif); color: var(--ink); padding: 6px; cursor: pointer;
+}
+.ca-bingo[style*='--size: 3'] .ca-cell:nth-child(3n), .ca-bingo[style*='--size:3'] .ca-cell:nth-child(3n),
+.ca-bingo[style*='--size: 4'] .ca-cell:nth-child(4n), .ca-bingo[style*='--size:4'] .ca-cell:nth-child(4n),
+.ca-bingo[style*='--size: 5'] .ca-cell:nth-child(5n), .ca-bingo[style*='--size:5'] .ca-cell:nth-child(5n) { border-right: 0; }
+.ca-bingo button.ca-cell:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.ca-bingo .ca-cell.on { background: transparent; }
+.ca-bingo .ca-cell.on::after {
+  content: ''; position: absolute; inset: 8% 6%; border: 0; border-radius: 0; transform: rotate(-4deg);
+  background: var(--cp-circle) center / 100% 100% no-repeat; box-shadow: none; animation: cp-draw .3s ease-out both;
+}
+.ca-bingo .ca-cell.on:nth-child(3n)::after { transform: rotate(7deg) scaleX(1.04); }
+.ca-bingo .ca-cell.on:nth-child(4n+1)::after { transform: rotate(-11deg) scaleY(.96); }
+.ca-bingo .ca-cell[aria-label='Free square'], .ca-bingo .ca-cell.free { color: var(--accent-text); background: var(--tint); font: 700 clamp(10px, 1.8vw, 13px) var(--sans); letter-spacing: .14em; text-transform: uppercase; }
+.ca-bingo .ca-cell[aria-label='Free square']::after, .ca-bingo .ca-cell.free::after { content: '✦'; position: absolute; inset: auto 0 14% 0; background: none; animation: none; transform: none; font-size: 1.3em; text-align: center; color: var(--accent); }
+.ca:not(:has(.ca-call)) .ca-bingo { transform: none; margin: 6px auto 16px; }
+.ca-bingo.mini { border-radius: 10px; }
+.ca-bingo.mini::before { padding: 4px; font-size: 9px; letter-spacing: .3em; }
+.ca-bingo.mini .ca-cell { font-size: 9px; padding: 1px; }
+.ca-bingo.mini .ca-cell.on::after { display: block; animation: none; inset: 4%; }
+/* The caller: the current call is a drawn card; the calls so far are chips that get ticked. */
+.ca-call { border: 0; position: relative; overflow: hidden; border-radius: 16px; background: var(--paper); box-shadow: var(--ca-lift); }
+.ca-call::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-call-now { animation: cp-pop .45s var(--ca-ease); }
+.ca-calls button { position: relative; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); font-family: var(--serif); color: var(--ink); }
+.ca-calls button.on { border-color: var(--ink); color: var(--ink); }
+.ca-calls button.on::after { content: ''; position: absolute; right: -5px; top: -7px; width: 18px; height: 18px; background: var(--cp-tick) center / contain no-repeat; }
+@media (prefers-reduced-motion: reduce) { .ca-bingo .ca-cell.on::after, .ca-call-now { animation: none; } }
+
+/* ---------------------------------------------------------------- Dominoes: paper tiles with an accent pin */
+.ca-chain { gap: 12px; }
+.ca-domino {
+  position: relative; border: 0; border-radius: 14px; min-height: 80px; width: 300px; overflow: visible;
+  background: var(--paper); box-shadow: 0 0 0 1px var(--hair), var(--ca-lift); transition: transform .2s var(--ca-ease);
+}
+.ca-domino > span { font: 400 15px/1.25 var(--serif); color: var(--ink); padding: 10px 16px; }
+.ca-domino > span + span:not(.ca-move-tools) { border-left: 0; font: 400 15px/1.25 var(--serif); }
+.ca-domino::before { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 1.5px; margin-left: -.75px; background: var(--hair-strong); }
+.ca-domino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--paper); }
+.ca-domino .n { position: absolute; left: -8px; top: -8px; z-index: 1; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; font: 700 11px var(--sans); box-shadow: var(--cp-lift-low); }
+.ca-domino.end > span:first-child { color: var(--accent-text); }
+.ca-domino:hover { transform: translateY(-2px); }
+.ca-domino.lift { transform: rotate(-2deg) translateY(-3px); }
+.ca-domino.ok { box-shadow: 0 0 0 2px color-mix(in srgb, var(--right) 60%, transparent), var(--ca-lift); }
+
+/* ---------------------------------------------------------------- Pelmanism: the Cards deck's backs and paper faces */
+.ca-memory { gap: 12px; }
+.ca-memory .ca-mcard:not(:disabled):hover { animation: cp-wiggle .5s ease; }
+.ca-memory .ca-mcard .face { background: var(--paper); box-shadow: var(--ca-lift); border-radius: 14px; place-items: center; align-content: center; gap: 4px; padding: 10px; height: 100%; text-align: center; font: 400 clamp(14px, 1.6vw, 19px)/1.25 var(--serif); color: var(--ink); backface-visibility: visible; overflow: hidden; }
+.ca-memory .ca-mcard .face::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-memory .ca-mcard.won .face { box-shadow: inset 0 0 0 2px var(--right), var(--ca-lift); background: color-mix(in srgb, var(--right) 6%, var(--paper)); }
+.ca-memory .ca-mcard.won .face::before { background: var(--right); }
+/* Only one side is drawn at a time, so turning over plays as a quarter-turn into view. */
+.ca-memory .ca-mcard.up > span, .ca-memory .ca-mcard.won > span { transform: none; animation: cp-flip .4s var(--ca-ease); }
+@keyframes cp-flip { from { transform: rotateY(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ca-memory .ca-mcard, .ca-memory .ca-mcard > span { animation: none !important; } }
+
+/* ---------------------------------------------------------------- Cue cards: a drawn card in a private sleeve */
+.ca-private { border-radius: 16px; }
+.ca-cue { position: relative; }
+.ca-cue::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-cue-title { font: 500 21px/1.25 var(--serif); }
+.ca-cues > * { animation: cp-pop .45s var(--ca-ease) both; }
+.ca-cues > *:nth-child(2) { animation-delay: .06s; } .ca-cues > *:nth-child(3) { animation-delay: .12s; }
+
+/* ---------------------------------------------------------------- Taboo: the card the describer holds */
+.ca-taboo { position: relative; border-radius: 16px; box-shadow: var(--ca-lift); animation: cp-pop .45s var(--ca-ease); }
+.ca-taboo-word { color: #fff; background: var(--accent); border-bottom: 0; }
+.ca-taboo-word small { color: rgba(255, 255, 255, .85); }
+.ca-taboo li { color: var(--muted); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+
+/* ---------------------------------------------------------------- Ranking: torn paper you put in order */
+/* The shadow goes on the list, not on each strip, so the torn edge keeps its outline (as on torn pages). */
+.ca-rank:not(.ca-diamond-live), .ca-torn { filter: drop-shadow(0 0 .7px rgba(51, 48, 44, .4)) drop-shadow(0 6px 10px rgba(51, 48, 44, .1)); }
+.ca-torn .ca-strip { filter: none; }
+.ca-rank { gap: 10px; }
+.ca-rank-item {
+  border: 0; border-radius: 0; background: var(--paper); padding: 15px 18px 15px 14px;
+  clip-path: var(--cp-torn); filter: none;
+  font: 400 17px/1.4 var(--serif); transition: transform .18s var(--ca-ease);
+}
+.ca-rank-item:nth-child(even) { transform: rotate(.35deg); }
+.ca-rank-item:nth-child(3n) { transform: rotate(-.4deg); }
+.ca-rank-n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--tint-strong); color: var(--accent-text); font: 700 12px var(--sans); }
+.ca-rank-item:first-child .ca-rank-n { background: var(--accent); color: #fff; }
+.ca-diamond-live .ca-rank-item { clip-path: none; border-radius: 14px; box-shadow: var(--cp-lift-low); filter: none; }
+.ca-diamond .tile { border: 0; border-radius: 14px; box-shadow: var(--cp-lift-low); }
+
+/* ---------------------------------------------------------------- Find someone who and survey: paper, filled in with a biro */
+.ca-fsw-row { border: 0; border-radius: 14px; background: var(--paper); box-shadow: var(--cp-lift-low); }
+.ca-fsw-row.done { background: var(--paper); border: 0; box-shadow: var(--cp-lift-low); }
+.ca-fsw-row.done .ca-fsw-name { box-shadow: none; background: transparent; color: var(--cp-biro); font: italic 600 18px var(--serif); border-bottom: 1.5px solid var(--hair-strong); border-radius: 0; animation: cp-pop .3s var(--ca-ease); }
+.ca-kind-survey section { padding: 16px 18px; margin-bottom: 12px; border-radius: 16px; background: var(--paper); box-shadow: var(--ca-lift); position: relative; overflow: hidden; }
+.ca-kind-survey section::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.ca-opt i { border-radius: 4px; position: relative; }
+.ca-opt.on i { border: 1.5px solid var(--ink); }
+.ca-opt.on i::after { content: ''; position: absolute; inset: -6px -8px -2px -2px; background: var(--cp-tick) center / contain no-repeat; animation: cp-draw .25s ease-out both; }
+
+/* ---------------------------------------------------------------- Opinion line */
+.ca-line { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--tint-strong), var(--accent)); }
+.ca-line::before, .ca-line::after { top: -6px; height: 20px; width: 3px; background: var(--accent); }
+.ca-mark .ca-pin { animation: cp-pop .3s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Spot the difference: a photo on paper */
+.ca-spot { border-radius: 14px; border: 0; box-shadow: 0 0 0 8px var(--paper), var(--ca-lift); }
+.ca-ring { border: 3px solid var(--accent); box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Turn banner */
+.ca-turn { border: 0; box-shadow: var(--cp-lift-low); }
+.ca-turn.mine { box-shadow: 0 0 0 2px var(--c, var(--accent)), var(--cp-lift-low); animation: cp-pop .35s var(--ca-ease); }
+
+/* ---------------------------------------------------------------- Timer, large: the wheel's hub, made big */
+.ca-timer { gap: 18px; padding: 24px 12px; }
+.ca-timer-face { --size: min(300px, 68vw); border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 10px var(--paper), 0 0 0 11px var(--hair-strong), 0 14px 22px rgba(0, 0, 0, .12); margin: 14px; }
+.ca-timer-face svg { inset: 6%; width: 88%; height: 88%; }
+.ca-timer-face .t { stroke: var(--track); stroke-width: 3; }
+.ca-timer-face .f { stroke-width: 3; }
+.ca-timer-face b { font-size: calc(var(--size) * .2); }
+
+/* ---------------------------------------------------------------- Timer, one line */
+.ca-timer-line { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 8px 0; padding: 6px 6px 6px 14px; border-radius: 999px; background: var(--paper); border: 1px solid var(--hair); font-family: var(--sans); }
+.ca-tl-who { flex: none; font: 600 12px var(--sans); color: var(--muted); max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-tl-time { flex: none; min-width: 3.4em; font: 800 20px/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.ca-tl-track { flex: 1; min-width: 40px; height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.ca-tl-track > span { display: block; height: 100%; width: var(--p); border-radius: inherit; background: var(--accent); transition: width .25s linear; }
+.ca-tl-from, .ca-tl-end { flex: none; font: 500 12px var(--sans); color: var(--muted); }
+.ca-tl-end { font-weight: 700; color: var(--accent-text); }
+.ca-tl-actions { flex: none; display: flex; gap: 4px; }
+.ca-tl-btn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); cursor: pointer; }
+.ca-tl-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.ca-tl-btn.primary { border: 0; background: var(--ink); color: var(--paper); }
+.ca-tl-btn:disabled { opacity: .4; cursor: default; }
+.ca-tl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ca-timer-line.soon .ca-tl-track > span { background: #c46a3c; }
+.ca-timer-line.soon .ca-tl-time { color: #c46a3c; }
+.ca-timer-line.done .ca-tl-time { color: var(--accent-text); animation: ca-pop .3s ease; }
+@media (max-width: 520px) { .ca-tl-who, .ca-tl-from { display: none; } }
+.ca.ca-inline { margin: 6px 0 10px; }
+.ca-inline-say { margin: 0 0 4px; font: 400 16px/1.5 var(--serif); }
+.ca-inline .ca-timer-line { margin: 0; }
+
+/* ---------------------------------------------------------------- Colours the teacher can choose */
+.ca-pal-coral { --accent: #e07a5f; --accent-text: #a94a33; --tint: #fbefea; --tint-strong: #f6dbd1; }
+.ca-pal-ocean { --accent: #3d7fc1; --accent-text: #285e98; --tint: #ebf3fb; --tint-strong: #d3e3f5; }
+.ca-pal-forest { --accent: #4a9468; --accent-text: #2f6e4a; --tint: #ecf5ef; --tint-strong: #d2e8da; }
+.ca-pal-plum { --accent: #8d5aa8; --accent-text: #6b3d86; --tint: #f4edf7; --tint-strong: #e5d5ee; }
+.ca-pal-sunshine { --accent: #dea32a; --accent-text: #8c600a; --tint: #fdf6e2; --tint-strong: #f8e7b8; }
+.ca-pal-slate { --accent: #5b6b7a; --accent-text: #3e4a56; --tint: #eff1f4; --tint-strong: #dbe0e6; }
+.ca-colour-setting { display: flex; align-items: center; gap: 12px; }
+.ca-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 3px solid var(--paper); background: var(--accent); box-shadow: 0 0 0 1px var(--hair-strong); cursor: pointer; }
+.ca-swatch.ca-pal-class { background: conic-gradient(var(--accent) 0 50%, var(--tint-strong) 0); }
+.ca-swatch.on { box-shadow: 0 0 0 2px var(--ink); }
+.ca-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ca-domino > span.n { padding: 0; }
+.ca-bingo::before { white-space: nowrap; overflow: hidden; }
+.ca-bingo .ca-cell { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+/* Dominoes in play: tiles are dragged into a chain. The up and down buttons stay for keyboards and
+   touch, as a small pair under the tile that appears on hover or focus. */
+.ca-domino { cursor: grab; display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.ca-domino:active { cursor: grabbing; }
+.ca-domino > .ca-move-tools { position: absolute; right: 10px; bottom: -15px; z-index: 2; display: flex; gap: 4px; padding: 0; opacity: 0; transition: opacity .15s; }
+.ca-domino:hover > .ca-move-tools, .ca-domino:focus-within > .ca-move-tools { opacity: 1; }
+.ca-domino > .ca-move-tools button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); box-shadow: var(--cp-lift-low); }
+@media (hover: none) { .ca-domino > .ca-move-tools { opacity: 1; } }
+.ca-chain { row-gap: 22px; }
+
+/* Opinion line: learners drop a pin on the line (tap, click, or arrow keys). */
+.ca-drop-hint { margin: 6px 0 0; font: 500 13px var(--sans); color: var(--muted); }
+.ca-line-wrap.can-drop { cursor: crosshair; border-radius: 12px; padding-top: 44px; }
+.ca-line-wrap.can-drop:hover .ca-line { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent); }
+.ca-line-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.ca-mark.me .ca-pin { width: 34px; }
+.ca-mark.me.dropped { animation: cp-drop .38s cubic-bezier(.3, .7, .35, 1.3); }
+@keyframes cp-drop { from { transform: translate(-50%, -28px); opacity: 0; } 70% { transform: translate(-50%, 3px); opacity: 1; } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ca-mark.me.dropped { animation: none; } }
+
+/* ---------------------------------------------------------------- Review fixes, 2026-11 */
+/* Settings switches in the editor: a label with a checkbox drawn as a switch (not the bare switch button). */
+label.ca-switch { width: auto; height: auto; border-radius: 0; background: none; display: flex; align-items: center; gap: 10px; font: 500 13px/1.3 var(--sans); color: var(--ink); cursor: pointer; }
+label.ca-switch::after { content: none; }
+label.ca-switch input { appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--hair-strong); cursor: pointer; transition: background .15s; }
+label.ca-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s var(--ca-ease); }
+label.ca-switch input:checked { background: var(--accent); }
+label.ca-switch input:checked::after { transform: translateX(14px); }
+label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Start and Finish never break across lines on small squares. */
+.ca-board-stage .ca-sq.start .ca-sq-text, .ca-board-stage .ca-sq.finish .ca-sq-text { white-space: nowrap; letter-spacing: .08em; font-size: clamp(8px, calc(var(--sq) * .11), 13px); }
+.ca-next-roll { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--tint); color: var(--accent-text); font: 600 13px/1.4 var(--sans); }
+/* Bingo: the word and its call on two lines; learners read only the call. */
+.ca-callbody { display: inline-flex; flex-direction: column; gap: 2px; text-align: left; }
+.ca-call-word { font-weight: 600; }
+.ca-callbody .ca-call-text { font: 400 .82em/1.3 var(--sans); color: var(--muted); }
+.ca-call-now .ca-callbody .ca-call-word { font-size: 1em; }
+.ca-call-now .ca-callbody .ca-call-text { font: 400 20px/1.35 var(--serif); color: var(--ink); }
+.ca-calls button .ca-callbody { padding: 2px 0; }
+.ca-learner-call { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 14px; background: var(--paper); box-shadow: var(--cp-lift-low); }
+.ca-learner-call .ca-call-text { font: 400 22px/1.35 var(--serif); color: var(--ink); }
+/* Pelmanism: the whole deck fits on the screen. */
+.ca-kind-memory .ca-memory { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); max-width: 1000px; margin-inline: auto; }
+.ca-kind-memory .ca-memory .ca-mcard { aspect-ratio: 4 / 5; min-height: 0; max-height: calc((100dvh - 380px) / 2); }
+/* Survey answers are single choice. */
+.ca-opt.ca-radio i { border-radius: 50%; }
+/* Opinion line: readable pins and the teacher's list of positions. */
+.ca-kind-opinion .ca-statement { max-width: 46ch; }
+.ca-kind-opinion .ca-mark .ca-pin { width: 28px; height: 28px; font: 700 10px var(--sans); }
+.ca-kind-opinion .ca-mark.me .ca-pin { width: 36px; height: 36px; }
+.ca-opinion-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ca-opinion-list li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--paper); box-shadow: var(--cp-lift-low); font: 500 13px/1.35 var(--sans); }
+.ca-opinion-list .ca-pin { grid-row: span 3; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #fff; display: grid; place-items: center; font: 700 10px var(--sans); }
+.ca-opinion-list .ca-opinion-where { color: var(--accent-text); font-size: 12px; }
+.ca-opinion-list q { font: italic 400 14px/1.35 var(--serif); color: var(--ink); quotes: '“' '”'; }
+/* Spot the difference: the picture fits in the window. */
+.ca-kind-spot > .ca-private { max-width: min(100%, calc((100dvh - 440px) * 4 / 3)); margin-inline: auto; }
+/* Taboo: pass the card on when the time is up. */
+.ca-pass { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.ca-pass p { margin: 0; font: 600 14px var(--sans); }
+/* The teacher's controls above a live activity sit in one compact row. */
+.ca-live-host { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ca-live-host > * { margin-top: 0; margin-bottom: 0; }
+.ca-live-host > :is(section.ca, .ca-rooms, .ca-ranking-comparison, .ca-room, .ca-error, .ca-paper, .ca-run, p, div:not(.lp-rooms):not(.ca-share-screen)) { flex-basis: 100%; }
+.ca-live-host > .ca-share-screen { margin: 0 0 0 auto; align-items: center; gap: 8px; }
+.ca-live-host > .ca-share-screen .ca-setting { flex-direction: row; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
+.ca-live-host > .ca-share-screen .ca-setting select { height: 30px; width: auto; }
+.ca-live-host > .ca-share-screen .hint { flex-basis: auto; font-size: 11px; max-width: 260px; }
+
+/* ---------------------------------------------------------------- Item grid (editor) */
+/* Items as a calm spreadsheet: type, Tab, paste from Excel. Paper, hairlines and one accent, like the packs. */
+.ca-grid-wrap { margin: 14px 0 6px; }
+.ca-grid-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 8px; }
+.ca-grid-head b { font: 700 12px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+.ca-grid-head .ca-cards-toggle { margin-left: auto; }
+.ig { --ig-line: color-mix(in srgb, var(--ink) 10%, transparent); position: relative; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--ig-line), var(--cp-lift-low); overflow: hidden; user-select: none; }
+.ig-row { display: grid; grid-template-columns: var(--ig-cols); align-items: stretch; border-top: 1px solid var(--ig-line); }
+.ig-row:first-child { border-top: 0; }
+.ig-head { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--accent) 7%, var(--paper)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.ig-h { padding: 9px 12px 8px; font: 700 10.5px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); border-left: 1px solid var(--ig-line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-n { display: grid; place-items: center; font: 600 11px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); background: color-mix(in srgb, var(--ink) 2.5%, var(--paper)); }
+.ig-row.ig-on .ig-n { color: #fff; background: var(--accent); }
+.ig-cell { position: relative; display: flex; min-width: 0; border-left: 1px solid var(--ig-line); transition: background .12s; }
+.ig-cell input, .ig-cell select { flex: 1; min-width: 0; width: 100%; height: 40px; margin: 0; padding: 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; font: 400 15px/1.2 var(--serif); color: var(--ink); user-select: text; }
+.ig-cell input::placeholder { color: color-mix(in srgb, var(--ink) 32%, transparent); font-style: italic; }
+.ig-cell input:disabled { cursor: default; }
+.ig-pick select { font: 500 13px var(--sans); cursor: pointer; padding-right: 26px; appearance: none; -webkit-appearance: none; background: no-repeat right 10px center / 10px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2366615b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.ig-row:not(.ig-head):hover .ig-cell { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.ig-cell.ig-sel { background: color-mix(in srgb, var(--accent) 12%, var(--paper)) !important; }
+.ig-cell.ig-focus { background: var(--paper) !important; z-index: 1; }
+.ig-cell.ig-focus::after { content: ''; position: absolute; inset: -1px; border: 2px solid var(--accent); border-radius: 3px; pointer-events: none; box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 60%, transparent); }
+.ig-x { align-self: center; justify-self: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: 400 16px/1 var(--sans); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+.ig-action { display: grid; place-items: center; }
+.ig-row:hover .ig-x, .ig-row.ig-on .ig-x { opacity: 1; }
+.ig-x:hover { background: color-mix(in srgb, var(--wrong, #c0392b) 12%, transparent); color: var(--wrong, #c0392b); }
+.ig-ghost { border-top: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent); }
+.ig-ghost .ig-n { color: var(--accent); font-size: 15px; background: transparent; }
+.ig-ghost .ig-cell { background: color-mix(in srgb, var(--accent) 2.5%, transparent); }
+.ig-ghost select { opacity: .35; }
+.ig-help { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; padding: 9px 14px; border-top: 1px solid var(--ig-line); font: 500 11.5px var(--sans); color: var(--muted); background: color-mix(in srgb, var(--ink) 2%, var(--paper)); }
+.ig-help kbd { display: inline-block; min-width: 20px; margin-right: 4px; padding: 1px 6px; border-radius: 5px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong), 0 1px 0 1px var(--hair-strong); font: 600 10.5px/1.5 var(--sans); color: var(--ink); text-align: center; }
+.ig-help span { position: relative; padding-left: 14px; }
+.ig-help span::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--hair-strong); }
+/* The cards themselves (for pictures and formatting) open on request. */
+.ca-cards-hidden > .ca-rich-items { display: none; }
+.ca-editor-preview, .ca-editor-side { min-width: 0; }

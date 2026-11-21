@@ -221,7 +221,10 @@ const J = {
     const insert=s.p.locator('.task-insert').last();
     await insert.locator('summary').click();
     await insert.getByRole('button',{name:'New task',exact:true}).waitFor();
-    await insert.getByRole('button',{name:'Create with AI',exact:true}).click();
+    await insert.getByRole('button',{name:'Import a task',exact:true}).waitFor();
+    await insert.locator('summary').click();
+    await openPlanning(s.p);
+    await s.p.getByRole('button',{name:'Create a task with AI',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:'Start blank',exact:true}).waitFor();
     if(!await dialog.getByRole('button',{name:'Start blank',exact:true}).isEnabled())throw Error('Blank task choice was hidden or disabled');
@@ -1290,9 +1293,8 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
     await s.p.waitForURL(new RegExp(`/class/${s.demo.classId}$`));
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    const insert=s.p.locator('.task-insert').first();
-    await insert.locator('summary').click();
-    const taskAi=insert.getByRole('button',{name:'Create with AI'});
+    await openPlanning(s.p);
+    const taskAi=s.p.getByRole('button',{name:'Create a task with AI',exact:true});
     await taskAi.waitFor();
     if(await taskAi.isDisabled()) throw Error('Task-level AI was hidden with full-lesson creation.');
     await axe(s.p,'Task-level AI entry',A11Y_FOUND);
@@ -1655,9 +1657,8 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
     await s.p.waitForURL(new RegExp(`/class/${s.demo.classId}$`));
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    const insert=s.p.locator('.task-insert').first();
-    await insert.locator('summary').click();
-    const taskAi=insert.getByRole('button',{name:'Create with AI'});
+    await openPlanning(s.p);
+    const taskAi=s.p.getByRole('button',{name:'Create a task with AI',exact:true});
     await taskAi.waitFor();
     if(await taskAi.isDisabled())throw Error('Training-class task AI is unavailable.');
     return s;
@@ -2236,9 +2237,8 @@ const J = {
     const lessonUrl=`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`;
     const taskAi=async()=>{
       await s.p.goto(lessonUrl);
-      const insert=s.p.locator('.task-insert').first();
-      await insert.locator('summary').click();
-      const button=insert.getByRole('button',{name:'Create with AI'});
+      await openPlanning(s.p);
+      const button=s.p.getByRole('button',{name:'Create a task with AI',exact:true});
       await button.waitFor();
       return button;
     };

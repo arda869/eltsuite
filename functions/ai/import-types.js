@@ -11,6 +11,25 @@ const obj=properties=>({type:'object',additionalProperties:false,properties,requ
 // Empty answers remain private, editable gaps for the teacher to complete later.
 const answers=list(text(0,200),0,8),extras=list(word,0,20),options=list(word,2,12);
 const records=list(obj({name:word,value:str}),0,30);
+// Communicative activities use rich pickCard content. A picture can refer to a
+// source illustration (picture:ref) or be left blank for the teacher to add.
+const cardBase={title:short,text:str,picture:short,alt:short};
+const communicativeFields={
+ board:{cards:list(obj({...cardBase,special:choice('','start','finish','back','miss','again'),move:integer(1,48)}),12,48),boardStyle:choice('snake','spiral','ladders')},
+ bingo:{cards:list(obj({...cardBase,call:short}),10,50),gridSize:{...integer(3,5),enum:[3,4,5]},learnerCalls:choice('none','current','list')},
+ dominoes:{cards:list(obj({...cardBase,match:short,matchPicture:short,matchAlt:short}),2,30)},
+ memory:{cards:list(obj({...cardBase,match:short,matchPicture:short,matchAlt:short}),2,30)},
+ strips:{cards:list(obj(cardBase),2,30)},
+ cue:{cards:list(obj({...cardBase,cardType:choice('','character','secret','opinion','problem'),useful:short}),1,30)},
+ survey:{cards:list(obj({...cardBase,question:short,followUp:short,options:list(word,2,12)}),1,20)},
+ findSomeone:{cards:list(obj({...cardBase,question:short,followUp:short}),6,16)},
+ ranking:{cards:list(obj(cardBase),4,12),layout:choice('list','grid','diamond')},
+ opinion:{cards:list(obj(cardBase),1,30),lowLabel:short,highLabel:short},
+ spot:{cards:list(obj(cardBase),2,2),differences:list(obj({x:number(),y:number(),radius:number(1,50),label:short}),0,30)},
+ taboo:{cards:list(obj({...cardBase,taboo:list(word,0,5)}),1,30),seconds:integer(15,180)},
+ speaking:{cards:list(obj(cardBase),1,30),seconds:integer(5,3600),timerDirection:choice('down','up'),timerFor:choice('class','individual','group'),timerSize:choice('large','inline')},
+};
+const communicativeLabels={board:'Board game',bingo:'Bingo',dominoes:'Dominoes',memory:'Pelmanism',strips:'Strip story',cue:'Cue cards',survey:'Communicative survey',findSomeone:'Find someone who',ranking:'Ranking',opinion:'Opinion line',spot:'Spot the difference',taboo:'Taboo cards',speaking:'Speaking timer'};
 const entries=[
  ['text','Text or reading','Keep a passage or instruction in its original place.',{text:required}],
  ['boxedText','Boxed text','Preserve a visibly bordered or shaded group of source text as an editable box, including its instructions and bullets.',{style:choice('box','info'),tone:choice('grey','mist','sand','sage','sky','rose'),label:short,text:required}],
@@ -54,6 +73,7 @@ const entries=[
  ['survey','Survey','Ratings, emoji, thumbs, single/multiple choices, ranking and open survey responses.',{title:short,anonymous:bool,questions:list(obj({type:choice('scale','emoji','thumbs','single','multi','rank','text'),prompt:required,options:extras,max:integer(2,10),low:short,high:short}),1,20)}],
  ...['drawcard','wheel','boxes'].map((kind,i)=>[kind,['Draw a card','Spin the wheel','Open a box'][i],'Randomly reveal supplied discussion prompts or role cards. Do not replace scored questions with plain cards.',{repeat:bool,cards:list(obj({title:short,text:required}),2,30)}]),
  ['speaking','AI conversation','A roleplay with a defined learner role, partner role and speaking focus; teacher setup is required before learners can start.',{title:text(1,120),scenario:text(1,1500),focus:text(1,1000),learnerRole:text(1,200),partnerRole:text(1,200),level:choice('Pre-A1','A1','A2','B1','B2','C1','C2'),seconds:{...integer(60,300),enum:[60,120,180,240,300]}}],
+ ...Object.entries(communicativeFields).map(([kind,fields])=>['ca-'+kind,communicativeLabels[kind],'Native communicative activity. Put supplied prompts, role text and picture references in cards. Instruction may be empty for teacher-written directions; never invent a source picture.',{instruction:str,...fields}]),
  ...['analysis','plan','observe','loop','rehearsal','exam','reflection'].map((kind,i)=>['tt-'+kind,['Language analysis','Lesson plan','Observation form','Loop input','Microteaching rehearsal','Exam practice debrief','Reflective inquiry'][i],'Teacher-training form only, not a language learner writing box. Preserve source prompts and use known native field names.',{title:required,mode:choice('model','complete'),fields:records}]),
  ['heading','Heading','A short heading inside the task, where the source has one between parts.',{text:text(1,200)}],
  ['list','List','A bulleted or numbered list that is not a set of questions. Keep the source order and numbering start.',{ordered:bool,start:integer(1,100),items:list(required,1,40)}],

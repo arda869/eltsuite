@@ -25,12 +25,13 @@ try {
  for(const kind of d.kinds){
   current=kind;for(const p of [t,a])await p.getByRole('button',{name:new RegExp('Pictures '+kind+'(?:$|\\s)')}).first().click();await t.getByRole('button',{name:'Start activity',exact:true}).click();await a.locator('.ca-kind-'+kind).waitFor();await a.locator('.ca-wait').waitFor({state:'hidden'});
   if(kind==='memory')await a.locator('.ca-mcard').first().click();
-  await a.waitForFunction(kind=>[...document.querySelectorAll('.ca-kind-'+kind+' img')].some(i=>i.complete&&i.naturalWidth>0),kind);
+  if(kind==='speaking')await a.locator('.ca-timer').waitFor();
+  else await a.waitForFunction(kind=>[...document.querySelectorAll('.ca-kind-'+kind+' img')].some(i=>i.complete&&i.naturalWidth>0),kind);
   if(kind==='bingo'){
    await t.getByRole('button',{name:'Draw a call',exact:true}).click();await t.locator('.ca-call-now img').waitFor();assert.ok(await t.locator('.ca-calls button img').count()>0);
   }
   if(kind==='cue'){const labels=await t.locator('.ca-assignments select option').allTextContents();assert.ok(labels.length>3);for(const label of labels)assert.ok(label.trim(),'Card choice must be named');}
   if(kind==='findSomeone')assert.match(await t.locator('.ca-class-summary').innerText(),/Synthetic findSomeone picture/);
-  console.log('PASS picture-only '+kind+': decoded learner prompt, teacher controls and print markup');
+  console.log('PASS picture-only '+kind+': '+(kind==='speaking'?'timer-only learner view':'decoded learner prompt')+', teacher controls and print markup');
  }
 } catch(e){console.error('Picture-only case failed:',current);throw e;} finally{await browser.close();}

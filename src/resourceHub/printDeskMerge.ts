@@ -1,4 +1,5 @@
 import { openPdf } from '../pdf/pdfData';
+import { monoContours } from './monoPrint';
 
 export type PdfSlice = { bytes: Uint8Array; from?: number; through?: number; repeat?: number };
 
@@ -20,14 +21,7 @@ export async function mergePrintPdfs(slices: PdfSlice[], paper: 'a4' | 'letter',
         const context = canvas.getContext('2d');
         if (!context) throw new Error('Your browser could not draw the print pack.');
         await page.render({ canvasContext: context, viewport }).promise;
-        if (monochrome) {
-          const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-          for (let at = 0; at < pixels.data.length; at += 4) {
-            const shade = Math.round(.2126 * pixels.data[at] + .7152 * pixels.data[at + 1] + .0722 * pixels.data[at + 2]);
-            pixels.data[at] = shade; pixels.data[at + 1] = shade; pixels.data[at + 2] = shade;
-          }
-          context.putImageData(pixels, 0, 0);
-        }
+        if (monochrome) monoContours(context, canvas.width, canvas.height);
         const portrait = viewport.height >= viewport.width;
         if (!out) out = new jsPDF({ unit: 'mm', format: paper, orientation: portrait ? 'portrait' : 'landscape', compress: true });
         else out.addPage(paper, portrait ? 'portrait' : 'landscape');
@@ -35,7 +29,7 @@ export async function mergePrintPdfs(slices: PdfSlice[], paper: 'a4' | 'letter',
         const width = out.internal.pageSize.getWidth(), height = out.internal.pageSize.getHeight();
         const scale = Math.min(width / canvas.width, height / canvas.height);
         const drawW = canvas.width * scale, drawH = canvas.height * scale;
-        out.addImage(canvas.toDataURL('image/jpeg', .88), 'JPEG', (width - drawW) / 2, (height - drawH) / 2, drawW, drawH, undefined, 'FAST');
+        out.addImage(canvas.toDataURL(monochrome ? 'image/png' : 'image/jpeg', .88), monochrome ? 'PNG' : 'JPEG', (width - drawW) / 2, (height - drawH) / 2, drawW, drawH, undefined, 'FAST');
         canvas.width = 0; canvas.height = 0;
       }
     }

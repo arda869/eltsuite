@@ -366,7 +366,7 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .cut-head { flex: none; display: flex; align-items: center; gap: 2.5mm; margin-bottom: 2.5mm; font-size: 1.08em; }
 .cut-ex { font: 400 1em Fraunces, serif; white-space: pre; }
 .scissors { display: inline-flex; font-size: 12pt; color: var(--accent-ink); line-height: 1; } .scissors svg { display: block; }
-.cut-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; align-content: start; padding: .5pt 0 0 .5pt; }
+.cut-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; align-content: start; padding: 1pt 0 0 1pt; }
 .cut-card { position: relative; overflow: hidden; margin: -.5pt 0 0 -.5pt; border: .9pt dashed #6f6a64; padding: 3.6mm 4.4mm 3mm; display: flex; flex-direction: column; gap: 1.4mm; font: ${small ? '8.6pt' : '9.6pt'}/1.4 Karla, sans-serif; }
 .cut-title { font: 700 ${small ? '10.5pt' : '12pt'}/1.25 Karla, sans-serif; color: var(--ink); padding-left: 2.4mm; border-left: 1.6pt solid var(--accent); }
 .cut-body p { margin: 0 0 .8mm; }
@@ -479,8 +479,39 @@ ${opts.lessonStyle === 'exam' ? examSheetCss() : ''}
 ${themeWorksheetCss(opts.lessonStyle)}
 ${numberingCss(opts.lessonStyle)}
 ${activityPrintCss}
+${opts.mono ? MONO_CSS : ''}
 `;
 }
+
+// Black and white printing (2026-11 feedback): not a grey copy of the colour page. Every fill becomes
+// white, the accent becomes ink, and shapes are drawn with black contours so the page stays crisp
+// on a photocopier.
+const MONO_CSS = `
+:root { --accent: #1d1b18 !important; --accent-ink: #1d1b18 !important; --accent-text: #1d1b18 !important; --tint: #fff !important; --tint-line: #1d1b18 !important; --band: #fff !important; --muted: #3b3833 !important; }
+.band { background: #fff !important; border-bottom: 1.2pt solid #1d1b18; }
+.band-right, .band-cover { background: #fff !important; }
+.band-cover::before, .band-cover::after { display: none !important; }
+img { filter: grayscale(1) contrast(1.18); }
+.band img, .band-cover img { filter: grayscale(1) contrast(1.3) brightness(1.04); }
+:is(.pa-bingo-grid span, .ca-cell, .pa-sq, .pa-counter-card, .pa-tiles .cut-card) { background: #fff !important; }
+.pa-sq { border: .9pt solid #1d1b18 !important; }
+.pa-sq.special, .pa-sq.start, .pa-sq.finish { background: #fff !important; color: #1d1b18 !important; border-width: 1.6pt !important; }
+.pa-die polygon { fill: #fff !important; stroke: #1d1b18 !important; }
+.pa-die rect { stroke: #1d1b18 !important; }
+.cut-card, .pa-strip { border-color: #1d1b18 !important; }
+.pa-bingo-head, .pa-taboo h3 { background: #fff !important; color: #1d1b18 !important; border-bottom: 1.2pt solid #1d1b18 !important; }
+.pa-dom::after { background: #1d1b18 !important; }
+.pa-board-art .sp-cell.even { stroke: #fff !important; }
+.pa-board-art .sp-cell.start, .pa-board-art .sp-cell.finish { stroke: #fff !important; }
+.pa-board-spiral { background: #fff !important; }
+.pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #1d1b18 !important; }
+.pa-board-art .lad-in, .pa-board-art .sn-body, .pa-board-art .sn-head { stroke-opacity: 1; }
+.pa-board-art .lad-in { stroke: #fff !important; }
+.pa-board-art .sn-body, .pa-board-art .sn-head { fill: #fff !important; }
+.pa-board-art .sn-tongue { stroke: #1d1b18 !important; }
+.pa-board-spiral .pa-sq { background: transparent !important; border: 0 !important; }
+:is(.pill, .wb-pill, .chip, .kw) { background: #fff !important; border: .8pt solid #1d1b18 !important; color: #1d1b18 !important; }
+`;
 
 // The pieces of a worksheet for the worksheet view in the lesson editor: its styles, the header band,
 // the footer, and each item (a section or a task) printed on its own, in order.

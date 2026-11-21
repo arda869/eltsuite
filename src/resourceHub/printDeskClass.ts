@@ -21,7 +21,7 @@ export async function loadDeskLesson(classId: string, itemId: string, className:
 }
 
 /** The existing worksheet renderer is authoritative for layout and answer keys. */
-export async function makeDeskLessonPdfs(lesson: DeskLesson, cls: ClassDoc | undefined, picked: Set<number>, paper: 'a4' | 'letter') {
+export async function makeDeskLessonPdfs(lesson: DeskLesson, cls: ClassDoc | undefined, picked: Set<number>, paper: 'a4' | 'letter', mono = false) {
   const rows = flattenWithSections(lesson.tasks, picked, lessonStyleOf(cls));
   if (!rows.some(row => row.kind === 'task')) throw new Error(`Choose at least one printable task in ${lesson.title}.`);
   const accent = theme(cls?.themeColor).accent;
@@ -30,7 +30,7 @@ export async function makeDeskLessonPdfs(lesson: DeskLesson, cls: ClassDoc | und
     sheetSounds(lesson.classId, rows, accent, lesson.itemId),
     cls?.cover ? coverMarkup(cls.cover, lesson.classId).catch(() => '') : Promise.resolve(''),
   ]);
-  const base = { lessonStyle: lessonStyleOf(cls), header: true, notes: false, qr: false, paper: (paper === 'a4' ? 'A4' : 'Letter') as Paper, columns: 1 as const, size: 'standard' as const, clear: false, exam: false, marks: false, accent, className: cls?.name ?? lesson.className, level: cls?.level ?? '', cover, origin: location.origin, media, sounds };
+  const base = { lessonStyle: lessonStyleOf(cls), header: true, mono, notes: false, qr: false, paper: (paper === 'a4' ? 'A4' : 'Letter') as Paper, columns: 1 as const, size: 'standard' as const, clear: false, exam: false, marks: false, accent, className: cls?.name ?? lesson.className, level: cls?.level ?? '', cover, origin: location.origin, media, sounds };
   const learner = await worksheetPdf(worksheetHtml(lesson.title, rows, { ...base, key: false }), base.paper);
   const withTeacher = worksheetHtml(lesson.title, rows, { ...base, key: true, notes: true });
   // The existing renderer puts answer keys before cut-out cards, so subtracting the

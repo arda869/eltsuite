@@ -1,5 +1,5 @@
 import {splitKey} from '../lib/questions';
-import { bingoCards, bingoClaim, checkDominoes, dominoTiles, shuffled, validateActivity, type ActivityConfig, type Participant } from './model';
+import { bingoCards, bingoClaim, checkDominoes, dominoTiles, shuffled, validateActivity, type ActivityConfig, type Participant, boardJumps, boardStyleOf } from './model';
 
 export type ActivityState = {
   actorRevisions?: Record<string, number>;
@@ -46,6 +46,8 @@ export function initialActivity(c: ActivityConfig, people: Participant[], random
 }
 
 export const currentPerson = (s: ActivityState) => s.people[s.turn % Math.max(1, s.people.length)];
+export const learnerCallVisibility = (c: ActivityConfig): 'none' | 'current' | 'list' =>
+  c.settings.learnerCalls ?? (c.settings.showCalls ? 'current' : 'none');
 const sameIds = (a: readonly string[], b: readonly string[]) => a.length === b.length && new Set(a).size === a.length && a.every(id => b.includes(id));
 const cardPair = (s: ActivityState,id: string) => s.deckMap?.[id]?.itemId ?? id.slice(0,-2);
 
@@ -94,12 +96,16 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       s.assignments = structuredClone(a.assignments); break;
     }
     case 'roll': {
-      running(); ownTurn();
-      if (c.kind !== 'board' || s.die !== null) throw new Error('Finish the current square first.');
+      running();
+      if (c.kind !== 'board') throw new Error('Use the controls for this activity.');
+      // The next player's roll also ends the last turn, so nobody has to press a "Finish turn" button.
+      if (s.die !== null) { const again = c.items[s.positions[currentPerson(s)!.id]]?.special === 'again'; s.die = null; if (!again) advance(); }
+      if (!actor.teacher && currentPerson(s)?.id !== actor.id) throw new Error('Wait for your turn.');
       if (!Number.isInteger(a.die) || a.die < 1 || a.die > 6) throw new Error('Roll a six-sided die.');
       const who = currentPerson(s)!.id;
       const pos = Math.min(c.items.length - 1, (s.positions[who] ?? 0) + a.die);
       const item = c.items[pos]; s.positions[who] = pos; s.die = a.die;
+      if (boardStyleOf(c.settings.boardStyle) === 'ladders') { const jump = boardJumps(c.items.length)[pos]; if (jump !== undefined) s.positions[who] = jump; }
       if (item.special === 'back') s.positions[who] = Math.max(0, pos - Math.max(1, item.move ?? 2));
       if (item.special === 'miss') s.skip[who] = true;
       if (pos === c.items.length - 1 || item.special === 'finish') { s.phase = 'ended'; s.scores[currentPerson(s)?.teamId ?? who] = 1; }
@@ -172,6 +178,7 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
     case 'opinion':
       running();
       if (c.kind !== 'opinion' || !Number.isFinite(a.value) || a.value < 0 || a.value > 100) throw new Error('Choose a place on the line.');
+      if (!actor.teacher && c.settings.pinMove === false && s.opinions[actor.id]) throw new Error('Your pin is already saved.');
       s.opinions[actor.id] = { value: a.value, reason: (a.reason ?? '').slice(0, 1000) }; break;
     case 'found': {
       running();
@@ -191,7 +198,8 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       if(c.kind!=='speaking'||c.settings.mode!=='groups'||s.people.length!==2||s.endsAt===null||now<s.endsAt)throw new Error('Wait for this speaking turn to finish.');
       advance();s.round++;s.startedAt=now;s.endsAt=now+(c.settings.seconds??60)*1000;break;
     case 'swap':
-      teacherOnly();
+      // A learner can pass the Taboo card on once the turn's time is up, so groups never wait for the teacher.
+      if (!actor.teacher && !(c.kind === 'taboo' && state.phase === 'running' && state.endsAt !== null && now >= state.endsAt)) teacherOnly();
       if (!['speaking', 'taboo'].includes(c.kind) || !['running', 'ended'].includes(s.phase)) throw new Error('Start the speaking turns first.');
       advance(); s.round++; s.phase = 'running'; s.startedAt = now; s.endsAt = now + (c.settings.seconds ?? 60) * 1000; break;
     default:
@@ -215,16 +223,28 @@ export function stateForLearner(c: ActivityConfig, s: ActivityState, learnerId: 
   out.summaries = s.summaries?.[learnerId] ? {[learnerId]: s.summaries[learnerId]} : {};
   out.foundPoints = s.foundPoints?.[learnerId] ? {[learnerId]: s.foundPoints[learnerId]} : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
-  if (c.kind === 'survey') out.surveyResults = Object.fromEntries(c.items.map(item => [item.id, surveyCounts(s, item.id)]));
-  if (c.kind === 'opinion' && s.phase !== 'revealed') out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
+  if (c.kind === 'survey') out.surveyResults = Object.fromEntries(c.items.filter(item => s.answers[learnerId]?.[item.id]).map(item => [item.id, surveyCounts(s, item.id)]));
+  // Other learners' pins: after the teacher reveals them (default), once you've saved your own, or all the time.
+  if (c.kind === 'opinion' && !opinionsShown(c, s, learnerId)) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === 'opinion' && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
-  if (c.kind === 'bingo' && c.settings.showCalls === false && s.phase !== 'revealed') { out.currentCall = null; out.called = []; }
+  if (c.kind === 'bingo') {
+    const visibility = learnerCallVisibility(c);
+    out.currentCall = visibility === 'current' ? s.currentCall : null;
+    out.called = visibility === 'list' ? [...s.called] : visibility === 'current' && s.currentCall ? [s.currentCall] : [];
+  }
   return out;
 }
 
 export function configForLearner(c: ActivityConfig, s: ActivityState, learnerId: string): ActivityConfig {
   const out = structuredClone(c);
   out.items=out.items.map(item=>({...item,...(item.content?{content:splitKey({type:'doc',content:item.content}).content.content}:{})}));
+  if (c.kind === 'bingo') {
+    const visibility = learnerCallVisibility(c);
+    const visibleCalls = visibility === 'list' ? s.called : visibility === 'current' && s.currentCall ? [s.currentCall] : [];
+    const visibleIds = new Set([...(s.cards[learnerId] ?? []), ...visibleCalls]);
+    const callIds = new Set(visibleCalls);
+    out.items = out.items.filter(item => visibleIds.has(item.id)).map(item => ({ ...item, call: callIds.has(item.id) ? item.call : undefined }));
+  }
   if (c.kind==='memory') {
     const visible=Object.entries(s.deckMap??{}).filter(([id,entry])=>s.faceUp.includes(id)||s.won[entry.itemId]);
     if(s.deckMap)out.items=out.items.filter(item=>visible.some(([,entry])=>entry.itemId===item.id)).map(item=>{
@@ -234,7 +254,7 @@ export function configForLearner(c: ActivityConfig, s: ActivityState, learnerId:
   }
   if (c.kind==='dominoes') {
     const tiles=dominoTiles(c.items);
-    out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean).map(item=>{const tile=tiles.find(t=>t.id===item.id)!;return {...item,match:undefined,matchPicture:undefined,dominoRight:{text:tile.right,...(tile.rightPicture?{picture:tile.rightPicture}:{})}};});
+    out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean).map(item=>{const tile=tiles.find(t=>t.id===item.id)!;return {...item,title:tile.left,picture:tile.leftPicture,content:[],match:undefined,matchPicture:undefined,dominoRight:{text:tile.right,...(tile.rightPicture?{picture:tile.rightPicture}:{})}};});
   }
   if (c.kind==='strips'&&s.phase!=='revealed') out.items=s.order.map(id=>out.items.find(item=>item.id===id)!).filter(Boolean);
   if (s.phase === 'revealed') return out;
@@ -252,4 +272,19 @@ export function configForLearner(c: ActivityConfig, s: ActivityState, learnerId:
 export function surveyCounts(s: ActivityState, itemId: string): Record<string, number> {
   if (s.surveyResults?.[itemId]) return s.surveyResults[itemId];
   return Object.values(s.answers).reduce<Record<string, number>>((out, answers) => { const a = answers[itemId]; if (a) out[a] = (out[a] ?? 0) + 1; return out; }, {});
+}
+
+// Who rolls next on a board: the current player before they roll, then the next player (or the same one
+// after "Roll again"). Missed turns are skipped, as in the reducer.
+export function nextRoller(c: ActivityConfig, state: ActivityState): string | undefined {
+  if (state.die === null) return currentPerson(state)?.id;
+  const t = structuredClone(state);
+  if (c.items[t.positions[currentPerson(t)?.id ?? ''] ?? 0]?.special !== 'again' && t.people.length) {
+    for (let n = 0; n < t.people.length * 2; n++) { t.turn = (t.turn + 1) % t.people.length; const id = currentPerson(t)!.id; if (!t.skip[id]) break; delete t.skip[id]; }
+  }
+  return currentPerson(t)?.id;
+}
+
+export function opinionsShown(c: ActivityConfig, s: ActivityState, learnerId: string): boolean {
+  return s.phase === 'revealed' || c.settings.pinsVisible === 'always' || (c.settings.pinsVisible === 'after' && !!s.opinions[learnerId]);
 }

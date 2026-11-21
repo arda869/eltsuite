@@ -105,7 +105,7 @@ export function PrintDesk({ basketIds, onBack, preferredClassId, activities: cat
         const key = lessonKey(lesson.classId, lesson.itemId), data = loaded[key], picked = taskPicks[key];
         if (!data || !picked?.size) continue;
         const cls = myClasses.classes?.find(item => item.id === lesson.classId);
-        const pdfs = await makeDeskLessonPdfs(data, cls, picked, paper);
+        const pdfs = await makeDeskLessonPdfs(data, cls, picked, paper, colour === 'mono');
         learner.push({ bytes: pdfs.learner, repeat: copies });
         if (includeClassTeacherPages && pdfs.teacher) teacher.push({ bytes: pdfs.teacher });
       }

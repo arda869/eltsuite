@@ -291,3 +291,14 @@
   .rh-app-shell .rh-collection-hero p { font-size:12px; }
   .rh-app-shell .rh-detail-heading h1 { font-size:28px; }
 }
+
+/* Resource Hub pages, 2026-11 feedback: the page itself doesn't scroll on a desktop. The top bar and
+   tabs stay put and only the content area scrolls. Phones keep normal page scrolling. */
+@media(min-width:761px) and (min-height:560px) {
+  .rh-app-shell { height:100dvh; min-height:0; overflow:hidden; }
+  .rh-app-shell .rh-main { display:flex; flex:1; flex-direction:column; min-height:0; }
+  .rh-app-shell .rh-content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+  .rhe-shell { height:100dvh; min-height:0; overflow:hidden; }
+  .rhe-shell .rhe-main { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
+  .rhe-shell .rhe-main--activity { overflow:hidden; }
+}

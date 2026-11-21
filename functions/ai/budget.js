@@ -6,6 +6,9 @@ export const PILOT_MODEL = 'gpt-6.1-sol';
 export const MONTHLY_LIMIT_MICRO_USD = 20_000_000;
 export const MAX_INPUT_TOKENS = 100_000;
 export const MAX_OUTPUT_TOKENS = 24_000;
+// The native import schema and instructions now occupy about 82 KB before source text.
+// Allow its full 30 KB source while keeping a bounded request for the pilot.
+export const MAX_REQUEST_BYTES = 120_000;
 export const RESERVATION_PER_CALL = 2 * MAX_INPUT_TOKENS + 10 * MAX_OUTPUT_TOKENS;
 // Recheck provider prices before this date; all generation paths fail closed afterward.
 export const PRICE_REVIEW_AFTER = Date.parse('2027-02-01T00:00:00Z');
@@ -32,9 +35,8 @@ export function settleBudget(balance, reserved, usages) {
   return { balance: balance - reserved + cost, cost };
 }
 export function checkRequestSize(body) {
-  // UTF-8 bytes bound text token count; leave 10K tokens for message/schema framing.
-  // Include the instructions AND output schema, not just the teacher's brief.
-  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 100_000) throw Error('The lesson is too long for this pilot request.');
+  // Include instructions and output schema as well as the teacher's brief.
+  if (Buffer.byteLength(JSON.stringify(body), 'utf8') > MAX_REQUEST_BYTES) throw Error('The lesson is too long for this pilot request.');
 }
 // Missing records, owner status and email addresses never grant access.
 export function isPilotTeacher(pilotEnabled) { return pilotEnabled === true; }

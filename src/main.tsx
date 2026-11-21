@@ -1,4 +1,5 @@
 import './communicative/activities.css';
+import './communicative/pieces.css';
 import { SpellingAssistant } from './spelling/SpellingAssistant';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { FirestoreRecovery } from './components/FirestoreRecovery';
@@ -35,6 +36,7 @@ import './friday-ui.css';
 import './cohesion.css';
 import './visual-system.css';
 import './ui-polish.css';
+import './controls.css';
 import { AiActivityDock } from './components/AiActivity';
 
 const PublicHome=lazy(()=>import('./public/DesignPage').then(m=>({default:m.DesignHome})));

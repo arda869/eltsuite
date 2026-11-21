@@ -54,7 +54,10 @@ export function ResourceLivePreview({ draft, activeSectionId }: { draft: HubReso
   const currentSection = navSections.find(section => section.id === previewSectionId) ?? navSections[0];
   const pageIndex = currentSection ? navSections.indexOf(currentSection) : -1;
   const pages = currentSection ? [currentSection] : [];
-  const learnerDocuments = useMemo(() => new Map(learnerSections.map(section => [section.id, splitKey(section.content).content])), [learnerSections]);
+  // This is an editor-only local preview. Keep communicative cards intact so
+  // LocalActivity can render and play the authored board, bingo or story.
+  // The published Class path still seals private cards in splitKey's default mode.
+  const learnerDocuments = useMemo(() => new Map(learnerSections.map(section => [section.id, splitKey(section.content, true).content])), [learnerSections]);
   const onAnswer = (id: string, value: Response) => setResponses(current => ({ ...current, [id]: value }));
 
   const preview = <section id="resource-live-preview" className={`rhe-live-preview rhe-class-preview${expanded ? ' is-expanded' : ''}`} aria-label="Live activity preview">
@@ -65,7 +68,7 @@ export function ResourceLivePreview({ draft, activeSectionId }: { draft: HubReso
       {pages.length ? pages.map(section => {
         // The learner view excludes teacher sections and splits the answer key before rendering.
         // Page preview also strips inline keys, like the printed learner page.
-        const safeContent = learnerDocuments.get(section.id) ?? splitKey(section.content).content;
+        const safeContent = learnerDocuments.get(section.id) ?? splitKey(section.content, true).content;
         const content: JSONContent = view === 'page' ? withPaperInstructions(safeContent) : safeContent;
         const instructions = view === 'page' ? section.printInstructions?.trim() || section.instructions : section.instructions;
         return <article className={`rhe-preview-task ${view === 'page' ? 'rhe-preview-paper' : 'rhe-preview-learner'}`} key={`${view}-${section.id}`}><div className="rhe-preview-task-top"><span>{draft.title || 'Untitled activity'}</span><span>{view === 'page' ? 'PRINT PAGE' : 'LEARNER VIEW'}</span></div><header className="rhe-preview-task-head"><div className="rhe-preview-task-heading">{section.versionLabel && <small className="rhe-preview-version-name">{section.versionLabel}</small>}<h4>{section.title || 'Untitled section'}</h4></div>{instructions && <p>{instructions}</p>}</header><div className="rhe-preview-task-body"><LocalActivityMode.Provider value={true}><TaskRenderer content={content} responses={responses} onChange={view === 'learner' ? onAnswer : undefined} disabled={view === 'page'} classId="" /></LocalActivityMode.Provider></div></article>;

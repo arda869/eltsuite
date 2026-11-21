@@ -4,6 +4,7 @@ import { Select } from '../components/Select';
 import { PdfPreview } from '../components/PdfPreview';
 import type { HubActivity, HubCollection, HubPage } from './catalog';
 import { makeEditorResourcePdf } from './ResourceRichPdf';
+import { monoContours } from './monoPrint';
 
 type Paper = 'a4' | 'letter';
 type Colour = 'colour' | 'mono';
@@ -22,12 +23,8 @@ async function imageData(url: string, mono: boolean): Promise<string> {
   });
   const canvas = document.createElement('canvas'); canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
   const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas is unavailable.');
-  context.drawImage(image, 0, 0); const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-  for (let at = 0; at < pixels.data.length; at += 4) {
-    const shade = Math.round(.2126 * pixels.data[at] + .7152 * pixels.data[at + 1] + .0722 * pixels.data[at + 2]);
-    pixels.data[at] = shade; pixels.data[at + 1] = shade; pixels.data[at + 2] = shade;
-  }
-  context.putImageData(pixels, 0, 0);
+  context.drawImage(image, 0, 0);
+  monoContours(context, canvas.width, canvas.height);
   return canvas.toDataURL('image/png');
 }
 

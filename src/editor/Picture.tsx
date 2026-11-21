@@ -530,7 +530,6 @@ const savedQuality = (): PicQuality => {
 export function PictureDialog({ editor, classId, onClose, initialDesignId = '', returnTo = '' }: { editor: Editor; classId: string; onClose: () => void; initialDesignId?: string; returnTo?: string }) {
   const { user } = useAuth();
   const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>(initialDesignId ? 'designer' : 'new');
-  const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
   const [size, setSize] = useState<PicSize>('m');
   const [quality, setQualityState] = useState<PicQuality>(savedQuality);
@@ -671,20 +670,6 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
                 'Quality',
               )}
               <span className="hint">{PIC_QUALITY.find((q) => q.k === quality)?.about}. Smaller pictures leave more space for the rest of your media.</span>
-            </div>
-            <div className="pic-url">
-              <input value={url} aria-label="Picture address" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="Or paste a picture address: https://…" onChange={(e) => setUrl(e.target.value)} />
-              <button
-                type="button"
-                className="btn"
-                disabled={!/^https:\/\/\S+$/.test(url.trim())}
-                onClick={() => {
-                  insertPictures(editor, [url.trim()], { size, mark, alt, caption: alt });
-                  onClose();
-                }}
-              >
-                Add
-              </button>
             </div>
             {look}
             <label className="field">

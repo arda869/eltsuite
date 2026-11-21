@@ -16,15 +16,23 @@ var ACTIVITY_LABELS = {
   taboo: "Taboo cards",
   speaking: "Speaking timer"
 };
+var ACTIVITY_COLOURS = [
+  { v: "class", label: "Class colour" },
+  { v: "coral", label: "Coral" },
+  { v: "ocean", label: "Ocean" },
+  { v: "forest", label: "Forest" },
+  { v: "plum", label: "Plum" },
+  { v: "sunshine", label: "Sunshine" },
+  { v: "slate", label: "Slate" }
+];
 function validateActivity(c) {
   const out = [];
   const issue = (field, message) => out.push({ field, message });
   if (!c.id) issue("id", "Save the activity before starting.");
-  if (!c.instruction.trim()) issue("instruction", "Add a short instruction.");
   if (new Set(c.items.map((i) => i.id)).size !== c.items.length || c.items.some((i) => !i.id)) issue("items", "Give each item its own identifier.");
   c.items.forEach((i, n) => {
     const hasRichPicture = (nodes = []) => nodes.some((n2) => ["picture", "image"].includes(n2.type ?? "") && !!n2.attrs?.src || hasRichPicture(n2.content));
-    if (!i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
+    if (c.kind !== "speaking" && !i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
     if (i.matchPicture?.src && !i.matchPicture.alt.trim()) issue(`items.${n}.matchPicture`, `Describe the matching picture in pair ${n + 1}.`);
     if (i.picture?.src && !i.picture.alt.trim()) issue(`items.${n}.picture`, `Describe the picture in item ${n + 1}.`);
   });
@@ -36,13 +44,13 @@ function validateActivity(c) {
   if (c.kind === "bingo") {
     const size = c.settings.gridSize ?? 4;
     if (![3, 4, 5].includes(size)) issue("gridSize", "Choose a 3 \xD7 3, 4 \xD7 4 or 5 \xD7 5 card.");
-    if (c.items.length <= size * size) issue("items", `Add more than ${size * size} items for different Bingo cards.`);
+    if (c.items.length <= size * size) issue("items", `A ${size} \xD7 ${size} card needs at least ${size * size + 1} items, so every learner gets a different card. You have ${c.items.length}.`);
     if (c.settings.freeCentre && size === 4) issue("freeCentre", "Use a 3 \xD7 3 or 5 \xD7 5 card for a free centre.");
   }
   if (["dominoes", "memory"].includes(c.kind)) {
     if (c.items.length < 2) issue("items", "Add at least two matching pairs.");
     c.items.forEach((i, n) => {
-      if (!i.match?.trim() && !i.matchPicture?.src) issue(`items.${n}.match`, `Add the matching half of pair ${n + 1}.`);
+      if (!i.match?.trim() && !i.matchPicture?.src) issue(`items.${n}.match`, `Pair ${n + 1} needs its other half. Add the word or picture it matches under \u201CPairs\u201D.`);
     });
   }
   if (c.kind === "strips" && c.items.length < 2) issue("items", "Add at least two strips in their correct order.");
@@ -51,7 +59,7 @@ function validateActivity(c) {
     if (c.settings.layout === "diamond" && c.items.length !== 9) issue("layout", "Diamond 9 needs exactly nine items.");
   }
   if (c.kind === "findSomeone" && (c.items.length < 6 || c.items.length > 16)) issue("items", "Use between 6 and 16 prompts.");
-  if (["cue", "taboo", "survey", "opinion", "speaking"].includes(c.kind) && !c.items.length) issue("items", "Add at least one item.");
+  if (["cue", "taboo", "survey", "opinion"].includes(c.kind) && !c.items.length) issue("items", "Add at least one item.");
   if (c.kind === "taboo") c.items.forEach((i, n) => {
     if ((i.taboo?.length ?? 0) > 5) issue(`items.${n}.taboo`, "Use up to five taboo words.");
   });
@@ -59,7 +67,7 @@ function validateActivity(c) {
     if ((i.options?.length ?? 0) < 2 || i.options?.some((x) => !x.trim()) || new Set(i.options?.map((x) => x.trim())).size !== i.options?.length) issue(`items.${n}.options`, `Add at least two different answers to question ${n + 1}, without blank lines.`);
   });
   if (c.kind === "taboo" && (!Number.isInteger(c.settings.seconds ?? 60) || (c.settings.seconds ?? 60) < 15 || (c.settings.seconds ?? 60) > 180)) issue("seconds", "Choose a turn from 15 seconds to 3 minutes.");
-  if (c.kind === "speaking" && ((c.settings.seconds ?? 60) < 30 || (c.settings.seconds ?? 60) > 180)) issue("seconds", "Choose a time from 30 seconds to 3 minutes.");
+  if (c.kind === "speaking" && c.settings.timerDirection !== "up" && (!Number.isFinite(c.settings.seconds ?? 60) || (c.settings.seconds ?? 60) < 5 || (c.settings.seconds ?? 60) > 3600)) issue("seconds", "Choose a time from 5 seconds to 60 minutes.");
   if (c.kind === "spot") {
     if (c.settings.versions?.length !== 2 || c.settings.versions.some((v) => !v.name.trim() || !v.picture.src)) issue("versions", "Add and name both pictures.");
     if (!c.settings.differences?.length) issue("differences", "Mark at least one difference on picture B.");
@@ -84,8 +92,9 @@ function configFromNode(node) {
     items: (node.content ?? []).map((card, n) => ({
       ...card.attrs,
       id: String(card.attrs?.activityItemId ?? `${attrs.id}:${n}`),
-      title: String(card.attrs?.title ?? plainText(card.content)),
+      title: String(card.attrs?.title || plainText(card.content)),
       content: card.content
+      // an empty title falls back to the card's text
     }))
   };
   if (kind === "spot" && (config.items.length || !config.settings.versions?.length)) {
@@ -142,7 +151,7 @@ function bingoClaim(card, marked, called, size, rule) {
   return { valid: !uncalled.length && (rule === "full" ? card.every((_, n) => on(n)) : lines >= (rule === "twoLines" ? 2 : 1)), lines, uncalled };
 }
 function dominoTiles(items) {
-  return items.map((item, n) => ({ id: item.id, left: item.title, leftPicture: item.picture, rightPicture: items[(n + 1) % items.length]?.matchPicture, right: items[(n + 1) % items.length]?.match ?? "", leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? "" }));
+  return items.map((item, n) => ({ id: item.id, left: item.match ?? "", leftPicture: item.matchPicture, rightPicture: items[(n + 1) % items.length]?.picture, right: items[(n + 1) % items.length]?.title ?? "", leftPair: item.id, rightPair: items[(n + 1) % items.length]?.id ?? "" }));
 }
 function checkDominoes(items, order) {
   if (order.length !== items.length || new Set(order).size !== items.length) return false;
@@ -159,7 +168,7 @@ function oppositePairs(values) {
   return pairs;
 }
 function boardLayout(count, style = "snake") {
-  const cols = Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
+  const cols = style === "spiral" ? Math.ceil(Math.sqrt(count * 1.5)) : Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
   const cells = [];
   if (style === "spiral") {
     let left = 1, right = cols, top = 1, bottom = rows;
@@ -179,9 +188,87 @@ function boardLayout(count, style = "snake") {
     }
   } else for (let n = 0; n < count; n++) {
     const row = Math.floor(n / cols), col = n % cols;
-    cells.push({ row: rows - row, col: style === "path" || row % 2 === 0 ? col + 1 : cols - col });
+    cells.push({ row: rows - row, col: row % 2 === 0 ? col + 1 : cols - col });
   }
   return { cols, rows, cells: cells.slice(0, count) };
+}
+var boardStyleOf = (style) => style === "spiral" || style === "ladders" ? style : "snake";
+function boardJumps(count) {
+  const { cols, cells } = boardLayout(count, "snake"), jumps = {}, used = /* @__PURE__ */ new Set([0, count - 1]);
+  const pairs = count < 20 ? 1 : count < 36 ? 2 : 3;
+  const at = (row, col) => cells.findIndex((c) => c.row === row && c.col === Math.max(1, Math.min(cols, col)));
+  const free = (n, dir) => {
+    while (used.has(n) && n > 0 && n < count - 1) n += dir;
+    return n;
+  };
+  const add = (from, to) => {
+    if (from > 0 && from < count - 1 && to > 0 && to < count - 1 && Math.abs(to - from) >= cols - 1 && !used.has(from) && !used.has(to)) {
+      jumps[from] = to;
+      used.add(from);
+      used.add(to);
+    }
+  };
+  [0.12, 0.45, 0.7].slice(0, pairs).forEach((f, k) => {
+    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), c = cells[from];
+    if (c) add(from, at(c.row - 1 - k % 2, c.col + (k % 2 ? 1 : -1)));
+  });
+  [0.58, 0.88, 0.32].slice(0, pairs).forEach((f, k) => {
+    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), c = cells[from];
+    if (c) add(from, at(c.row + 1 + (k + 1) % 2, c.col + (k % 2 ? -1 : 1)));
+  });
+  return jumps;
+}
+function boardArt(count, style) {
+  const kind = boardStyleOf(style);
+  if (kind === "spiral") {
+    const { cols: cols2, rows: rows2, cells: cells2 } = boardLayout(count, "spiral"), n = cells2.length;
+    const c = cells2.map((p) => ({ x: p.col - 0.5, y: p.row - 0.5 }));
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const back = (a, b) => ({ x: a.x + (a.x - b.x) * 0.02, y: a.y + (a.y - b.y) * 0.02 });
+    const pt = (p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`;
+    const first = n > 1 ? back(c[0], c[1]) : c[0], last = n > 1 ? back(c[n - 1], c[n - 2]) : c[0];
+    const edge = `<polyline class="sp-edge" points="${[first, ...c, last].map(pt).join(" ")}" stroke-width=".845"/>`;
+    const kind2 = (i) => i === 0 ? "start" : i === n - 1 ? "finish" : i % 2 ? "even" : "odd";
+    const spaces = c.map((p, i) => `<polyline class="sp-cell ${kind2(i)}" points="${[i ? mid(c[i - 1], p) : p, p, i < n - 1 ? mid(p, c[i + 1]) : p].map(pt).join(" ")}" stroke-width=".8"/>`).join("");
+    const caps = n > 1 ? `<polyline class="sp-cell sp-cap start" points="${pt(c[0])} ${pt(first)}" stroke-width=".8"/><polyline class="sp-cell sp-cap finish" points="${pt(c[n - 1])} ${pt(last)}" stroke-width=".8"/>` : "";
+    const lines = c.slice(1).map((p, i) => {
+      const m = mid(c[i], p), dx = Math.sign(p.x - c[i].x), dy = Math.sign(p.y - c[i].y);
+      return `<line class="sp-div" x1="${(m.x - dy * 0.4).toFixed(3)}" y1="${(m.y + dx * 0.4).toFixed(3)}" x2="${(m.x + dy * 0.4).toFixed(3)}" y2="${(m.y - dx * 0.4).toFixed(3)}"/>`;
+    }).join("");
+    return `<svg class="board-art board-art-spiral" viewBox="0 0 ${cols2} ${rows2}" preserveAspectRatio="none" aria-hidden="true">${edge}${spaces}${caps}${lines}</svg>`;
+  }
+  if (kind !== "ladders") return "";
+  const { cols, rows, cells } = boardLayout(count, "snake");
+  const at = (n) => ({ x: cells[n].col - 0.5, y: cells[n].row - 0.5 });
+  let ladders = "", snakes = "";
+  for (const [a, b] of Object.entries(boardJumps(count))) {
+    const from = at(Number(a)), to = at(b), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    if (b > Number(a)) {
+      const w = 0.15, x0 = from.x - ux * 0.25, y0 = from.y - uy * 0.25, x1 = to.x + ux * 0.25, y1 = to.y + uy * 0.25, l = len + 0.5, steps = Math.max(3, Math.round(l / 0.24));
+      const bar = (ax, ay, bx, by) => `<line class="lad-out" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/><line class="lad-in" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/>`;
+      let rungs = "";
+      for (let i = 1; i < steps; i++) {
+        const k = i / steps, x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k;
+        rungs += bar(x - nx * w, y - ny * w, x + nx * w, y + ny * w);
+      }
+      ladders += `<g class="ladder">${rungs}${[-1, 1].map((sd) => bar(x0 + nx * w * sd, y0 + ny * w * sd, x1 + nx * w * sd, y1 + ny * w * sd)).join("")}</g>`;
+    } else {
+      const N = 48, waves = Math.max(1.2, len * 0.9), spine = [];
+      for (let i = 0; i <= N; i++) {
+        const k = i / N, o = 0.22 * Math.sin(Math.PI * Math.min(1, k * 1.15)) * Math.sin(k * waves * 2 * Math.PI);
+        spine.push({ x: from.x + dx * k + nx * o, y: from.y + dy * k + ny * o });
+      }
+      const left = [], right = [];
+      spine.forEach((p, i) => {
+        const q = spine[Math.min(N, i + 1)], o = spine[Math.max(0, i - 1)], tx = q.x - o.x, ty = q.y - o.y, tl = Math.hypot(tx, ty) || 1, half = 0.095 * (1 - i / N) + 6e-3;
+        left.push(`${(p.x - ty / tl * half).toFixed(3)} ${(p.y + tx / tl * half).toFixed(3)}`);
+        right.unshift(`${(p.x + ty / tl * half).toFixed(3)} ${(p.y - tx / tl * half).toFixed(3)}`);
+      });
+      const hx = spine[0].x, hy = spine[0].y, fx = spine[0].x - spine[2].x, fy = spine[0].y - spine[2].y, fl = Math.hypot(fx, fy) || 1, ang = Math.atan2(fy, fx) * 180 / Math.PI;
+      snakes += `<g class="snake"><polygon class="sn-body" points="${left.concat(right).join(" ")}"/><polyline class="sn-back" points="${spine.slice(2, N - 4).map((p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`).join(" ")}"/><path class="sn-tongue" d="M${(hx + fx / fl * 0.14).toFixed(3)} ${(hy + fy / fl * 0.14).toFixed(3)} l${(fx / fl * 0.1).toFixed(3)} ${(fy / fl * 0.1).toFixed(3)} m0 0 l${(fx / fl * 0.04 - fy / fl * 0.03).toFixed(3)} ${(fy / fl * 0.04 + fx / fl * 0.03).toFixed(3)} m${(-fx / fl * 0.04 + fy / fl * 0.03).toFixed(3)} ${(-fy / fl * 0.04 - fx / fl * 0.03).toFixed(3)} l${(fx / fl * 0.04 + fy / fl * 0.03).toFixed(3)} ${(fy / fl * 0.04 - fx / fl * 0.03).toFixed(3)}"/><ellipse class="sn-head" cx="${hx.toFixed(3)}" cy="${hy.toFixed(3)}" rx=".15" ry=".11" transform="rotate(${ang.toFixed(1)} ${hx.toFixed(3)} ${hy.toFixed(3)})"/><circle class="sn-eye" cx="${(hx + fx / fl * 0.05 - fy / fl * 0.055).toFixed(3)}" cy="${(hy + fy / fl * 0.05 + fx / fl * 0.055).toFixed(3)}" r=".022"/><circle class="sn-eye" cx="${(hx + fx / fl * 0.05 + fy / fl * 0.055).toFixed(3)}" cy="${(hy + fy / fl * 0.05 - fx / fl * 0.055).toFixed(3)}" r=".022"/></g>`;
+    }
+  }
+  return `<svg class="board-art board-art-ladders" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${snakes}${ladders}</svg>`;
 }
 
 // src/lib/pack.ts
@@ -585,6 +672,7 @@ function initialActivity(c, people, random = Math.random) {
   };
 }
 var currentPerson = (s) => s.people[s.turn % Math.max(1, s.people.length)];
+var learnerCallVisibility = (c) => c.settings.learnerCalls ?? (c.settings.showCalls ? "current" : "none");
 var sameIds = (a, b) => a.length === b.length && new Set(a).size === a.length && a.every((id) => b.includes(id));
 var cardPair = (s, id) => s.deckMap?.[id]?.itemId ?? id.slice(0, -2);
 function transition(c, state, a, actor, now, random = Math.random) {
@@ -655,14 +743,23 @@ function transition(c, state, a, actor, now, random = Math.random) {
     }
     case "roll": {
       running();
-      ownTurn();
-      if (c.kind !== "board" || s.die !== null) throw new Error("Finish the current square first.");
+      if (c.kind !== "board") throw new Error("Use the controls for this activity.");
+      if (s.die !== null) {
+        const again = c.items[s.positions[currentPerson(s).id]]?.special === "again";
+        s.die = null;
+        if (!again) advance();
+      }
+      if (!actor.teacher && currentPerson(s)?.id !== actor.id) throw new Error("Wait for your turn.");
       if (!Number.isInteger(a.die) || a.die < 1 || a.die > 6) throw new Error("Roll a six-sided die.");
       const who = currentPerson(s).id;
       const pos = Math.min(c.items.length - 1, (s.positions[who] ?? 0) + a.die);
       const item = c.items[pos];
       s.positions[who] = pos;
       s.die = a.die;
+      if (boardStyleOf(c.settings.boardStyle) === "ladders") {
+        const jump = boardJumps(c.items.length)[pos];
+        if (jump !== void 0) s.positions[who] = jump;
+      }
       if (item.special === "back") s.positions[who] = Math.max(0, pos - Math.max(1, item.move ?? 2));
       if (item.special === "miss") s.skip[who] = true;
       if (pos === c.items.length - 1 || item.special === "finish") {
@@ -765,6 +862,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
     case "opinion":
       running();
       if (c.kind !== "opinion" || !Number.isFinite(a.value) || a.value < 0 || a.value > 100) throw new Error("Choose a place on the line.");
+      if (!actor.teacher && c.settings.pinMove === false && s.opinions[actor.id]) throw new Error("Your pin is already saved.");
       s.opinions[actor.id] = { value: a.value, reason: (a.reason ?? "").slice(0, 1e3) };
       break;
     case "found": {
@@ -804,7 +902,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
       s.endsAt = now + (c.settings.seconds ?? 60) * 1e3;
       break;
     case "swap":
-      teacherOnly();
+      if (!actor.teacher && !(c.kind === "taboo" && state.phase === "running" && state.endsAt !== null && now >= state.endsAt)) teacherOnly();
       if (!["speaking", "taboo"].includes(c.kind) || !["running", "ended"].includes(s.phase)) throw new Error("Start the speaking turns first.");
       advance();
       s.round++;
@@ -831,18 +929,26 @@ function stateForLearner(c, s, learnerId) {
   out.summaries = s.summaries?.[learnerId] ? { [learnerId]: s.summaries[learnerId] } : {};
   out.foundPoints = s.foundPoints?.[learnerId] ? { [learnerId]: s.foundPoints[learnerId] } : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
-  if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.map((item) => [item.id, surveyCounts(s, item.id)]));
-  if (c.kind === "opinion" && s.phase !== "revealed") out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
+  if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.filter((item) => s.answers[learnerId]?.[item.id]).map((item) => [item.id, surveyCounts(s, item.id)]));
+  if (c.kind === "opinion" && !opinionsShown(c, s, learnerId)) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === "opinion" && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
-  if (c.kind === "bingo" && c.settings.showCalls === false && s.phase !== "revealed") {
-    out.currentCall = null;
-    out.called = [];
+  if (c.kind === "bingo") {
+    const visibility = learnerCallVisibility(c);
+    out.currentCall = visibility === "current" ? s.currentCall : null;
+    out.called = visibility === "list" ? [...s.called] : visibility === "current" && s.currentCall ? [s.currentCall] : [];
   }
   return out;
 }
 function configForLearner(c, s, learnerId) {
   const out = structuredClone(c);
   out.items = out.items.map((item) => ({ ...item, ...item.content ? { content: splitKey({ type: "doc", content: item.content }).content.content } : {} }));
+  if (c.kind === "bingo") {
+    const visibility = learnerCallVisibility(c);
+    const visibleCalls = visibility === "list" ? s.called : visibility === "current" && s.currentCall ? [s.currentCall] : [];
+    const visibleIds = /* @__PURE__ */ new Set([...s.cards[learnerId] ?? [], ...visibleCalls]);
+    const callIds = new Set(visibleCalls);
+    out.items = out.items.filter((item) => visibleIds.has(item.id)).map((item) => ({ ...item, call: callIds.has(item.id) ? item.call : void 0 }));
+  }
   if (c.kind === "memory") {
     const visible = Object.entries(s.deckMap ?? {}).filter(([id, entry]) => s.faceUp.includes(id) || s.won[entry.itemId]);
     if (s.deckMap) out.items = out.items.filter((item) => visible.some(([, entry]) => entry.itemId === item.id)).map((item) => {
@@ -854,7 +960,7 @@ function configForLearner(c, s, learnerId) {
     const tiles = dominoTiles(c.items);
     out.items = s.order.map((id) => out.items.find((item) => item.id === id)).filter(Boolean).map((item) => {
       const tile = tiles.find((t) => t.id === item.id);
-      return { ...item, match: void 0, matchPicture: void 0, dominoRight: { text: tile.right, ...tile.rightPicture ? { picture: tile.rightPicture } : {} } };
+      return { ...item, title: tile.left, picture: tile.leftPicture, content: [], match: void 0, matchPicture: void 0, dominoRight: { text: tile.right, ...tile.rightPicture ? { picture: tile.rightPicture } : {} } };
     });
   }
   if (c.kind === "strips" && s.phase !== "revealed") out.items = s.order.map((id) => out.items.find((item) => item.id === id)).filter(Boolean);
@@ -877,18 +983,41 @@ function surveyCounts(s, itemId) {
     return out;
   }, {});
 }
+function nextRoller(c, state) {
+  if (state.die === null) return currentPerson(state)?.id;
+  const t = structuredClone(state);
+  if (c.items[t.positions[currentPerson(t)?.id ?? ""] ?? 0]?.special !== "again" && t.people.length) {
+    for (let n = 0; n < t.people.length * 2; n++) {
+      t.turn = (t.turn + 1) % t.people.length;
+      const id = currentPerson(t).id;
+      if (!t.skip[id]) break;
+      delete t.skip[id];
+    }
+  }
+  return currentPerson(t)?.id;
+}
+function opinionsShown(c, s, learnerId) {
+  return s.phase === "revealed" || c.settings.pinsVisible === "always" || c.settings.pinsVisible === "after" && !!s.opinions[learnerId];
+}
 export {
+  ACTIVITY_COLOURS,
   ACTIVITY_KINDS,
   ACTIVITY_LABELS,
   bingoCards,
   bingoClaim,
+  boardArt,
+  boardJumps,
   boardLayout,
+  boardStyleOf,
   checkDominoes,
   configForLearner,
   configFromNode,
   currentPerson,
   dominoTiles,
   initialActivity,
+  learnerCallVisibility,
+  nextRoller,
+  opinionsShown,
   oppositePairs,
   parseItemList,
   plainText,

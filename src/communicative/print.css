@@ -5,7 +5,7 @@
    ===================================================================================== */
 .pa-body { flex: 1; min-height: 0; padding: 7mm var(--side) 0; display: flex; flex-direction: column; }
 .pa-activity { font: 400 10.2pt/1.5 Fraunces, serif; }
-.pa-cut-grid { display: grid; grid-template-columns: repeat(var(--pa-cols,2),minmax(0,1fr)); gap: 0; }
+.pa-cut-grid { display: grid; grid-template-columns: repeat(var(--pa-cols,2),minmax(0,1fr)); gap: 0; padding: 1pt 0 0 1pt; } /* room for the left and top cut lines */
 .pa-cut-grid > .cut-card { min-height: 32mm; box-sizing: border-box; break-inside: avoid; padding: 3mm; }
 .pa-picture { display: block; width: min(100%,40mm); height: 30mm; object-fit: cover; border-radius: 2mm; align-self: center; margin-inline: auto; }
 .pa-board { max-height: 174mm; }
@@ -82,8 +82,8 @@
 /* Dominoes: two halves; the join is a solid accent line, the cut is dashed */
 .pa-dom { flex-direction: row; padding: 0; gap: 0; min-height: 24mm; }
 .pa-dom > span { flex: 1; display: flex; align-items: center; padding: 2.6mm 4mm; }
-.pa-dom > span:first-child { font: 400 9.2pt/1.35 Karla, sans-serif; color: #3d3a36; border-right: 1.4pt solid var(--accent); }
-.pa-dom > span:last-child { font: 600 12.5pt/1.2 Fraunces, serif; justify-content: center; text-align: center; }
+.pa-dom > span { font: 500 11pt/1.25 Fraunces, serif; color: #262420; justify-content: center; text-align: center; }
+.pa-dom > span:first-child { border-right: 1.4pt solid var(--accent); }
 .pa-dom .end { font: 800 8pt Karla, sans-serif !important; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink) !important; justify-content: center; background: var(--tint); }
 
 /* Pelmanism */
@@ -195,3 +195,48 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 
 /* Keep each Bingo picture in the same frame as its on-screen card, even in a 5 × 5 grid. */
 .pa-bingo-grid .pa-picture {width:100%;height:auto;aspect-ratio:4 / 3;}
+
+/* 2026-11: the paper versions echo the live pieces (Cards / Open the box language). In black and white
+   (MONO_CSS in worksheetHtml.ts) the coloured bands become outlined white bands, so no toner is wasted. */
+.pa-bingo { padding: 0; gap: 0; }
+.pa-bingo-head { padding: 2.2mm 4mm; background: var(--accent); color: #fff; font: 800 8pt Karla, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.pa-bingo-head b { font: 800 11pt Karla, sans-serif; letter-spacing: .5em; }
+.pa-bingo-grid { margin: 3mm 4mm 4mm; }
+.pa-bingo .pa-bingo-grid span:nth-child(n):nth-child(n) { background: #fff; }
+.pa-dom { position: relative; }
+.pa-dom > span:first-child { border-right-color: var(--hair); }
+.pa-dom::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2.2mm; height: 2.2mm; margin: -1.1mm 0 0 -1.1mm; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 .8mm #fff; }
+.pa-taboo h3 { margin: 0; padding: 3.4mm 3mm 3mm; background: var(--accent); color: #fff; border-bottom: 0; font: 600 14pt/1.2 Fraunces, serif; }
+.pa-taboo-words { padding: 2.4mm 3mm 3.2mm; gap: .6mm; }
+.pa-taboo-words span:not(.pa-label) { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1pt; }
+.pa-cut-grid > .pa-caller-strip { gap: 3mm; flex-direction: row; justify-content: space-between; }
+.pa-cut-grid > .pa-caller-strip small { font: 400 8.4pt/1.3 Karla, sans-serif; color: var(--muted); text-align: right; }
+
+/* Spiral and Snakes and ladders boards (drawings come from boardArt in model.ts) */
+.pa-board { position: relative; }
+.pa-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.pa-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pa-board-spiral { gap: 0; padding: 5mm; border-radius: 4mm; background: #ecebe7; }
+.pa-board-spiral .pa-board-art { inset: 5mm; z-index: 0; }
+.pa-board-spiral .pa-sq { position: relative; box-sizing: border-box; aspect-ratio: auto; min-height: 0; z-index: 1; background: transparent !important; border: 0 !important; justify-content: center; align-items: center; text-align: center; font-size: var(--pa-board-font, 9pt); padding: 3mm; }
+.pa-board-spiral .pa-sq .n { top: 2.8mm; left: 3.2mm; font-size: 6pt; }
+.pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #fff; font: 800 9pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.pa-board-spiral .pa-sq.start .n, .pa-board-spiral .pa-sq.finish .n { display: none; }
+.pa-board-art .sp-edge { fill: none; stroke: #262420; stroke-linejoin: miter; stroke-linecap: round; }
+.pa-board-art .sp-cell { fill: none; stroke-linejoin: miter; stroke-linecap: butt; }
+.pa-board-art .sp-cell.odd { stroke: #fff; } .pa-board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 24%, #fff); }
+.pa-board-art .sp-cell.start, .pa-board-art .sp-cell.finish { stroke: var(--accent); }
+.pa-board-art .sp-cap { stroke-linecap: round; }
+.pa-board-art .sp-div { stroke: #262420; stroke-width: .6pt; vector-effect: non-scaling-stroke; }
+.pa-board-ladders { gap: 0; padding: 0; border: 1.6pt solid #262420; border-radius: 0; background: #fff; }
+.pa-board-ladders .pa-sq { border-radius: 0; border-right: .6pt solid #262420; border-bottom: 1.6pt solid #262420; }
+.pa-board-ladders .pa-sq.start, .pa-board-ladders .pa-sq.finish { background: #fff; color: #262420; font: 800 13pt Karla, sans-serif; justify-content: center; align-items: center; }
+.pa-board-art .lad-out { stroke: #262420; stroke-width: .085; stroke-linecap: round; }
+.pa-board-art .lad-in { stroke: #e0b27a; stroke-width: .05; stroke-linecap: round; }
+.pa-board-art .sn-body, .pa-board-art .sn-head { fill: #8cc79a; stroke: #262420; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
+.pa-board-art .sn-back { fill: none; stroke: #262420; stroke-width: .045; stroke-dasharray: .07 .07; }
+.pa-board-art .sn-eye { fill: #262420; } .pa-board-art .sn-tongue { fill: none; stroke: #c8352a; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
+/* Start and Finish print solid in the accent (outlined in black and white). */
+.pa-board-snake .pa-sq.start, .pa-board-snake .pa-sq.finish { background: var(--accent); color: #fff; }
+.pa-board-snake .pa-sq.start .n, .pa-board-snake .pa-sq.finish .n { color: #fff; }
+.pa-board-snake .pa-sq:nth-child(even of .pa-sq):not(.special):not(.start):not(.finish) { background: var(--tint); }

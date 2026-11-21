@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import type { HubActivity, HubCollection } from './catalog';
 import { generatedAnswerLinesForSection } from './hubAnswerKey';
+import { monoContours } from './monoPrint';
 
 type Section = NonNullable<HubActivity['editorSections']>[number];
 type PrintCollection = HubCollection & { paperAccent?: string; headerImage?: string };
@@ -97,15 +98,8 @@ async function printableHeader(source: string, mono: boolean): Promise<{ data: s
   const context = canvas.getContext('2d');
   if (!context) throw new Error('The collection header image could not be prepared for print.');
   context.drawImage(image, 0, 0);
-  if (mono) {
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    for (let at = 0; at < pixels.data.length; at += 4) {
-      const shade = Math.round(.2126 * pixels.data[at] + .7152 * pixels.data[at + 1] + .0722 * pixels.data[at + 2]);
-      pixels.data[at] = shade; pixels.data[at + 1] = shade; pixels.data[at + 2] = shade;
-    }
-    context.putImageData(pixels, 0, 0);
-  }
-  try { return { data: canvas.toDataURL('image/jpeg', .86), width: canvas.width, height: canvas.height }; }
+  if (mono) monoContours(context, canvas.width, canvas.height);
+  try { return { data: canvas.toDataURL(mono ? 'image/png' : 'image/jpeg', .86), width: canvas.width, height: canvas.height }; }
   catch { throw new Error('The collection header image cannot be printed from its current URL.'); }
 }
 
@@ -129,8 +123,8 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
   const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight();
   const margin = 19, contentWidth = width - margin * 2, bottom = height - 20;
   let started = false, y = 0, sectionBottom = bottom;
-  const ink = colour === 'mono' ? [45, 45, 45] as const : [58, 56, 48] as const;
-  const accent = colour === 'mono' ? [70, 70, 70] as const : colourOf(collection?.paperAccent || collection?.accent);
+  const ink = colour === 'mono' ? [0, 0, 0] as const : [58, 56, 48] as const;
+  const accent = colour === 'mono' ? [0, 0, 0] as const : colourOf(collection?.paperAccent || collection?.accent);
   const setInk = (rgb: readonly number[]) => pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
   const begin = (section: Section, placement: 'full' | 'top' | 'bottom' = 'full') => {
     if (started && placement !== 'bottom') pdf.addPage(paper, 'portrait');
@@ -139,13 +133,13 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     if (header) {
       const fitWidth = Math.min(contentWidth, 25 * header.width / header.height);
       const fitHeight = fitWidth * header.height / header.width;
-      pdf.addImage(header.data, 'JPEG', margin, y - 8, fitWidth, fitHeight);
+      pdf.addImage(header.data, colour === 'mono' ? 'PNG' : 'JPEG', margin, y - 8, fitWidth, fitHeight);
       y += fitHeight + 2;
     }
     pdf.setFont('Atkinson', 'bold'); pdf.setFontSize(9); setInk(accent);
     const activityLines = pdf.splitTextToSize(activity.title.toUpperCase(), contentWidth) as string[];
     pdf.text(activityLines, margin, y); y += activityLines.length * 4 + 3;
-    pdf.setDrawColor(211, 207, 197); pdf.line(margin, y, width - margin, y); y += 11;
+    pdf.setDrawColor(colour === 'mono' ? 0 : 211, colour === 'mono' ? 0 : 207, colour === 'mono' ? 0 : 197); pdf.line(margin, y, width - margin, y); y += 11;
     pdf.setFontSize(18); setInk(ink);
     const titleLines = pdf.splitTextToSize(section.versionLabel ? `${section.title} · ${section.versionLabel}` : section.title, contentWidth) as string[];
     pdf.text(titleLines, margin, y); y += titleLines.length * 8 + 2;
@@ -163,7 +157,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     const lineHeight = fontSize * .48;
     for (const run of runs) {
       pdf.setFont('Atkinson', run.bold || heading ? 'bold' : run.italic ? 'italic' : 'normal');
-      pdf.setFontSize(fontSize); setInk(run.href ? [77, 100, 146] : heading ? accent : ink);
+      pdf.setFontSize(fontSize); setInk(run.href && colour !== 'mono' ? [77, 100, 146] : heading ? accent : ink);
       const tokens = run.text.split(/(\s+)/).filter(Boolean);
       for (const token of tokens) {
         if (/^\s+$/.test(token) && x === margin) continue;
@@ -174,7 +168,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
           if (y + lineHeight > sectionBottom) { nextPage(); x = margin; }
           if (!/^\s+$/.test(piece)) {
             pdf.text(piece, x, y);
-            if (run.underline || run.href) { pdf.setDrawColor(run.href ? 77 : ink[0], run.href ? 100 : ink[1], run.href ? 146 : ink[2]); pdf.line(x, y + .7, x + tokenWidth, y + .7); }
+            if (run.underline || run.href) { pdf.setDrawColor(run.href && colour !== 'mono' ? 77 : ink[0], run.href && colour !== 'mono' ? 100 : ink[1], run.href && colour !== 'mono' ? 146 : ink[2]); pdf.line(x, y + .7, x + tokenWidth, y + .7); }
             if (run.strike) { pdf.setDrawColor(ink[0], ink[1], ink[2]); pdf.line(x, y - fontSize * .15, x + tokenWidth, y - fontSize * .15); }
             if (run.href && /^https?:\/\//i.test(run.href)) pdf.link(x, y - fontSize * .34, tokenWidth, lineHeight, { url: run.href });
           }
@@ -194,7 +188,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
       const rowHeight = Math.max(9, ...cells.map(cell => cell.length * 4.1 + 4));
       if (y + rowHeight > sectionBottom) nextPage();
       cells.forEach((cell, col) => {
-        pdf.setDrawColor(194, 191, 181); pdf.rect(margin + col * cellWidth, y, cellWidth, rowHeight);
+        pdf.setDrawColor(colour === 'mono' ? 0 : 194, colour === 'mono' ? 0 : 191, colour === 'mono' ? 0 : 181); pdf.rect(margin + col * cellWidth, y, cellWidth, rowHeight);
         cell.forEach((line, lineIndex) => pdf.text(line, margin + col * cellWidth + 2.5, y + 5 + lineIndex * 4.1));
       });
       y += rowHeight;
@@ -268,7 +262,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
       versions.forEach((version, index) => {
         if (!shortGroups.has(groupId) || index % 2 === 0 && index === versions.length - 1) { draw(version); return; }
         if (index % 2 === 0) { draw(version, 'top'); return; }
-        pdf.setDrawColor(111, 106, 100); pdf.setLineWidth(.28); pdf.setLineDashPattern([2, 1.2], 0);
+        pdf.setDrawColor(colour === 'mono' ? 0 : 111, colour === 'mono' ? 0 : 106, colour === 'mono' ? 0 : 100); pdf.setLineWidth(.28); pdf.setLineDashPattern([2, 1.2], 0);
         pdf.line(margin, height / 2, width - margin, height / 2); pdf.setLineDashPattern([], 0);
         pdf.circle(margin - 6, height / 2 - 1.8, 1.2); pdf.circle(margin - 6, height / 2 + 1.8, 1.2);
         pdf.line(margin - 5, height / 2 - 1, margin - 2, height / 2 + 1.5); pdf.line(margin - 5, height / 2 + 1, margin - 2, height / 2 - 1.5);
@@ -279,7 +273,7 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
   drawTeacherGuide();
   const pages = pdf.getNumberOfPages();
   for (let index = 1; index <= pages; index++) {
-    pdf.setPage(index); pdf.setFont('Atkinson', 'normal'); pdf.setFontSize(8); pdf.setTextColor(125, 122, 112);
+    pdf.setPage(index); pdf.setFont('Atkinson', 'normal'); pdf.setFontSize(8); pdf.setTextColor(colour === 'mono' ? 0 : 125, colour === 'mono' ? 0 : 122, colour === 'mono' ? 0 : 112);
     pdf.text(`${index} / ${pages}`, width - margin, height - 10, { align: 'right' });
   }
   return new Uint8Array(pdf.output('arraybuffer'));

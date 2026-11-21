@@ -62,6 +62,21 @@ test('prepared picture is placed inside a label question', () => {
     'a model-supplied URL must not replace the picture that the server prepares');
 });
 
+test('Create with AI makes a two-picture spot task with private cards and no invented image URL',()=>{
+ const spot=newImportElement('ca-spot');
+ spot.data.cards=[{title:'Before',text:'',picture:'',alt:''},{title:'After',text:'',picture:'',alt:''}];
+ spot.data.differences=[{x:30,y:60,radius:5,label:'Extra door'}];
+ const images=['Before','After'].map(name=>({sourceRef:'',style:'editorial',kind:'image',title:name,prompt:`A street scene ${name.toLowerCase()} the change`,alt:`Street scene ${name.toLowerCase()} the change`,lines:[]}));
+ const generated=task({format:'reading',mediaPlan:images,teacherOnlyInput:'',inlineElements:[spot]});
+ assert.doesNotThrow(()=>check(generated));
+ const preparedMedia=images.map((image,n)=>({kind:'image',mediaId:'spot_'+n,title:image.title,alt:image.alt}));
+ const native=nativeTask({...generated,preparedMedia},0);
+ assert.equal(native.content.content.find(node=>node.type==='communicativeActivity')?.attrs.sealed,true);
+ assert.deepEqual(Object.values(native.activities)[0].content.map(card=>card.attrs.picture.src),['media:spot_0','media:spot_1']);
+ const invented=structuredClone(spot);invented.data.cards[0].picture='https://example.com/invented.png';
+ assert.throws(()=>check({...generated,inlineElements:[invented]}),/prepared media plan/);
+});
+
 test('a complete AI conversation setup becomes a native speaking task', () => {
   const speaking=newImportElement('speaking','Order lunch with a partner.');
   speaking.data={title:'At the café',scenario:'You are ordering lunch at a café.',focus:'Use polite requests.',learnerRole:'A guest ordering lunch',partnerRole:'A server taking the order',level:'B1',seconds:120};

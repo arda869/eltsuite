@@ -39,12 +39,54 @@ test('Bingo free centre completes a valid diagonal', () => {
   const card = ['0', '1', '2', '3', '__free__', '5', '6', '7', '8'];
   assert.equal(bingoClaim(card, ['0', '8'], ['0', '8'], 3, 'line').valid, true);
 });
+test('Bingo learner projections show only the chosen call view and no unrevealed caller cues', () => {
+  const c = config('bingo', 18, { gridSize: 3, learnerCalls: 'none' });
+  c.items.forEach(item => { item.call = `Private caller cue for ${item.id}`; });
+  let s = transition(c, initialActivity(c, people, random), { type: 'start' }, teacher, 1000);
+  const own = new Set(s.cards.a);
+  const outside = c.items.find(item => !own.has(item.id));
+  const inside = c.items.find(item => own.has(item.id));
+  assert.ok(outside && inside);
+  s = transition(c, s, { type: 'call', itemId: outside.id }, teacher, 1100);
+  s = transition(c, s, { type: 'call', itemId: inside.id }, teacher, 1200);
+  const none = configForLearner(c, s, 'a');
+  assert.deepEqual(none.items.map(item => item.id).sort(), [...own].sort());
+  assert.ok(none.items.every(item => !item.call));
+  assert.equal(stateForLearner(c, s, 'a').currentCall, null);
+  assert.deepEqual(stateForLearner(c, s, 'a').called, []);
+  c.settings.learnerCalls = 'current';
+  const current = configForLearner(c, s, 'a');
+  assert.equal(stateForLearner(c, s, 'a').currentCall, inside.id);
+  assert.deepEqual(stateForLearner(c, s, 'a').called, [inside.id]);
+  assert.ok(current.items.every(item => item.id !== inside.id || !!item.call));
+  assert.ok(current.items.every(item => item.id === inside.id || !item.call));
+  assert.ok(!current.items.some(item => item.id === outside.id));
+  c.settings.learnerCalls = 'list';
+  const list = configForLearner(c, s, 'a');
+  assert.equal(stateForLearner(c, s, 'a').currentCall, null);
+  assert.deepEqual(stateForLearner(c, s, 'a').called, [outside.id, inside.id]);
+  assert.equal(list.items.find(item => item.id === outside.id)?.call, outside.call);
+  s = transition(c, s, { type: 'reveal' }, teacher, 1300);
+  c.settings.learnerCalls = 'none';
+  assert.deepEqual(stateForLearner(c, s, 'a').called, []);
+  assert.ok(!configForLearner(c, s, 'a').items.some(item => item.call));
+  assert.throws(() => transition(c, s, { type: 'call', itemId: outside.id }, learner, 1400), /teacher/);
+});
 test('Dominoes accepts every valid circular starting tile, but not a wrong join', () => {
   const items = config('dominoes').items;
   for (let n = 0; n < items.length; n++) assert.equal(checkDominoes(items, [...items.slice(n), ...items.slice(0, n)].map(i => i.id)), true);
   const order = items.map(i => i.id); [order[1], order[2]] = [order[2], order[1]];
   assert.equal(checkDominoes(items, order), false);
-  assert.equal(dominoTiles(items)[0].right, 'Meaning 1');
+  assert.equal(dominoTiles(items)[0].left, 'Meaning 0');
+  assert.equal(dominoTiles(items)[0].right, 'Word 1');
+});
+test('Survey results are withheld from each learner until they answer', () => {
+  const c = config('survey', 1); c.items[0].options = ['Walk', 'Bus'];
+  let s = transition(c, initialActivity(c, people, random), { type: 'start' }, teacher, 1000);
+  s = transition(c, s, { type: 'answer', itemId: 'i0', value: 'Walk' }, { id: 'b', teacher: false }, 1001);
+  assert.deepEqual(stateForLearner(c, s, 'a').surveyResults, {});
+  s = transition(c, s, { type: 'answer', itemId: 'i0', value: 'Bus' }, learner, 1002);
+  assert.deepEqual(stateForLearner(c, s, 'a').surveyResults.i0, { Walk: 1, Bus: 1 });
 });
 test('Only the teacher can start; strangers cannot write a run', () => {
   const c = config('board'), s = initialActivity(c, people, random);
@@ -56,7 +98,7 @@ test('Board turns cannot be stolen or rolled twice', () => {
   assert.throws(() => transition(c, s, { type: 'roll', die: 3 }, { id: 'b', teacher: false }, 1000), /turn/);
   s = transition(c, s, { type: 'roll', die: 3 }, learner, 1000);
   assert.equal(s.positions.a, 3);
-  assert.throws(() => transition(c, s, { type: 'roll', die: 3 }, learner, 1000), /Finish/);
+  assert.throws(() => transition(c, s, { type: 'roll', die: 3 }, learner, 1000), /turn/);
   assert.equal(transition(c, s, { type: 'nextTurn' }, learner, 1000).turn, 1);
 });
 test('Ranking needs every learner to agree again after a move', () => {
@@ -95,7 +137,7 @@ test('Face-down memory cards have opaque tokens and no hidden faces in learner p
 });
 test('Domino learner payloads contain tile halves without the original solved pair list',()=>{
  const c=config('dominoes',3);const s=transition(c,initialActivity(c,people,random),{type:'start'},teacher,1000);const out=configForLearner(c,s,'a');
- assert.ok(out.items.every(i=>i.match===undefined));assert.equal(out.items.find(i=>i.id==='i0').dominoRight.text,'Meaning 1');assert.deepEqual(out.items.map(i=>i.id),s.order);
+ assert.ok(out.items.every(i=>i.match===undefined));assert.equal(out.items.find(i=>i.id==='i0').title,'Meaning 0');assert.equal(out.items.find(i=>i.id==='i0').dominoRight.text,'Word 1');assert.deepEqual(out.items.map(i=>i.id),s.order);
 });
 test('Opinions remain private until Reveal and anonymous results have no learner IDs', () => {
   const c = config('opinion', 1, { showNames: false }); let s = transition(c, initialActivity(c, people, random), { type: 'start' }, teacher, 1000);

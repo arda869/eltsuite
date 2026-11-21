@@ -49,6 +49,9 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   const [busy, setBusy] = useState('');
   const [exportError, setExportError] = useState('');
   const [paper, setPaperState] = useState<Paper>(defaultPaper);
+  // Asked on every print screen: colour, or black and white drawn for photocopiers.
+  const [mono, setMonoState] = useState(() => { try { return localStorage.getItem('print-colour') === 'mono'; } catch { return false; } });
+  const setMono = (v: boolean) => { setMonoState(v); try { localStorage.setItem('print-colour', v ? 'mono' : 'colour'); } catch { /* the choice is a convenience */ } };
   const setPaper = (p: Paper) => {
     setPaperState(p);
     try {
@@ -107,7 +110,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
   const isExam = item?.type === 'exam';
-  const look = () => ({ lessonStyle: lessonStyleOf(cls), header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
+  const look = () => ({ lessonStyle: lessonStyleOf(cls), mono, header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen');
   const ids = picked ?? new Set(visible.filter(({t}) => !t.family || t.family === t.id).map((x) => x.i));
   const chosen = () => flattenWithSections(lesson!.tasks, ids, lessonStyleOf(cls));
@@ -199,6 +202,16 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
                 {(['A4', 'Letter', 'A5'] as const).map((p) => (
                   <button key={p} type="button" role="radio" aria-checked={paper === p} className={paper === p ? 'on' : ''} onClick={() => setPaper(p)}>
                     {p === 'Letter' ? 'US Letter' : p}
+                  </button>
+                ))}
+              </span>
+            </div>
+            <div className="field" style={{ gap: 6 }}>
+              <span>Colour</span>
+              <span className="seg small-seg" role="radiogroup" aria-label="Print in colour or black and white" style={{ width: '100%' }}>
+                {([false, true] as const).map((v) => (
+                  <button key={String(v)} type="button" role="radio" aria-checked={mono === v} className={mono === v ? 'on' : ''} onClick={() => setMono(v)}>
+                    {v ? 'Black and white' : 'Colour'}
                   </button>
                 ))}
               </span>

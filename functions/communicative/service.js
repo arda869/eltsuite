@@ -72,7 +72,8 @@ export async function runCommunicativeActivity(db, auth, data, now = Date.now())
       const used = new Set();
       rooms = (set.get('groups') ?? []).map(g => ({ id: g.id, name: g.name, people: people.filter(p => (g.members ?? []).includes(p.learnerId)).filter(p => { if (!p || used.has(p.id)) return false; used.add(p.id); return true; }) })).filter(g => g.people.length && validId(g.id));
       if (!rooms.length) throw new HttpsError('failed-precondition', 'Put learners into the groups before starting.');
-    } else rooms = [{ id: 'class', name: 'Whole class', people }];
+    } else if (config.settings.mode === 'individual') rooms = people.map(p => ({ id: `solo-${p.learnerId}`, name: p.name, people: [p] }));
+    else rooms = [{ id: 'class', name: 'Whole class', people }];
     const distributed = new Set(rooms.flatMap(r => r.people.map(p => p.id)));
     await db.runTransaction(async tx => {
       const existing = await tx.get(a.run);
@@ -135,16 +136,40 @@ export async function runCommunicativeActivity(db, auth, data, now = Date.now())
     });
   }
   if (op === 'join') {
-    if (!a.teacher || !validId(data.learnerUid) || !validId(data.roomId)) throw deny();
+    if (!a.teacher || !validId(data.learnerUid) || (data.roomId !== undefined && !validId(data.roomId))) throw deny();
     const member = await a.root.collection('members').doc(data.learnerUid).get();
     if (!member.exists) throw deny();
     const person = await a.root.collection('learners').doc(member.get('learnerId')).get();
     if (!person.exists) throw deny();
     await db.runTransaction(async tx => {
       const meta = await tx.get(a.run);
-      if (!meta.exists || !(meta.get('roomIds') ?? []).includes(data.roomId)) throw deny();
-      const refs = meta.get('roomIds').map(id => a.run.collection('rooms').doc(id));
+      if (!meta.exists) throw deny();
+      const roomIds = meta.get('roomIds') ?? [];
+      const refs = roomIds.map(id => a.run.collection('rooms').doc(id));
       const snapshots = await tx.getAll(...refs);
+      const mode = snapshots[0]?.get('config.settings.mode') ?? 'class';
+      if (mode === 'individual') {
+        const roomId = `solo-${person.id}`;
+        if (!validId(roomId) || roomIds.includes(roomId)) throw new HttpsError('failed-precondition', 'This learner already has an activity room.');
+        if (snapshots.some(s => s.get('state.people')?.some(p => p.id === data.learnerUid))) throw new HttpsError('failed-precondition', 'This learner already has an activity room.');
+        const ref = a.run.collection('rooms').doc(roomId), existing = await tx.get(ref);
+        if (existing.exists) throw new HttpsError('failed-precondition', 'This learner already has an activity room.');
+        const config = snapshots[0]?.get('config');
+        if (!config) throw deny();
+        const learner = { id: data.learnerUid, learnerId: person.id, name: String(person.get('displayName') || 'Learner') };
+        if (config.settings.teamScoring) {
+          const teams = await tx.get(a.root.collection('groupSets').doc(meta.get('groupSetId'))), team = (teams.get('groups') ?? []).find(g => (g.members ?? []).includes(person.id));
+          if (!team) throw new HttpsError('failed-precondition', 'Add this learner to a team in Manage pairs and groups first.');
+          learner.teamId = team.id;
+          config.settings.teamNames = { ...config.settings.teamNames, [team.id]: team.name };
+        }
+        const state = transition(config, initialActivity(config, [learner]), { type: 'start' }, { id: a.uid, teacher: true }, now);
+        const value = { name: learner.name, config, state };
+        tx.set(ref, clone(value)); writeViews(tx, a.run, roomId, value, a.context);
+        tx.update(a.run, { roomIds: [...roomIds, roomId], unassigned: (meta.get('unassigned') ?? []).filter(p => p.id !== data.learnerUid), updatedAt: FieldValue.serverTimestamp() });
+        return;
+      }
+      if (!roomIds.includes(data.roomId)) throw deny();
       const to = snapshots.find(s => s.id === data.roomId), room = to?.data();
       if (!room) throw deny();
       if (snapshots.some(s => s.get('state.people')?.some(p => p.id === data.learnerUid))) throw new HttpsError('failed-precondition', 'This learner already has a group. Reset the activity to change its groups.');
