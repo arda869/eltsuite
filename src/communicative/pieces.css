@@ -224,7 +224,7 @@
 .ca-mark .ca-pin { animation: cp-pop .3s var(--ca-ease); }
 
 /* ---------------------------------------------------------------- Spot the difference: a photo on paper */
-.ca-spot { border-radius: 14px; border: 8px solid var(--paper); box-shadow: var(--ca-lift); }
+.ca-spot { border-radius: 14px; border: 0; box-shadow: 0 0 0 8px var(--paper), var(--ca-lift); }
 .ca-ring { border: 3px solid var(--accent); box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
 
 /* ---------------------------------------------------------------- Turn banner */
