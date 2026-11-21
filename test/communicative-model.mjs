@@ -149,6 +149,8 @@ test('Find someone who enforces the name rule, with optional details blank', () 
   assert.throws(() => transition(c, s, { type: 'answer', itemId: 'i1', value: 'b' }, learner, 1000), /not used/);
 });
 test('The speaking timer swaps roles and starts a new turn', () => {
+  const blank = config('speaking', 1, { seconds: 30 }); blank.items[0].title = '';
+  assert.deepEqual(validateActivity(blank), []);
   const c = config('speaking', 2, { seconds: 30 }); let s = transition(c, initialActivity(c, people, random), { type: 'start' }, teacher, 1000);
   assert.equal(s.endsAt, 31000);
   assert.throws(()=>transition(c,s,{type:'nextTurn'},learner,1000),/controls/);

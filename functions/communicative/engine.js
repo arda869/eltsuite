@@ -23,7 +23,7 @@ function validateActivity(c) {
   if (new Set(c.items.map((i) => i.id)).size !== c.items.length || c.items.some((i) => !i.id)) issue("items", "Give each item its own identifier.");
   c.items.forEach((i, n) => {
     const hasRichPicture = (nodes = []) => nodes.some((n2) => ["picture", "image"].includes(n2.type ?? "") && !!n2.attrs?.src || hasRichPicture(n2.content));
-    if (!i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
+    if (c.kind !== "speaking" && !i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
     if (i.matchPicture?.src && !i.matchPicture.alt.trim()) issue(`items.${n}.matchPicture`, `Describe the matching picture in pair ${n + 1}.`);
     if (i.picture?.src && !i.picture.alt.trim()) issue(`items.${n}.picture`, `Describe the picture in item ${n + 1}.`);
   });
