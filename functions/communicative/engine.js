@@ -16,6 +16,15 @@ var ACTIVITY_LABELS = {
   taboo: "Taboo cards",
   speaking: "Speaking timer"
 };
+var ACTIVITY_COLOURS = [
+  { v: "class", label: "Class colour" },
+  { v: "coral", label: "Coral" },
+  { v: "ocean", label: "Ocean" },
+  { v: "forest", label: "Forest" },
+  { v: "plum", label: "Plum" },
+  { v: "sunshine", label: "Sunshine" },
+  { v: "slate", label: "Slate" }
+];
 function validateActivity(c) {
   const out = [];
   const issue = (field, message) => out.push({ field, message });
@@ -23,7 +32,7 @@ function validateActivity(c) {
   if (new Set(c.items.map((i) => i.id)).size !== c.items.length || c.items.some((i) => !i.id)) issue("items", "Give each item its own identifier.");
   c.items.forEach((i, n) => {
     const hasRichPicture = (nodes = []) => nodes.some((n2) => ["picture", "image"].includes(n2.type ?? "") && !!n2.attrs?.src || hasRichPicture(n2.content));
-    if (!i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
+    if (c.kind !== "speaking" && !i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
     if (i.matchPicture?.src && !i.matchPicture.alt.trim()) issue(`items.${n}.matchPicture`, `Describe the matching picture in pair ${n + 1}.`);
     if (i.picture?.src && !i.picture.alt.trim()) issue(`items.${n}.picture`, `Describe the picture in item ${n + 1}.`);
   });
@@ -158,21 +167,8 @@ function oppositePairs(values) {
   }
   return pairs;
 }
-// Snakes and ladders: keep in step with boardJumps in src/communicative/model.ts.
-function boardJumps(count) {
-  const { cols, cells } = boardLayout(count, 'snake'), jumps = {}, used = new Set([0, count - 1]);
-  const pairs = count < 20 ? 1 : count < 36 ? 2 : 3;
-  const at = (row, col) => cells.findIndex(c => c.row === row && c.col === Math.max(1, Math.min(cols, col)));
-  const free = (n, dir) => { while (used.has(n) && n > 0 && n < count - 1) n += dir; return n; };
-  const add = (from, to) => { if (from > 0 && from < count - 1 && to > 0 && to < count - 1 && Math.abs(to - from) >= cols - 1 && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); } };
-  // Ladders climb one or two rows, leaning a column; snakes slide down one or two rows the other way.
-  [.12, .45, .7].slice(0, pairs).forEach((f, k) => { const from = free(Math.max(1, Math.round(f * (count - 1))), 1), c = cells[from]; if (c) add(from, at(c.row - 1 - k % 2, c.col + (k % 2 ? 1 : -1))); });
-  [.58, .88, .32].slice(0, pairs).forEach((f, k) => { const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), c = cells[from]; if (c) add(from, at(c.row + 1 + (k + 1) % 2, c.col + (k % 2 ? -1 : 1))); });
-  return jumps;
-}
-
 function boardLayout(count, style = "snake") {
-  const cols = Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
+  const cols = style === "spiral" ? Math.ceil(Math.sqrt(count * 1.5)) : Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
   const cells = [];
   if (style === "spiral") {
     let left = 1, right = cols, top = 1, bottom = rows;
@@ -195,6 +191,84 @@ function boardLayout(count, style = "snake") {
     cells.push({ row: rows - row, col: row % 2 === 0 ? col + 1 : cols - col });
   }
   return { cols, rows, cells: cells.slice(0, count) };
+}
+var boardStyleOf = (style) => style === "spiral" || style === "ladders" ? style : "snake";
+function boardJumps(count) {
+  const { cols, cells } = boardLayout(count, "snake"), jumps = {}, used = /* @__PURE__ */ new Set([0, count - 1]);
+  const pairs = count < 20 ? 1 : count < 36 ? 2 : 3;
+  const at = (row, col) => cells.findIndex((c) => c.row === row && c.col === Math.max(1, Math.min(cols, col)));
+  const free = (n, dir) => {
+    while (used.has(n) && n > 0 && n < count - 1) n += dir;
+    return n;
+  };
+  const add = (from, to) => {
+    if (from > 0 && from < count - 1 && to > 0 && to < count - 1 && Math.abs(to - from) >= cols - 1 && !used.has(from) && !used.has(to)) {
+      jumps[from] = to;
+      used.add(from);
+      used.add(to);
+    }
+  };
+  [0.12, 0.45, 0.7].slice(0, pairs).forEach((f, k) => {
+    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), c = cells[from];
+    if (c) add(from, at(c.row - 1 - k % 2, c.col + (k % 2 ? 1 : -1)));
+  });
+  [0.58, 0.88, 0.32].slice(0, pairs).forEach((f, k) => {
+    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), c = cells[from];
+    if (c) add(from, at(c.row + 1 + (k + 1) % 2, c.col + (k % 2 ? -1 : 1)));
+  });
+  return jumps;
+}
+function boardArt(count, style) {
+  const kind = boardStyleOf(style);
+  if (kind === "spiral") {
+    const { cols: cols2, rows: rows2, cells: cells2 } = boardLayout(count, "spiral"), n = cells2.length;
+    const c = cells2.map((p) => ({ x: p.col - 0.5, y: p.row - 0.5 }));
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const back = (a, b) => ({ x: a.x + (a.x - b.x) * 0.02, y: a.y + (a.y - b.y) * 0.02 });
+    const pt = (p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`;
+    const first = n > 1 ? back(c[0], c[1]) : c[0], last = n > 1 ? back(c[n - 1], c[n - 2]) : c[0];
+    const edge = `<polyline class="sp-edge" points="${[first, ...c, last].map(pt).join(" ")}" stroke-width=".845"/>`;
+    const kind2 = (i) => i === 0 ? "start" : i === n - 1 ? "finish" : i % 2 ? "even" : "odd";
+    const spaces = c.map((p, i) => `<polyline class="sp-cell ${kind2(i)}" points="${[i ? mid(c[i - 1], p) : p, p, i < n - 1 ? mid(p, c[i + 1]) : p].map(pt).join(" ")}" stroke-width=".8"/>`).join("");
+    const caps = n > 1 ? `<polyline class="sp-cell sp-cap start" points="${pt(c[0])} ${pt(first)}" stroke-width=".8"/><polyline class="sp-cell sp-cap finish" points="${pt(c[n - 1])} ${pt(last)}" stroke-width=".8"/>` : "";
+    const lines = c.slice(1).map((p, i) => {
+      const m = mid(c[i], p), dx = Math.sign(p.x - c[i].x), dy = Math.sign(p.y - c[i].y);
+      return `<line class="sp-div" x1="${(m.x - dy * 0.4).toFixed(3)}" y1="${(m.y + dx * 0.4).toFixed(3)}" x2="${(m.x + dy * 0.4).toFixed(3)}" y2="${(m.y - dx * 0.4).toFixed(3)}"/>`;
+    }).join("");
+    return `<svg class="board-art board-art-spiral" viewBox="0 0 ${cols2} ${rows2}" preserveAspectRatio="none" aria-hidden="true">${edge}${spaces}${caps}${lines}</svg>`;
+  }
+  if (kind !== "ladders") return "";
+  const { cols, rows, cells } = boardLayout(count, "snake");
+  const at = (n) => ({ x: cells[n].col - 0.5, y: cells[n].row - 0.5 });
+  let ladders = "", snakes = "";
+  for (const [a, b] of Object.entries(boardJumps(count))) {
+    const from = at(Number(a)), to = at(b), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    if (b > Number(a)) {
+      const w = 0.15, x0 = from.x - ux * 0.25, y0 = from.y - uy * 0.25, x1 = to.x + ux * 0.25, y1 = to.y + uy * 0.25, l = len + 0.5, steps = Math.max(3, Math.round(l / 0.24));
+      const bar = (ax, ay, bx, by) => `<line class="lad-out" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/><line class="lad-in" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/>`;
+      let rungs = "";
+      for (let i = 1; i < steps; i++) {
+        const k = i / steps, x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k;
+        rungs += bar(x - nx * w, y - ny * w, x + nx * w, y + ny * w);
+      }
+      ladders += `<g class="ladder">${rungs}${[-1, 1].map((sd) => bar(x0 + nx * w * sd, y0 + ny * w * sd, x1 + nx * w * sd, y1 + ny * w * sd)).join("")}</g>`;
+    } else {
+      const N = 48, waves = Math.max(1.2, len * 0.9), spine = [];
+      for (let i = 0; i <= N; i++) {
+        const k = i / N, o = 0.22 * Math.sin(Math.PI * Math.min(1, k * 1.15)) * Math.sin(k * waves * 2 * Math.PI);
+        spine.push({ x: from.x + dx * k + nx * o, y: from.y + dy * k + ny * o });
+      }
+      const left = [], right = [];
+      spine.forEach((p, i) => {
+        const q = spine[Math.min(N, i + 1)], o = spine[Math.max(0, i - 1)], tx = q.x - o.x, ty = q.y - o.y, tl = Math.hypot(tx, ty) || 1, half = 0.095 * (1 - i / N) + 6e-3;
+        left.push(`${(p.x - ty / tl * half).toFixed(3)} ${(p.y + tx / tl * half).toFixed(3)}`);
+        right.unshift(`${(p.x + ty / tl * half).toFixed(3)} ${(p.y - tx / tl * half).toFixed(3)}`);
+      });
+      const hx = spine[0].x, hy = spine[0].y, fx = spine[0].x - spine[2].x, fy = spine[0].y - spine[2].y, fl = Math.hypot(fx, fy) || 1, ang = Math.atan2(fy, fx) * 180 / Math.PI;
+      snakes += `<g class="snake"><polygon class="sn-body" points="${left.concat(right).join(" ")}"/><polyline class="sn-back" points="${spine.slice(2, N - 4).map((p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`).join(" ")}"/><path class="sn-tongue" d="M${(hx + fx / fl * 0.14).toFixed(3)} ${(hy + fy / fl * 0.14).toFixed(3)} l${(fx / fl * 0.1).toFixed(3)} ${(fy / fl * 0.1).toFixed(3)} m0 0 l${(fx / fl * 0.04 - fy / fl * 0.03).toFixed(3)} ${(fy / fl * 0.04 + fx / fl * 0.03).toFixed(3)} m${(-fx / fl * 0.04 + fy / fl * 0.03).toFixed(3)} ${(-fy / fl * 0.04 - fx / fl * 0.03).toFixed(3)} l${(fx / fl * 0.04 + fy / fl * 0.03).toFixed(3)} ${(fy / fl * 0.04 - fx / fl * 0.03).toFixed(3)}"/><ellipse class="sn-head" cx="${hx.toFixed(3)}" cy="${hy.toFixed(3)}" rx=".15" ry=".11" transform="rotate(${ang.toFixed(1)} ${hx.toFixed(3)} ${hy.toFixed(3)})"/><circle class="sn-eye" cx="${(hx + fx / fl * 0.05 - fy / fl * 0.055).toFixed(3)}" cy="${(hy + fy / fl * 0.05 + fx / fl * 0.055).toFixed(3)}" r=".022"/><circle class="sn-eye" cx="${(hx + fx / fl * 0.05 + fy / fl * 0.055).toFixed(3)}" cy="${(hy + fy / fl * 0.05 - fx / fl * 0.055).toFixed(3)}" r=".022"/></g>`;
+    }
+  }
+  return `<svg class="board-art board-art-ladders" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${snakes}${ladders}</svg>`;
 }
 
 // src/lib/pack.ts
@@ -670,7 +744,6 @@ function transition(c, state, a, actor, now, random = Math.random) {
     case "roll": {
       running();
       if (c.kind !== "board") throw new Error("Use the controls for this activity.");
-      // The next player's roll also ends the last turn (keep in step with src/communicative/state.ts).
       if (s.die !== null) {
         const again = c.items[s.positions[currentPerson(s).id]]?.special === "again";
         s.die = null;
@@ -683,9 +756,9 @@ function transition(c, state, a, actor, now, random = Math.random) {
       const item = c.items[pos];
       s.positions[who] = pos;
       s.die = a.die;
-      if (c.settings?.boardStyle === "ladders") {
+      if (boardStyleOf(c.settings.boardStyle) === "ladders") {
         const jump = boardJumps(c.items.length)[pos];
-        if (jump !== undefined) s.positions[who] = jump;
+        if (jump !== void 0) s.positions[who] = jump;
       }
       if (item.special === "back") s.positions[who] = Math.max(0, pos - Math.max(1, item.move ?? 2));
       if (item.special === "miss") s.skip[who] = true;
@@ -789,7 +862,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
     case "opinion":
       running();
       if (c.kind !== "opinion" || !Number.isFinite(a.value) || a.value < 0 || a.value > 100) throw new Error("Choose a place on the line.");
-      if (!actor.teacher && c.settings?.pinMove === false && s.opinions[actor.id]) throw new Error("Your pin is already saved.");
+      if (!actor.teacher && c.settings.pinMove === false && s.opinions[actor.id]) throw new Error("Your pin is already saved.");
       s.opinions[actor.id] = { value: a.value, reason: (a.reason ?? "").slice(0, 1e3) };
       break;
     case "found": {
@@ -856,9 +929,8 @@ function stateForLearner(c, s, learnerId) {
   out.summaries = s.summaries?.[learnerId] ? { [learnerId]: s.summaries[learnerId] } : {};
   out.foundPoints = s.foundPoints?.[learnerId] ? { [learnerId]: s.foundPoints[learnerId] } : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
-  if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.map((item) => [item.id, surveyCounts(s, item.id)]));
-  // Keep in step with opinionsShown in src/communicative/state.ts.
-  if (c.kind === "opinion" && !(s.phase === "revealed" || c.settings?.pinsVisible === "always" || (c.settings?.pinsVisible === "after" && !!s.opinions[learnerId]))) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
+  if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.filter((item) => s.answers[learnerId]?.[item.id]).map((item) => [item.id, surveyCounts(s, item.id)]));
+  if (c.kind === "opinion" && !opinionsShown(c, s, learnerId)) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === "opinion" && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
   if (c.kind === "bingo") {
     const visibility = learnerCallVisibility(c);
@@ -911,12 +983,32 @@ function surveyCounts(s, itemId) {
     return out;
   }, {});
 }
+function nextRoller(c, state) {
+  if (state.die === null) return currentPerson(state)?.id;
+  const t = structuredClone(state);
+  if (c.items[t.positions[currentPerson(t)?.id ?? ""] ?? 0]?.special !== "again" && t.people.length) {
+    for (let n = 0; n < t.people.length * 2; n++) {
+      t.turn = (t.turn + 1) % t.people.length;
+      const id = currentPerson(t).id;
+      if (!t.skip[id]) break;
+      delete t.skip[id];
+    }
+  }
+  return currentPerson(t)?.id;
+}
+function opinionsShown(c, s, learnerId) {
+  return s.phase === "revealed" || c.settings.pinsVisible === "always" || c.settings.pinsVisible === "after" && !!s.opinions[learnerId];
+}
 export {
+  ACTIVITY_COLOURS,
   ACTIVITY_KINDS,
   ACTIVITY_LABELS,
   bingoCards,
   bingoClaim,
+  boardArt,
+  boardJumps,
   boardLayout,
+  boardStyleOf,
   checkDominoes,
   configForLearner,
   configFromNode,
@@ -924,6 +1016,8 @@ export {
   dominoTiles,
   initialActivity,
   learnerCallVisibility,
+  nextRoller,
+  opinionsShown,
   oppositePairs,
   parseItemList,
   plainText,

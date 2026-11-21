@@ -223,7 +223,7 @@ export function stateForLearner(c: ActivityConfig, s: ActivityState, learnerId: 
   out.summaries = s.summaries?.[learnerId] ? {[learnerId]: s.summaries[learnerId]} : {};
   out.foundPoints = s.foundPoints?.[learnerId] ? {[learnerId]: s.foundPoints[learnerId]} : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
-  if (c.kind === 'survey') out.surveyResults = Object.fromEntries(c.items.map(item => [item.id, surveyCounts(s, item.id)]));
+  if (c.kind === 'survey') out.surveyResults = Object.fromEntries(c.items.filter(item => s.answers[learnerId]?.[item.id]).map(item => [item.id, surveyCounts(s, item.id)]));
   // Other learners' pins: after the teacher reveals them (default), once you've saved your own, or all the time.
   if (c.kind === 'opinion' && !opinionsShown(c, s, learnerId)) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === 'opinion' && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));

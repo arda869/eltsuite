@@ -369,6 +369,7 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 .ig-cell.ig-focus { background: var(--paper) !important; z-index: 1; }
 .ig-cell.ig-focus::after { content: ''; position: absolute; inset: -1px; border: 2px solid var(--accent); border-radius: 3px; pointer-events: none; box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 60%, transparent); }
 .ig-x { align-self: center; justify-self: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: 400 16px/1 var(--sans); cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+.ig-action { display: grid; place-items: center; }
 .ig-row:hover .ig-x, .ig-row.ig-on .ig-x { opacity: 1; }
 .ig-x:hover { background: color-mix(in srgb, var(--wrong, #c0392b) 12%, transparent); color: var(--wrong, #c0392b); }
 .ig-ghost { border-top: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent); }

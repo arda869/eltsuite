@@ -42,7 +42,7 @@ export function validateActivity(c: ActivityConfig): ActivityIssue[] {
   if (new Set(c.items.map(i => i.id)).size !== c.items.length || c.items.some(i => !i.id)) issue('items', 'Give each item its own identifier.');
   c.items.forEach((i, n) => {
     const hasRichPicture=(nodes:JSONContent[]=[]):boolean=>nodes.some(n=>(['picture','image'].includes(n.type??'')&&!!n.attrs?.src)||hasRichPicture(n.content));
-    if (!i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
+    if (c.kind !== 'speaking' && !i.title.trim() && !plainText(i.content) && !hasRichPicture(i.content) && !i.picture?.src) issue(`items.${n}`, `Add text or a picture to item ${n + 1}.`);
     if (i.matchPicture?.src && !i.matchPicture.alt.trim()) issue(`items.${n}.matchPicture`, `Describe the matching picture in pair ${n + 1}.`);
     if (i.picture?.src && !i.picture.alt.trim()) issue(`items.${n}.picture`, `Describe the picture in item ${n + 1}.`);
   });

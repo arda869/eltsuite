@@ -61,7 +61,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
   const [dragging, setDragging] = useState(false);
   const grid = useRef<HTMLDivElement>(null), want = useRef<Cell | null>(null);
   const extending = useRef(false);
-  const rows = items.length, board = kind === 'board', canAdd = rows < maxRows && !board;
+  const rows = items.length, board = kind === 'board', canAdd = rows < maxRows;
   const total = rows + (canAdd ? 1 : 0); // the last row is always an empty row to type into
   const sel = focus && anchor ? { r0: Math.min(focus.r, anchor.r), r1: Math.max(focus.r, anchor.r), c0: Math.min(focus.c, anchor.c), c1: Math.max(focus.c, anchor.c) } : null;
   const many = !!sel && (sel.r0 !== sel.r1 || sel.c0 !== sel.c1);
@@ -90,8 +90,9 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
   };
   const set = (r: number, c: number, value: string) => {
     if (r >= rows && !value) return;
-    write([{ row: r, key: cols[c].key, value }]);
-    if (r >= rows) want.current = { r, c };
+    const newBoardSquare = board && r >= rows;
+    if (r >= rows) want.current = { r: newBoardSquare ? rows - 1 : r, c };
+    write([{ row: newBoardSquare ? rows - 1 : r, key: cols[c].key, value }], newBoardSquare);
   };
   const clear = () => {
     if (!sel) return; const changes: GridChange[] = [];
@@ -102,7 +103,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
     const data = parseSheet(e.clipboardData.getData('text/plain'));
     if (data.length <= 1 && (data[0]?.length ?? 0) <= 1 && !many) return; // one cell: the browser pastes it as usual
     e.preventDefault();
-    const start = many && sel ? { r: sel.r0, c: sel.c0 } : { r, c };
+    const start = many && sel ? { r: sel.r0, c: sel.c0 } : { r: board && r >= rows ? rows - 1 : r, c };
     const changes: GridChange[] = [];
     data.forEach((line, dr) => line.forEach((value, dc) => { const col = cols[start.c + dc]; if (col) changes.push({ row: start.r + dr, key: col.key, value: col.options ? (col.options.find(o => o.label.toLowerCase() === value.toLowerCase() || o.value === value.toLowerCase())?.value ?? col.options[0].value) : value }); }));
     write(changes, true);
@@ -135,7 +136,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
   const removable = rows > minRows;
   if (!cols.length) return null;
   return <div className="ig" ref={grid} onCopy={onCopy} role="grid" aria-label="Items" aria-rowcount={total + 1} style={{ ['--ig-cols' as string]: `42px ${cols.map(c => c.width ?? '1fr').join(' ')} 34px` }}>
-    <div className="ig-row ig-head" role="row"><span className="ig-n" role="columnheader" aria-label="Row" />{cols.map(col => <span key={col.key} className="ig-h" role="columnheader">{col.label}</span>)}<span /></div>
+    <div className="ig-row ig-head" role="row"><span className="ig-n" role="columnheader" aria-label="Row" />{cols.map(col => <span key={col.key} className="ig-h" role="columnheader">{col.label}</span>)}<span role="columnheader" aria-label="Row actions" /></div>
     {Array.from({ length: total }, (_, r) => {
       const item = items[r], ghost = !item;
       return <div key={item?.id ?? 'new'} className={`ig-row ${ghost ? 'ig-ghost' : ''} ${focus?.r === r ? 'ig-on' : ''}`} role="row">
@@ -149,7 +150,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
               : <CellInput {...common} value={value} placeholder={r === 0 || ghost ? col.placeholder : ''} disabled={col.key === 'move' && item?.special !== 'back'} onValue={v => set(r, c, v)} onPaste={e => onPaste(e, r, c)} />}
           </span>;
         })}
-        {item && removable ? <button type="button" className="ig-x" aria-label={`Remove row ${r + 1}`} title="Remove this row" tabIndex={-1} onClick={() => onRemove(many && sel && r >= sel.r0 && r <= sel.r1 ? Array.from({ length: Math.min(sel.r1, rows - 1) - sel.r0 + 1 }, (_, n) => sel.r0 + n) : [r])}>×</button> : <span />}
+        <span role="gridcell" className="ig-action">{item && removable && !(board && (r === 0 || r === rows - 1)) ? <button type="button" className="ig-x" aria-label={`Remove row ${r + 1}`} title="Remove this row" tabIndex={-1} onClick={() => onRemove(many && sel && r >= sel.r0 && r <= sel.r1 ? Array.from({ length: Math.min(sel.r1, rows - 2) - Math.max(sel.r0, board ? 1 : 0) + 1 }, (_, n) => Math.max(sel.r0, board ? 1 : 0) + n) : [r])}>×</button> : null}</span>
       </div>;
     })}
     <p className="ig-help"><kbd>Tab</kbd> next cell <kbd>Enter</kbd> next row <span>Paste rows and columns from Excel or Google Sheets</span> <span>Shift or drag to select · <kbd>Delete</kbd> clears</span></p>
@@ -158,7 +159,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
 
 // Keeps the caret steady while the change goes through the editor.
 function CellInput({ value, onValue, ...rest }: { value: string; onValue: (v: string) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & Record<string, unknown>) {
-  const [draft, setDraft] = useState(value); const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (document.activeElement !== ref.current) setDraft(value); }, [value]);
-  return <input ref={ref} {...rest} value={document.activeElement === ref.current ? draft : value} onChange={e => { setDraft(e.target.value); onValue(e.target.value); }} onBlur={() => setDraft(value)} />;
+  const [draft, setDraft] = useState(value); const ref = useRef<HTMLInputElement>(null), lastSent = useRef<string | null>(null);
+  useEffect(() => { if (document.activeElement !== ref.current || lastSent.current !== value) setDraft(value); lastSent.current = null; }, [value]);
+  return <input ref={ref} {...rest} value={document.activeElement === ref.current ? draft : value} onChange={e => { lastSent.current = e.target.value; setDraft(e.target.value); onValue(e.target.value); }} onBlur={() => setDraft(value)} />;
 }
