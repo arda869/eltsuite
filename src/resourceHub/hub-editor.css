@@ -239,3 +239,6 @@
 .rhe-identity-actions > span { color:var(--rh-muted); font:500 12px var(--sans); }
 .rhe-identity-actions .rhe-actions { display:flex; gap:8px; margin:0; }
 @media(max-width:900px) { .rhe-identity { grid-template-columns:1fr; } .rhe-identity-preview { position:static; } .rhe-identity-drops { grid-template-columns:1fr; } }
+.rhe-identity-remove { margin-top:10px; padding:7px 0; border:0; background:none; color:#9b513d; font:700 12px var(--sans); cursor:pointer; }
+.rhe-identity-remove:hover { text-decoration:underline; }
+.rhe-identity-remove:disabled { opacity:.45; cursor:not-allowed; }
