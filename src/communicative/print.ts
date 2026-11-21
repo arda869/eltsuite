@@ -1,4 +1,4 @@
-import { ACTIVITY_LABELS, bingoCards, boardArt, boardLayout, boardStyleOf, spiralLayout, dominoTiles, plainText, shuffled, type ActivityConfig, type ActivityItem, type Participant } from './model';
+import { ACTIVITY_LABELS, bingoCards, boardArt, boardLayout, boardStyleOf, dominoTiles, plainText, shuffled, type ActivityConfig, type ActivityItem, type Participant } from './model';
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 export type ActivityPrintPiece = { html: string; cutout: boolean; label: string };
@@ -30,10 +30,9 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
     case 'board': {
       const style = boardStyleOf(c.settings.boardStyle);
       const { cols, rows, cells } = boardLayout(c.items.length, style);
-      const spiral = style === 'spiral' ? spiralLayout(c.items.length) : null;
       const art = boardArt(c.items.length, style);
-      const at = (n: number) => { const b = spiral?.boxes[n]; return b ? `left:${((b.x - b.w / 2) / 1.5 * 100).toFixed(2)}%;top:${((b.y - b.h / 2) * 100).toFixed(2)}%;width:${(b.w / 1.5 * 100).toFixed(2)}%;height:${(b.h * 100).toFixed(2)}%` : `grid-row:${cells[n].row};grid-column:${cells[n].col}`; };
-      const board = `<div class="pa-board pa-board-${style}" style="${spiral ? `--t:${(spiral.track / 1.5).toFixed(3)}` : style === 'ladders' ? (() => { const cell = Math.min(158 / rows, 262 / cols).toFixed(1); return `grid-template-columns:repeat(${cols},${cell}mm);grid-template-rows:repeat(${rows},${cell}mm);width:max-content;margin:0 auto`; })() : `grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},${rows <= 5 ? '27mm' : rows === 6 ? '23mm' : '19mm'})`};--pa-board-font:${c.items.length > 36 ? '8' : '9.2'}pt">${style === 'spiral' ? `<div class="pa-board-art">${art}</div>` : ''}${c.items.map((item, n) => `<div class="pa-sq ${item.special ? 'special' : ''} ${esc(item.special || '')}" style="${at(n)}"><b class="n">${n + 1}</b>${picture(item, o)}<span>${esc(item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title || plainText(item.content))}</span></div>`).join('')}${style === 'ladders' ? `<div class="pa-board-art">${art}</div>` : ''}</div>`;
+      const at = (n: number) => `grid-row:${cells[n].row};grid-column:${cells[n].col}`;
+      const board = `<div class="pa-board pa-board-${style}" style="${style !== 'snake' ? (() => { const cell = Math.min(158 / rows, 262 / cols).toFixed(1); return `grid-template-columns:repeat(${cols},${cell}mm);grid-template-rows:repeat(${rows},${cell}mm);width:max-content;margin:0 auto`; })() : `grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},${rows <= 5 ? '27mm' : rows === 6 ? '23mm' : '19mm'})`};--pa-board-font:${c.items.length > 36 ? '8' : '9.2'}pt">${style === 'spiral' ? `<div class="pa-board-art">${art}</div>` : ''}${c.items.map((item, n) => `<div class="pa-sq ${item.special ? 'special' : ''} ${esc(item.special || '')}" style="${at(n)}"><b class="n">${n + 1}</b>${picture(item, o)}<span>${esc(item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title || plainText(item.content))}</span></div>`).join('')}${style === 'ladders' ? `<div class="pa-board-art">${art}</div>` : ''}</div>`;
       // No cut-out counters: learners use a coin or a rubber.
       return [piece(board, 'Board game'), ...(c.settings.printDie ? [piece(dieNet(),'Die net',true)] : [])];
     }

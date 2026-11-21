@@ -502,7 +502,8 @@ img { filter: grayscale(1) contrast(1.18); }
 .pa-bingo-head, .pa-taboo h3 { background: #fff !important; color: #1d1b18 !important; border-bottom: 1.2pt solid #1d1b18 !important; }
 .pa-dom::after { background: #1d1b18 !important; }
 .pa-board-art .sp-cell.even { stroke: #fff !important; }
-.pa-board-art .sp-end { fill: #fff !important; }
+.pa-board-art .sp-cell.start, .pa-board-art .sp-cell.finish { stroke: #fff !important; }
+.pa-board-spiral { background: #fff !important; }
 .pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #1d1b18 !important; }
 .pa-board-art .lad-in, .pa-board-art .sn-body, .pa-board-art .sn-head { stroke-opacity: 1; }
 .pa-board-art .lad-in { stroke: #fff !important; }

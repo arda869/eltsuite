@@ -25,7 +25,7 @@ export type ActivitySettings = {
   mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'ladders'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';
-  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; colours?: ActivityColours; scoring?: boolean; useful?: string; listenerTask?: string;
+  seconds?: number; timerDirection?: 'down' | 'up'; timerFor?: 'class' | 'individual' | 'group'; timerSize?: 'large' | 'inline'; pinsVisible?: 'reveal' | 'after' | 'always'; pinMove?: boolean; colours?: ActivityColours; scoring?: boolean; useful?: string; listenerTask?: string;
   nameOnce?: boolean; showFollowUp?: boolean; layout?: 'list' | 'grid' | 'diamond';
   noCorrectAnswer?: boolean; showNames?: boolean; lowLabel?: string; highLabel?: string; askReason?: boolean;
   versions?: { name: string; picture: ActivityPicture }[]; differences?: Difference[]; printCards?: number; printDie?: boolean;
@@ -173,7 +173,8 @@ export function oppositePairs(values: readonly { id: string; value: number }[]):
 // One layout for the live board and its printed counterpart. Coordinates are
 // one-based CSS grid lines; the spiral remains contiguous for partial rows.
 export function boardLayout(count: number, style: ActivitySettings['boardStyle'] = 'snake') {
-  const cols = Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
+  // The spiral is a landscape board (about 3:2); the others are about square.
+  const cols = style === 'spiral' ? Math.ceil(Math.sqrt(count * 1.5)) : Math.ceil(Math.sqrt(count)), rows = Math.ceil(count / cols);
   const cells: { row: number; col: number }[] = [];
   if (style === 'spiral') {
     let left = 1, right = cols, top = 1, bottom = rows;
@@ -210,55 +211,27 @@ export function boardJumps(count: number): Record<number, number> {
   return jumps;
 }
 
-// Spiral: a squared track that winds in from Start (a circle at the top left) to Finish (a circle in the
-// middle), cut into spaces, like a printed race game. Units: the board is 1.5 wide and 1 high.
-// boxes are where each item's words (and counters) sit: Start, the spaces in order, then Finish.
-export type SpiralBoard = { track: number; boxes: { x: number; y: number; w: number; h: number }[]; cells: { from: number; to: number }[]; path: { x: number; y: number }[]; length: number; start: { x: number; y: number; r: number }; finish: { x: number; y: number; r: number } };
-export function spiralLayout(count: number): SpiralBoard {
-  const W_ = 1.5, H_ = 1, spaces = Math.max(1, count - 2);
-  const build = (t: number) => {
-    const r = t * .46, path = [{ x: 2 * r + t * .05, y: t / 2 }];
-    let left = t / 2, right = W_ - t / 2, top = t / 2, bottom = H_ - t / 2, dir = 0;
-    for (let guard = 0; guard < 60; guard++) {
-      const last = path[path.length - 1];
-      const next = dir === 0 ? { x: right, y: last.y } : dir === 1 ? { x: last.x, y: bottom } : dir === 2 ? { x: left, y: last.y } : { x: last.x, y: top + t };
-      if (Math.hypot(next.x - last.x, next.y - last.y) < t * 1.25) break;
-      path.push(next);
-      if (dir === 0) right -= t; else if (dir === 1) bottom -= t; else if (dir === 2) left += t; else top += t;
-      dir = (dir + 1) % 4;
-    }
-    // The track stops short so the Finish circle sits at its end, inside the middle of the spiral.
-    const z = path[path.length - 1], y0 = path[path.length - 2] ?? path[0], seg = Math.hypot(z.x - y0.x, z.y - y0.y);
-    if (seg > 2.2 * r) path[path.length - 1] = { x: z.x - (z.x - y0.x) / seg * 1.6 * r, y: z.y - (z.y - y0.y) / seg * 1.6 * r };
-    let length = 0; for (let n = 1; n < path.length; n++) length += Math.hypot(path[n].x - path[n - 1].x, path[n].y - path[n - 1].y);
-    return { r, path, length };
-  };
-  let t = .3, b = build(t);
-  for (; t > .05; t -= .002) { b = build(t); if (b.length / spaces >= t * 1.05) break; }
-  const { r, path, length } = b;
-  const corners: number[] = []; { let d = 0; for (let n = 1; n < path.length; n++) { d += Math.hypot(path[n].x - path[n - 1].x, path[n].y - path[n - 1].y); if (n < path.length - 1) corners.push(d); } }
-  const at = (d: number) => { let acc = 0; for (let n = 1; n < path.length; n++) { const a = path[n - 1], z = path[n], seg = Math.hypot(z.x - a.x, z.y - a.y); if (acc + seg >= d || n === path.length - 1) { const k = Math.min(1, Math.max(0, (d - acc) / seg)); return { x: a.x + (z.x - a.x) * k, y: a.y + (z.y - a.y) * k }; } acc += seg; } return path[0]; };
-  // Space edges are spread evenly, then nudged off the corners, so each corner sits inside one space.
-  const edges = Array.from({ length: spaces + 1 }, (_, n) => { let d = length * n / spaces; if (n > 0 && n < spaces) for (const c of corners) if (Math.abs(d - c) < t * .55) d = c + (d < c ? -1 : 1) * t * .55; return d; });
-  const cells = edges.slice(1).map((to, n) => ({ from: edges[n], to }));
-  const last = path[path.length - 1], prev = path[path.length - 2] ?? path[0], ux = Math.sign(last.x - prev.x), uy = Math.sign(last.y - prev.y);
-  const start = { x: r, y: r, r }, finish = { x: last.x + ux * r * .95, y: last.y + uy * r * .95, r };
-  const box = (p: { x: number; y: number }, w: number) => ({ x: p.x, y: p.y, w, h: w });
-  return { track: t, path, length, cells, start, finish, boxes: [box(start, r * 1.5), ...cells.map(c => box(at((c.from + c.to) / 2), t * .94)), box(finish, r * 1.4)] };
-}
-
 // The drawing for the board: the spiral track, or the snakes and ladders. Spaces and lines are drawn here;
 // the words sit on top in the page's own text.
 export function boardArt(count: number, style?: string): string {
   const kind = boardStyleOf(style);
   if (kind === 'spiral') {
-    const b = spiralLayout(count), t = b.track;
-    const pts = (from: number, to: number) => { const out: string[] = []; let acc = 0; const P = b.path; for (let n = 1; n < P.length; n++) { const a = P[n - 1], z = P[n], seg = Math.hypot(z.x - a.x, z.y - a.y); const s0 = Math.max(from, acc), s1 = Math.min(to, acc + seg); if (s1 > s0) { const p0 = { x: a.x + (z.x - a.x) * (s0 - acc) / seg, y: a.y + (z.y - a.y) * (s0 - acc) / seg }, p1 = { x: a.x + (z.x - a.x) * (s1 - acc) / seg, y: a.y + (z.y - a.y) * (s1 - acc) / seg }; if (!out.length) out.push(`${p0.x.toFixed(4)} ${p0.y.toFixed(4)}`); out.push(`${p1.x.toFixed(4)} ${p1.y.toFixed(4)}`); } acc += seg; } return out.join(' '); };
-    const whole = pts(0, b.length);
-    const cells = b.cells.map((c, n) => `<polyline class="sp-cell ${n % 2 ? 'even' : 'odd'}" points="${pts(c.from, c.to)}" stroke-width="${t.toFixed(4)}"/>`).join('');
-    const divider = (d: number) => { const P = b.path; let acc = 0; for (let n = 1; n < P.length; n++) { const a = P[n - 1], z = P[n], seg = Math.hypot(z.x - a.x, z.y - a.y); if (acc + seg >= d - 1e-6) { const k = (d - acc) / seg, x = a.x + (z.x - a.x) * k, y = a.y + (z.y - a.y) * k, ux = (z.x - a.x) / seg, uy = (z.y - a.y) / seg; if (k > .999 && n < P.length - 1) { const q = P[n + 1], vs = Math.hypot(q.x - z.x, q.y - z.y), vx = (q.x - z.x) / vs, vy = (q.y - z.y) / vs, bx = vx - ux, by = vy - uy, bl = Math.hypot(bx, by); return `<line class="sp-div" x1="${x - bx / bl * t * .707}" y1="${y - by / bl * t * .707}" x2="${x + bx / bl * t * .707}" y2="${y + by / bl * t * .707}"/>`; } return `<line class="sp-div" x1="${x - uy * t / 2}" y1="${y + ux * t / 2}" x2="${x + uy * t / 2}" y2="${y - ux * t / 2}"/>`; } acc += seg; } return ''; };
-    const divs = b.cells.slice(1).map(c => divider(c.from)).join('');
-    return `<svg class="board-art board-art-spiral" viewBox="0 0 1.5 1" aria-hidden="true"><polyline class="sp-edge" points="${whole}" stroke-width="${(t + .008).toFixed(4)}"/>${cells}${divs}<circle class="sp-end sp-start" cx="${b.start.x}" cy="${b.start.y}" r="${b.start.r}"/><circle class="sp-end sp-finish" cx="${b.finish.x}" cy="${b.finish.y}" r="${b.finish.r}"/></svg>`;
+    // One continuous track through the spaces in spiral order. Each ring is one space wide, with a thin gap
+    // between rings so the spiral shows; corners are rounded; Start and Finish are filled in the accent.
+    const { cols, rows, cells } = boardLayout(count, 'spiral'), n = cells.length;
+    const c = cells.map(p => ({ x: p.col - .5, y: p.row - .5 }));
+    const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    // The two ends stop just inside their space, so their rounded caps stay on the board.
+    const back = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: a.x + (a.x - b.x) * .02, y: a.y + (a.y - b.y) * .02 });
+    const pt = (p: { x: number; y: number }) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`;
+    const first = n > 1 ? back(c[0], c[1]) : c[0], last = n > 1 ? back(c[n - 1], c[n - 2]) : c[0];
+    const edge = `<polyline class="sp-edge" points="${[first, ...c, last].map(pt).join(' ')}" stroke-width=".845"/>`;
+    const kind = (i: number) => i === 0 ? 'start' : i === n - 1 ? 'finish' : i % 2 ? 'even' : 'odd';
+    const spaces = c.map((p, i) => `<polyline class="sp-cell ${kind(i)}" points="${[i ? mid(c[i - 1], p) : p, p, i < n - 1 ? mid(p, c[i + 1]) : p].map(pt).join(' ')}" stroke-width=".8"/>`).join('');
+    // Start and Finish have rounded outer ends.
+    const caps = n > 1 ? `<polyline class="sp-cell sp-cap start" points="${pt(c[0])} ${pt(first)}" stroke-width=".8"/><polyline class="sp-cell sp-cap finish" points="${pt(c[n - 1])} ${pt(last)}" stroke-width=".8"/>` : '';
+    const lines = c.slice(1).map((p, i) => { const m = mid(c[i], p), dx = Math.sign(p.x - c[i].x), dy = Math.sign(p.y - c[i].y); return `<line class="sp-div" x1="${(m.x - dy * .4).toFixed(3)}" y1="${(m.y + dx * .4).toFixed(3)}" x2="${(m.x + dy * .4).toFixed(3)}" y2="${(m.y - dx * .4).toFixed(3)}"/>`; }).join('');
+    return `<svg class="board-art board-art-spiral" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${edge}${spaces}${caps}${lines}</svg>`;
   }
   if (kind !== 'ladders') return '';
   const { cols, rows, cells } = boardLayout(count, 'snake');

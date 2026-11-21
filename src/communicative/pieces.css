@@ -63,24 +63,23 @@
 /* Drawings on the board: the spiral track, and the snakes and ladders. */
 .ca-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .ca-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
-/* Spiral: one squared track, cut into spaces, winding in from Start to Finish (like a printed race game). */
-.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral { display: block; container-type: inline-size; padding: 0; aspect-ratio: 1.5; width: min(100cqw - 8px, (100dvh - 230px) * 1.5); min-width: 320px; border-radius: 4px; background: var(--paper); box-shadow: 0 0 0 10px var(--paper), 0 0 0 11px var(--hair), var(--cp-lift-low); margin: 12px; }
-.ca-board-spiral .ca-board-art { inset: 0; z-index: 0; }
-.ca-board-spiral .ca-board-art svg { width: 100%; height: 100%; }
-.board-art .sp-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, var(--paper)); stroke-linejoin: round; stroke-linecap: butt; }
-.board-art .sp-cell { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+/* Spiral: one rounded track, cut into spaces, winding in from Start to Finish in the centre (like a printed
+   race game). The track is drawn by boardArt; the words sit on a gap-free grid over it. */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral { --g: 0px; --pad: 18px; gap: 0; padding: var(--pad); border-radius: 18px; background: color-mix(in srgb, var(--ink) 7%, var(--paper)); }
+.ca-board-spiral .ca-board-art { inset: var(--pad); z-index: 0; }
+.board-art .sp-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 62%, var(--paper)); stroke-linejoin: miter; stroke-linecap: round; }
+.board-art .sp-cell { fill: none; stroke-linejoin: miter; stroke-linecap: butt; }
 .board-art .sp-cell.odd { stroke: var(--paper); }
-.board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
-.board-art .sp-div { stroke: color-mix(in srgb, var(--ink) 40%, var(--paper)); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
-.board-art .sp-end { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 70%, #000); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq { --sq: calc(var(--t) * 100cqw); position: absolute; z-index: 1; background: transparent; box-shadow: none; border-radius: 0; padding: calc(var(--sq) * .08) calc(var(--sq) * .1); justify-content: center; text-align: center; font-size: clamp(8px, calc(var(--sq) * .15), 14px); }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq:nth-child(n) { background: transparent; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq-n { position: absolute; top: calc(var(--sq) * .07); left: calc(var(--sq) * .09); }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish { background: transparent; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish { background: transparent; box-shadow: none; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish .ca-sq-text { background: none; white-space: nowrap; }
+.board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 24%, var(--paper)); }
+.board-art .sp-cell.start, .board-art .sp-cell.finish { stroke: var(--accent); }
+.board-art .sp-cap { stroke-linecap: round; }
+.board-art .sp-div { stroke: color-mix(in srgb, var(--ink) 45%, var(--paper)); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq, .ca-board-stage .ca-board.ca-board-spiral .ca-sq:nth-child(n) { z-index: 1; background: transparent; box-shadow: none; border-radius: 0; padding: calc(var(--sq) * .12) calc(var(--sq) * .13); justify-content: center; align-items: center; text-align: center; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq-n { position: absolute; top: calc(var(--sq) * .1); left: calc(var(--sq) * .13); }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish .ca-sq-text { background: none; padding: 0; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special { color: var(--accent-text); }
 .ca-board-stage .ca-board.ca-board-spiral .ca-sq.here { transform: none; box-shadow: none; animation: none; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special { box-shadow: none; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.here::before { content: ""; position: absolute; inset: 9%; border-radius: 30%; box-shadow: 0 0 0 2.5px var(--accent); animation: cp-pop .35s var(--ca-ease); }
 /* Snakes and ladders: one ruled grid with bold lines between rows, like the printed board. */
 .ca-board-wrap .ca-board-stage .ca-board.ca-board-ladders { gap: 0; padding: 0; border-radius: 6px; background: var(--paper); border: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); overflow: hidden; }
 .ca-board-stage .ca-board.ca-board-ladders .ca-sq { border-radius: 0; box-shadow: none; border-right: 1px solid var(--hair-strong); border-bottom: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); }

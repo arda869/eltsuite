@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { useImageSrc } from '../editor/PackNode';
-import { ACTIVITY_LABELS, boardArt, boardLayout, boardStyleOf, spiralLayout, dominoTiles, plainText, type ActivityConfig, type ActivityPicture, type ActivityItem, type Participant } from './model';
-import { currentPerson, learnerCallVisibility, nextRoller, surveyCounts, type ActivityAction, type ActivityState } from './state';
+import { ACTIVITY_LABELS, boardArt, boardLayout, boardStyleOf, dominoTiles, plainText, type ActivityConfig, type ActivityPicture, type ActivityItem, type Participant } from './model';
+import { currentPerson, learnerCallVisibility, nextRoller, opinionsShown, surveyCounts, type ActivityAction, type ActivityState } from './state';
 
 export type ActivityStageProps = {
   config: ActivityConfig; state: ActivityState; selfId: string; teacher?: boolean;
@@ -138,16 +138,14 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
     case 'board': {
       const style = boardStyleOf(c.settings.boardStyle);
       const { cols, rows, cells } = boardLayout(c.items.length, style);
-      const spiral = style === 'spiral' ? spiralLayout(c.items.length) : null;
-      // Spiral squares are placed along the curve; the others sit in the grid.
-      const layout = (n: number): CSSProperties => { const b = spiral?.boxes[n]; return b ? { left: `${(b.x - b.w / 2) / 1.5 * 100}%`, top: `${(b.y - b.h / 2) * 100}%`, width: `${b.w / 1.5 * 100}%`, height: `${b.h * 100}%` } : { gridRow: cells[n].row, gridColumn: cells[n].col }; };
+      const layout = (n: number): CSSProperties => ({ gridRow: cells[n].row, gridColumn: cells[n].col });
       const art = boardArt(c.items.length, style);
       const square = c.items[s.positions[active?.id ?? ''] ?? 0];
       const roller = nextRoller(c, s), canRoll = (teacher || roller === selfId) && running && !busy && !rolling;
       const roll = () => { if (canRoll) send({ type: 'roll', die: 0 }); };
       // The die is the button: click it (or the button beside it) to roll. It tumbles, then lands.
       const die = <button type="button" className={`ca-die ${rolling ? 'rolling' : ''} ${canRoll ? 'ready' : ''}`} data-face={rolling ? tumble : s.die ?? 1} disabled={!canRoll} onClick={roll} aria-label={s.die === null ? (canRoll ? 'Roll the die' : 'Die') : `Die: ${s.die}`}>{Array.from({length:9},(_,n)=><i key={n}/>)}</button>;
-      inner = <><div className="ca-board-wrap"><div className="ca-board-stage" style={vars({ '--cols': cols, '--rows': rows })}><div className={`ca-board ca-board-${style}`} style={vars({ '--cols': cols, '--rows': rows, '--t': (spiral?.track ?? 0) / 1.5 })}>{style === 'spiral' && art && <div className="ca-board-art" dangerouslySetInnerHTML={{ __html: art }} />}{c.items.map((item, n) => <div key={item.id} className={`ca-sq ${item.special ?? ''} ${Object.values(positions).includes(n) ? 'here' : ''}`} style={layout(n)}><span className="ca-sq-n">{n + 1}</span><Picture item={item} /><span className="ca-sq-text">{item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title}</span><span className="ca-pins">{s.people.filter(p => positions[p.id] === n).map(p => <span key={p.id} className="ca-pinname" title={p.name}><span className="ca-pin" style={vars({ '--c': colour(s.people.indexOf(p)) })}><span>{initials(p.name)}</span></span><span className="sr-only">{p.name}</span></span>)}</span></div>)}{style === 'ladders' && art && <div className="ca-board-art" dangerouslySetInnerHTML={{ __html: art }} />}</div></div>
+      inner = <><div className="ca-board-wrap"><div className="ca-board-stage" style={vars({ '--cols': cols, '--rows': rows })}><div className={`ca-board ca-board-${style}`} style={vars({ '--cols': cols, '--rows': rows })}>{style === 'spiral' && art && <div className="ca-board-art" dangerouslySetInnerHTML={{ __html: art }} />}{c.items.map((item, n) => <div key={item.id} className={`ca-sq ${item.special ?? ''} ${Object.values(positions).includes(n) ? 'here' : ''}`} style={layout(n)}><span className="ca-sq-n">{n + 1}</span><Picture item={item} /><span className="ca-sq-text">{item.special === 'start' ? 'Start' : item.special === 'finish' ? 'Finish' : item.title}</span><span className="ca-pins">{s.people.filter(p => positions[p.id] === n).map(p => <span key={p.id} className="ca-pinname" title={p.name}><span className="ca-pin" style={vars({ '--c': colour(s.people.indexOf(p)) })}><span>{initials(p.name)}</span></span><span className="sr-only">{p.name}</span></span>)}</span></div>)}{style === 'ladders' && art && <div className="ca-board-art" dangerouslySetInnerHTML={{ __html: art }} />}</div></div>
         <aside className="ca-board-side"><div className="ca-dice-row">{die}{canRoll ? <button type="button" className="btn primary ca-roll" onClick={roll}>Roll</button> : null}</div>{s.die !== null && square && !rolling && <div className="ca-prompt ca-paper"><span className="eyebrow">Square {(s.positions[active?.id ?? ''] ?? 0) + 1}</span><div className="ca-prompt-text">{body(square)}</div></div>}{!myTurn && running && <Wait title={`${active?.name ?? 'Your partner'} is playing`}>Watch their token, then listen to their answer.</Wait>}<div className="ca-players">{s.people.map((p, n) => <span key={p.id} className={`ca-player ${active?.id === p.id ? 'now' : ''}`} style={vars({ '--c': colour(n) })}><span className="ca-pin"><span>{initials(p.name)}</span></span>{p.name.split(/\s+/)[0]}<small>{(positions[p.id] ?? 0) + 1}</small></span>)}</div></aside></div></>;
       break;
     }
@@ -188,17 +186,18 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
         // Learners drop a pin: tap or click the line where you stand. Keyboard: focus the line, use the arrow keys.
         const nameOf = (id: string) => c.settings.showNames === false ? 'A learner' : s.people.find(p => p.id === id)?.name ?? '';
         const saved = s.opinions[selfId];
-        const drop = (e: ReactMouseEvent<HTMLDivElement>) => { if (teacher || !canAct) return; const r = e.currentTarget.getBoundingClientRect(); setPosition(Math.round(Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)))); setDropped(true); };
-        const nudge = (e: ReactKeyboardEvent<HTMLDivElement>) => { if (teacher || !canAct) return; const step = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -5 : e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 5 : 0; if (step) { e.preventDefault(); setPosition(v => Math.max(0, Math.min(100, v + step))); setDropped(true); } };
-        const others = Object.entries(s.opinions).filter(([id]) => teacher || id !== selfId);
+        const drop = (e: ReactMouseEvent<HTMLDivElement>) => { if (teacher || !canAct || locked) return; const r = e.currentTarget.getBoundingClientRect(); setPosition(Math.round(Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)))); setDropped(true); };
+        const nudge = (e: ReactKeyboardEvent<HTMLDivElement>) => { if (teacher || !canAct || locked) return; const step = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -5 : e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 5 : 0; if (step) { e.preventDefault(); setPosition(v => Math.max(0, Math.min(100, v + step))); setDropped(true); } };
+        const locked = !teacher && !!saved && c.settings.pinMove === false;
+        const others = Object.entries(s.opinions).filter(([id]) => teacher || (id !== selfId && opinionsShown(c, s, selfId)));
         const mine = !teacher && (dropped || saved);
         inner = <><div className="ca-statement">{c.items[0] ? body(c.items[0]) : null}</div>
-          {!teacher && <p className="ca-drop-hint">{saved && !dropped ? 'This is your pin. Tap the line to move it.' : 'Tap the line to drop your pin where you stand.'}</p>}
-          <div className={`ca-line-wrap ${!teacher && canAct ? 'can-drop' : ''}`} onClick={drop} onKeyDown={nudge} {...(!teacher ? { role: 'slider', tabIndex: canAct ? 0 : -1, 'aria-label': 'Your pin on the line', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': position, 'aria-valuetext': `${position}% towards ${c.settings.highLabel || 'Strongly agree'}` } : {})}>
+          {!teacher && <p className="ca-drop-hint">{locked ? 'Your pin is saved.' : saved && !dropped ? 'This is your pin. Tap the line to move it.' : 'Tap the line to drop your pin where you stand.'}{!opinionsShown(c, s, selfId) ? ' Other pins appear later.' : ''}</p>}
+          <div className={`ca-line-wrap ${!teacher && canAct && !locked ? 'can-drop' : ''}`} onClick={drop} onKeyDown={nudge} {...(!teacher ? { role: 'slider', tabIndex: canAct ? 0 : -1, 'aria-label': 'Your pin on the line', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': position, 'aria-valuetext': `${position}% towards ${c.settings.highLabel || 'Strongly agree'}` } : {})}>
             <div className="ca-line">{others.map(([id, value], n) => <span key={id} className="ca-mark" style={vars({ '--x': `${value.value}%` })}><span className="ca-pin" style={vars({ '--c': colour(n) })} title={nameOf(id)}>{c.settings.showNames === false ? '•' : initials(nameOf(id))}</span><span className="sr-only">{nameOf(id)}: {value.value}%. {value.reason}</span></span>)}
               {mine && <span key={position} className={`ca-mark me ${dropped ? 'dropped' : ''}`} style={vars({ '--x': `${position}%` })}><span className="ca-pin" style={vars({ '--c': colour(s.people.findIndex(p => p.id === selfId)) })}>{initials(nameOf(selfId) || 'Me')}</span></span>}</div>
             <div className="ca-ends"><span>{c.settings.lowLabel || 'Strongly disagree'}</span><span>{c.settings.highLabel || 'Strongly agree'}</span></div></div>
-          {!teacher && <>{c.settings.askReason && <input className="ca-reason" aria-label="Your reason (optional)" placeholder="Give a reason (optional)" value={reason} disabled={!canAct} onChange={e => setReason(e.target.value)} />}<button type="button" className="btn primary ca-go" disabled={!canAct || !mine} onClick={() => { send({ type: 'opinion', value: position, reason }); setDropped(false); }}>Save my position</button></>}</>;
+          {!teacher && <>{c.settings.askReason && <input className="ca-reason" aria-label="Your reason (optional)" placeholder="Give a reason (optional)" value={reason} disabled={!canAct} onChange={e => setReason(e.target.value)} />}{!locked && <button type="button" className="btn primary ca-go" disabled={!canAct || !mine} onClick={() => { send({ type: 'opinion', value: position, reason }); setDropped(false); }}>Save my position</button>}</>}</>;
       }
       break;
     case 'survey':

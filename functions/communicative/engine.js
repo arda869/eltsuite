@@ -789,6 +789,7 @@ function transition(c, state, a, actor, now, random = Math.random) {
     case "opinion":
       running();
       if (c.kind !== "opinion" || !Number.isFinite(a.value) || a.value < 0 || a.value > 100) throw new Error("Choose a place on the line.");
+      if (!actor.teacher && c.settings?.pinMove === false && s.opinions[actor.id]) throw new Error("Your pin is already saved.");
       s.opinions[actor.id] = { value: a.value, reason: (a.reason ?? "").slice(0, 1e3) };
       break;
     case "found": {
@@ -856,7 +857,8 @@ function stateForLearner(c, s, learnerId) {
   out.foundPoints = s.foundPoints?.[learnerId] ? { [learnerId]: s.foundPoints[learnerId] } : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
   if (c.kind === "survey") out.surveyResults = Object.fromEntries(c.items.map((item) => [item.id, surveyCounts(s, item.id)]));
-  if (c.kind === "opinion" && s.phase !== "revealed") out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
+  // Keep in step with opinionsShown in src/communicative/state.ts.
+  if (c.kind === "opinion" && !(s.phase === "revealed" || c.settings?.pinsVisible === "always" || (c.settings?.pinsVisible === "after" && !!s.opinions[learnerId]))) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === "opinion" && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
   if (c.kind === "bingo") {
     const visibility = learnerCallVisibility(c);

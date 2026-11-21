@@ -178,6 +178,7 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
     case 'opinion':
       running();
       if (c.kind !== 'opinion' || !Number.isFinite(a.value) || a.value < 0 || a.value > 100) throw new Error('Choose a place on the line.');
+      if (!actor.teacher && c.settings.pinMove === false && s.opinions[actor.id]) throw new Error('Your pin is already saved.');
       s.opinions[actor.id] = { value: a.value, reason: (a.reason ?? '').slice(0, 1000) }; break;
     case 'found': {
       running();
@@ -222,7 +223,8 @@ export function stateForLearner(c: ActivityConfig, s: ActivityState, learnerId: 
   out.foundPoints = s.foundPoints?.[learnerId] ? {[learnerId]: s.foundPoints[learnerId]} : {};
   out.found = s.found[learnerId] ? { [learnerId]: s.found[learnerId] } : {};
   if (c.kind === 'survey') out.surveyResults = Object.fromEntries(c.items.map(item => [item.id, surveyCounts(s, item.id)]));
-  if (c.kind === 'opinion' && s.phase !== 'revealed') out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
+  // Other learners' pins: after the teacher reveals them (default), once you've saved your own, or all the time.
+  if (c.kind === 'opinion' && !opinionsShown(c, s, learnerId)) out.opinions = s.opinions[learnerId] ? { [learnerId]: s.opinions[learnerId] } : {};
   else if (c.kind === 'opinion' && c.settings.showNames === false) out.opinions = Object.fromEntries(Object.values(s.opinions).map((v, n) => [`anonymous-${n}`, v]));
   if (c.kind === 'bingo') {
     const visibility = learnerCallVisibility(c);
@@ -280,4 +282,8 @@ export function nextRoller(c: ActivityConfig, state: ActivityState): string | un
     for (let n = 0; n < t.people.length * 2; n++) { t.turn = (t.turn + 1) % t.people.length; const id = currentPerson(t)!.id; if (!t.skip[id]) break; delete t.skip[id]; }
   }
   return currentPerson(t)?.id;
+}
+
+export function opinionsShown(c: ActivityConfig, s: ActivityState, learnerId: string): boolean {
+  return s.phase === 'revealed' || c.settings.pinsVisible === 'always' || (c.settings.pinsVisible === 'after' && !!s.opinions[learnerId]);
 }

@@ -216,16 +216,18 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-board { position: relative; }
 .pa-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .pa-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.pa-board-spiral { display: block; width: min(100%, 240mm); aspect-ratio: 1.5; margin: 0 auto; padding: 0; border-radius: 0; background: #fff; }
-.pa-board-spiral .pa-board-art { z-index: 0; }
-.pa-board-spiral .pa-sq { box-sizing: border-box; position: absolute; aspect-ratio: auto; min-height: 0; z-index: 1; background: transparent !important; border: 0 !important; justify-content: center; text-align: center; font-size: 8.4pt; padding: 1mm 1.4mm; }
-.pa-board-spiral .pa-sq .n { top: .8mm; left: 1.2mm; font-size: 6pt; }
-.pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #fff; }
-.pa-board-art .sp-edge { fill: none; stroke: #262420; stroke-linejoin: round; }
-.pa-board-art .sp-cell { fill: none; stroke-linejoin: round; }
-.pa-board-art .sp-cell.odd { stroke: #fff; } .pa-board-art .sp-cell.even { stroke: var(--tint); }
-.pa-board-art .sp-div { stroke: #262420; stroke-width: .7pt; vector-effect: non-scaling-stroke; }
-.pa-board-art .sp-end { fill: var(--accent); stroke: #262420; stroke-width: 1pt; vector-effect: non-scaling-stroke; }
+.pa-board-spiral { gap: 0; padding: 5mm; border-radius: 4mm; background: #ecebe7; }
+.pa-board-spiral .pa-board-art { inset: 5mm; z-index: 0; }
+.pa-board-spiral .pa-sq { position: relative; box-sizing: border-box; aspect-ratio: auto; min-height: 0; z-index: 1; background: transparent !important; border: 0 !important; justify-content: center; align-items: center; text-align: center; font-size: var(--pa-board-font, 9pt); padding: 3mm; }
+.pa-board-spiral .pa-sq .n { top: 2.8mm; left: 3.2mm; font-size: 6pt; }
+.pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #fff; font: 800 9pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.pa-board-spiral .pa-sq.start .n, .pa-board-spiral .pa-sq.finish .n { display: none; }
+.pa-board-art .sp-edge { fill: none; stroke: #262420; stroke-linejoin: miter; stroke-linecap: round; }
+.pa-board-art .sp-cell { fill: none; stroke-linejoin: miter; stroke-linecap: butt; }
+.pa-board-art .sp-cell.odd { stroke: #fff; } .pa-board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 24%, #fff); }
+.pa-board-art .sp-cell.start, .pa-board-art .sp-cell.finish { stroke: var(--accent); }
+.pa-board-art .sp-cap { stroke-linecap: round; }
+.pa-board-art .sp-div { stroke: #262420; stroke-width: .6pt; vector-effect: non-scaling-stroke; }
 .pa-board-ladders { gap: 0; padding: 0; border: 1.6pt solid #262420; border-radius: 0; background: #fff; }
 .pa-board-ladders .pa-sq { border-radius: 0; border-right: .6pt solid #262420; border-bottom: 1.6pt solid #262420; }
 .pa-board-ladders .pa-sq.start, .pa-board-ladders .pa-sq.finish { background: #fff; color: #262420; font: 800 13pt Karla, sans-serif; justify-content: center; align-items: center; }
