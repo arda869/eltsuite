@@ -121,7 +121,7 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
     const item = itemById(id); if (!item) return null;
     return <div key={id} className="ca-rank-item" draggable={canAct} onDragStart={e => e.dataTransfer.setData('text/plain', id)} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); move(s.order.indexOf(e.dataTransfer.getData('text/plain')), n); }}><span className="ca-rank-n">{n + 1}</span><span>{body(item)}</span>{orderControls(n, item.title || `item ${n + 1}`)}</div>;
   })}</div>;
-  const turn = ['board', 'memory', 'taboo', 'speaking'].includes(c.kind) && active ? <div className={`ca-turn ${active.id === selfId ? 'mine' : 'theirs'}`} style={vars({ '--c': colour(s.turn) })}><span className="avatar c" aria-hidden="true">{initials(active.name)}</span><span className="ca-turn-who">{active.id === selfId ? 'Your turn' : `${active.name}’s turn`}</span>{remaining !== null && <span className="timer-chip" role="timer" aria-label={`${remaining} seconds remaining`}>{remaining}s</span>}</div> : null;
+  const turn = ['board', 'memory', 'taboo'].includes(c.kind) && active ? <div className={`ca-turn ${active.id === selfId ? 'mine' : 'theirs'}`} style={vars({ '--c': colour(s.turn) })}><span className="avatar c" aria-hidden="true">{initials(active.name)}</span><span className="ca-turn-who">{active.id === selfId ? 'Your turn' : `${active.name}’s turn`}</span>{remaining !== null && <span className="timer-chip" role="timer" aria-label={`${remaining} seconds remaining`}>{remaining}s</span>}</div> : null;
 
   let inner: ReactNode;
   switch (c.kind) {
