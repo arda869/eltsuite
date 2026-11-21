@@ -212,23 +212,29 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-cut-grid > .pa-caller-strip { gap: 3mm; flex-direction: row; justify-content: space-between; }
 .pa-cut-grid > .pa-caller-strip small { font: 400 8.4pt/1.3 Karla, sans-serif; color: var(--muted); text-align: right; }
 
-/* Spiral and Snakes and ladders boards */
+/* Spiral and Snakes and ladders boards (drawings come from boardArt in model.ts) */
 .pa-board { position: relative; }
-.pa-board-spiral { display: block; width: min(100%, 158mm); aspect-ratio: 1; margin: 0 auto; padding: 0; border-radius: 50%; }
-.pa-board-spiral .pa-sq { box-sizing: border-box; position: absolute; aspect-ratio: auto; min-height: 0; z-index: 1; font-size: 7.6pt; padding: 1.2mm 1.4mm; }
-.pa-board-spiral .pa-sq .n { top: .8mm; left: 1.2mm; font-size: 6pt; }
-.pa-board-art { position: absolute; inset: 3mm; pointer-events: none; z-index: 2; }
-.pa-board-spiral .pa-board-art { inset: 0; z-index: 0; }
+.pa-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .pa-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.pa-board-art .track { stroke: var(--tint); }
-.pa-board-art .guide { stroke: var(--accent); }
-.pa-board-art .ladder line { stroke: #8a5f35; stroke-width: 1.4pt; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.pa-board-art .snake polyline { fill: none; stroke: #3f8a5c; stroke-width: 3.2pt; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.pa-board-art .snake circle { fill: #3f8a5c; } .pa-board-art .snake .eye { fill: #fff; }
-.pa-board .pa-sq:nth-child(even of .pa-sq):not(.special):not(.start):not(.finish) { background: var(--tint); }
+.pa-board-spiral { display: block; width: min(100%, 240mm); aspect-ratio: 1.5; margin: 0 auto; padding: 0; border-radius: 0; background: #fff; }
+.pa-board-spiral .pa-board-art { z-index: 0; }
+.pa-board-spiral .pa-sq { box-sizing: border-box; position: absolute; aspect-ratio: auto; min-height: 0; z-index: 1; background: transparent !important; border: 0 !important; justify-content: center; text-align: center; font-size: 8.4pt; padding: 1mm 1.4mm; }
+.pa-board-spiral .pa-sq .n { top: .8mm; left: 1.2mm; font-size: 6pt; }
+.pa-board-spiral .pa-sq.start, .pa-board-spiral .pa-sq.finish { color: #fff; }
+.pa-board-art .sp-edge { fill: none; stroke: #262420; stroke-linejoin: round; }
+.pa-board-art .sp-cell { fill: none; stroke-linejoin: round; }
+.pa-board-art .sp-cell.odd { stroke: #fff; } .pa-board-art .sp-cell.even { stroke: var(--tint); }
+.pa-board-art .sp-div { stroke: #262420; stroke-width: .7pt; vector-effect: non-scaling-stroke; }
+.pa-board-art .sp-end { fill: var(--accent); stroke: #262420; stroke-width: 1pt; vector-effect: non-scaling-stroke; }
+.pa-board-ladders { gap: 0; padding: 0; border: 1.6pt solid #262420; border-radius: 0; background: #fff; }
+.pa-board-ladders .pa-sq { border-radius: 0; border-right: .6pt solid #262420; border-bottom: 1.6pt solid #262420; }
+.pa-board-ladders .pa-sq.start, .pa-board-ladders .pa-sq.finish { background: #fff; color: #262420; font: 800 13pt Karla, sans-serif; justify-content: center; align-items: center; }
+.pa-board-art .lad-out { stroke: #262420; stroke-width: .085; stroke-linecap: round; }
+.pa-board-art .lad-in { stroke: #e0b27a; stroke-width: .05; stroke-linecap: round; }
+.pa-board-art .sn-body, .pa-board-art .sn-head { fill: #8cc79a; stroke: #262420; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
+.pa-board-art .sn-back { fill: none; stroke: #262420; stroke-width: .045; stroke-dasharray: .07 .07; }
+.pa-board-art .sn-eye { fill: #262420; } .pa-board-art .sn-tongue { fill: none; stroke: #c8352a; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
 /* Start and Finish print solid in the accent (outlined in black and white). */
-.pa-board .pa-sq.start, .pa-board .pa-sq.finish { background: var(--accent); color: #fff; }
-.pa-board .pa-sq.start .n, .pa-board .pa-sq.finish .n { color: #fff; }
-.pa-board.pa-board-spiral { background: #fff; box-shadow: inset 0 0 0 .8pt var(--hair); }
-.pa-board-spiral .pa-sq { box-shadow: 0 0 0 .6pt var(--hair); }
-.pa-board-art .track { stroke: var(--tint-line); }
+.pa-board-snake .pa-sq.start, .pa-board-snake .pa-sq.finish { background: var(--accent); color: #fff; }
+.pa-board-snake .pa-sq.start .n, .pa-board-snake .pa-sq.finish .n { color: #fff; }
+.pa-board-snake .pa-sq:nth-child(even of .pa-sq):not(.special):not(.start):not(.finish) { background: var(--tint); }

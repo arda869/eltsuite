@@ -96,8 +96,11 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       s.assignments = structuredClone(a.assignments); break;
     }
     case 'roll': {
-      running(); ownTurn();
-      if (c.kind !== 'board' || s.die !== null) throw new Error('Finish the current square first.');
+      running();
+      if (c.kind !== 'board') throw new Error('Use the controls for this activity.');
+      // The next player's roll also ends the last turn, so nobody has to press a "Finish turn" button.
+      if (s.die !== null) { const again = c.items[s.positions[currentPerson(s)!.id]]?.special === 'again'; s.die = null; if (!again) advance(); }
+      if (!actor.teacher && currentPerson(s)?.id !== actor.id) throw new Error('Wait for your turn.');
       if (!Number.isInteger(a.die) || a.die < 1 || a.die > 6) throw new Error('Roll a six-sided die.');
       const who = currentPerson(s)!.id;
       const pos = Math.min(c.items.length - 1, (s.positions[who] ?? 0) + a.die);
@@ -266,4 +269,15 @@ export function configForLearner(c: ActivityConfig, s: ActivityState, learnerId:
 export function surveyCounts(s: ActivityState, itemId: string): Record<string, number> {
   if (s.surveyResults?.[itemId]) return s.surveyResults[itemId];
   return Object.values(s.answers).reduce<Record<string, number>>((out, answers) => { const a = answers[itemId]; if (a) out[a] = (out[a] ?? 0) + 1; return out; }, {});
+}
+
+// Who rolls next on a board: the current player before they roll, then the next player (or the same one
+// after "Roll again"). Missed turns are skipped, as in the reducer.
+export function nextRoller(c: ActivityConfig, state: ActivityState): string | undefined {
+  if (state.die === null) return currentPerson(state)?.id;
+  const t = structuredClone(state);
+  if (c.items[t.positions[currentPerson(t)?.id ?? ''] ?? 0]?.special !== 'again' && t.people.length) {
+    for (let n = 0; n < t.people.length * 2; n++) { t.turn = (t.turn + 1) % t.people.length; const id = currentPerson(t)!.id; if (!t.skip[id]) break; delete t.skip[id]; }
+  }
+  return currentPerson(t)?.id;
 }

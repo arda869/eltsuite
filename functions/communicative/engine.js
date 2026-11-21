@@ -673,8 +673,14 @@ function transition(c, state, a, actor, now, random = Math.random) {
     }
     case "roll": {
       running();
-      ownTurn();
-      if (c.kind !== "board" || s.die !== null) throw new Error("Finish the current square first.");
+      if (c.kind !== "board") throw new Error("Use the controls for this activity.");
+      // The next player's roll also ends the last turn (keep in step with src/communicative/state.ts).
+      if (s.die !== null) {
+        const again = c.items[s.positions[currentPerson(s).id]]?.special === "again";
+        s.die = null;
+        if (!again) advance();
+      }
+      if (!actor.teacher && currentPerson(s)?.id !== actor.id) throw new Error("Wait for your turn.");
       if (!Number.isInteger(a.die) || a.die < 1 || a.die > 6) throw new Error("Roll a six-sided die.");
       const who = currentPerson(s).id;
       const pos = Math.min(c.items.length - 1, (s.positions[who] ?? 0) + a.die);

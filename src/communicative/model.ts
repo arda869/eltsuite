@@ -214,48 +214,77 @@ export function boardJumps(count: number): Record<number, number> {
   return jumps;
 }
 
-// Spiral: squares placed along a spiral, from the outside edge in to Finish in the middle. Points are
-// tile centres in a unit square; size is a tile's width as a share of the board.
-export function spiralLayout(count: number): { size: number; points: { x: number; y: number }[] } {
-  for (let size = .22; size > .04; size -= .002) {
-    const k = size * 1.55 / (2 * Math.PI), step = size * 1.3, start = Math.PI * .75;
-    let r = .5 - size / 2 - .004, th = 0;
-    const points: { x: number; y: number }[] = [];
-    while (points.length < count - 1 && r > size * 1.05) {
-      points.push({ x: .5 + r * Math.cos(start + th), y: .5 + r * Math.sin(start + th) });
-      let d = 0; while (d < step && r > 0) { const dt = .002; d += Math.hypot(r, k) * dt; th += dt; r -= k * dt; }
+// Spiral: a squared track that winds in from Start (a circle at the top left) to Finish (a circle in the
+// middle), cut into spaces, like a printed race game. Units: the board is 1.5 wide and 1 high.
+// boxes are where each item's words (and counters) sit: Start, the spaces in order, then Finish.
+export type SpiralBoard = { track: number; boxes: { x: number; y: number; w: number; h: number }[]; cells: { from: number; to: number }[]; path: { x: number; y: number }[]; length: number; start: { x: number; y: number; r: number }; finish: { x: number; y: number; r: number } };
+export function spiralLayout(count: number): SpiralBoard {
+  const W_ = 1.5, H_ = 1, spaces = Math.max(1, count - 2);
+  const build = (t: number) => {
+    const r = t * .62, path = [{ x: 2 * r + t * .05, y: t / 2 }];
+    let left = t / 2, right = W_ - t / 2, top = t / 2, bottom = H_ - t / 2, dir = 0;
+    for (let guard = 0; guard < 60; guard++) {
+      const last = path[path.length - 1];
+      const next = dir === 0 ? { x: right, y: last.y } : dir === 1 ? { x: last.x, y: bottom } : dir === 2 ? { x: left, y: last.y } : { x: last.x, y: top + t };
+      if (Math.hypot(next.x - last.x, next.y - last.y) < t * 1.25) break;
+      path.push(next);
+      if (dir === 0) right -= t; else if (dir === 1) bottom -= t; else if (dir === 2) left += t; else top += t;
+      dir = (dir + 1) % 4;
     }
-    if (points.length === count - 1) points.push({ x: .5, y: .5 });
-    if (points.length === count) return { size, points };
-  }
-  return { size: .05, points: Array.from({ length: count }, (_, n) => ({ x: (n % 10) / 10 + .05, y: Math.floor(n / 10) / 10 + .05 })) };
+    // The track stops short so the Finish circle sits at its end, inside the middle of the spiral.
+    const z = path[path.length - 1], y0 = path[path.length - 2] ?? path[0], seg = Math.hypot(z.x - y0.x, z.y - y0.y);
+    if (seg > 2.2 * r) path[path.length - 1] = { x: z.x - (z.x - y0.x) / seg * 1.6 * r, y: z.y - (z.y - y0.y) / seg * 1.6 * r };
+    let length = 0; for (let n = 1; n < path.length; n++) length += Math.hypot(path[n].x - path[n - 1].x, path[n].y - path[n - 1].y);
+    return { r, path, length };
+  };
+  let t = .3, b = build(t);
+  for (; t > .05; t -= .002) { b = build(t); if (b.length / spaces >= t * 1.05) break; }
+  const { r, path, length } = b;
+  const corners: number[] = []; { let d = 0; for (let n = 1; n < path.length; n++) { d += Math.hypot(path[n].x - path[n - 1].x, path[n].y - path[n - 1].y); if (n < path.length - 1) corners.push(d); } }
+  const at = (d: number) => { let acc = 0; for (let n = 1; n < path.length; n++) { const a = path[n - 1], z = path[n], seg = Math.hypot(z.x - a.x, z.y - a.y); if (acc + seg >= d || n === path.length - 1) { const k = Math.min(1, Math.max(0, (d - acc) / seg)); return { x: a.x + (z.x - a.x) * k, y: a.y + (z.y - a.y) * k }; } acc += seg; } return path[0]; };
+  // Space edges are spread evenly, then nudged off the corners, so each corner sits inside one space.
+  const edges = Array.from({ length: spaces + 1 }, (_, n) => { let d = length * n / spaces; if (n > 0 && n < spaces) for (const c of corners) if (Math.abs(d - c) < t * .55) d = c + (d < c ? -1 : 1) * t * .55; return d; });
+  const cells = edges.slice(1).map((to, n) => ({ from: edges[n], to }));
+  const last = path[path.length - 1], prev = path[path.length - 2] ?? path[0], ux = Math.sign(last.x - prev.x), uy = Math.sign(last.y - prev.y);
+  const start = { x: r, y: r, r }, finish = { x: last.x + ux * r * .95, y: last.y + uy * r * .95, r };
+  const box = (p: { x: number; y: number }, w: number) => ({ x: p.x, y: p.y, w, h: w });
+  return { track: t, path, length, cells, start, finish, boxes: [box(start, r * 1.4), ...cells.map(c => box(at((c.from + c.to) / 2), t * .94)), box(finish, r * 1.4)] };
 }
 
-// The drawing on top of (or under) the squares: the spiral's track, or the ladders and snakes.
+// The drawing for the board: the spiral track, or the snakes and ladders. Spaces and lines are drawn here;
+// the words sit on top in the page's own text.
 export function boardArt(count: number, style?: string): string {
   const kind = boardStyleOf(style);
   if (kind === 'spiral') {
-    const { size, points } = spiralLayout(count);
-    const d = points.map((p, n) => `${n ? 'L' : 'M'}${p.x.toFixed(4)} ${p.y.toFixed(4)}`).join(' ');
-    return `<svg class="board-art board-art-spiral" viewBox="0 0 1 1" aria-hidden="true"><path class="track" d="${d}" fill="none" stroke-width="${(size * .5).toFixed(4)}" stroke-linecap="round" stroke-linejoin="round"/><path class="guide" d="${d}" fill="none" stroke-width="${(size * .03).toFixed(4)}" stroke-dasharray="${(size * .12).toFixed(4)} ${(size * .1).toFixed(4)}" stroke-linecap="round"/></svg>`;
+    const b = spiralLayout(count), t = b.track;
+    const pts = (from: number, to: number) => { const out: string[] = []; let acc = 0; const P = b.path; for (let n = 1; n < P.length; n++) { const a = P[n - 1], z = P[n], seg = Math.hypot(z.x - a.x, z.y - a.y); const s0 = Math.max(from, acc), s1 = Math.min(to, acc + seg); if (s1 > s0) { const p0 = { x: a.x + (z.x - a.x) * (s0 - acc) / seg, y: a.y + (z.y - a.y) * (s0 - acc) / seg }, p1 = { x: a.x + (z.x - a.x) * (s1 - acc) / seg, y: a.y + (z.y - a.y) * (s1 - acc) / seg }; if (!out.length) out.push(`${p0.x.toFixed(4)} ${p0.y.toFixed(4)}`); out.push(`${p1.x.toFixed(4)} ${p1.y.toFixed(4)}`); } acc += seg; } return out.join(' '); };
+    const whole = pts(0, b.length);
+    const cells = b.cells.map((c, n) => `<polyline class="sp-cell ${n % 2 ? 'even' : 'odd'}" points="${pts(c.from, c.to)}" stroke-width="${t.toFixed(4)}"/>`).join('');
+    const divider = (d: number) => { const P = b.path; let acc = 0; for (let n = 1; n < P.length; n++) { const a = P[n - 1], z = P[n], seg = Math.hypot(z.x - a.x, z.y - a.y); if (acc + seg >= d - 1e-6) { const k = (d - acc) / seg, x = a.x + (z.x - a.x) * k, y = a.y + (z.y - a.y) * k, ux = (z.x - a.x) / seg, uy = (z.y - a.y) / seg; if (k > .999 && n < P.length - 1) { const q = P[n + 1], vs = Math.hypot(q.x - z.x, q.y - z.y), vx = (q.x - z.x) / vs, vy = (q.y - z.y) / vs, bx = vx - ux, by = vy - uy, bl = Math.hypot(bx, by); return `<line class="sp-div" x1="${x - bx / bl * t * .707}" y1="${y - by / bl * t * .707}" x2="${x + bx / bl * t * .707}" y2="${y + by / bl * t * .707}"/>`; } return `<line class="sp-div" x1="${x - uy * t / 2}" y1="${y + ux * t / 2}" x2="${x + uy * t / 2}" y2="${y - ux * t / 2}"/>`; } acc += seg; } return ''; };
+    const divs = b.cells.slice(1).map(c => divider(c.from)).join('');
+    return `<svg class="board-art board-art-spiral" viewBox="0 0 1.5 1" aria-hidden="true"><polyline class="sp-edge" points="${whole}" stroke-width="${(t + .008).toFixed(4)}"/>${cells}${divs}<circle class="sp-end sp-start" cx="${b.start.x}" cy="${b.start.y}" r="${b.start.r}"/><circle class="sp-end sp-finish" cx="${b.finish.x}" cy="${b.finish.y}" r="${b.finish.r}"/></svg>`;
   }
   if (kind !== 'ladders') return '';
   const { cols, rows, cells } = boardLayout(count, 'snake');
   const at = (n: number) => ({ x: cells[n].col - .5, y: cells[n].row - .5 });
-  let art = '';
+  let ladders = '', snakes = '';
   for (const [a, b] of Object.entries(boardJumps(count))) {
-    const from = at(Number(a)), to = at(b), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+    const from = at(Number(a)), to = at(b), dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
     if (b > Number(a)) {
-      // a ladder: two rails and rungs every quarter square
-      const w = .13, rails = [-1, 1].map(s => `<line x1="${from.x + nx * w * s}" y1="${from.y + ny * w * s}" x2="${to.x + nx * w * s}" y2="${to.y + ny * w * s}"/>`).join('');
-      const rungs = Array.from({ length: Math.max(2, Math.floor(len / .28)) }, (_, i) => { const t = (i + .5) / Math.max(2, Math.floor(len / .28)); const x = from.x + dx * t, y = from.y + dy * t; return `<line x1="${x - nx * w}" y1="${y - ny * w}" x2="${x + nx * w}" y2="${y + ny * w}"/>`; }).join('');
-      art += `<g class="ladder">${rails}${rungs}</g>`;
+      // a ladder: two rails and evenly spaced rungs, drawn as outlined bars like a printed board
+      const w = .15, x0 = from.x - ux * .25, y0 = from.y - uy * .25, x1 = to.x + ux * .25, y1 = to.y + uy * .25, l = len + .5, steps = Math.max(3, Math.round(l / .24));
+      const bar = (ax: number, ay: number, bx: number, by: number) => `<line class="lad-out" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/><line class="lad-in" x1="${ax.toFixed(3)}" y1="${ay.toFixed(3)}" x2="${bx.toFixed(3)}" y2="${by.toFixed(3)}"/>`;
+      let rungs = ''; for (let i = 1; i < steps; i++) { const k = i / steps, x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k; rungs += bar(x - nx * w, y - ny * w, x + nx * w, y + ny * w); }
+      ladders += `<g class="ladder">${rungs}${[-1, 1].map(sd => bar(x0 + nx * w * sd, y0 + ny * w * sd, x1 + nx * w * sd, y1 + ny * w * sd)).join('')}</g>`;
     } else {
-      // a snake: a wavy body from its head (the higher square) to its tail
-      const waves = Math.max(1.5, len * 1.3), pts: string[] = [];
-      for (let i = 0; i <= 40; i++) { const t = i / 40, amp = .16 * Math.sin(Math.PI * t) + .04, o = amp * Math.sin(t * waves * 2 * Math.PI); pts.push(`${(from.x + dx * t + nx * o).toFixed(3)} ${(from.y + dy * t + ny * o).toFixed(3)}`); }
-      art += `<g class="snake"><polyline points="${pts.join(' ')}"/><circle cx="${from.x}" cy="${from.y}" r=".13"/><circle class="eye" cx="${from.x + nx * .05 + dx / len * .04}" cy="${from.y + ny * .05 + dy / len * .04}" r=".025"/><circle class="eye" cx="${from.x - nx * .05 + dx / len * .04}" cy="${from.y - ny * .05 + dy / len * .04}" r=".025"/></g>`;
+      // a snake: a tapering body with a pattern down its back, a head with eyes and a forked tongue
+      const N = 48, waves = Math.max(1.2, len * .9), spine: { x: number; y: number }[] = [];
+      for (let i = 0; i <= N; i++) { const k = i / N, o = (.22 * Math.sin(Math.PI * Math.min(1, k * 1.15))) * Math.sin(k * waves * 2 * Math.PI); spine.push({ x: from.x + dx * k + nx * o, y: from.y + dy * k + ny * o }); }
+      const left: string[] = [], right: string[] = [];
+      spine.forEach((p, i) => { const q = spine[Math.min(N, i + 1)], o = spine[Math.max(0, i - 1)], tx = q.x - o.x, ty = q.y - o.y, tl = Math.hypot(tx, ty) || 1, half = .095 * (1 - i / N) + .006; left.push(`${(p.x - ty / tl * half).toFixed(3)} ${(p.y + tx / tl * half).toFixed(3)}`); right.unshift(`${(p.x + ty / tl * half).toFixed(3)} ${(p.y - tx / tl * half).toFixed(3)}`); });
+      const hx = spine[0].x, hy = spine[0].y, fx = spine[0].x - spine[2].x, fy = spine[0].y - spine[2].y, fl = Math.hypot(fx, fy) || 1, ang = Math.atan2(fy, fx) * 180 / Math.PI;
+      snakes += `<g class="snake"><polygon class="sn-body" points="${left.concat(right).join(' ')}"/><polyline class="sn-back" points="${spine.slice(2, N - 4).map(p => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`).join(' ')}"/><path class="sn-tongue" d="M${(hx + fx / fl * .14).toFixed(3)} ${(hy + fy / fl * .14).toFixed(3)} l${(fx / fl * .1).toFixed(3)} ${(fy / fl * .1).toFixed(3)} m0 0 l${(fx / fl * .04 - fy / fl * .03).toFixed(3)} ${(fy / fl * .04 + fx / fl * .03).toFixed(3)} m${(-fx / fl * .04 + fy / fl * .03).toFixed(3)} ${(-fy / fl * .04 - fx / fl * .03).toFixed(3)} l${(fx / fl * .04 + fy / fl * .03).toFixed(3)} ${(fy / fl * .04 - fx / fl * .03).toFixed(3)}"/><ellipse class="sn-head" cx="${hx.toFixed(3)}" cy="${hy.toFixed(3)}" rx=".15" ry=".11" transform="rotate(${ang.toFixed(1)} ${hx.toFixed(3)} ${hy.toFixed(3)})"/><circle class="sn-eye" cx="${(hx + fx / fl * .05 - fy / fl * .055).toFixed(3)}" cy="${(hy + fy / fl * .05 + fx / fl * .055).toFixed(3)}" r=".022"/><circle class="sn-eye" cx="${(hx + fx / fl * .05 + fy / fl * .055).toFixed(3)}" cy="${(hy + fy / fl * .05 - fx / fl * .055).toFixed(3)}" r=".022"/></g>`;
     }
   }
-  return `<svg class="board-art board-art-ladders" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${art}</svg>`;
+  return `<svg class="board-art board-art-ladders" viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${snakes}${ladders}</svg>`;
 }

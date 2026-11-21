@@ -37,7 +37,7 @@
   transition: transform .2s var(--ca-ease), box-shadow .2s;
 }
 /* Every other square takes a clear tint of the accent, so the path is easy to follow. */
-.ca-board-stage .ca-board .ca-sq:nth-child(even of .ca-sq):not(.start):not(.finish):not(.special) { background: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
+.ca-board-stage .ca-board:not(.ca-board-spiral) .ca-sq:nth-child(even of .ca-sq):not(.start):not(.finish):not(.special) { background: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
 .ca-board-stage .ca-sq-n { font: 700 clamp(9px, calc(var(--sq) * .11), 12px) var(--sans); color: var(--accent-text); letter-spacing: .04em; }
 .ca-board-stage .ca-sq-text { -webkit-line-clamp: 3; }
 .ca-board-stage .ca-sq .ca-pic { max-height: 44%; border-radius: 8px; }
@@ -60,26 +60,41 @@
 .ca-board-stage .ca-sq .ca-pin, .ca-board-side .ca-player .ca-pin { width: clamp(22px, calc(var(--sq, 80px) * .3), 30px); height: auto; aspect-ratio: 1; margin: 0; border-radius: 50%; transform: none; border: 2px solid var(--paper); background: var(--c); box-shadow: 0 3px 6px rgba(0, 0, 0, .25); animation: cp-pop .3s var(--ca-ease); }
 .ca-board-stage .ca-sq .ca-pin > span, .ca-board-side .ca-player .ca-pin > span { transform: none; }
 .ca-board-side .ca-player .ca-pin { width: 22px; animation: none; }
-/* Drawings on the board: the spiral's track, and the ladders and snakes. */
-.ca-board-art { position: absolute; inset: 16px; pointer-events: none; z-index: 1; opacity: .72; }
-.ca-board-spiral .ca-board-art { opacity: 1; }
+/* Drawings on the board: the spiral track, and the snakes and ladders. */
+.ca-board-art { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .ca-board-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.board-art .track { stroke: color-mix(in srgb, var(--accent) 22%, var(--paper)); }
-.board-art .guide { stroke: color-mix(in srgb, var(--accent) 55%, transparent); }
-.board-art .ladder line { stroke: #a9794a; stroke-width: 3px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.board-art .ladder line:nth-child(-n+2) { stroke: #8a5f35; stroke-width: 4px; }
-.board-art .snake polyline { fill: none; stroke: #4c9a6a; stroke-width: 7px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .92; }
-.board-art .snake circle { fill: #3f8a5c; }
-.board-art .snake .eye { fill: #fff; }
-.ca-board-stage .ca-board-ladders .ca-sq-text { opacity: .95; }
-/* Spiral: the squares follow a curving track that winds in to Finish in the middle. */
-.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral {
-  display: block; container-type: inline-size; padding: 0; aspect-ratio: 1; border-radius: 50%;
-  width: min(100cqw - 16px, 100dvh - 220px); min-width: 300px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--ink) 4%, var(--paper)) 0 70%, color-mix(in srgb, var(--ink) 8%, var(--paper)));
-}
-.ca-board-stage .ca-board-spiral .ca-board-art { inset: 0; z-index: 0; }
-.ca-board-stage .ca-board.ca-board-spiral .ca-sq { --sq: calc(var(--t) * 100cqw); position: absolute; z-index: 1; border-radius: 12px; padding: calc(var(--sq) * .1); font-size: clamp(8px, calc(var(--sq) * .14), 14px); }
+/* Spiral: one squared track, cut into spaces, winding in from Start to Finish (like a printed race game). */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-spiral { display: block; container-type: inline-size; padding: 0; aspect-ratio: 1.5; width: min(100cqw - 8px, (100dvh - 230px) * 1.5); min-width: 320px; border-radius: 4px; background: var(--paper); box-shadow: 0 0 0 10px var(--paper), 0 0 0 11px var(--hair), var(--cp-lift-low); margin: 12px; }
+.ca-board-spiral .ca-board-art { inset: 0; z-index: 0; }
+.ca-board-spiral .ca-board-art svg { width: 100%; height: 100%; }
+.board-art .sp-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, var(--paper)); stroke-linejoin: round; stroke-linecap: butt; }
+.board-art .sp-cell { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+.board-art .sp-cell.odd { stroke: var(--paper); }
+.board-art .sp-cell.even { stroke: color-mix(in srgb, var(--accent) 20%, var(--paper)); }
+.board-art .sp-div { stroke: color-mix(in srgb, var(--ink) 40%, var(--paper)); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.board-art .sp-end { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 70%, #000); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq { --sq: calc(var(--t) * 100cqw); position: absolute; z-index: 1; background: transparent; box-shadow: none; border-radius: 0; padding: calc(var(--sq) * .08) calc(var(--sq) * .1); justify-content: center; text-align: center; font-size: clamp(8px, calc(var(--sq) * .15), 14px); }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq:nth-child(n) { background: transparent; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq-n { position: absolute; top: calc(var(--sq) * .07); left: calc(var(--sq) * .09); }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish { background: transparent; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish { background: transparent; box-shadow: none; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-spiral .ca-sq.finish .ca-sq-text { background: none; white-space: nowrap; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.here { transform: none; box-shadow: none; animation: none; }
+.ca-board-stage .ca-board.ca-board-spiral .ca-sq.special { box-shadow: none; }
+/* Snakes and ladders: one ruled grid with bold lines between rows, like the printed board. */
+.ca-board-wrap .ca-board-stage .ca-board.ca-board-ladders { gap: 0; padding: 0; border-radius: 6px; background: var(--paper); border: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); overflow: hidden; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq { border-radius: 0; box-shadow: none; border-right: 1px solid var(--hair-strong); border-bottom: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.start, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish { background: color-mix(in srgb, var(--accent) 22%, var(--paper)); color: var(--ink); box-shadow: none; font: 800 clamp(11px, calc(var(--sq) * .16), 18px) var(--sans); }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish .ca-sq-text { background: none; padding: 0; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.here { transform: none; box-shadow: inset 0 0 0 3px var(--accent); animation: none; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq.special { box-shadow: none; }
+.board-art .lad-out { stroke: #6b4423; stroke-width: .085; stroke-linecap: round; }
+.board-art .lad-in { stroke: #e0b27a; stroke-width: .048; stroke-linecap: round; }
+.board-art .sn-body { fill: #8cc79a; stroke: #2f6b45; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.board-art .sn-back { fill: none; stroke: #2f6b45; stroke-width: .05; stroke-dasharray: .07 .07; stroke-linecap: round; opacity: .8; }
+.board-art .sn-head { fill: #8cc79a; stroke: #2f6b45; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.board-art .sn-eye { fill: #1f2a22; }
+.board-art .sn-tongue { fill: none; stroke: #c8352a; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
 /* The die: white with rounded edges and depth, like a real one; the one is the accent. */
 .ca-board-side .ca-die {
   border: 0; border-radius: 18px; margin: 0 10px 10px 0;
@@ -263,8 +278,6 @@
 .ca-domino > span.n { padding: 0; }
 .ca-bingo::before { white-space: nowrap; overflow: hidden; }
 .ca-bingo .ca-cell { overflow-wrap: normal; word-break: normal; hyphens: auto; }
-.ca-board-stage .ca-board-spiral .ca-sq.start, .ca-board-stage .ca-board-spiral .ca-sq.finish { font-size: clamp(8px, calc(var(--sq) * .11), 12px); letter-spacing: .06em; }
-.ca-board-stage .ca-board-spiral .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board-spiral .ca-sq.finish .ca-sq-text { white-space: nowrap; padding: 2px 5px; }
 /* Dominoes in play: tiles are dragged into a chain. The up and down buttons stay for keyboards and
    touch, as a small pair under the tile that appears on hover or focus. */
 .ca-domino { cursor: grab; display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
