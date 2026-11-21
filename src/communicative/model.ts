@@ -199,18 +199,14 @@ export const boardStyleOf = (style?: string): BoardStyle => style === 'spiral' |
 // Snakes and ladders: the same fixed jumps for every board of this size, so the board, the print and the
 // server agree. Square numbers are 0-based. Ladders go up about one row and a bit; snakes come down.
 export function boardJumps(count: number): Record<number, number> {
-  const cols = Math.ceil(Math.sqrt(count)), jumps: Record<number, number> = {}, used = new Set([0, count - 1]);
-  const pairs = count < 30 ? 2 : count < 42 ? 3 : 4;
+  const { cols, cells } = boardLayout(count, 'snake'), jumps: Record<number, number> = {}, used = new Set([0, count - 1]);
+  const pairs = count < 20 ? 1 : count < 36 ? 2 : 3;
+  const at = (row: number, col: number) => cells.findIndex(c => c.row === row && c.col === Math.max(1, Math.min(cols, col)));
   const free = (n: number, dir: number) => { while (used.has(n) && n > 0 && n < count - 1) n += dir; return n; };
-  const ladders = [.1, .36, .6, .78].slice(0, pairs), snakes = [.46, .72, .93, .3].slice(0, pairs);
-  ladders.forEach((f, k) => {
-    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), to = free(Math.min(count - 2, from + cols + 1 + k % 2), -1);
-    if (to > from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
-  });
-  snakes.forEach((f, k) => {
-    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), to = free(Math.max(1, from - cols - 1 - k % 2), 1);
-    if (to < from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
-  });
+  const add = (from: number, to: number) => { if (from > 0 && from < count - 1 && to > 0 && to < count - 1 && Math.abs(to - from) >= cols - 1 && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); } };
+  // Ladders climb one or two rows, leaning a column; snakes slide down one or two rows the other way.
+  [.12, .45, .7].slice(0, pairs).forEach((f, k) => { const from = free(Math.max(1, Math.round(f * (count - 1))), 1), c = cells[from]; if (c) add(from, at(c.row - 1 - k % 2, c.col + (k % 2 ? 1 : -1))); });
+  [.58, .88, .32].slice(0, pairs).forEach((f, k) => { const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), c = cells[from]; if (c) add(from, at(c.row + 1 + (k + 1) % 2, c.col + (k % 2 ? -1 : 1))); });
   return jumps;
 }
 
@@ -221,7 +217,7 @@ export type SpiralBoard = { track: number; boxes: { x: number; y: number; w: num
 export function spiralLayout(count: number): SpiralBoard {
   const W_ = 1.5, H_ = 1, spaces = Math.max(1, count - 2);
   const build = (t: number) => {
-    const r = t * .62, path = [{ x: 2 * r + t * .05, y: t / 2 }];
+    const r = t * .46, path = [{ x: 2 * r + t * .05, y: t / 2 }];
     let left = t / 2, right = W_ - t / 2, top = t / 2, bottom = H_ - t / 2, dir = 0;
     for (let guard = 0; guard < 60; guard++) {
       const last = path[path.length - 1];
@@ -248,7 +244,7 @@ export function spiralLayout(count: number): SpiralBoard {
   const last = path[path.length - 1], prev = path[path.length - 2] ?? path[0], ux = Math.sign(last.x - prev.x), uy = Math.sign(last.y - prev.y);
   const start = { x: r, y: r, r }, finish = { x: last.x + ux * r * .95, y: last.y + uy * r * .95, r };
   const box = (p: { x: number; y: number }, w: number) => ({ x: p.x, y: p.y, w, h: w });
-  return { track: t, path, length, cells, start, finish, boxes: [box(start, r * 1.4), ...cells.map(c => box(at((c.from + c.to) / 2), t * .94)), box(finish, r * 1.4)] };
+  return { track: t, path, length, cells, start, finish, boxes: [box(start, r * 1.5), ...cells.map(c => box(at((c.from + c.to) / 2), t * .94)), box(finish, r * 1.4)] };
 }
 
 // The drawing for the board: the spiral track, or the snakes and ladders. Spaces and lines are drawn here;

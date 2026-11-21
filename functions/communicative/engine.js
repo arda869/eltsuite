@@ -160,18 +160,14 @@ function oppositePairs(values) {
 }
 // Snakes and ladders: keep in step with boardJumps in src/communicative/model.ts.
 function boardJumps(count) {
-  const cols = Math.ceil(Math.sqrt(count)), jumps = {}, used = new Set([0, count - 1]);
-  const pairs = count < 30 ? 2 : count < 42 ? 3 : 4;
+  const { cols, cells } = boardLayout(count, 'snake'), jumps = {}, used = new Set([0, count - 1]);
+  const pairs = count < 20 ? 1 : count < 36 ? 2 : 3;
+  const at = (row, col) => cells.findIndex(c => c.row === row && c.col === Math.max(1, Math.min(cols, col)));
   const free = (n, dir) => { while (used.has(n) && n > 0 && n < count - 1) n += dir; return n; };
-  const ladders = [.1, .36, .6, .78].slice(0, pairs), snakes = [.46, .72, .93, .3].slice(0, pairs);
-  ladders.forEach((f, k) => {
-    const from = free(Math.max(1, Math.round(f * (count - 1))), 1), to = free(Math.min(count - 2, from + cols + 1 + k % 2), -1);
-    if (to > from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
-  });
-  snakes.forEach((f, k) => {
-    const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), to = free(Math.max(1, from - cols - 1 - k % 2), 1);
-    if (to < from && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); }
-  });
+  const add = (from, to) => { if (from > 0 && from < count - 1 && to > 0 && to < count - 1 && Math.abs(to - from) >= cols - 1 && !used.has(from) && !used.has(to)) { jumps[from] = to; used.add(from); used.add(to); } };
+  // Ladders climb one or two rows, leaning a column; snakes slide down one or two rows the other way.
+  [.12, .45, .7].slice(0, pairs).forEach((f, k) => { const from = free(Math.max(1, Math.round(f * (count - 1))), 1), c = cells[from]; if (c) add(from, at(c.row - 1 - k % 2, c.col + (k % 2 ? 1 : -1))); });
+  [.58, .88, .32].slice(0, pairs).forEach((f, k) => { const from = free(Math.min(count - 2, Math.round(f * (count - 1))), -1), c = cells[from]; if (c) add(from, at(c.row + 1 + (k + 1) % 2, c.col + (k % 2 ? -1 : 1))); });
   return jumps;
 }
 

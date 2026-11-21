@@ -508,6 +508,7 @@ img { filter: grayscale(1) contrast(1.18); }
 .pa-board-art .lad-in { stroke: #fff !important; }
 .pa-board-art .sn-body, .pa-board-art .sn-head { fill: #fff !important; }
 .pa-board-art .sn-tongue { stroke: #1d1b18 !important; }
+.pa-board-spiral .pa-sq { background: transparent !important; border: 0 !important; }
 :is(.pill, .wb-pill, .chip, .kw) { background: #fff !important; border: .8pt solid #1d1b18 !important; color: #1d1b18 !important; }
 `;
 
