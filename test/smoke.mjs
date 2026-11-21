@@ -221,7 +221,10 @@ const J = {
     const insert=s.p.locator('.task-insert').last();
     await insert.locator('summary').click();
     await insert.getByRole('button',{name:'New task',exact:true}).waitFor();
-    await insert.getByRole('button',{name:'Create with AI',exact:true}).click();
+    await insert.getByRole('button',{name:'Import a task',exact:true}).waitFor();
+    await insert.locator('summary').click();
+    await openPlanning(s.p);
+    await s.p.getByRole('button',{name:'Create a task with AI',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:'Start blank',exact:true}).waitFor();
     if(!await dialog.getByRole('button',{name:'Start blank',exact:true}).isEnabled())throw Error('Blank task choice was hidden or disabled');
