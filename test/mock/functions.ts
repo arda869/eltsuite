@@ -7,6 +7,22 @@ import { db, rtdb } from '../../src/lib/firebase';
 export const getFunctions = () => ({});
 const mediaScriptSessions = new Map<string,number>();
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  // Small browser-only fixture for the standalone Resource Hub live journey.
+  if (name === 'resourceLessonLive' && localStorage.getItem('rll.fixture')) {
+    const state = JSON.parse(localStorage.getItem('rll.fixture')!) as any;
+    const run = state.run;
+    const save = () => localStorage.setItem('rll.fixture', JSON.stringify(state));
+    const task = { id: 'task-1', title: 'First task', instructions: 'Choose the best answer.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Which word means hello?' }, { type: 'gap', attrs: { id: 'q1', answers: [] } }] }] } };
+    if (d.action === 'start') return { data: { runId: run.runId, code: state.code } };
+    if (d.action === 'join') { if (d.code !== state.code || run.status === 'ended') throw Error('This code is unavailable.'); const person = { pid: crypto.randomUUID(), name: d.name, joinedAt: Date.now(), summaries: {} }; state.participants.push(person); save(); return { data: { runId: run.runId, pid: person.pid, token: 'fixture-token', name: person.name } }; }
+    if (d.action === 'teacherState') return { data: { run: { ...run, participantCount: state.participants.length }, code: state.code, participants: state.participants, answers: state.answers.filter((answer: any) => answer.taskId === run.currentTaskId), currentTask: run.currentTaskId ? task : null } };
+    if (d.action === 'learnerState') return { data: { run: { title: run.title, status: run.status, currentTaskId: run.currentTaskId }, tasks: [{ id: task.id, title: task.title }], currentTask: run.currentTaskId ? task : null, responses: state.answers.find((answer: any) => answer.pid === d.pid)?.responses || {} } };
+    if (d.action === 'advance') { run.status = 'running'; run.currentTaskId = d.taskId; save(); return { data: { ok: true, currentTaskId: d.taskId } }; }
+    if (d.action === 'submit') { const got = d.responses.q1 === 'hello' ? 1 : 0; const answer = { id: `${d.pid}_${d.taskId}`, pid: d.pid, name: state.participants.find((person: any) => person.pid === d.pid)?.name, taskId: d.taskId, responses: d.responses, grading: { q1: { answered: true, got, max: 1, status: got ? 'correct' : 'incorrect' } }, got, max: 1, answered: 1, submittedAt: Date.now() }; state.answers = state.answers.filter((item: any) => item.id !== answer.id); state.answers.push(answer); state.participants.find((person: any) => person.pid === d.pid).summaries[d.taskId] = { got, max: 1, answered: 1, submittedAt: answer.submittedAt }; save(); return { data: { ok: true, grading: answer.grading, got, max: 1, answered: 1 } }; }
+    if (d.action === 'end') { run.status = 'ended'; run.endedAt = Date.now(); save(); return { data: { ok: true } }; }
+    if (d.action === 'history') return { data: { runs: [{ ...run, participantCount: state.participants.length }] } };
+    if (d.action === 'result') return { data: { run: { ...run, participantCount: state.participants.length }, participants: state.participants, answers: d.taskId ? state.answers.filter((answer: any) => answer.taskId === d.taskId) : [], task: d.taskId ? task : null } };
+  }
   if (name === 'mediaScriptAccess') {
     const script = (await getDoc(doc(db,'classes',d.classId,'mediaScripts',d.mediaId))).data()?.script ?? [];
     if (d.action === 'start') {
@@ -375,6 +391,24 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(d.action==='finish'){const feedback={focusFeedback:'You gave a reason for your choice using because.',evidence:['I would choose the park because it is quieter.'],communication:'You kept the conversation moving.',nextStep:'Add a second reason to develop your answer.',retryPrompt:'Another reason is…'};await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{feedback,status:'complete',feedbackState:'complete'},{merge:true});return {data:{feedback}};}
   }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
+  if (['fileTaskAiDraft', 'fileTaskAiStatus', 'fileTaskAiApply'].includes(d.action)) {
+    const fixture = JSON.parse(localStorage.getItem('fileAi.fixture') || 'null');
+    if (!fixture) throw Error('No file AI fixture');
+    const jobKey = `fileAi.job:${d.requestId}`;
+    if (d.action === 'fileTaskAiDraft') {
+      localStorage.setItem(jobKey, JSON.stringify({ result: fixture.result, applied: false }));
+      return { data: { status: 'completed', result: fixture.result, requestId: d.requestId } };
+    }
+    const job = JSON.parse(localStorage.getItem(jobKey) || 'null');
+    if (!job) throw Error('Draft not found');
+    if (d.action === 'fileTaskAiStatus') return { data: { status: 'completed', result: job.result } };
+    if (!job.applied) {
+      const { mergeKey } = await import('../../src/lib/questions');
+      await setDoc(doc(db, 'sharedDocs', d.fileId, 'tasks', 'ai_' + d.requestId), { kind: 'task', order: 1, title: job.result.title, instructions: job.result.instructions, content: mergeKey(job.result.content, job.result.key), teacherNotes: job.result.notes });
+      job.applied = true; localStorage.setItem(jobKey, JSON.stringify(job));
+    }
+    return { data: { applied: true, taskId: 'ai_' + d.requestId } };
+  }
   if(d.action==='readiness')return (await import('./learning')).mockReadiness(d);
   if(['taskTools','taskToolsIdeas','taskToolsStatus','taskToolsApply'].includes(d.action))return (await import('./lesson-tools')).mockLessonTools(d);
   if(['rebuild','rebuildStatus','importCreate','rebuildPicture','rebuildPictureStatus'].includes(d.action)) {

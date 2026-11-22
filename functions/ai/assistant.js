@@ -36,6 +36,7 @@ import { checkModel, isPilotTeacher, reserveBudget, settleBudget } from './budge
 
 import { requestReadiness } from '../learning/reports.js';
 import { taskTools } from './task-tools.js';
+import { fileTaskTools } from './file-task-tools.js';
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 const enabled = defineString('ELT_AI_ENABLED', { default: 'false' });
@@ -49,6 +50,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};
   if (d.action === 'resourceHubImportDraft') return resourceHubImportDraft(req, { db, uid, apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   if (d.action === 'resourceHubImportStatus') return resourceHubImportStatus(req, { db, uid });
+  if (['fileTaskAiDraft', 'fileTaskAiStatus', 'fileTaskAiApply'].includes(d.action))
+    return fileTaskTools(req, { db, uid, apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   if (!id(d.classId)) fail('Choose a class.');
   const [profile, account, cls, pilot] = await Promise.all([
     db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get(), db.doc(`classes/${d.classId}`).get(), db.doc(`aiPilot/${uid}`).get(),

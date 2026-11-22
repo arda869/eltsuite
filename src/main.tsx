@@ -91,6 +91,9 @@ const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const ResourceHubPage = lazy(() => import('./resourceHub/ResourceHubPage'));
 const ResourceHubAdminPage = lazy(() => import('./resourceHub/ResourceHubAdminPage'));
+const ResourceLessonLiveTeacher = lazy(() => import('./resourceHub/ResourceLessonLiveTeacher').then(m => ({ default: m.ResourceLessonLiveTeacher })));
+const ResourceLessonHistory = lazy(() => import('./resourceHub/ResourceLessonLiveTeacher').then(m => ({ default: m.ResourceLessonHistory })));
+const ResourceLessonLiveLearner = lazy(() => import('./resourceHub/ResourceLessonLiveLearner').then(m => ({ default: m.ResourceLessonLiveLearner })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
@@ -279,6 +282,11 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/resource-hub" element={<TeacherOnly><ResourceHubPage /></TeacherOnly>} />
           <Route path="/resource-hub/admin" element={<TeacherOnly><ResourceHubAdminPage /></TeacherOnly>} />
           <Route path="/resource-hub/admin/:id" element={<TeacherOnly><ResourceHubAdminPage /></TeacherOnly>} />
+          <Route path="/resource-hub/lesson/live/:runId" element={<TeacherOnly><ResourceLessonLiveTeacher /></TeacherOnly>} />
+          <Route path="/resource-hub/lesson/:resourceId/history" element={<TeacherOnly><ResourceLessonHistory /></TeacherOnly>} />
+          <Route path="/lesson-file/:fileId/history" element={<TeacherOnly><ResourceLessonHistory /></TeacherOnly>} />
+          <Route path="/lesson-join" element={<ResourceLessonLiveLearner />} />
+          <Route path="/lesson-join/:code" element={<ResourceLessonLiveLearner />} />
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />

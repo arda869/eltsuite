@@ -58,6 +58,8 @@ try {
   await published.getByRole('heading', { name: 'A4 preview test lesson' }).waitFor();
   await published.getByRole('button', { name: /Print lesson pages/ }).waitFor();
   await published.getByRole('button', { name: /Copy tasks to a Class/ }).waitFor();
+  await published.getByRole('button', { name: /Start live with learners/ }).waitFor();
+  await published.getByRole('button', { name: 'Teaching history' }).waitFor();
   if (screenshots) await published.screenshot({ path: `${screenshots}/resource-hub-teacher-page.png` });
   await published.getByRole('button', { name: /Print lesson pages/ }).click();
   if (screenshots) await published.screenshot({ path: `${screenshots}/resource-hub-print-pack.png` });

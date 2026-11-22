@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "resourceLessonRuns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerSource", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "callLogs",
       "queryScope": "COLLECTION",
       "fields": [
@@ -21,6 +29,18 @@
     }
   ],
   "fieldOverrides": [
+    {
+      "collectionGroup": "resourceLessonCodes",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "resourceLessonJoinLimits",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
     {
       "collectionGroup": "posts",
       "fieldPath": "learnerId",

@@ -44,6 +44,9 @@ export type SharedDoc = {
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
   ltype?: 'lesson' | 'homework' | 'exam' | 'practice'; // a lesson file: what kind of lesson it becomes in a class
+  originClassId?: string; // file saved from a Class lesson; keep that Class's roster/live flow
+  originItemId?: string;
+  standaloneLesson?: boolean; // set when a Lesson file is created outside Classes
   path?: string; // the folder in the owner's files
   file?: { name: string; type: string; bytes: number; parts: number; sha256?: string }; // any other file: what was uploaded
   uploadStatus?: 'uploading' | 'ready';
@@ -58,7 +61,7 @@ export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
 export type DocKind = 'game' | 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file' | 'design';
 export const KIND_LABEL: Record<DocKind, string> = { game: 'Game', doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Designer file' };
-export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '') {
+export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '', origin?: { originClassId?: string; originItemId?: string; standaloneLesson?: boolean }) {
   const r = doc(col);
   await writeNamedFile(r, { owner: owner.uid, path }, title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
     path,
@@ -66,6 +69,9 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind:kind==='storyboard'?'design':kind,
+    ...(kind === 'lesson' ? { standaloneLesson: origin?.standaloneLesson ?? !origin?.originClassId } : {}),
+    ...(origin?.originClassId ? { originClassId: origin.originClassId } : {}),
+    ...(origin?.originItemId ? { originItemId: origin.originItemId } : {}),
     ...(kind === 'file' ? { uploadStatus: 'uploading' } : {}),
     ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     docKey: 'f' + newId() + newId(),
@@ -217,7 +223,7 @@ export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
   return list;
 }
 // A new file in a folder belongs to the folder's owner and is shared with everyone in it.
-export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind, extra: { ltype?: SharedDoc['ltype']; title?: string } = {}) {
+export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind, extra: { ltype?: SharedDoc['ltype']; title?: string; standaloneLesson?: boolean; originClassId?: string; originItemId?: string } = {}) {
   const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc' || kind === 'slides')) as SharedDoc['members'];
   if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
   delete members[f.owner];
@@ -229,6 +235,9 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     folder: f.id,
     title: extra.title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind:kind==='storyboard'?'design':kind,
+    ...(kind === 'lesson' ? { standaloneLesson: extra.standaloneLesson ?? !extra.originClassId } : {}),
+    ...(extra.originClassId ? { originClassId: extra.originClassId } : {}),
+    ...(extra.originItemId ? { originItemId: extra.originItemId } : {}),
     ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     ...(extra.ltype ? { ltype: extra.ltype } : {}),
     docKey: 'f' + newId() + newId(),
