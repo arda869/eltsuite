@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateResourceMetric } from '../functions/resource-hub/metrics.js';
+import { publishedResourceForMetric, validateResourceMetric } from '../functions/resource-hub/metrics.js';
 
 test('accepts only the three resource usage actions with safe identifiers', () => {
   for (const kind of ['view', 'download', 'copy']) {
@@ -12,4 +12,18 @@ test('accepts only the three resource usage actions with safe identifiers', () =
   }
   assert.throws(() => validateResourceMetric({ activityId: 'otp-002', kind: 'delete', requestId: 'dcf46c82-3ae7-42d0-a2bb-f43fc967143a' }), { code: 'invalid-argument' });
   assert.throws(() => validateResourceMetric({ activityId: 'otp-002', kind: 'view', requestId: 'short' }), { code: 'invalid-argument' });
+});
+
+test('resolves published lesson and numbered activity IDs without counting unrelated documents', async () => {
+  const documents = {
+    'resourceHubNumberClaims/otp-003': { resourceId: 'draft-3' },
+    'resourceHubPublished/draft-3': { resourceType: 'activity', collectionId: 'otp', number: '003' },
+    'resourceHubPublished/lesson-doc': { resourceType: 'lesson', collectionId: 'otp', number: '' },
+  };
+  const db = { doc: path => ({ get: async () => ({ exists: path in documents, data: () => documents[path], get: field => documents[path]?.[field] }) }) };
+  assert.equal(await publishedResourceForMetric(db, 'otp-002'), true);
+  assert.equal(await publishedResourceForMetric(db, 'otp-003'), true);
+  assert.equal(await publishedResourceForMetric(db, 'lesson-lesson-doc'), true);
+  assert.equal(await publishedResourceForMetric(db, 'otp-004'), false);
+  assert.equal(await publishedResourceForMetric(db, 'lesson-draft-3'), false);
 });

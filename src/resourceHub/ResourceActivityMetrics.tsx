@@ -24,7 +24,7 @@ export function ResourceActivityMetrics({ published }: { published: HubResourceE
     }).catch(() => { if (active) setError('Usage figures could not be loaded. Try again.'); });
     return () => { active = false; };
   }, [refresh]);
-  const titles = useMemo(() => new Map([...(published ?? []).map(item => [item.id, item.title] as const), ...HUB_ACTIVITIES.filter(item => item.id === 'otp-002').map(item => [item.id, item.title] as const)]), [published]);
+  const titles = useMemo(() => new Map([...(published ?? []).map(item => [item.resourceType === 'lesson' ? `lesson-${item.id}` : `${item.collectionId}-${item.number.padStart(3, '0')}`, item.title] as const), ...HUB_ACTIVITIES.filter(item => item.id === 'otp-002').map(item => [item.id, item.title] as const)]), [published]);
   const sorted = useMemo(() => (rows ?? []).slice().sort((a, b) => b.views - a.views), [rows]);
   const totals = useMemo(() => sorted.reduce((sum, item) => ({ views: sum.views + item.views, downloads: sum.downloads + item.downloads, copies: sum.copies + item.copies }), { views: 0, downloads: 0, copies: 0 }), [sorted]);
   const format = (value: number) => value.toLocaleString();

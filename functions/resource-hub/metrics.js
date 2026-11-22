@@ -15,6 +15,23 @@ export function validateResourceMetric(data) {
   return { activityId, kind, requestId, field: KINDS[kind] };
 }
 
+export async function publishedResourceForMetric(db, activityId) {
+  if (activityId === 'otp-002') return true; // The complete built-in kit has no published-edition document.
+  let resourceId = '';
+  if (activityId.startsWith('lesson-')) resourceId = activityId.slice('lesson-'.length);
+  else {
+    const claim = await db.doc(`resourceHubNumberClaims/${activityId}`).get();
+    resourceId = String(claim.get('resourceId') ?? '');
+  }
+  if (!resourceId || !ID.test(resourceId)) return false;
+  const published = await db.doc(`resourceHubPublished/${resourceId}`).get();
+  if (!published.exists) return false;
+  const data = published.data() ?? {};
+  return data.resourceType === 'lesson'
+    ? activityId === `lesson-${resourceId}`
+    : activityId === `${data.collectionId}-${String(data.number ?? '').padStart(3, '0')}`;
+}
+
 // The client reports only completed actions. No email, name, class name, PDF name or
 // lesson content is saved. Individual actor records are private server-only data.
 export const recordResourceHubMetric = onCall({ region: 'us-central1', maxInstances: 5 }, async request => {
@@ -23,7 +40,7 @@ export const recordResourceHubMetric = onCall({ region: 'us-central1', maxInstan
   const db = getFirestore();
   const [profile, account] = await Promise.all([db.doc(`users/${request.auth.uid}`).get(), db.doc(`accounts/${request.auth.uid}`).get()]);
   if (!profile.exists || profile.get('role') !== 'teacher' || account.get('suspended') === true) throw new HttpsError('permission-denied', 'Teachers only.');
-  if (activityId !== 'otp-002' && !(await db.doc(`resourceHubPublished/${activityId}`).get()).exists) {
+  if (!(await publishedResourceForMetric(db, activityId))) {
     throw new HttpsError('failed-precondition', 'This activity is not published.');
   }
   const summaryRef = db.doc(`resourceHubMetrics/${activityId}`);
