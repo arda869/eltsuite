@@ -13,6 +13,8 @@ import { generatedAnswerLinesForSection } from './hubAnswerKey';
 import type { JSONContent } from '@tiptap/react';
 import './resourceDetail.css';
 import { recordResourceMetric } from './usageMetrics';
+import { useNavigate } from 'react-router-dom';
+import { lessonLiveApi } from './lessonLiveApi';
 
 type Zoom = 'fit' | 'width' | '100';
 type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; instrDoc?: JSONContent | null; content?: JSONContent; versionLabel?: string };
@@ -54,6 +56,16 @@ const editorPreviewPages = (activity: HubActivity): PreviewEntry[] => {
 };
 
 export function ResourceDetail({ activity, collection: collectionOverride, onBack, saved = false, onSaveChange, preferredClassId }: { activity: HubActivity; collection?: HubCollection; onBack: () => void; saved?: boolean; onSaveChange?: () => void; preferredClassId?: string }) {
+  const navigate = useNavigate();
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveError, setLiveError] = useState('');
+  const standaloneLessonId = activity.kind === 'lesson' && activity.id.startsWith('lesson-') && !preferredClassId ? activity.id.slice('lesson-'.length) : '';
+  const startLive = async () => {
+    if (!standaloneLessonId || liveBusy) return;
+    setLiveBusy(true); setLiveError('');
+    try { const result = await lessonLiveApi<{ runId: string; code: string }>('start', { resourceId: standaloneLessonId }); navigate(`/resource-hub/lesson/live/${encodeURIComponent(result.runId)}`); }
+    catch (cause) { setLiveError((cause as Error).message); setLiveBusy(false); }
+  };
   const visit = useRef({ activityId: '', requestId: '' });
   const previewPages: PreviewEntry[] = useMemo(() => activity.editorSections?.length ? editorPreviewPages(activity) : activity.pages, [activity]);
   const learnerIndices = useMemo(() => previewPages.flatMap((page, index) => page.audience === 'learner' ? [index] : []), [previewPages]);
@@ -112,7 +124,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
           {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}{page.versionLabel ? ` · ${page.versionLabel}` : ''}</span><h2>{page.title}</h2><InstrView doc={page.instrDoc} text={page.instructions ?? ''} /></header><RichContent content={paperContent(page.content)} /></article> : null}
         </div>
       </section>
-      <aside className="rh-detail-aside"><div className="rh-detail-actions"><h2>Use this {activity.kind === 'lesson' ? 'lesson' : 'activity'}</h2><button type="button" className="rh-primary" onClick={() => setDialog('print')}>Print {activity.kind === 'lesson' ? 'lesson' : 'activity'} pages <span aria-hidden="true">↗</span></button><button type="button" className="rh-secondary" onClick={() => setDialog('copy')}>Copy tasks to a Class</button>{aiEnabled && activity.id === 'otp-002' && <button type="button" className="rh-secondary" onClick={() => setDialog('adapt')}>✦ Adapt with AI</button>}{onSaveChange && <button type="button" className="rh-secondary rh-detail-save" aria-pressed={saved} onClick={onSaveChange}>{saved ? '✓ Saved' : '♡ Save'}</button>}<p>Class copies include learner tasks and private teacher guidance.</p></div>
+      <aside className="rh-detail-aside"><div className="rh-detail-actions"><h2>Use this {activity.kind === 'lesson' ? 'lesson' : 'activity'}</h2>{standaloneLessonId && <><button type="button" className="rh-primary" disabled={liveBusy} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : 'Start live with learners →'}</button><button type="button" className="rh-secondary" onClick={() => navigate(`/resource-hub/lesson/${encodeURIComponent(standaloneLessonId)}/history`)}>Teaching history</button>{liveError && <p role="alert" className="rll-error">{liveError}</p>}</>}<button type="button" className={standaloneLessonId ? 'rh-secondary' : 'rh-primary'} onClick={() => setDialog('print')}>Print {activity.kind === 'lesson' ? 'lesson' : 'activity'} pages <span aria-hidden="true">↗</span></button><button type="button" className="rh-secondary" onClick={() => setDialog('copy')}>Copy tasks to a Class</button>{aiEnabled && activity.id === 'otp-002' && <button type="button" className="rh-secondary" onClick={() => setDialog('adapt')}>✦ Adapt with AI</button>}{onSaveChange && <button type="button" className="rh-secondary rh-detail-save" aria-pressed={saved} onClick={onSaveChange}>{saved ? '✓ Saved' : '♡ Save'}</button>}<p>Class copies include learner tasks and private teacher guidance.</p></div>
         <div className="rh-detail-card"><span className="rh-eyebrow">At a glance</span><dl><div><dt>Time</dt><dd>{activity.minutes} minutes</dd></div><div><dt>Level</dt><dd>{activity.level}</dd></div><div><dt>Interaction</dt><dd>{activity.interaction}</dd></div><div><dt>Preparation</dt><dd>{activity.prep}</dd></div><div><dt>Works for</dt><dd>{activity.mode}</dd></div></dl><div className="rh-detail-energy"><span>Energy</span><span role="img" aria-label={`${activity.energy} out of 3`}>{[1, 2, 3].map(value => <i key={value} className={value <= activity.energy ? 'on' : ''} />)}</span></div></div>
       </aside>
     </div>}

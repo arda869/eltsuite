@@ -20,6 +20,8 @@ import { useSheet } from './useSheet';
 import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
 import { theme } from '../lib/themes';
+import { useNavigate } from 'react-router-dom';
+import { lessonLiveApi } from '../resourceHub/lessonLiveApi';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
@@ -133,7 +135,17 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
 }
 
 export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
+  const navigate = useNavigate();
   const rows = useRows(d.id);
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveError, setLiveError] = useState('');
+  const fileOrigin = d as SharedDoc & { originClassId?: string; sourceClassId?: string; classId?: string };
+  const standaloneLive = canEdit && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
+  const startLive = async () => {
+    setLiveBusy(true); setLiveError('');
+    try { const result = await lessonLiveApi<{ runId: string; code: string }>('start', { fileId: d.id }); navigate(`/resource-hub/lesson/live/${encodeURIComponent(result.runId)}`); }
+    catch (cause) { setLiveError((cause as Error).message); setLiveBusy(false); }
+  };
   const [sel, setSel] = useState('');
   // Worksheet view: the lesson as A4 pages, as in a class lesson. Remembered on this device.
   const [sheet, setSheetState] = useState(() => {
@@ -260,6 +272,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         <button type="button" className="btn primary" disabled={!rows.length} onClick={() => setAdding(true)}>
           Add to a class…
         </button>
+        {standaloneLive && <><button type="button" className="btn primary" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : 'Start live lesson'}</button>{!rows.some(row => row.kind === 'task') && <span className="hint">Add a task before starting a live lesson.</span>}{liveError && <p role="alert" className="rll-error">{liveError}</p>}<button type="button" className="btn" onClick={() => navigate(`/lesson-file/${encodeURIComponent(d.id)}/history`)}>Teaching history</button></>}
       </aside>
       <main className="lf-main">
         <div className="lf-preview-bar"><button type="button" className="btn small-btn" aria-pressed={learnerPreview} onClick={() => { setLearnerPreview(value => !value); setPreviewResponses({}); }}>{learnerPreview ? 'Back to editor' : 'Learner preview'}</button><span className="hint">{learnerPreview ? 'Try the lesson as a learner. Preview answers are not saved.' : 'Edit tasks here, or preview how learners will see them.'}</span></div>
