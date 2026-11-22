@@ -36,3 +36,4 @@ th .rad-cell-input{font-weight:700;font-size:13px}
 .rad-table-scroll tbody tr:nth-child(even){background:color-mix(in srgb,var(--paper-soft) 58%,var(--paper))}
 .rad-table-scroll tbody tr:hover{background:var(--paper-soft)}
 .rad-table-scroll tbody :is(input,button,a):focus-visible{outline:2px solid var(--rh-olive);outline-offset:2px}
+.rad-filter-popover{position:fixed;z-index:10050;top:auto;--rh-border:var(--hair);--rh-olive:#74762f;--rh-ink:var(--ink);--rh-muted:var(--muted)}
