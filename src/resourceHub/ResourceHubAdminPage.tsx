@@ -24,6 +24,7 @@ import { prepareStaticPage, saveStaticKitOverride, subscribeStaticKitOverride, t
 import { prepareHubImage } from './hubImageUpload';
 import { ResourceImport } from './ResourceImport';
 import { hasDigitalOnlyItems, makeEditorResourcePdf } from './ResourceRichPdf';
+import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { publishedResourceToActivity } from './usePublishedHubResources';
 import { usePublishedHubCollections } from './usePublishedHubCollections';
 import { publishedTasks } from './resourceTasks';
@@ -162,7 +163,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
       const copiedTasks = publishedTasks(activity, new Set(learnerIds));
       const hasTeacherGuidance = draft.sections.some(section => section.audience === 'teacher' && (section.instructions.trim() || JSON.stringify(section.content).includes('"text":"')));
       if (copiedTasks.filter(task => !task.hidden).length !== learnerIds.length || (hasTeacherGuidance && !copiedTasks.some(task => task.hidden && task.notes))) throw new Error('The Class copy could not keep all learner tasks and private teacher notes.');
-      const pdf = await makeEditorResourcePdf({ activity, collection, learnerIds, teacherIds, copies: 1, paper: 'a4', colour: 'colour' });
+      const pdf = await (isLesson ? makeResourceLessonPdf : makeEditorResourcePdf)({ activity, collection, learnerIds, teacherIds, copies: 1, paper: 'a4', colour: 'colour' });
       if (pdf.length < 100 || new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') throw new Error('The printable edition could not be rendered.');
       const edition = await publishResource(draft.id, draft.revision, uid);
       const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); setKeyReviewed(false); setEditions(current => [{ edition: edition.edition, publishedAt: edition.publishedAt }, ...current]);
@@ -178,7 +179,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
       const collection = { ...HUB_COLLECTIONS.find(item => item.id === draft.collectionId)!, ...publishedCollections.items?.find(item => item.id === draft.collectionId) };
       const learnerIds = draft.sections.filter(section => section.audience === 'learner').map(section => section.id);
       const teacherIds = draft.sections.filter(section => section.audience === 'teacher').map(section => section.id);
-      setPrintPreview(await makeEditorResourcePdf({ activity, collection, learnerIds, teacherIds, copies: 1, paper: 'a4', colour: 'colour' }));
+      setPrintPreview(await (isLesson ? makeResourceLessonPdf : makeEditorResourcePdf)({ activity, collection, learnerIds, teacherIds, copies: 1, paper: 'a4', colour: 'colour' }));
     } catch (cause) { setError(`The print preview could not be made. ${friendlyError(cause)}`); }
     finally { setBusy(false); }
   };

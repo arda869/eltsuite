@@ -4,6 +4,7 @@ import { Select } from '../components/Select';
 import { PdfPreview } from '../components/PdfPreview';
 import type { HubActivity, HubCollection, HubPage } from './catalog';
 import { makeEditorResourcePdf } from './ResourceRichPdf';
+import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { monoContours } from './monoPrint';
 import { recordResourceMetric } from './usageMetrics';
 
@@ -158,7 +159,8 @@ function RichPrint({ activity, collection, onClose }: { activity: HubActivity; c
     if (printNow && !printWindow) { setError('Your browser blocked the print window. Allow pop-ups, or use Preview PDF and print from there.'); return; }
     setBusy(true); setError('');
     try {
-      const bytes = await makeEditorResourcePdf({ activity, collection, learnerIds: learners.map(section => section.id), teacherIds: teachers.map(section => section.id), copies, paper, colour });
+      const makePdf = activity.kind === 'lesson' ? makeResourceLessonPdf : makeEditorResourcePdf;
+      const bytes = await makePdf({ activity, collection, learnerIds: learners.map(section => section.id), teacherIds: teachers.map(section => section.id), copies, paper, colour });
       if (printWindow) { const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); printWindow.location.href = url; recordResourceMetric(activity.id, 'download'); window.setTimeout(() => URL.revokeObjectURL(url), 120_000); }
       else setPreview(bytes);
     } catch (cause) { console.error('Resource Hub editor print failed', cause); printWindow?.close(); setError(cause instanceof Error ? cause.message : 'We couldn’t build the PDF. Try again.'); }

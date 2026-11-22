@@ -9,6 +9,7 @@ import { openPdf } from '../pdf/pdfData';
 import type { HubCollection } from './catalog';
 import type { HubResourceDraft, HubResourceEdition } from './hubEditorData';
 import { makeEditorResourcePdf } from './ResourceRichPdf';
+import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { publishedResourceToActivity } from './usePublishedHubResources';
 import './resource-live-preview.css';
 
@@ -21,7 +22,7 @@ function A4Pages({ bytes }: { bytes: Uint8Array }) {
     let pdf: Awaited<ReturnType<typeof openPdf>> | null = null;
     void (async () => {
       pdf = await openPdf(bytes);
-      if (cancelled || !host.current) return;
+      if (cancelled || !host.current) { void pdf.destroy(); return; }
       host.current.replaceChildren();
       for (let number = 1; number <= pdf.numPages && !cancelled; number++) {
         const page = await pdf.getPage(number);
@@ -36,6 +37,7 @@ function A4Pages({ bytes }: { bytes: Uint8Array }) {
         const context = canvas.getContext('2d');
         if (context) await page.render({ canvasContext: context, viewport } as Parameters<typeof page.render>[0]).promise;
       }
+      if (!cancelled && host.current) host.current.dataset.pageCount = String(pdf.numPages);
     })().catch(() => { if (!cancelled && host.current) host.current.textContent = 'The A4 pages could not be drawn. Try Preview print PDF.'; });
     return () => { cancelled = true; void pdf?.destroy(); };
   }, [bytes]);
@@ -91,7 +93,8 @@ export function ResourceLivePreview({ draft, activeSectionId, collection }: { dr
     setA4Busy(true);
     const timer = window.setTimeout(() => {
       const activity = publishedResourceToActivity({ ...draft, edition: draft.revision, publishedAt: Date.now(), publishedBy: '' } as HubResourceEdition);
-      void makeEditorResourcePdf({ activity, collection, learnerIds: visibleIds.split(','), teacherIds: [], copies: 1, paper: 'a4', colour: 'colour' })
+      const makePdf = activity.kind === 'lesson' ? makeResourceLessonPdf : makeEditorResourcePdf;
+      void makePdf({ activity, collection, learnerIds: visibleIds.split(','), teacherIds: [], copies: 1, paper: 'a4', colour: 'colour' })
         .then(bytes => { if (!cancelled) { setA4Bytes(bytes); setA4Error(''); } })
         .catch(() => { if (!cancelled) { setA4Bytes(null); setA4Error('The A4 preview could not be made. Try Preview print PDF.'); } })
         .finally(() => { if (!cancelled) setA4Busy(false); });
