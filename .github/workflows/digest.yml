@@ -28,17 +28,21 @@ jobs:
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/mail-replies.mjs scripts/space.mjs scripts/file-bin-cleanup.mjs scripts/video.mjs scripts/ics.mjs scripts/email-layout.mjs "$RUNNER_TEMP/d/"
+          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/mail-replies.mjs scripts/space.mjs scripts/communicative-space.mjs scripts/file-bin-cleanup.mjs scripts/video.mjs scripts/ics.mjs scripts/email-layout.mjs "$RUNNER_TEMP/d/"
           mkdir -p "$RUNNER_TEMP/functions" && cp functions/push-delivery.js functions/package.json "$RUNNER_TEMP/functions/"
           mkdir -p "$RUNNER_TEMP/functions/notifications" && cp functions/notifications/email-layout.js functions/notifications/invitation-emails.js functions/notifications/invitation-copy.json functions/notifications/invitation-delivery-logic.js "$RUNNER_TEMP/functions/notifications/"
           # The app's own repeat rules (src/lib/repeat.ts), for meeting invitations.
           npx --yes esbuild@0.24.0 src/lib/repeat.ts --bundle --format=esm --platform=node --outfile="$RUNNER_TEMP/d/repeat.mjs" --log-level=warning || echo "Could not build the repeat rules this time."
           cd "$RUNNER_TEMP/d"
           npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 imapflow@1 mailparser@3 >/dev/null
-          node space.mjs || echo "Space could not be measured this time."
+          space_status=0
+          node space.mjs || space_status=$?
+          if [ "$space_status" -ne 0 ]; then echo "Space could not be measured this time."; fi
           node video.mjs || echo "Video rooms could not be made this time."
           push_status=0
           node push.mjs || push_status=$?
-          if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; else echo "No SMTP_URL secret yet: no class emails."; fi
+          mail_status=0
+          if [ -n "$SMTP_URL" ]; then node mail.mjs || mail_status=$?; else echo "No SMTP_URL secret yet: no class emails."; fi
+          if [ "$mail_status" -ne 0 ]; then echo "Class emails could not be sent this time."; fi
           rm -f "$RUNNER_TEMP/sa.json"
-          exit "$push_status"
+          if [ "$space_status" -ne 0 ] || [ "$push_status" -ne 0 ] || [ "$mail_status" -ne 0 ]; then exit 1; fi
