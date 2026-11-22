@@ -78,7 +78,7 @@ export function ResourceActivityDirectory({ drafts, published }: { drafts: HubRe
   };
   useEffect(() => subscribeStaticKitOverride(setStaticOverride, () => setStaticOverride(null)), []);
   const builtIn = HUB_ACTIVITIES.find(activity => activity.id === 'otp-002');
-  const staticItem = builtIn ? { ...builtIn, ...staticOverride } : undefined;
+  const staticItem = builtIn ? { ...builtIn, ...staticOverride, publishedAt: staticOverride?.updatedAt || builtIn.publishedAt } : undefined;
   const rows = useMemo(() => {
     const byId = new Map<string, ActivityRow>();
     for (const edition of published ?? []) byId.set(edition.id, { id: edition.id, edition });

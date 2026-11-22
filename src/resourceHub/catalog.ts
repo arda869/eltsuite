@@ -92,6 +92,7 @@ const fromSource = (source: SourceActivity): HubActivity => {
     prep: kit ? 'Print' : prepFor(format), energy: kit ? 3 : 2,
     mode: kit ? 'Face-to-face and online' : physical ? 'Face-to-face only' : 'Face-to-face and online',
     status: kit ? 'ready' : 'outline',
+    publishedAt: kit ? Date.UTC(2026, 10, 18) : undefined,
     pages: kit ? [
     { id: 'notes', title: 'Teacher notes', image: '/resource-hub/otp-002-p1.png', audience: 'teacher', part: 'notes' },
     { id: 'practice-a-b', title: 'Learner sheet · Practice A and B', image: '/resource-hub/otp-002-p2.png', audience: 'learner', part: 'practice-a' },

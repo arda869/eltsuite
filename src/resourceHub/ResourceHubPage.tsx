@@ -80,7 +80,7 @@ export function ResourceHubPage() {
     const additions = (published.items ?? []).filter(item => !(item.collectionId === 'otp' && item.number === '002'));
     const replacements = new Map(additions.map(item => [item.id, item]));
     const examples = HUB_ACTIVITIES.filter(item => item.id === 'otp-002');
-    const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
+    const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, publishedAt: staticKitOverride.updatedAt || item.publishedAt, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
     const builtInIds = new Set(examples.map(item => item.id));
     const visibleCollectionIds = new Set(collections.map(collection => collection.id));
     return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))].filter(item => visibleCollectionIds.has(item.collectionId));
