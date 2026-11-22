@@ -25,7 +25,7 @@ const codeRef = (db, code) => db.doc(`resourceLessonCodes/${code}`);
 const taskRef = (run, id) => run.collection('privateTasks').doc(id);
 const seatRef = (run, pid) => run.collection('participants').doc(pid);
 const answerRef = (run, taskId, pid) => run.collection('answers').doc(`${taskId}_${pid}`);
-const visibleRun = (run, runId, now) => ({ runId, resourceId: run.resourceId, title: run.title, edition: run.edition, status: run.status, currentTaskId: run.currentTaskId, taskIds: run.taskIds, taskTitles: run.taskTitles, startedAt: run.startedAt, endedAt: run.endedAt ?? null, codeExpiresAt: run.codeExpiresAt, expiresAt: run.expiresAt, expired: run.expiresAt <= now, joinOpen: run.status !== 'ended' && run.codeExpiresAt > now && run.expiresAt > now, participantCount: run.participantCount ?? 0 });
+const visibleRun = (run, runId, now) => ({ runId, sourceKind: run.sourceKind, resourceId: run.resourceId ?? null, fileId: run.fileId ?? null, title: run.title, edition: run.edition ?? null, status: run.status, currentTaskId: run.currentTaskId, taskIds: run.taskIds, taskTitles: run.taskTitles, startedAt: run.startedAt, endedAt: run.endedAt ?? null, codeExpiresAt: run.codeExpiresAt, expiresAt: run.expiresAt, expired: run.expiresAt <= now, joinOpen: run.status !== 'ended' && run.codeExpiresAt > now && run.expiresAt > now, participantCount: run.participantCount ?? 0 });
 const visibleSeat = (snap) => ({ pid: snap.id, name: snap.data().name, joinedAt: snap.data().joinedAt, summaries: snap.data().summaries ?? {} });
 const visibleAnswer = (snap) => ({ id: snap.id, ...snap.data() });
 
@@ -83,19 +83,38 @@ function responseIds(content, responses) {
   return ids;
 }
 
+function sourceRequest(data) {
+  if (data?.classId || data?.itemId || (!!data?.fileId === !!data?.resourceId)) fail('invalid-argument', 'Choose one standalone lesson file or published Resource Hub lesson.');
+  if (data.fileId) return { kind: 'file', id: idOf(data.fileId, 'lesson file') };
+  return { kind: 'resource', id: idOf(String(data.resourceId).replace(/^lesson-/, ''), 'published lesson') };
+}
+
+async function loadSource(db, uid, selected) {
+  if (selected.kind === 'file') {
+    const snapshot = await db.doc(`sharedDocs/${selected.id}`).get();
+    const file = snapshot.data();
+    if (!file || file.kind !== 'lesson' || file.deletedAt || file.purgeRequestedAt || file.purgingAt || file.sourceClassId || file.originClassId || file.classId) fail('not-found', 'This standalone lesson file is unavailable.');
+    if (file.owner !== uid && file.members?.[uid]?.role !== 'edit') fail('permission-denied', 'You need editing access to teach this lesson file.');
+    const rows = await db.collection(`sharedDocs/${selected.id}/tasks`).orderBy('order').get();
+    return { sourceKind: 'file', resourceId: null, fileId: selected.id, edition: null, title: file.title, sections: rows.docs.filter(row => row.get('kind') === 'task').map(row => ({ ...row.data(), id: row.id, audience: 'learner', kind: 'task' })) };
+  }
+  const published = await db.doc(`resourceHubPublished/${selected.id}`).get();
+  if (!published.exists || published.get('resourceType') !== 'lesson') fail('not-found', 'Publish this standalone lesson before starting it.');
+  const edition = published.get('edition');
+  if (!Number.isInteger(edition) || edition < 1) fail('failed-precondition', 'This lesson has no published edition.');
+  const immutable = await db.doc(`resourceHubPublished/${selected.id}/editions/${edition}`).get();
+  if (!immutable.exists || immutable.get('resourceType') !== 'lesson') fail('failed-precondition', 'The published lesson edition is unavailable.');
+  const source = immutable.data();
+  return { sourceKind: 'resource', resourceId: selected.id, fileId: null, edition, title: source.title, sections: source.sections ?? [] };
+}
+
 /** Exported separately so tests can exercise permissions and persistence without Firebase emulators. */
 export async function resourceLessonLiveService(db, auth, data, now = Date.now(), context = {}) {
   const action = data?.action;
   if (action === 'start') {
     const uid = await teacher(db, auth);
-    const resourceId = idOf(String(data.resourceId ?? '').replace(/^lesson-/, ''), 'published lesson');
-    const published = await db.doc(`resourceHubPublished/${resourceId}`).get();
-    if (!published.exists || published.get('resourceType') !== 'lesson') fail('not-found', 'Publish this standalone lesson before starting it.');
-    const edition = published.get('edition');
-    if (!Number.isInteger(edition) || edition < 1) fail('failed-precondition', 'This lesson has no published edition.');
-    const immutable = await db.doc(`resourceHubPublished/${resourceId}/editions/${edition}`).get();
-    if (!immutable.exists || immutable.get('resourceType') !== 'lesson') fail('failed-precondition', 'The published lesson edition is unavailable.');
-    const source = immutable.data();
+    const selected = sourceRequest(data);
+    const source = await loadSource(db, uid, selected);
     const sections = (source.sections ?? []).filter(s => s?.audience === 'learner' && s.kind === 'task');
     if (!sections.length || sections.length > 40 || sections.some(s => !ID.test(s.id) || s.content?.type !== 'doc')) fail('failed-precondition', 'This lesson needs learner tasks before it can go live.');
     const tasks = sections.map(s => {
@@ -112,7 +131,7 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
           const claim = codeRef(db, candidate);
           const prior = await tx.get(claim);
           if (prior.exists && (prior.get('expiresAt') ?? 0) > now) fail('already-exists', 'Code already in use.');
-          const run = { owner: uid, resourceId, edition, title: String(source.title ?? 'Lesson').slice(0, 160), status: 'lobby', code: candidate, codeExpiresAt: now + CODE_MS, expiresAt: now + RUN_MS, currentTaskId: null, taskIds: tasks.map(t => t.id), taskTitles: Object.fromEntries(tasks.map(t => [t.id, t.title])), participantCount: 0, startedAt: now, ownerResource: `${uid}:${resourceId}` };
+          const run = { owner: uid, sourceKind: source.sourceKind, resourceId: source.resourceId, fileId: source.fileId, edition: source.edition, title: String(source.title ?? 'Lesson').slice(0, 160), status: 'lobby', code: candidate, codeExpiresAt: now + CODE_MS, expiresAt: now + RUN_MS, currentTaskId: null, taskIds: tasks.map(t => t.id), taskTitles: Object.fromEntries(tasks.map(t => [t.id, t.title])), participantCount: 0, startedAt: now, ownerSource: `${uid}:${selected.kind}:${selected.id}` };
           tx.set(ref, run);
           tx.set(claim, { runId: ref.id, expiresAt: now + CODE_MS, deleteAt: new Date(now + CODE_MS + 24 * 60 * 60 * 1000) });
           for (const task of tasks) tx.set(taskRef(ref, task.id), task);
@@ -231,8 +250,8 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
 
   if (action === 'history') {
     const uid = await teacher(db, auth);
-    const resourceId = idOf(String(data.resourceId ?? '').replace(/^lesson-/, ''), 'published lesson');
-    const rows = await db.collection('resourceLessonRuns').where('ownerResource', '==', `${uid}:${resourceId}`).orderBy('startedAt', 'desc').limit(100).get();
+    const selected = sourceRequest(data);
+    const rows = await db.collection('resourceLessonRuns').where('ownerSource', '==', `${uid}:${selected.kind}:${selected.id}`).orderBy('startedAt', 'desc').limit(100).get();
     return { runs: rows.docs.map(s => visibleRun(s.data(), s.id, now)) };
   }
 

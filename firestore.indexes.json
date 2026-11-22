@@ -4,7 +4,7 @@
       "collectionGroup": "resourceLessonRuns",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "ownerResource", "order": "ASCENDING" },
+        { "fieldPath": "ownerSource", "order": "ASCENDING" },
         { "fieldPath": "startedAt", "order": "DESCENDING" }
       ]
     },

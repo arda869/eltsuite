@@ -44,6 +44,8 @@ export type SharedDoc = {
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
   ltype?: 'lesson' | 'homework' | 'exam' | 'practice'; // a lesson file: what kind of lesson it becomes in a class
+  originClassId?: string; // file saved from a Class lesson; keep that Class's roster/live flow
+  originItemId?: string;
   path?: string; // the folder in the owner's files
   file?: { name: string; type: string; bytes: number; parts: number; sha256?: string }; // any other file: what was uploaded
   uploadStatus?: 'uploading' | 'ready';

@@ -134,6 +134,39 @@ test('join attempts are bounded by server-observed address', async () => {
   await assert.rejects(service(db, null, req('join', { code: start.code, name: 'Alex' }), 2000, { ip: '192.0.2.1' }), { code: 'resource-exhausted' });
 });
 
+test('personal and organisation lesson files can run live without publishing; Class-origin and viewer files cannot', async () => {
+  const db = fixture();
+  db.rows.set('sharedDocs/personal-1', { kind: 'lesson', owner: teacher.uid, title: 'My lesson', members: {} });
+  db.rows.set('sharedDocs/personal-1/tasks/intro', { kind: 'section', order: 0, title: 'Introduction', content: { type: 'doc', content: [] } });
+  db.rows.set('sharedDocs/personal-1/tasks/task-a', { kind: 'task', order: 1, title: 'Question', instructions: 'Fill this in', content: baseDoc });
+  const personal = await service(db, teacher, req('start', { fileId: 'personal-1' }), 1000);
+  const personalRun = db.rows.get(`resourceLessonRuns/${personal.runId}`);
+  assert.equal(personalRun.sourceKind, 'file');
+  assert.equal(personalRun.fileId, 'personal-1');
+  assert.equal(personalRun.resourceId, null);
+  assert.deepEqual(personalRun.taskIds, ['task-a']);
+  const person = await service(db, null, req('join', { code: personal.code, name: 'Mina' }), 1001);
+  await service(db, teacher, req('advance', { runId: personal.runId, taskId: 'task-a' }), 1002);
+  const task = await service(db, null, req('learnerState', { runId: person.runId, pid: person.pid, token: person.token }), 1003);
+  assert.deepEqual(task.currentTask.content.content[0].content[1].attrs.answers, []);
+  const fileHistory = await service(db, teacher, req('history', { fileId: 'personal-1' }), 1004);
+  assert.equal(fileHistory.runs[0].fileId, 'personal-1');
+
+  db.rows.set('users/editor-2', { role: 'teacher' });
+  db.rows.set('accounts/editor-2', { suspended: false });
+  const editor = { uid: 'editor-2', token: { email: 'editor@example.com' } };
+  db.rows.set('sharedDocs/library-1', { kind: 'lesson', owner: 'library-owner', title: 'Library lesson', members: { 'editor-2': { role: 'edit', kind: 'teacher' } } });
+  db.rows.set('sharedDocs/library-1/tasks/task-b', { kind: 'task', order: 0, title: 'Library task', content: baseDoc });
+  const library = await service(db, editor, req('start', { fileId: 'library-1' }), 1000);
+  assert.equal(db.rows.get(`resourceLessonRuns/${library.runId}`).owner, editor.uid);
+  db.rows.set('sharedDocs/library-1', { kind: 'lesson', owner: 'library-owner', title: 'Library lesson', members: { 'editor-2': { role: 'view', kind: 'teacher' } } });
+  await assert.rejects(service(db, editor, req('start', { fileId: 'library-1' }), 1000), { code: 'permission-denied' });
+  db.rows.set('sharedDocs/class-copy', { kind: 'lesson', owner: teacher.uid, title: 'Class copy', originClassId: 'class-123', members: {} });
+  db.rows.set('sharedDocs/class-copy/tasks/task-a', { kind: 'task', order: 0, title: 'Class task', content: baseDoc });
+  await assert.rejects(service(db, teacher, req('start', { fileId: 'class-copy' }), 1000), { code: 'not-found' });
+  await assert.rejects(service(db, teacher, req('start', { classId: 'class-123', itemId: 'lesson-123' }), 1000), { code: 'invalid-argument' });
+});
+
 test('Class lessons, drafts, suspended/proxy users and invalid seat tokens cannot access standalone sessions', async () => {
   const db = fixture();
   db.rows.set('resourceHubPublished/class-copy', { resourceType: 'class', edition: 1 });
