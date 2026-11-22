@@ -51,7 +51,7 @@ function ActivityCard({ activity, saved, onOpen, onSave }: { activity: HubActivi
       <span className={`rh-activity-art art-${activity.kind}`}>{ready && activity.pages.length ? <img src={activity.pages.find(page => page.audience === 'learner')?.image} alt="" /> : <><span>{activity.number}</span><strong>{activity.kind === 'information-gap' ? 'A ↔ B' : activity.kind === 'table' ? '✓' : activity.kind === 'board' ? '◈' : activity.kind === 'cards' ? '▤' : activity.kind === 'strips' ? '≡' : '✦'}</strong></>}</span>
       <span className="rh-activity-copy"><span className="rh-activity-eyebrow">OFF THE PAGE · {activity.number}</span><strong>{activity.title}</strong><span className="rh-activity-summary">{activity.summary}</span><span className="rh-activity-meta"><span>{activity.level}</span><span>{activity.minutes} min</span><span>{activity.interaction}</span></span></span>
     </button>
-    <div className="rh-card-footer"><span className={ready ? 'rh-ready' : 'rh-outline'}>{ready ? 'Printable activity' : 'Coming soon'}</span><button type="button" className={saved ? 'rh-icon-button selected' : 'rh-icon-button'} onClick={onSave} aria-label={saved ? `Remove ${activity.title} from shelf` : `Save ${activity.title} to shelf`} title={saved ? 'Remove from shelf' : 'Save to shelf'}><Icon name="bookmark" size={17} /></button></div>
+    <div className="rh-card-footer"><span className={ready ? 'rh-ready' : 'rh-outline'}>{ready ? 'Printable activity' : 'Coming soon'}</span>{activity.publishedAt && <time className="rh-published-date" dateTime={new Date(activity.publishedAt).toISOString()}>Published {new Date(activity.publishedAt).toLocaleDateString()}</time>}<button type="button" className={saved ? 'rh-icon-button selected' : 'rh-icon-button'} onClick={onSave} aria-label={saved ? `Remove ${activity.title} from shelf` : `Save ${activity.title} to shelf`} title={saved ? 'Remove from shelf' : 'Save to shelf'}><Icon name="bookmark" size={17} /></button></div>
   </article>;
 }
 
@@ -80,7 +80,7 @@ export function ResourceHubPage() {
     const additions = (published.items ?? []).filter(item => !(item.collectionId === 'otp' && item.number === '002'));
     const replacements = new Map(additions.map(item => [item.id, item]));
     const examples = HUB_ACTIVITIES.filter(item => item.id === 'otp-002');
-    const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
+    const builtIn = examples.map(item => item.id === staticKitOverride?.id ? { ...item, ...staticKitOverride, publishedAt: staticKitOverride.updatedAt || item.publishedAt, pages: staticKitOverride.pages } : replacements.get(item.id) ?? item);
     const builtInIds = new Set(examples.map(item => item.id));
     const visibleCollectionIds = new Set(collections.map(collection => collection.id));
     return [...builtIn, ...additions.filter(item => !builtInIds.has(item.id))].filter(item => visibleCollectionIds.has(item.collectionId));

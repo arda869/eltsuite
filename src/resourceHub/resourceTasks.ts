@@ -115,12 +115,12 @@ export function publishedTasks(activity: HubActivity, selected: Set<string>): Im
   });
   const chosen = sections.filter(section => section.audience === 'learner' && selected.has(section.id));
   const learnerTasks: ImportedTask[] = chosen.map((section, index) => ({
-    id: section.id, line: index + 1, kind: 'task', title: section.title, instructions: section.instructions,
+    id: section.id, line: index + 1, kind: 'task', title: section.title, instructions: section.instructions, instrDoc: section.instrDoc ?? null,
     ...(section.versionGroup && chosen.filter(item => item.versionGroup === section.versionGroup).length > 1 ? { family: section.versionGroup, variant: section.versionLabel || String.fromCharCode(65 + index) } : {}),
     content: structuredClone(section.content),
     // Class export prints these answers from the private key directly after this task.
     hidden: false, locked: false,
-    ...(section.printInstructions?.trim() ? { print: { instr: section.printInstructions.trim() } } : {}),
+    ...(section.printInstructions?.trim() || section.printInstrDoc ? { print: { instr: section.printInstructions?.trim() ?? '', instrDoc: section.printInstrDoc ?? null } } : {}),
   }));
   return [...standaloneNotes, ...learnerTasks].map((task, index) => ({ ...task, line: index + 1 }));
 }

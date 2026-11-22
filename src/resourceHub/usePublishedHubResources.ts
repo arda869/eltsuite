@@ -32,9 +32,9 @@ export function publishedResourceToActivity(edition: HubResourceEdition): HubAct
     id: `${edition.collectionId}-${edition.number.padStart(3, '0')}`, number: edition.number.padStart(3, '0'), collectionId: edition.collectionId, title: edition.title,
     kind: 'worksheet', focus: edition.focus, level: edition.level, interaction: edition.interaction,
     minutes: edition.minutes, summary: edition.summary, prep: edition.prep, energy: edition.energy,
-    mode: edition.mode, status: 'ready', pages: [], tags: [edition.focus.toLowerCase(), edition.title.toLowerCase()],
+    mode: edition.mode, status: 'ready', publishedAt: edition.publishedAt, pages: [], tags: [edition.focus.toLowerCase(), edition.title.toLowerCase()],
     notes: [...teacherNotes, ...(answerKey.length ? ['Key and suggested answers', ...answerKey] : [])], worksheet,
-    editorSections: edition.sections.map(section => ({ id: section.id, title: section.title, audience: section.audience, kind: section.kind, instructions: section.instructions, printInstructions: section.printInstructions, versionGroup: section.versionGroup, versionLabel: section.versionLabel, content: section.content })),
+    editorSections: edition.sections.map(section => ({ id: section.id, title: section.title, audience: section.audience, kind: section.kind, instructions: section.instructions, instrDoc: section.instrDoc ?? null, printInstructions: section.printInstructions, printInstrDoc: section.printInstrDoc ?? null, versionGroup: section.versionGroup, versionLabel: section.versionLabel, content: section.content })),
     authoredParts,
   } as HubActivity;
 }

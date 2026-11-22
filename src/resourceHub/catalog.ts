@@ -33,12 +33,13 @@ export interface HubActivity {
   energy: 1 | 2 | 3;
   mode: 'Face-to-face and online' | 'Face-to-face only' | 'Online only';
   status: HubActivityStatus;
+  publishedAt?: number;
   pages: HubPage[];
   supplementalImages?: { id: string; title: string; image: string; audience: 'learner' }[];
   notes: string[];
   worksheet: string[];
   tags: string[];
-  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; printInstructions?: string; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
+  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
   authoredParts?: { id: string; title: string; audience: 'learner' | 'teacher'; lines: string[] }[];
 }
 
@@ -91,6 +92,7 @@ const fromSource = (source: SourceActivity): HubActivity => {
     prep: kit ? 'Print' : prepFor(format), energy: kit ? 3 : 2,
     mode: kit ? 'Face-to-face and online' : physical ? 'Face-to-face only' : 'Face-to-face and online',
     status: kit ? 'ready' : 'outline',
+    publishedAt: kit ? Date.UTC(2026, 10, 18) : undefined,
     pages: kit ? [
     { id: 'notes', title: 'Teacher notes', image: '/resource-hub/otp-002-p1.png', audience: 'teacher', part: 'notes' },
     { id: 'practice-a-b', title: 'Learner sheet · Practice A and B', image: '/resource-hub/otp-002-p2.png', audience: 'learner', part: 'practice-a' },

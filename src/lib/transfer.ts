@@ -75,6 +75,7 @@ export async function appendTasksFromImport(classId: string, itemId: string, tas
       kind: t.kind === 'section' ? 'section' : 'task',
       title: t.title || 'Untitled task',
       instructions: t.instructions ?? '',
+      ...(t.instrDoc ? { instrDoc: t.instrDoc } : {}),
       ...(t.print ? { print: t.print } : {}),
       content: isOtherVersion ? null : content,
       order: i++,

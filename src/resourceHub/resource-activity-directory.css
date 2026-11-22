@@ -15,3 +15,25 @@ th .rad-cell-input{font-weight:700;font-size:13px}
 .rad-editable .rad-cell-select:hover,.rad-editable .rad-cell-select.open{border-color:var(--rh-border);background:#fff}
 .rad-editable.saving{opacity:.7}
 .rad-cell-error{display:block;color:#a4543f!important}
+/* Column controls keep the directory compact while allowing each field to be filtered. */
+.rad-table-scroll thead th{position:relative;background:var(--paper-soft)}
+.rad-column-head{display:flex;align-items:center;justify-content:space-between;gap:5px;white-space:nowrap}
+.rad-column-head button{border:0;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.rad-column-sort{min-width:0;padding:4px 0;text-align:left}
+.rad-filter-button{display:grid;place-items:center;flex:none;width:25px;height:25px;padding:0;border-radius:6px!important}
+.rad-filter-button:hover,.rad-filtered .rad-filter-button{background:#e9ebd9;color:var(--rh-olive)}
+.rad-column-filter{position:absolute;z-index:4;top:calc(100% - 1px);left:4px;width:220px;padding:11px;border:1px solid var(--rh-border);border-radius:9px;background:var(--paper);box-shadow:0 12px 28px #302e2825;color:var(--rh-ink);font:600 11px var(--sans);letter-spacing:0;text-transform:none}
+.rad-column-filter label,.rad-column-filter label span{display:block}
+.rad-column-filter input{width:100%;height:35px;margin-top:6px;padding:6px 9px;border:1px solid var(--rh-border);border-radius:7px;background:var(--paper);color:var(--rh-ink);font:500 12px var(--sans)}
+.rad-column-filter>div{display:flex;justify-content:flex-end;gap:7px;margin-top:9px}
+.rad-column-filter>div button{padding:5px 8px;border:1px solid var(--rh-border);border-radius:6px;background:var(--paper-soft);color:var(--rh-ink);font:700 11px var(--sans);letter-spacing:0;text-transform:none}
+.rad-date{white-space:nowrap;color:var(--rh-muted);font-variant-numeric:tabular-nums}
+.rad-table-scroll thead th:has(.rad-column-filter){z-index:5}
+.rad-column-head button:focus-visible,.rad-column-filter button:focus-visible,.rad-column-filter input:focus-visible{outline:2px solid var(--rh-olive);outline-offset:2px}
+.rad-table-scroll table{font-variant-numeric:tabular-nums}
+.rad-table-scroll th,.rad-table-scroll td{border-right:1px solid var(--rh-border)}
+.rad-table-scroll tr>*:last-child{border-right:0}
+.rad-table-scroll tbody tr:nth-child(even){background:color-mix(in srgb,var(--paper-soft) 58%,var(--paper))}
+.rad-table-scroll tbody tr:hover{background:var(--paper-soft)}
+.rad-table-scroll tbody :is(input,button,a):focus-visible{outline:2px solid var(--rh-olive);outline-offset:2px}
+.rad-filter-popover{position:fixed;z-index:10050;top:auto;--rh-border:var(--hair);--rh-olive:#74762f;--rh-ink:var(--ink);--rh-muted:var(--muted)}

@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/react';
 import { NSelect } from '../components/Select';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UiIcon } from '../components/UiIcon';
@@ -310,7 +311,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
 }
 
 // How the task being edited looks on paper: its gaps, its writing space and an instruction for paper.
-export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen'; icon?: YoungAction | 'same' | 'none' };
+export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; instrDoc?: JSONContent | null; show?: 'both' | 'paper' | 'screen'; icon?: YoungAction | 'same' | 'none' };
 export function PaperBar({ look, onChange, gaps, writing, online, young = false }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[]; young?: boolean }) {
   const [instrOn, setInstrOn] = useState(!!look.instr);
   const set = (p: Partial<Paper>) => onChange({ ...look, ...p });

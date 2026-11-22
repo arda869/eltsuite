@@ -194,12 +194,31 @@
 @media(max-width:1200px) { .rhe-divider { display:none; } .rhe-split-editor .rhe-editor-layout { grid-template-columns:190px minmax(0,1fr); } .rhe-split-editor.nav-closed .rhe-editor-layout { grid-template-columns:minmax(0,1fr); } .rhe-split-editor .rhe-check-panel { grid-column:auto; } }
 @media(max-width:760px) { .rhe-split-editor .rhe-editor-layout { grid-template-columns:1fr; } .rhe-head-note,.rhe-head-compact .rh-kicker { display:none; } }
 .rhe-split-editor .rhe-editor-side[hidden] { display:none; }
+.rhe-instruction-field .instr-wrap { margin-top:7px; border:1px solid var(--rh-border); border-radius:10px; background:var(--paper); }
+.rhe-instruction-field .instr-wrap .task-instr.input { min-height:48px; margin:0; padding:12px 14px; border:0; border-radius:0; }
+.rhe-instruction-field .instr-wrap .instr-bar { margin:0; padding:6px 8px; border-top:1px solid var(--rh-border); background:var(--paper-soft); }
+.rhe-instruction-field .task-instr.rich { min-height:42px; margin-top:7px; padding:10px 12px; border:1px solid var(--rh-border); border-radius:9px; }
+@media(min-width:1201px) {
+  .rhe-split-editor.details-view .rhe-editor-layout { grid-template-columns:200px minmax(0,1fr) minmax(270px,320px); }
+  .rhe-split-editor.details-view.nav-closed .rhe-editor-layout { grid-template-columns:minmax(0,1fr) minmax(270px,320px); }
+  .rhe-split-editor.details-view .rhe-divider { display:none; }
+  .rhe-split-editor.details-view .rhe-editor-body { grid-column:2; grid-row:1; }
+  .rhe-split-editor.details-view .rhe-check-panel { grid-column:3; grid-row:1; }
+  .rhe-split-editor.details-view.nav-closed .rhe-editor-body { grid-column:1; }
+  .rhe-split-editor.details-view.nav-closed .rhe-check-panel { grid-column:2; }
+}
 /* Editor cards spend their height on the task, not on headings. */
 .rhe-split-editor .rhe-edit-card { padding:var(--space-4,16px); }
 .rhe-split-editor .rhe-card-head h2 { margin:2px 0 8px; font-size:20px; }
 .rhe-split-editor .rhe-form-grid { gap:10px 12px; }
-/* The formatting bar had no room above it inside the task editor box. */
+/* The section content scrolls inside .rhe-editor-body. Keep its editing tools in view. */
 .rhe-task-editor > * > .toolbar:first-child, .rhe-task-editor .toolbar { padding: 8px 10px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--rh-border); }
+.rhe-main--activity .rhe-task-editor .task-editor > .toolbar { position:sticky; top:0; z-index:12; background:var(--paper); box-shadow:0 5px 14px -13px #312d23a8; border-radius:10px 10px 0 0; }
+/* Inline questions sit on the text baseline, including inside numbered list items. */
+.rhe-main--activity .rhe-task-editor .doc .ProseMirror :is(.gap-node,.choice-node,.drop-node) { vertical-align:baseline; line-height:inherit; }
+.rhe-main--activity .rhe-task-editor .doc .ProseMirror :is(.gap-chip,.drop-chip,.choice-chip) { vertical-align:baseline; line-height:1.25; padding-block:0; }
+.rhe-main--activity .rhe-task-editor .doc .ProseMirror .gap-chip.empty { font-size:.88em; font-style:normal; color:var(--rh-muted); }
+.rhe-main--activity .rhe-live-preview .task-body :is(.gap-input,.drop-input,.slash-opt) { vertical-align:baseline; line-height:1.25; padding-block:0; }
 
 /* Collection identity, reimagined (2026-11 feedback): a live preview on the left, three short steps on the right. */
 .rhe-identity { display:grid; grid-template-columns:minmax(280px,400px) minmax(0,1fr); gap:24px; align-items:start; }
