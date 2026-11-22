@@ -24,6 +24,8 @@ try {
     }
     await setDoc(doc(db, 'users', 'learner'), { role: 'learner' });
     await setDoc(doc(db, 'accounts', 'learner'), { suspended: false });
+    await setDoc(doc(db, 'resourceHubMetrics', 'edition'), { views: 2, uniqueViews: 1 });
+    await setDoc(doc(db, 'resourceHubMetrics', 'edition', 'actors', 'teacher'), { views: 2 });
   });
   await yes('Owner creates private resource draft', setDoc(doc(owner, 'resourceHubDrafts', 'draft'), { title: 'Draft' }));
   await no('Teacher cannot read private resource draft', getDoc(doc(teacher, 'resourceHubDrafts', 'draft')));
@@ -50,6 +52,12 @@ try {
   await yes('Teacher reads own shelves', getDoc(doc(teacher, 'resourceHubUserState', 'teacher')));
   await no('Other teacher cannot read shelves', getDoc(doc(other, 'resourceHubUserState', 'teacher')));
   await no('Learner cannot create shelves', setDoc(doc(learner, 'resourceHubUserState', 'learner'), { savedIds: [] }));
-  assert.equal(checks, 25);
+  await yes('Owner reads aggregate activity usage', getDoc(doc(owner, 'resourceHubMetrics', 'edition')));
+  await no('Teacher cannot read aggregate activity usage', getDoc(doc(teacher, 'resourceHubMetrics', 'edition')));
+  await no('Visitor cannot read aggregate activity usage', getDoc(doc(visitor, 'resourceHubMetrics', 'edition')));
+  await no('Owner cannot forge aggregate activity usage', setDoc(doc(owner, 'resourceHubMetrics', 'edition'), { views: 1000 }));
+  await no('Teacher cannot forge aggregate activity usage', setDoc(doc(teacher, 'resourceHubMetrics', 'edition'), { views: 1000 }));
+  await no('Owner cannot read individual usage records', getDoc(doc(owner, 'resourceHubMetrics', 'edition', 'actors', 'teacher')));
+  assert.equal(checks, 31);
   console.log(`${checks} Resource Hub access checks passed`);
 } finally { await env.cleanup(); }

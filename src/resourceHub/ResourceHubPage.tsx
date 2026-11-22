@@ -8,6 +8,7 @@ import { allTeacherClasses } from '../lib/coteach';
 import type { ClassDoc } from '../lib/classes';
 import { HUB_ACTIVITIES, HUB_COLLECTIONS, type HubActivity, type HubCollection, type HubCollectionId } from './catalog';
 import { ResourceDetail } from './ResourceDetail';
+import { flushResourceMetrics } from './usageMetrics';
 import { HubShelves } from './HubShelves';
 import { PrintDesk } from './PrintDesk';
 import { useHubState } from './hub-state';
@@ -61,6 +62,11 @@ function CollectionCard({ collection, onClick, followed, onFollow, readyCount }:
 
 export function ResourceHubPage() {
   const { user } = useAuth();
+  useEffect(() => {
+    void flushResourceMetrics();
+    window.addEventListener('online', flushResourceMetrics);
+    return () => window.removeEventListener('online', flushResourceMetrics);
+  }, [user?.uid]);
   const isSuper = useSuper();
   const [params, setParams] = useSearchParams();
   const preferredClassId = params.get('classId') || undefined;

@@ -19,6 +19,7 @@ import { addLearnerVersion, createCollectionDraft, createResourceDraft, getColle
 import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 import { ResourceLivePreview } from './ResourceLivePreview';
 import { ResourceActivityDirectory } from './ResourceActivityDirectory';
+import { ResourceActivityMetrics } from './ResourceActivityMetrics';
 import { prepareStaticPage, saveStaticKitOverride, subscribeStaticKitOverride, type HubStaticOverride } from './hubStaticOverride';
 import { prepareHubImage } from './hubImageUpload';
 import { ResourceImport } from './ResourceImport';
@@ -59,6 +60,7 @@ function EditorIndex({ uid }: { uid: string }) {
   return <div className="rhe-index"><header className="rhe-page-head"><div><span className="rh-kicker">SUPER ADMIN WORKSPACE</span><h1>Resource Hub editor</h1><p>Author and review classroom resources. Draft edits are private until you publish an edition.</p></div><div className="rhe-head-actions"><Link className="rhe-outline" to="/resource-hub/admin?import=1">Import from document</Link><button type="button" className="rh-primary" disabled={busy} onClick={() => void make()}>{busy ? 'Creating…' : '+ New activity'}</button></div></header>
     {error && <p className="rhe-error" role="alert">{error}</p>}
     <ResourceActivityDirectory drafts={drafts} published={published} />
+    <ResourceActivityMetrics published={published} />
     <section className="rhe-index-section"><div className="rhe-section-head"><h2>Collection identity</h2></div><div className="rhe-collection-grid">{HUB_COLLECTIONS.map(collection => <Link key={collection.id} to={`/resource-hub/admin?collection=${collection.id}`} className="rhe-collection-card"><img src={collection.cover} alt="" /><span><strong>{collection.title}</strong><small>{publishedCollections.items?.find(item => item.id === collection.id)?.visible === false ? 'Hidden from teachers' : 'Visible to teachers'} · Manage cover and visibility</small></span><b aria-hidden="true">→</b></Link>)}</div></section>
     <p className="rhe-disclosure">Document imports create private drafts only after source and answer-key review. Each draft requires a separate publication step.</p>
   </div>;

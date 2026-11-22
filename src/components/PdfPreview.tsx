@@ -10,7 +10,7 @@ import { ShareDialog } from '../pages/DocPage';
 
 // A PDF that was just made, in a viewer: download it, or save it in Resources, and once it is
 // saved, share it or copy its link. Leaving without saving asks first.
-export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: string; onClose: () => void }) {
+export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8Array; name: string; onClose: () => void; onDownload?: () => void }) {
   const { user } = useAuth();
   const [title, setTitle] = useState(name);
   const [busy, setBusy] = useState(false);
@@ -88,6 +88,7 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
     a.href = url;
     a.download = (title.trim() || name) + '.pdf';
     a.click();
+    onDownload?.();
   };
   return createPortal(
     // Clicks stay here: the dialog that made the PDF is behind it.

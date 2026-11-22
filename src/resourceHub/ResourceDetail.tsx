@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Select } from '../components/Select';
 import type { HubActivity, HubCollection } from './catalog';
@@ -12,6 +12,7 @@ import { InstrView } from '../editor/InstrEditor';
 import { generatedAnswerLinesForSection } from './hubAnswerKey';
 import type { JSONContent } from '@tiptap/react';
 import './resourceDetail.css';
+import { recordResourceMetric } from './usageMetrics';
 
 type Zoom = 'fit' | 'width' | '100';
 type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; instrDoc?: JSONContent | null; content?: JSONContent; versionLabel?: string };
@@ -53,6 +54,7 @@ const editorPreviewPages = (activity: HubActivity): PreviewEntry[] => {
 };
 
 export function ResourceDetail({ activity, collection: collectionOverride, onBack, saved = false, onSaveChange, preferredClassId }: { activity: HubActivity; collection?: HubCollection; onBack: () => void; saved?: boolean; onSaveChange?: () => void; preferredClassId?: string }) {
+  const visit = useRef({ activityId: '', requestId: '' });
   const previewPages: PreviewEntry[] = useMemo(() => activity.editorSections?.length ? editorPreviewPages(activity) : activity.pages, [activity]);
   const learnerIndices = useMemo(() => previewPages.flatMap((page, index) => page.audience === 'learner' ? [index] : []), [previewPages]);
   const firstLearnerIndex = learnerIndices[0] ?? 0;
@@ -75,6 +77,10 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   const learnerPages = previewPages.map((item, index) => ({ item, index })).filter(({ item }) => item.audience === 'learner');
   const teacherPagesAfter = previewPages.map((item, index) => ({ item, index })).filter(({ item, index }) => item.audience === 'teacher' && index > firstLearnerIndex);
   useEffect(() => { setPageIndex(firstLearnerIndex); setZoom('fit'); }, [activity.id, firstLearnerIndex]);
+  useEffect(() => {
+    if (visit.current.activityId !== activity.id) visit.current = { activityId: activity.id, requestId: crypto.randomUUID() };
+    recordResourceMetric(activity.id, 'view', visit.current.requestId);
+  }, [activity.id]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (dialog || !ready || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;

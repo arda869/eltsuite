@@ -10,6 +10,7 @@ import { appendTasksFromImport, createLessonFromImport, visibleTaskCount } from 
 import { Select } from '../components/Select';
 import type { HubActivity } from './catalog';
 import { copyParts, publishedTasks, resourceTasks } from './resourceTasks';
+import { recordResourceMetric } from './usageMetrics';
 
 type ClassLesson = Pick<Item, 'id' | 'title' | 'type' | 'hidden' | 'taskCount'>;
 
@@ -79,6 +80,7 @@ export function ResourceCopy({ activity, onClose, preferredClassId }: { activity
         await updateItem(selectedClass.id, itemId, { taskCount: existingVisible + visibleTaskCount(chosen) });
       }
       setResult({ classId: selectedClass.id, itemId, title });
+      recordResourceMetric(activity.id, 'copy');
     } catch (cause) {
       console.error('Resource Hub class copy failed', cause);
       setError('We couldn’t finish copying the activity. Please check the class before trying again.');
