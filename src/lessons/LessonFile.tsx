@@ -49,8 +49,7 @@ export function useRows(id?: string) {
 
 // A class lesson, copied into Files.
 export async function saveLessonToFiles(owner: { uid: string; name: string }, classId: string, itemId: string, title: string) {
-  const id = await newSharedDoc(owner, 'lesson', title);
-  await updateDoc(doc(db, 'sharedDocs', id), { originClassId: classId, originItemId: itemId });
+  const id = await newSharedDoc(owner, 'lesson', title, '', { originClassId: classId, originItemId: itemId });
   const s = await getDocs(query(tasksCol(classId, itemId), orderBy('order')));
   const b = writeBatch(db);
   let i = 0;

@@ -60,7 +60,7 @@ export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
 export type DocKind = 'game' | 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file' | 'design';
 export const KIND_LABEL: Record<DocKind, string> = { game: 'Game', doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Designer file' };
-export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '') {
+export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '', origin?: { originClassId: string; originItemId: string }) {
   const r = doc(col);
   await writeNamedFile(r, { owner: owner.uid, path }, title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
     path,
@@ -68,6 +68,7 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind:kind==='storyboard'?'design':kind,
+    ...(origin ?? {}),
     ...(kind === 'file' ? { uploadStatus: 'uploading' } : {}),
     ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     docKey: 'f' + newId() + newId(),
