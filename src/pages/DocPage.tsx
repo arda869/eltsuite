@@ -50,6 +50,7 @@ export function DocPage() {
   const { id = '', key = '' } = useParams();
   const [qs] = useSearchParams();
   const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
+  const [lessonSlot, setLessonSlot] = useState<HTMLSpanElement | null>(null);
   const [setOpen, setSetOpen] = useState(false);
   const { user, profile } = useAuth();
   const shareToken = qs.get('share') ?? '';
@@ -153,6 +154,7 @@ export function DocPage() {
           </span>
         </span>
         <span className="dp-acts">
+          {kind === 'lesson' && <span ref={setLessonSlot} className="dp-lesson-slot" />}
           <HelpMenu />
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
@@ -170,7 +172,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'game' && d ? <QuizFile d={d} canEdit={role === 'edit'} /> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'game' && d ? <QuizFile d={d} canEdit={role === 'edit'} /> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
 
       {setOpen && kind==='doc' && d && <div className="scrim" onClick={()=>setSetOpen(false)} onKeyDown={e=>{if(e.key==='Escape')setSetOpen(false);}}><div className="dialog" role="dialog" aria-modal="true" aria-label="Citation style" onClick={e=>e.stopPropagation()}><h2>Citation style</h2><label className="field"><span>Citation style</span><Select label="Citation style" value={cite} disabled={role!=='edit'} search options={CITE_STYLES.map(c=>({v:c.k,label:c.label,hint:c.about}))} onChange={v=>void updateDoc(fsDoc(db,'sharedDocs',d.id),{citeStyle:v}).catch(e=>void tell(e.message))}/></label><p className="hint">Citations, the reference list and Word and PDF downloads follow this style.{role!=='edit'?' Only people who can edit can change it.':''}</p><button type="button" className="btn" onClick={()=>setSetOpen(false)}>Done</button></div></div>}

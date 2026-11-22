@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { JSONContent } from '@tiptap/react';
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -22,6 +23,9 @@ import { ask, tell } from '../lib/ask';
 import { theme } from '../lib/themes';
 import { useNavigate } from 'react-router-dom';
 import { lessonLiveApi } from '../resourceHub/lessonLiveApi';
+import { openMenuAt } from '../components/ContextMenu';
+import { AiButton, AiMark } from '../components/AiMark';
+import { dockOpen } from '../components/ChatDock';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
@@ -134,7 +138,7 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
   );
 }
 
-export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
+export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: boolean; headerSlot?: HTMLElement | null }) {
   const navigate = useNavigate();
   const rows = useRows(d.id);
   const [liveBusy, setLiveBusy] = useState(false);
@@ -182,6 +186,11 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const [adding, setAdding] = useState(false);
   const [learnerPreview, setLearnerPreview] = useState(false);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
+  const chooseView = (next: 'digital' | 'paper' | 'learner') => {
+    setLearnerPreview(next === 'learner');
+    if (next === 'learner') setPreviewResponses({});
+    else setSheet(next === 'paper');
+  };
   const saveT = useRef<Record<string, number>>({});
   useEffect(() => {
     if (rows && !rows.some((r) => r.id === sel)) setSel(rows.find((r) => r.kind === 'task')?.id ?? rows[0]?.id ?? '');
@@ -242,6 +251,20 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   ) : null;
   let n = 0;
   return (
+    <>
+    {headerSlot && createPortal(<div className="lf-header-controls">
+      {canEdit && <button type="button" className="btn small-btn lf-header-add" aria-haspopup="menu" onClick={event => openMenuAt(event.currentTarget, [
+        { label: 'New task', icon: 'plus', onClick: () => void add('task') },
+        { label: 'New section', icon: 'plus', onClick: () => void add('section') },
+      ])}>+ Add</button>}
+      <span className="lf-header-view" role="radiogroup" aria-label="Lesson view">
+        <button type="button" role="radio" aria-checked={!learnerPreview && !sheet} className={!learnerPreview && !sheet ? 'on' : ''} onClick={() => chooseView('digital')}>Digital</button>
+        <button type="button" role="radio" aria-checked={!learnerPreview && sheet} className={!learnerPreview && sheet ? 'on' : ''} onClick={() => chooseView('paper')}>Paper</button>
+        <button type="button" role="radio" aria-checked={learnerPreview} className={learnerPreview ? 'on' : ''} onClick={() => chooseView('learner')}>Learner <span className="lf-preview-word">preview</span></button>
+      </span>
+      {canEdit && <details className="lesson-support-tools lf-ai-tools"><summary><AiMark /> AI tools</summary><div className="lesson-support-actions"><AiButton className="btn small-btn" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); dockOpen('teaching-coach'); }}>Discuss with Teacher’s Companion</AiButton></div></details>}
+      {standaloneLive && <button type="button" className="btn primary lf-header-live" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : rows.some(row => row.kind === 'task') ? 'Start live' : 'Add a task first'}</button>}
+    </div>, headerSlot)}
     <div className="lf">
       <aside className="lf-side">
         <span className="pd-k">The lesson</span>
@@ -254,16 +277,6 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           ))}
           {!rows.length && <span className="hint">No tasks yet.</span>}
         </nav>
-        {canEdit && (
-          <span className="lf-adds">
-            <button type="button" className="btn small-btn" onClick={() => void add('task')}>
-              + Task
-            </button>
-            <button type="button" className="btn small-btn" onClick={() => void add('section')}>
-              + Section
-            </button>
-          </span>
-        )}
         {canEdit ? (
           <Select value={d.ltype ?? 'lesson'} options={LESSON_TYPES} onChange={(v) => void updateDoc(doc(db, 'sharedDocs', d.id), { ltype: v })} label="What it becomes in a class" />
         ) : (
@@ -272,19 +285,11 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         <button type="button" className="btn primary" disabled={!rows.length} onClick={() => setAdding(true)}>
           Add to a class…
         </button>
-        {standaloneLive && <><button type="button" className="btn primary" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : 'Start live lesson'}</button>{!rows.some(row => row.kind === 'task') && <span className="hint">Add a task before starting a live lesson.</span>}{liveError && <p role="alert" className="rll-error">{liveError}</p>}<button type="button" className="btn" onClick={() => navigate(`/lesson-file/${encodeURIComponent(d.id)}/history`)}>Teaching history</button></>}
+        {standaloneLive && <button type="button" className="btn" onClick={() => navigate(`/lesson-file/${encodeURIComponent(d.id)}/history`)}>Teaching history</button>}
       </aside>
       <main className="lf-main">
-        <div className="lf-preview-bar"><button type="button" className="btn small-btn" aria-pressed={learnerPreview} onClick={() => { setLearnerPreview(value => !value); setPreviewResponses({}); }}>{learnerPreview ? 'Back to editor' : 'Learner preview'}</button><span className="hint">{learnerPreview ? 'Try the lesson as a learner. Preview answers are not saved.' : 'Edit tasks here, or preview how learners will see them.'}</span></div>
+        {liveError && <p role="alert" className="rll-error">{liveError}</p>}
         {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}><h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
-        <span className="sh-switch lf-view" role="radiogroup" aria-label="View">
-          <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)} aria-label="Digital: the lesson on screen" data-tip="Digital: the lesson on screen">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M9 20h6M12 16.5V20" /></svg>
-          </button>
-          <button type="button" role="radio" aria-checked={sheet} className={sheet ? 'on' : ''} onClick={() => setSheet(true)} aria-label="Worksheet: the lesson as printed pages" data-tip="Worksheet: the lesson as printed pages">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7.5L19 7.5V21H7z" /><path d="M14.5 3v4.5H19M10 12h6M10 15.5h6M10 9h2" /></svg>
-          </button>
-        </span>
         {sheet && rows.length && sheetData ? (
           <div className="sh-split lf-split">
             <section className="sh-left" aria-label="The worksheet">
@@ -342,5 +347,6 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       </main>
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
     </div>
+    </>
   );
 }
