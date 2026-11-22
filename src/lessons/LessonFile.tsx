@@ -10,7 +10,11 @@ import { allTeacherClasses } from '../lib/coteach';
 import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
-import { InstrEditor } from '../editor/InstrEditor';
+import { InstrEditor, InstrView } from '../editor/InstrEditor';
+import { TaskRenderer } from '../components/TaskRenderer';
+import { LocalActivityMode } from '../communicative/LocalActivity';
+import { splitKey } from '../lib/questions';
+import type { Responses } from '../lib/questions';
 import { PaperBar, SheetView, type Paper, type Zoom } from './SheetView';
 import { useSheet } from './useSheet';
 import { useAuth } from '../lib/auth';
@@ -79,11 +83,15 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
   const { user } = useAuth();
   const [classes, setClasses] = useState<ClassDoc[] | null>(null);
   const [busy, setBusy] = useState('');
+  const [selected, setSelected] = useState<string[]>(() => rows.map(row => row.id));
+  const chosen = rows.filter(row => selected.includes(row.id));
+  const taskCount = chosen.filter(row => row.kind === 'task').length;
   useEffect(() => void (user && allTeacherClasses(user.uid).then((l) => setClasses(l.filter((c) => c.status === 'active')))), [user]);
   const go = async (c: ClassDoc) => {
+    if (!taskCount) return;
     setBusy(c.id);
     try {
-      const itemId = await addToClass(rows, c, title, type);
+      const itemId = await addToClass(chosen, c, title, type);
       window.open(`/class/${c.id}/lesson/${itemId}`, '_blank');
       onClose();
     } catch (e) {
@@ -96,13 +104,15 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog" role="dialog" aria-label="Add to a class">
         <h2>Add “{title}” to a class</h2>
-        <span className="hint">It becomes a new lesson at the end of the class, with all its tasks and answers. Changes there don’t come back here.</span>
+        <span className="hint">Choose the tasks to copy. They become a new lesson in the class, with their answers. The original stays here.</span>
+        <fieldset className="lf-copy-tasks"><legend>Tasks to copy</legend><div className="lf-copy-all"><button type="button" className="btn link small" onClick={() => setSelected(rows.map(row => row.id))}>Select all</button><button type="button" className="btn link small" onClick={() => setSelected([])}>Clear</button></div>{rows.map((row, index) => <label key={row.id}><input type="checkbox" checked={selected.includes(row.id)} onChange={event => setSelected(current => event.target.checked ? [...current, row.id] : current.filter(id => id !== row.id))} /><span>{row.kind === 'section' ? 'Section' : `Task ${rows.slice(0, index + 1).filter(item => item.kind === 'task').length}`}</span><strong>{row.title || (row.kind === 'section' ? 'Untitled section' : 'Untitled task')}</strong></label>)}</fieldset>
+        {!taskCount && <p className="lf-copy-error" role="alert">Select at least one task to copy.</p>}
         <div className="lf-classes">
           {classes === null ? (
             <span className="hint">Opening your classes…</span>
           ) : classes.length ? (
             classes.map((c) => (
-              <button key={c.id} type="button" className="lf-class" style={{ ['--cc' as string]: theme(c.themeColor).accent }} disabled={!!busy} onClick={() => void go(c)}>
+              <button key={c.id} type="button" className="lf-class" style={{ ['--cc' as string]: theme(c.themeColor).accent }} disabled={!!busy || !taskCount} onClick={() => void go(c)}>
                 <i />
                 <b>{c.name}</b>
                 <span className="hint">{busy === c.id ? 'Adding…' : c.level}</span>
@@ -158,6 +168,8 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     }
   };
   const [adding, setAdding] = useState(false);
+  const [learnerPreview, setLearnerPreview] = useState(false);
+  const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const saveT = useRef<Record<string, number>>({});
   useEffect(() => {
     if (rows && !rows.some((r) => r.id === sel)) setSel(rows.find((r) => r.kind === 'task')?.id ?? rows[0]?.id ?? '');
@@ -207,9 +219,9 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             </div>
             {cur.kind === 'task' && (
               <>
-                {canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <p className="task-instr">{cur.instructions}</p>}
+                {canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} />}
                 <div className="lf-body">
-                  <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} />
+                  {canEdit ? <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
                 </div>
               </>
             )}
@@ -250,6 +262,8 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         </button>
       </aside>
       <main className="lf-main">
+        <div className="lf-preview-bar"><button type="button" className="btn small-btn" aria-pressed={learnerPreview} onClick={() => { setLearnerPreview(value => !value); setPreviewResponses({}); }}>{learnerPreview ? 'Back to editor' : 'Learner preview'}</button><span className="hint">{learnerPreview ? 'Try the lesson as a learner. Preview answers are not saved.' : 'Edit tasks here, or preview how learners will see them.'}</span></div>
+        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}><h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
         <span className="sh-switch lf-view" role="radiogroup" aria-label="View">
           <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)} aria-label="Digital: the lesson on screen" data-tip="Digital: the lesson on screen">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M9 20h6M12 16.5V20" /></svg>
@@ -311,7 +325,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             <strong>Start the lesson</strong>
             <span className="hint">Add tasks and sections. Everything you can put in a class lesson works here.</span>
           </div>
-        )}
+        )}</>}
       </main>
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
     </div>

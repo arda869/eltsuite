@@ -6,9 +6,10 @@ import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 
 /** Draft and public editions live in different collections. Public reads never expose draft text. */
 export type HubEditorState = 'draft' | 'in-review';
+export type HubResourceType = 'activity' | 'lesson';
 export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; content: JSONContent };
 export type HubResourceDraft = {
-  id: string; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
+  id: string; resourceType?: HubResourceType; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
   level: string; minutes: number; interaction: string; prep: 'No prep' | 'Print' | 'Print and cut';
   mode: 'Face-to-face and online' | 'Face-to-face only' | 'Online only'; energy: 1 | 2 | 3;
   state: HubEditorState; revision: number; publishedRevision: number | null; publishedAt: number | null;
@@ -29,9 +30,9 @@ const textLength = (doc: JSONContent): number => JSON.stringify(doc ?? {}).lengt
 const contentText = (node: JSONContent | null | undefined): string => node ? [typeof node.text === 'string' ? node.text : '', ...(node.content ?? []).map(contentText)].join(' ') : '';
 const hasAuthoredNode = (node: JSONContent): boolean => !!(node.attrs?.id && !['doc', 'paragraph'].includes(node.type ?? '')) || !!node.content?.some(hasAuthoredNode);
 
-export function blankResourceDraft(uid: string, collectionId: HubCollectionId = 'otp'): HubResourceDraft {
+export function blankResourceDraft(uid: string, collectionId: HubCollectionId = 'otp', resourceType: HubResourceType = 'activity'): HubResourceDraft {
   const id = newId();
-  return { id, collectionId, number: '', title: '', summary: '', focus: '', level: 'A2', minutes: 35, interaction: 'Pairs', prep: 'Print', mode: 'Face-to-face and online', energy: 2,
+  return { id, resourceType, collectionId, number: '', title: '', summary: '', focus: '', level: 'A2', minutes: 35, interaction: 'Pairs', prep: 'Print', mode: 'Face-to-face and online', energy: 2,
     state: 'draft', revision: 1, publishedRevision: null, publishedAt: null, authorUid: uid, updatedAt: Date.now(), sections: [
       { id: newId(), title: 'Teacher notes', audience: 'teacher', kind: 'notes', instructions: '', content: blankDoc() },
       { id: newId(), title: 'Learner task', audience: 'learner', kind: 'task', instructions: '', content: blankDoc() },
@@ -58,13 +59,13 @@ export function addLearnerVersion(sections: HubEditorSection[], sourceId: string
 }
 export function validateResource(draft: HubResourceDraft): string[] {
   const errors: string[] = [];
-  if (!draft.title.trim()) errors.push('Add an activity title.');
+  if (!draft.title.trim()) errors.push(`Add a ${draft.resourceType === 'lesson' ? 'lesson' : 'activity'} title.`);
   if (!draft.summary.trim()) errors.push('Add a short summary.');
   if (!draft.focus.trim()) errors.push('Add the language focus.');
-  if (!/^\d{1,3}$/.test(draft.number.trim()) || Number(draft.number) < 1) errors.push('Use an activity number from 001 to 999.');
+  if (draft.resourceType !== 'lesson' && (!/^\d{1,3}$/.test(draft.number.trim()) || Number(draft.number) < 1)) errors.push('Use an activity number from 001 to 999.');
   if (!Number.isFinite(draft.minutes) || draft.minutes < 1 || draft.minutes > 240) errors.push('Set a time from 1 to 240 minutes.');
   if (!draft.sections.some(section => section.audience === 'learner' && (contentText(section.content).trim().length > 1 || hasAuthoredNode(section.content)))) errors.push('Add at least one learner task with content.');
-  if (!generatedAnswerLines(draft.sections).length && !draft.sections.some(section => section.audience === 'teacher' && section.kind === 'answer-key' && contentText(section.content).trim().length > 1)) errors.push('Add answers to the learner questions or write suggested responses in the answer key.');
+  if (draft.resourceType !== 'lesson' && !generatedAnswerLines(draft.sections).length && !draft.sections.some(section => section.audience === 'teacher' && section.kind === 'answer-key' && contentText(section.content).trim().length > 1)) errors.push('Add answers to the learner questions or write suggested responses in the answer key.');
   if (draft.sections.some(section => !section.title.trim())) errors.push('Give every section a title.');
   for (const group of new Set(draft.sections.map(section => section.versionGroup).filter(Boolean))) {
     const versions = draft.sections.filter(section => section.versionGroup === group);
@@ -76,8 +77,8 @@ export function validateResource(draft: HubResourceDraft): string[] {
   if (draft.sourceReview && !draft.sourceReview.rightsConfirmed) errors.push('Confirm source adaptation permission before review.');
   return errors;
 }
-export async function createResourceDraft(uid: string, collectionId: HubCollectionId = 'otp', initial?: Partial<Pick<HubResourceDraft, 'title' | 'summary' | 'focus' | 'level' | 'minutes' | 'interaction' | 'sections' | 'sourceReview'>>) {
-  const draft = { ...blankResourceDraft(uid, collectionId), ...initial };
+export async function createResourceDraft(uid: string, collectionId: HubCollectionId = 'otp', initial?: Partial<Pick<HubResourceDraft, 'resourceType' | 'title' | 'summary' | 'focus' | 'level' | 'minutes' | 'interaction' | 'sections' | 'sourceReview'>>) {
+  const draft = { ...blankResourceDraft(uid, collectionId, initial?.resourceType), ...initial };
   if (JSON.stringify(draft).length > 850_000) throw new Error('This draft is too large. Import fewer pages or shorter sections.');
   await setDoc(draftRef(draft.id), draft);
   return draft;
@@ -129,17 +130,17 @@ export async function publishResource(id: string, expectedRevision: number, uid:
     if (draft.state !== 'in-review') throw new Error('Send the saved draft for review before publishing.');
     const errors = validateResource(draft);
     if (errors.length) throw new Error(errors.join(' '));
-    const claimRef = numberRef(draft.collectionId, draft.number);
-    const claim = await tx.get(claimRef);
-    if (claim.exists() && claim.data().resourceId !== draft.id) throw new Error('That activity number already belongs to another published resource. Choose an unused number.');
+    const claimRef = draft.resourceType === 'lesson' ? null : numberRef(draft.collectionId, draft.number);
+    const claim = claimRef ? await tx.get(claimRef) : null;
+    if (claim?.exists() && claim.data().resourceId !== draft.id) throw new Error('That activity number already belongs to another published resource. Choose an unused number.');
     if (draft.publishedRevision != null) {
       const prior = await tx.get(publicRef(id));
-      if (prior.exists() && (prior.data().collectionId !== draft.collectionId || String(prior.data().number).padStart(3, '0') !== draft.number.padStart(3, '0'))) throw new Error('A published activity’s collection and number cannot change. Create a new activity instead.');
+      if (prior.exists() && (prior.data().collectionId !== draft.collectionId || (prior.data().resourceType ?? 'activity') !== (draft.resourceType ?? 'activity') || (draft.resourceType !== 'lesson' && String(prior.data().number).padStart(3, '0') !== draft.number.padStart(3, '0')))) throw new Error('A published resource’s type, collection and number cannot change. Create a new resource instead.');
     }
     const publishedAt = Date.now();
-    const edition: HubResourceEdition = { id: draft.id, collectionId: draft.collectionId, number: draft.number, title: draft.title, summary: draft.summary, focus: draft.focus, level: draft.level, minutes: draft.minutes, interaction: draft.interaction, prep: draft.prep, mode: draft.mode, energy: draft.energy, sections: withGeneratedAnswerKey(draft.sections), revision: draft.revision, edition: draft.revision, publishedAt, publishedBy: uid };
+    const edition: HubResourceEdition = { id: draft.id, resourceType: draft.resourceType ?? 'activity', collectionId: draft.collectionId, number: draft.number, title: draft.title, summary: draft.summary, focus: draft.focus, level: draft.level, minutes: draft.minutes, interaction: draft.interaction, prep: draft.prep, mode: draft.mode, energy: draft.energy, sections: withGeneratedAnswerKey(draft.sections), revision: draft.revision, edition: draft.revision, publishedAt, publishedBy: uid };
     tx.set(publicRef(id), edition);
-    tx.set(claimRef, { resourceId: draft.id, collectionId: draft.collectionId, number: draft.number });
+    if (claimRef) tx.set(claimRef, { resourceId: draft.id, collectionId: draft.collectionId, number: draft.number });
     tx.set(doc(publicRef(id), 'editions', String(draft.revision)), edition);
     tx.update(ref, { publishedRevision: draft.revision, publishedAt, state: 'draft', revision: draft.revision + 1, updatedAt: publishedAt });
     return edition;

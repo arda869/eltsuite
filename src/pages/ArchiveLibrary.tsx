@@ -271,7 +271,7 @@ function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folder
 function NewButtons({ make }: { make: (k: DocKind) => void }) {
   return (
     <span className="fd-new">
-      {(['doc', 'flash', 'pd'] as DocKind[]).map((k) => (
+      {(['lesson', 'doc', 'flash', 'pd'] as DocKind[]).map((k) => (
         <button key={k} type="button" className="btn" onClick={() => make(k)}>
           + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Collab document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'Reading Journal'}
         </button>
