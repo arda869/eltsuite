@@ -46,6 +46,8 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs && ANSWER_TEST_PROJECT=demo-feature-discovery node test/learner-answer-access.mjs && node test/invitation-requests-access.mjs && SONG_TEST_PROJECT=demo-feature-discovery node test/speech/song-jobs.mjs"
       - name: Resource Hub draft, edition and shelf access
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-resource-hub 'node test/resource-hub-access.mjs' && node --test test/resource-hub-metrics.mjs test/resource-lesson-live.mjs
+      - name: Standalone lesson live teaching journey (Firebase simulated)
+        run: node --test test/resource-lesson-live-ui.mjs
       - name: Assessment and messaging security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security "node test/security-phase2-firestore.mjs && node test/survey-access.mjs && node test/messaging-lifecycle.mjs"
       - name: Class recording script privacy, QR access and migration

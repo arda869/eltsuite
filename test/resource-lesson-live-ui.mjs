@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 
 const base = process.env.TEST_BASE_URL || 'http://localhost:5184';
+const vite = process.env.TEST_BASE_URL ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', '5184'], { stdio: 'ignore', detached: true });
+if (vite) {
+  let ready = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if (await fetch(base).then(response => response.ok, () => false)) { ready = true; break; }
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  if (!ready) { process.kill(-vite.pid); throw new Error('The local lesson preview server did not start.'); }
+}
 const browser = await chromium.launch({ headless: true, ...(process.platform === 'darwin' ? { channel: 'chrome' } : {}) });
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 850 } });
@@ -53,4 +63,7 @@ try {
   await teacher.locator('.lf-side').waitFor();
   assert.equal(await teacher.getByRole('button', { name: 'Start live lesson' }).count(), 0);
   console.log('PASS Resource Hub and personal Lesson file live entry, guest join, task, submit, end, history, and Class-origin gate (mock callable).');
-} finally { await browser.close(); }
+} finally {
+  await browser.close();
+  if (vite) { try { process.kill(-vite.pid); } catch { vite.kill(); } }
+}
