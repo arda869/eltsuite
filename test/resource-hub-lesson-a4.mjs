@@ -61,8 +61,10 @@ try {
   if (screenshots) await published.screenshot({ path: `${screenshots}/resource-hub-teacher-page.png` });
   await published.getByRole('button', { name: /Print lesson pages/ }).click();
   if (screenshots) await published.screenshot({ path: `${screenshots}/resource-hub-print-pack.png` });
+  await published.getByLabel('Learner copies').fill('2');
   await published.getByRole('button', { name: 'Preview PDF' }).click();
   await published.locator('.pv[role="dialog"]').waitFor();
+  await published.locator('.pv-pages[aria-label="6 pages"]').waitFor();
   const [download] = await Promise.all([published.waitForEvent('download'), published.locator('.pv button[aria-label="Download"]').click()]);
   assert.match(download.suggestedFilename(), /A4 preview test lesson/i);
   await published.locator('.pv button[aria-label="Close"]').click();

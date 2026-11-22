@@ -33,7 +33,8 @@ export async function makeResourceLessonPdf({ activity, collection, learnerIds, 
   // Keep copies and the optional teacher key as separate sheets, in the same order as Classes.
   const authoredNotes = (activity.editorSections ?? []).filter(section => section.audience === 'teacher' && teacherIds.includes(section.id)).map(section => {
     const manual = { ...section.content, content: (section.content.content ?? []).filter(node => node.attrs?.hubGeneratedAnswer !== true) };
-    return [section.title, section.instructions, textOf(manual).trim()].filter(Boolean).join('\n');
+    const body = [section.instructions.trim(), textOf(manual).trim()].filter(Boolean).join('\n');
+    return body ? [section.title, body].filter(Boolean).join('\n') : '';
   }).filter(Boolean).join('\n\n');
   let notesPlaced = false;
   const teacherRows = rows.map(row => {
