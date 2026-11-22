@@ -7962,6 +7962,7 @@ html { touch-action: manipulation; }
 .lf-ai-tools[open] > summary { margin-bottom: 0; border-color: var(--dp); }
 .lf-ai-tools .lesson-support-actions { position: absolute; top: calc(100% + 7px); right: 0; z-index: 90; display: flex; flex-direction: column; align-items: stretch; min-width: 260px; padding: 10px; border: 1px solid var(--hair); border-radius: 11px; background: var(--paper); box-shadow: 0 12px 32px #0003; }
 .lf-header-live { flex: none; }
+.lf-ai-generate-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .lf-ai-dialog { width: min(680px, calc(100vw - 32px)); max-height: min(86dvh, 860px); overflow-y: auto; }
 .lf-ai-dialog h2 { margin: 0; }
 .lf-ai-direction, .lf-teacher-notes { display: grid; gap: 8px; font: 600 12px var(--sans); color: var(--muted); }

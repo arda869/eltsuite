@@ -96,7 +96,7 @@ export function FileLessonAi({ fileId, selectedTaskId, beforeOpen, onApplied }: 
           </label>
           {mode === 'differentiate' && <Select label="Version" value={variantLabel} options={[{v:'Supported',label:'Supported'},{v:'Stretch',label:'Stretch'}]} onChange={value => setVariantLabel(value as 'Supported' | 'Stretch')} />}
           <p className="hint">You will review the draft before it changes your lesson.</p>
-          {!requestId && <button type="button" className="btn primary" disabled={busy || mode === 'edit' && !direction.trim()} onClick={() => void draft()}>{busy ? 'Preparing…' : 'Generate draft'}</button>}
+          {!requestId && <div className="lf-ai-generate-row"><button type="button" className="btn primary" disabled={busy || mode === 'edit' && !direction.trim()} onClick={() => void draft()}>{busy ? 'Preparing…' : 'Generate draft'}</button>{mode === 'edit' && !direction.trim() && <span className="hint">Describe the changes you want to enable this.</span>}</div>}
           {requestId && !result && <p role="status">Your draft is being prepared. You can close this window and return to it.</p>}
           {requestId && !result && !busy && <button type="button" className="btn" onClick={() => { setRequestId(''); setError(''); localStorage.removeItem(storageKey); }}>Start a new draft</button>}
         </>}
