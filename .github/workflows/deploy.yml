@@ -50,6 +50,11 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node --test test/resource-lesson-live-ui.mjs
+      - name: Standalone Lesson AI draft and apply (fake provider)
+        run: |
+          node --test test/ai/file-task-tools.test.mjs
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-file-task-ai "node test/ai/file-task-tools-integration.mjs && node test/ai/file-task-notes-rules.mjs"
+          node --test test/file-lesson-ai-ui.mjs
       - name: Assessment and messaging security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security "node test/security-phase2-firestore.mjs && node test/survey-access.mjs && node test/messaging-lifecycle.mjs"
       - name: Class recording script privacy, QR access and migration

@@ -24,8 +24,7 @@ import { theme } from '../lib/themes';
 import { useNavigate } from 'react-router-dom';
 import { lessonLiveApi } from '../resourceHub/lessonLiveApi';
 import { openMenuAt } from '../components/ContextMenu';
-import { AiButton, AiMark } from '../components/AiMark';
-import { dockOpen } from '../components/ChatDock';
+import { FileLessonAi } from './FileLessonAi';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
@@ -36,19 +35,27 @@ export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = 
   { v: 'homework', label: 'Homework', hint: 'With a due date' },
   { v: 'exam', label: 'Exam', hint: 'Timed, with results released later' },
 ];
-export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null };
+export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null; teacherNotes?: string };
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
+const notesCol = (id: string) => collection(db, 'sharedDocs', id, 'taskNotes');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
 
 export function useRows(id?: string) {
   const [rows, setRows] = useState<LessonRow[] | null>(null);
   useEffect(() => {
     if (!id) return;
-    return onSnapshot(
+    let taskRows: LessonRow[] = [], notes: Record<string, string> = {};
+    const publish = () => setRows(taskRows.map(row => ({ ...row, teacherNotes: notes[row.id] ?? '' })));
+    const stopRows = onSnapshot(
       query(rowsCol(id), orderBy('order')),
-      (s) => setRows(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LessonRow, 'id'>) }))),
+      (s) => { taskRows = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LessonRow, 'id'>) })); publish(); },
       () => setRows([]),
     );
+    const stopNotes = onSnapshot(notesCol(id), snapshot => {
+      notes = Object.fromEntries(snapshot.docs.map(entry => [entry.id, String(entry.get('text') ?? '')]));
+      publish();
+    }, () => { notes = {}; publish(); });
+    return () => { stopRows(); stopNotes(); };
   }, [id]);
   return rows;
 }
@@ -74,6 +81,7 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
   for (const r of rows) {
     const taskId = await addTask(c.id, itemId, i++, r.kind, { title: r.title, instructions: r.instructions, content: r.content ?? EMPTY });
     if (r.instrDoc || r.print) await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}) })));
+    if (r.teacherNotes) await setDoc(doc(taskRef(c.id, itemId, taskId), 'private', 'notes'), { text: r.teacherNotes });
   }
   return itemId;
 }
@@ -81,7 +89,10 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
 // From anywhere a lesson file is listed (the organisation library, say): its tasks, then the class.
 export function CopyToClass({ docId, title, type, onClose }: { docId: string; title: string; type?: Item['type']; onClose: () => void }) {
   const [rows, setRows] = useState<LessonRow[] | null>(null);
-  useEffect(() => void getDocs(query(rowsCol(docId), orderBy('order'))).then((s) => setRows(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LessonRow, 'id'>) })))).catch(() => setRows([])), [docId]);
+  useEffect(() => { void Promise.all([getDocs(query(rowsCol(docId), orderBy('order'))), getDocs(notesCol(docId)).catch(() => null)]).then(([tasks, notes]) => {
+    const noteMap = Object.fromEntries(notes?.docs.map(entry => [entry.id, String(entry.get('text') ?? '')]) ?? []);
+    setRows(tasks.docs.map(entry => ({ id: entry.id, ...(entry.data() as Omit<LessonRow, 'id'>), teacherNotes: noteMap[entry.id] ?? '' })));
+  }).catch(() => setRows([])); }, [docId]);
   return rows ? <AddToClass rows={rows} title={title} type={type} onClose={onClose} /> : null;
 }
 
@@ -192,14 +203,35 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
     else setSheet(next === 'paper');
   };
   const saveT = useRef<Record<string, number>>({});
+  const pendingChanges = useRef<Record<string, Partial<LessonRow>>>({});
+  const activeWrites = useRef<Promise<unknown>[]>([]);
   useEffect(() => {
     if (rows && !rows.some((r) => r.id === sel)) setSel(rows.find((r) => r.kind === 'task')?.id ?? rows[0]?.id ?? '');
   }, [rows, sel]);
   if (!rows) return <div className="dp-msg">Opening the lesson…</div>;
   const cur = rows.find((r) => r.id === sel);
-  const patch = (id: string, p: Partial<LessonRow>, wait = 600) => {
+  const savePending = (id: string) => {
     window.clearTimeout(saveT.current[id]);
-    saveT.current[id] = window.setTimeout(() => void updateDoc(doc(rowsCol(d.id), id), JSON.parse(JSON.stringify(p))), wait);
+    const changed = pendingChanges.current[id];
+    delete pendingChanges.current[id];
+    if (!changed) return Promise.resolve();
+    const { teacherNotes, ...taskChanges } = changed;
+    const writing = Promise.all([
+      ...(Object.keys(taskChanges).length ? [updateDoc(doc(rowsCol(d.id), id), JSON.parse(JSON.stringify(taskChanges)))] : []),
+      ...(teacherNotes !== undefined ? [setDoc(doc(notesCol(d.id), id), { text: teacherNotes })] : []),
+    ]);
+    activeWrites.current.push(writing);
+    void writing.finally(() => { activeWrites.current = activeWrites.current.filter(write => write !== writing); }).catch(() => {});
+    return writing;
+  };
+  const flushPending = async () => {
+    const previous = [...activeWrites.current];
+    await Promise.all([...previous, ...Object.keys(pendingChanges.current).map(savePending)]);
+  };
+  const patch = (id: string, p: Partial<LessonRow>, wait = 600) => {
+    pendingChanges.current[id] = { ...pendingChanges.current[id], ...p };
+    window.clearTimeout(saveT.current[id]);
+    saveT.current[id] = window.setTimeout(() => void savePending(id).catch(() => {}), wait);
   };
   const add = async (kind: 'task' | 'section') => {
     const id = newId();
@@ -244,6 +276,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
                 <div className="lf-body">
                   {canEdit ? <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
                 </div>
+                {canEdit ? <label className="lf-teacher-notes">Teacher notes<textarea key={cur.id} defaultValue={cur.teacherNotes ?? ''} onChange={event => patch(cur.id, { teacherNotes: event.target.value })} placeholder="Private notes for teaching and answer guidance" /></label> : cur.teacherNotes && <details className="lf-teacher-notes"><summary>Teacher notes</summary><p>{cur.teacherNotes}</p></details>}
               </>
             )}
             {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
@@ -262,7 +295,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
         <button type="button" role="radio" aria-checked={!learnerPreview && sheet} className={!learnerPreview && sheet ? 'on' : ''} onClick={() => chooseView('paper')}>Paper</button>
         <button type="button" role="radio" aria-checked={learnerPreview} className={learnerPreview ? 'on' : ''} onClick={() => chooseView('learner')}>Learner <span className="lf-preview-word">preview</span></button>
       </span>
-      {canEdit && <details className="lesson-support-tools lf-ai-tools"><summary><AiMark /> AI tools</summary><div className="lesson-support-actions"><AiButton className="btn small-btn" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); dockOpen('teaching-coach'); }}>Discuss with Teacher’s Companion</AiButton></div></details>}
+      {canEdit && <FileLessonAi fileId={d.id} selectedTaskId={cur?.kind === 'task' ? cur.id : undefined} beforeOpen={flushPending} onApplied={id => { if (id && id !== 'lesson') setSel(id); }} />}
       {standaloneLive && <button type="button" className="btn primary lf-header-live" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : rows.some(row => row.kind === 'task') ? 'Start live' : 'Add a task first'}</button>}
     </div>, headerSlot)}
     <div className="lf">

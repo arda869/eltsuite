@@ -391,6 +391,24 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(d.action==='finish'){const feedback={focusFeedback:'You gave a reason for your choice using because.',evidence:['I would choose the park because it is quieter.'],communication:'You kept the conversation moving.',nextStep:'Add a second reason to develop your answer.',retryPrompt:'Another reason is…'};await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{feedback,status:'complete',feedbackState:'complete'},{merge:true});return {data:{feedback}};}
   }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
+  if (['fileTaskAiDraft', 'fileTaskAiStatus', 'fileTaskAiApply'].includes(d.action)) {
+    const fixture = JSON.parse(localStorage.getItem('fileAi.fixture') || 'null');
+    if (!fixture) throw Error('No file AI fixture');
+    const jobKey = `fileAi.job:${d.requestId}`;
+    if (d.action === 'fileTaskAiDraft') {
+      localStorage.setItem(jobKey, JSON.stringify({ result: fixture.result, applied: false }));
+      return { data: { status: 'completed', result: fixture.result, requestId: d.requestId } };
+    }
+    const job = JSON.parse(localStorage.getItem(jobKey) || 'null');
+    if (!job) throw Error('Draft not found');
+    if (d.action === 'fileTaskAiStatus') return { data: { status: 'completed', result: job.result } };
+    if (!job.applied) {
+      const { mergeKey } = await import('../../src/lib/questions');
+      await setDoc(doc(db, 'sharedDocs', d.fileId, 'tasks', 'ai_' + d.requestId), { kind: 'task', order: 1, title: job.result.title, instructions: job.result.instructions, content: mergeKey(job.result.content, job.result.key), teacherNotes: job.result.notes });
+      job.applied = true; localStorage.setItem(jobKey, JSON.stringify(job));
+    }
+    return { data: { applied: true, taskId: 'ai_' + d.requestId } };
+  }
   if(d.action==='readiness')return (await import('./learning')).mockReadiness(d);
   if(['taskTools','taskToolsIdeas','taskToolsStatus','taskToolsApply'].includes(d.action))return (await import('./lesson-tools')).mockLessonTools(d);
   if(['rebuild','rebuildStatus','importCreate','rebuildPicture','rebuildPictureStatus'].includes(d.action)) {
