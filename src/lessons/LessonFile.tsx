@@ -140,7 +140,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState('');
   const fileOrigin = d as SharedDoc & { originClassId?: string; sourceClassId?: string; classId?: string };
-  const standaloneLive = canEdit && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
+  const standaloneLive = canEdit && d.standaloneLesson === true && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
   const startLive = async () => {
     setLiveBusy(true); setLiveError('');
     try { const result = await lessonLiveApi<{ runId: string; code: string }>('start', { fileId: d.id }); navigate(`/resource-hub/lesson/live/${encodeURIComponent(result.runId)}`); }

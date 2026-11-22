@@ -8,7 +8,8 @@ import { newDocInFolder, newSharedDoc, type SharedDoc, type SharedFolder } from 
 
 const PARTS = ['cards', 'sources', 'tasks', 'pdf', 'dpages', 'dels', 'dmeta', 'scenes', 'sbitems', 'media', 'blob'];
 export async function copyFile(d: SharedDoc, me: { uid: string; name: string }, to: SharedFolder | null, title = d.title): Promise<string> {
-  const id = to ? await newDocInFolder(to, me, d.kind, { ltype: d.ltype, title }) : await newSharedDoc(me, d.kind, title);
+  const lessonOrigin = d.kind === 'lesson' ? { standaloneLesson: d.standaloneLesson === true, originClassId: d.originClassId, originItemId: d.originItemId } : undefined;
+  const id = to ? await newDocInFolder(to, me, d.kind, { ltype: d.ltype, title, ...lessonOrigin }) : await newSharedDoc(me, d.kind, title, '', lessonOrigin);
   const made = (await getDoc(doc(db, 'sharedDocs', id))).data() as SharedDoc;
   const src = d as SharedDoc & { flash?: unknown; pd?: unknown; citeStyle?: string; size?: number };
   const extra = Object.fromEntries(Object.entries({ flash: src.flash, pd: src.pd, citeStyle: src.citeStyle, ltype: d.ltype, size: src.size, file: src.file, designType:d.designType }).filter(([, v]) => v !== undefined));

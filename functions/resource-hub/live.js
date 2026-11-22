@@ -93,7 +93,7 @@ async function loadSource(db, uid, selected) {
   if (selected.kind === 'file') {
     const snapshot = await db.doc(`sharedDocs/${selected.id}`).get();
     const file = snapshot.data();
-    if (!file || file.kind !== 'lesson' || file.deletedAt || file.purgeRequestedAt || file.purgingAt || file.sourceClassId || file.originClassId || file.classId) fail('not-found', 'This standalone lesson file is unavailable.');
+    if (!file || file.kind !== 'lesson' || file.standaloneLesson !== true || file.deletedAt || file.purgeRequestedAt || file.purgingAt || file.sourceClassId || file.originClassId || file.classId) fail('not-found', 'This standalone lesson file is unavailable.');
     if (file.owner !== uid && file.members?.[uid]?.role !== 'edit') fail('permission-denied', 'You need editing access to teach this lesson file.');
     const rows = await db.collection(`sharedDocs/${selected.id}/tasks`).orderBy('order').get();
     return { sourceKind: 'file', resourceId: null, fileId: selected.id, edition: null, title: file.title, sections: rows.docs.filter(row => row.get('kind') === 'task').map(row => ({ ...row.data(), id: row.id, audience: 'learner', kind: 'task' })) };

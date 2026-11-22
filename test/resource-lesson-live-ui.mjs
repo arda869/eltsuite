@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const base = process.env.TEST_BASE_URL || 'http://localhost:5184';
+const screenshots = process.env.SCREENSHOT_DIR;
+if (screenshots) await mkdir(screenshots, { recursive: true });
 const vite = process.env.TEST_BASE_URL ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', '5184'], { stdio: 'ignore', detached: true });
 if (vite) {
   let ready = false;
@@ -22,6 +25,7 @@ try {
   await teacher.goto(`${base}/resource-hub/lesson/live/fixture-run`);
   await teacher.getByText('482193').waitFor();
   assert.equal(await teacher.getByRole('img', { name: /QR code to join lesson/ }).count(), 1);
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-teacher-lobby.png` });
 
   const learner = await context.newPage();
   await learner.goto(`${base}/lesson-join/482193`);
@@ -32,6 +36,7 @@ try {
   await teacher.getByText('Mia').waitFor({ timeout: 10000 });
   await teacher.getByRole('button', { name: 'Start first task' }).click();
   await learner.getByRole('heading', { name: 'First task' }).waitFor({ timeout: 10000 });
+  if (screenshots) await learner.screenshot({ path: `${screenshots}/live-lesson-learner-task.png` });
   await learner.getByRole('button', { name: 'Send answer' }).click();
   await teacher.getByText('0 / 1').waitFor({ timeout: 10000 });
   await teacher.getByRole('button', { name: 'End lesson' }).click();
@@ -41,13 +46,15 @@ try {
   await teacher.getByRole('heading', { name: 'Previous live lessons' }).waitFor();
   await teacher.getByRole('button', { name: /First task/ }).click();
   await teacher.getByText('Question 1').first().waitFor();
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-teaching-history.png` });
   // A personal Lesson file offers the same entry point; a Class-origin copy does not.
   await teacher.evaluate(async () => {
     const { db } = await import('/src/lib/firebase.ts');
     const { doc, setDoc } = await import('/test/mock/firestore.ts');
-    const baseDoc = { owner: 'teacher1', ownerName: 'Teacher', title: 'My standalone lesson', kind: 'lesson', docKey: 'fixture-doc-key', members: {}, memberIds: [] };
+    const baseDoc = { owner: 'teacher1', ownerName: 'Teacher', title: 'My standalone lesson', kind: 'lesson', standaloneLesson: true, docKey: 'fixture-doc-key', members: {}, memberIds: [] };
     await setDoc(doc(db, 'sharedDocs', 'standalone-file'), baseDoc);
-    await setDoc(doc(db, 'sharedDocs', 'class-origin-file'), { ...baseDoc, title: 'Copied from Class', originClassId: 'class-1' });
+    await setDoc(doc(db, 'sharedDocs', 'class-origin-file'), { ...baseDoc, title: 'Copied from Class', standaloneLesson: false, originClassId: 'class-1' });
+    await setDoc(doc(db, 'sharedDocs', 'legacy-file'), { owner: 'teacher1', ownerName: 'Teacher', title: 'Older Class copy', kind: 'lesson', docKey: 'legacy-fixture-key', members: {}, memberIds: [] });
     await setDoc(doc(db, 'sharedDocs', 'standalone-file', 'tasks', 'task-1'), { order: 0, kind: 'task', title: 'First task', instructions: 'Choose the best answer.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Say hello.' }] }] } });
     const fixture = JSON.parse(localStorage.getItem('rll.fixture'));
     fixture.run = { ...fixture.run, runId: 'file-run', fileId: 'standalone-file', resourceId: null, sourceKind: 'file', edition: null, status: 'lobby', currentTaskId: null, endedAt: null };
@@ -56,10 +63,14 @@ try {
   });
   await teacher.goto(`${base}/doc/standalone-file`);
   await teacher.getByRole('button', { name: 'Start live lesson' }).waitFor();
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
   await teacher.getByRole('button', { name: 'Start live lesson' }).click();
   await teacher.getByText('482193').waitFor();
   assert.match(teacher.url(), /\/resource-hub\/lesson\/live\/file-run/);
   await teacher.goto(`${base}/doc/class-origin-file`);
+  await teacher.locator('.lf-side').waitFor();
+  assert.equal(await teacher.getByRole('button', { name: 'Start live lesson' }).count(), 0);
+  await teacher.goto(`${base}/doc/legacy-file`);
   await teacher.locator('.lf-side').waitFor();
   assert.equal(await teacher.getByRole('button', { name: 'Start live lesson' }).count(), 0);
   console.log('PASS Resource Hub and personal Lesson file live entry, guest join, task, submit, end, history, and Class-origin gate (mock callable).');
