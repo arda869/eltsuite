@@ -52,7 +52,7 @@ jobs:
       - name: Material import saves reviewed tasks hidden
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-material-import 'node test/ai/materials-integration.mjs'
       - name: Resource Hub draft, edition and shelf access
-        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-resource-hub 'node test/resource-hub-access.mjs'
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-resource-hub 'node test/resource-hub-access.mjs' && node --test test/resource-hub-metrics.mjs
       - name: Assessment, roster, invitation and call security boundaries
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-phase2-security 'node test/security-phase2-firestore.mjs'
       - name: Class recording script privacy, QR access and migration
