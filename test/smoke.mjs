@@ -3112,8 +3112,9 @@ const J = {
     await see(s.p, 'text=Level 1 lessons', 'the library folder');
     await s.p.click('button:has-text("+ New")');
     const [t] = await Promise.all([s.ctx.waitForEvent('page'), s.p.click('[role=menuitem]:has-text("Exam")')]);
-    await see(t, 'button:has-text("+ Task")', 'the new exam');
-    await t.click('button:has-text("+ Task")');
+    await see(t, 'button:has-text("+ Add")', 'the new exam');
+    await t.getByRole('button', { name: '+ Add' }).click();
+    await t.getByRole('menuitem', { name: 'New task' }).click();
     await t.waitForTimeout(800);
     await t.setViewportSize({ width: 1280, height: 800 });
     const lessonWidth = await t.locator('.lf').evaluate(el => ({ width: el.getBoundingClientRect().width, viewport: innerWidth }));
