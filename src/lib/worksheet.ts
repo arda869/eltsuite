@@ -685,7 +685,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   // A formatted instruction keeps its bold, colour, IPA and word stress on paper too.
   // An instruction written for paper replaces the online one.
   const paperInstr = t.print?.instr?.trim();
-  const instrRuns = paperInstr ? undefined : t.instrDoc ? (t.instrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
+  const effectiveInstrDoc = t.print?.instrDoc ?? (paperInstr ? null : t.instrDoc);
+  const instrRuns = effectiveInstrDoc ? (effectiveInstrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
   (t.content.content ?? []).forEach((c) => walk(c));
   const inlineRefs = (node: JSONContent) => {
     if (node.type === 'inlineMedia' && node.attrs?.media && !mediaUsed.includes(String(node.attrs.media))) {
@@ -694,7 +695,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
     }
     node.content?.forEach(inlineRefs);
   };
-  inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
+  inlineRefs(t.content); if (effectiveInstrDoc) inlineRefs(effectiveInstrDoc);
   // A task with one question needs no number for it (and none in the key). Not when there is an example (0).
   if (answers.length === 1 && answers[0].label === undefined && n === answers[0].n) {
     const only = answers[0];

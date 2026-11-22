@@ -179,7 +179,7 @@
   height:calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px));
   min-height:0;
   overflow:hidden;
-  padding:0 var(--page-gutter);
+  padding:0 0 0 var(--page-gutter);
   gap:0;
   background:var(--bg);
   --rh-ink:var(--ink);
@@ -189,8 +189,8 @@
   --rh-warm:var(--bg);
 }
 .rh-app-shell .rh-main { flex:1; min-height:0; overflow:hidden; }
-.rh-app-shell .rh-page-heading { flex:none; padding:var(--space-5) 0 var(--space-4); }
-.rh-app-shell .rh-tabs { flex:none; padding:0 0 var(--space-3); background:var(--bg); }
+.rh-app-shell .rh-page-heading { flex:none; padding:var(--space-5) var(--page-gutter) var(--space-4) 0; }
+.rh-app-shell .rh-tabs { flex:none; padding:0 var(--page-gutter) var(--space-3) 0; background:var(--bg); }
 .rh-app-shell .rh-tabs button { min-height:36px; padding:0 var(--space-4); }
 .rh-app-shell .rh-content {
   flex:1;
@@ -201,8 +201,8 @@
   overflow-y:auto;
   overscroll-behavior:contain;
   margin:0;
-  padding:var(--space-5) 0 var(--space-8);
-  scrollbar-gutter:stable;
+  padding:var(--space-5) var(--page-gutter) var(--space-8) 0;
+  scrollbar-gutter:auto;
 }
 .rh-app-shell .rh-content-detail { display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; }
 .rh-app-shell .rh-section { margin-top:var(--space-7); }
@@ -301,4 +301,14 @@
   .rhe-shell { height:100dvh; min-height:0; overflow:hidden; }
   .rhe-shell .rhe-main { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
   .rhe-shell .rhe-main--activity { overflow:hidden; }
+}
+/* Keep the native scrollbar on the viewport edge; spacing belongs inside the scroller. */
+.rh-app-shell .rh-content { scrollbar-gutter:auto; }
+.rh-app-shell .rh-published-date { color:var(--rh-muted); font:600 11px/1.35 var(--sans); white-space:nowrap; }
+.rh-app-shell .rh-card-footer .rh-published-date { margin-left:auto; }
+.rh-app-shell .rh-detail-heading>.rh-published-date { display:inline-block; margin-top:10px; }
+@media(max-width:600px) {
+  .rh-app-shell .rh-page-heading { padding-right:var(--page-gutter); }
+  .rh-app-shell .rh-tabs { padding-right:var(--page-gutter); }
+  .rh-app-shell .rh-content { padding-right:var(--page-gutter); }
 }

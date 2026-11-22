@@ -6,7 +6,7 @@ import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 
 /** Draft and public editions live in different collections. Public reads never expose draft text. */
 export type HubEditorState = 'draft' | 'in-review';
-export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; printInstructions?: string; versionGroup?: string; versionLabel?: string; content: JSONContent };
+export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; content: JSONContent };
 export type HubResourceDraft = {
   id: string; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
   level: string; minutes: number; interaction: string; prep: 'No prep' | 'Print' | 'Print and cut';
@@ -50,7 +50,7 @@ export function addLearnerVersion(sections: HubEditorSection[], sourceId: string
   const siblings = sections.filter(section => section.versionGroup === group);
   const used = new Set(siblings.map(section => section.versionLabel?.trim()));
   const letter = 'BCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(label => !used.has(label) && !used.has(`Learner ${label}`));
-  const added: HubEditorSection = { ...newSection('learner'), title: source.title, instructions: source.instructions, printInstructions: source.printInstructions ?? '', versionGroup: group, versionLabel: letter ? `Learner ${letter}` : `Version ${siblings.length + 1}` };
+  const added: HubEditorSection = { ...newSection('learner'), title: source.title, instructions: source.instructions, instrDoc: source.instrDoc ? structuredClone(source.instrDoc) : null, printInstructions: source.printInstructions ?? '', printInstrDoc: source.printInstrDoc ? structuredClone(source.printInstrDoc) : null, versionGroup: group, versionLabel: letter ? `Learner ${letter}` : `Version ${siblings.length + 1}` };
   const next = sections.map(section => section.id === sourceId && !section.versionGroup ? { ...section, versionGroup: group, versionLabel: 'Learner A' } : section);
   const lastSibling = next.reduce((last, section, index) => section.versionGroup === group ? index : last, at);
   next.splice(lastSibling + 1, 0, added);

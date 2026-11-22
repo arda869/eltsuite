@@ -8,12 +8,13 @@ import { ResourcePrint } from './ResourcePrint';
 import { ResourceAdapt } from './ResourceAdapt';
 import { useAiPilot } from '../ai/pilot';
 import { RichContent } from './RichContent';
+import { InstrView } from '../editor/InstrEditor';
 import { generatedAnswerLinesForSection } from './hubAnswerKey';
 import type { JSONContent } from '@tiptap/react';
 import './resourceDetail.css';
 
 type Zoom = 'fit' | 'width' | '100';
-type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; content?: JSONContent; versionLabel?: string };
+type PreviewEntry = { id: string; title: string; audience: 'learner' | 'teacher'; image?: string; instructions?: string; instrDoc?: JSONContent | null; content?: JSONContent; versionLabel?: string };
 const paperContent = (node: JSONContent): JSONContent => ({ ...node,
   ...(node.type === 'subTask' ? { attrs: { ...node.attrs, instr: node.attrs?.paperInstr?.trim() || node.attrs?.instr || '' } } : {}),
   ...(node.content ? { content: node.content.map(paperContent) } : {}),
@@ -46,7 +47,7 @@ const editorPreviewPages = (activity: HubActivity): PreviewEntry[] => {
     guide.push(...manual);
   }
   return [
-    ...learners.map(section => ({ id: section.id, title: section.title, audience: 'learner' as const, instructions: section.printInstructions?.trim() || section.instructions, content: section.content, versionLabel: section.versionLabel })),
+    ...learners.map(section => ({ id: section.id, title: section.title, audience: 'learner' as const, instructions: section.printInstructions?.trim() || section.instructions, instrDoc: section.printInstructions?.trim() || section.printInstrDoc ? section.printInstrDoc : section.instrDoc, content: section.content, versionLabel: section.versionLabel })),
     ...(guide.length ? [{ id: 'teacher-guide', title: 'Teacher notes', audience: 'teacher' as const, content: { type: 'doc', content: guide } }] : []),
   ];
 };
@@ -91,7 +92,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
   return <div className="rh-detail">
     <div className="rh-detail-breadcrumb"><button type="button" onClick={onBack}>← Back to {collection.title}</button><span aria-hidden="true">/</span><span>Activity {Number(activity.number)}</span></div>
     <header className="rh-detail-header">
-      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title} · Activity {Number(activity.number)}</span><h1>{activity.title}</h1>{activity.id !== 'otp-002' && <p>{activity.summary}</p>}<div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div></div>
+      <div className="rh-detail-heading"><span className="rh-eyebrow">{collection.title} · Activity {Number(activity.number)}</span><h1>{activity.title}</h1>{activity.id !== 'otp-002' && <p>{activity.summary}</p>}<div className="rh-detail-pills"><span>{activity.level}</span><span>{activity.focus}</span><span>{activity.interaction}</span></div>{activity.publishedAt && <time className="rh-published-date" dateTime={new Date(activity.publishedAt).toISOString()}>Published {new Date(activity.publishedAt).toLocaleDateString()}</time>}</div>
       <div className="rh-detail-header-actions"><span className="rh-ready-pill">{ready ? 'Ready to use' : 'Activity outline'}</span></div>
     </header>
     {!ready ? <section className="rh-outline-panel"><div className="rh-outline-icon" aria-hidden="true">✦</div><h2>Pages are being prepared</h2><p>This activity outline is available to explore. Printable pages and editable Class tasks will appear when the complete resource is ready.</p><button type="button" className="rh-secondary" onClick={onBack}>Explore activities</button></section> : <div className="rh-detail-grid">
@@ -102,7 +103,7 @@ export function ResourceDetail({ activity, collection: collectionOverride, onBac
       </aside>
       <section className="rh-preview" aria-label="Activity preview"><div className="rh-preview-toolbar"><span><strong>{page.audience === 'teacher' ? `Page ${pageIndex + 1} of ${previewCount}` : `Learner page ${selectedLearnerPosition + 1} of ${learnerIndices.length}`}</strong><small>{page?.title}</small></span><div><Select value={zoom} options={[{ v: 'fit', label: 'Fit page' }, { v: 'width', label: 'Fit width' }, { v: '100', label: '100%' }]} onChange={changeZoom} label="Preview zoom" />{page.audience === 'teacher' ? <button type="button" className="rh-return-learners" onClick={() => setPageIndex(firstLearnerIndex)}>Show learner sheet</button> : <><button type="button" className="rh-icon-button" aria-label="Previous learner page" disabled={selectedLearnerPosition <= 0} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition - 1])}>←</button><button type="button" className="rh-icon-button" aria-label="Next learner page" disabled={selectedLearnerPosition >= learnerIndices.length - 1} onClick={() => setPageIndex(learnerIndices[selectedLearnerPosition + 1])}>→</button></>}</div></div>
         <div className={`rh-preview-stage zoom-${zoom}`}>
-          {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}{page.versionLabel ? ` · ${page.versionLabel}` : ''}</span><h2>{page.title}</h2>{page.instructions && <p>{page.instructions}</p>}</header><RichContent content={paperContent(page.content)} /></article> : null}
+          {page.image ? <img src={page.image} alt={`${page.title}, page ${pageIndex + 1} of ${previewCount}`} /> : page.content ? <article className="rh-rich-sheet"><header><span>{activity.title}{page.versionLabel ? ` · ${page.versionLabel}` : ''}</span><h2>{page.title}</h2><InstrView doc={page.instrDoc} text={page.instructions ?? ''} /></header><RichContent content={paperContent(page.content)} /></article> : null}
         </div>
       </section>
       <aside className="rh-detail-aside"><div className="rh-detail-actions"><h2>Use this activity</h2><button type="button" className="rh-primary" onClick={() => setDialog('print')}>Print activity pages <span aria-hidden="true">↗</span></button><button type="button" className="rh-secondary" onClick={() => setDialog('copy')}>Copy editable tasks to a Class</button>{aiEnabled && activity.id === 'otp-002' && <button type="button" className="rh-secondary" onClick={() => setDialog('adapt')}>✦ Adapt with AI</button>}{onSaveChange && <button type="button" className="rh-secondary rh-detail-save" aria-pressed={saved} onClick={onSaveChange}>{saved ? '✓ Saved' : '♡ Save'}</button>}<p>Class copies include learner tasks and private teacher guidance.</p></div>

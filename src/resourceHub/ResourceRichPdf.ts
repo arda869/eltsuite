@@ -12,7 +12,7 @@ type Block = { kind: 'text' | 'heading' | 'table'; runs?: Run[]; rows?: string[]
 const textOf = (node: JSONContent): string => node.text ?? (node.content ?? []).map(textOf).join('');
 const printNodes = new Set(['doc', 'text', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'gap', 'dropgap', 'choice', 'mcq', 'match', 'order', 'writing', 'wordbank', 'subTask']);
 export const hasDigitalOnlyItems = (node: JSONContent): boolean => !printNodes.has(node.type ?? '') || !!node.content?.some(hasDigitalOnlyItems);
-const runsOf = (node: JSONContent, gapChars: number): Run[] => node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : node.type === 'gap' || node.type === 'dropgap' ? [{ text: ` ${'_'.repeat(gapChars)} ` }] : node.type === 'choice' || node.type === 'mcq' ? [{ text: ` (${(node.attrs?.options ?? []).filter(Boolean).join(' / ')}) ` }] : (node.content ?? []).flatMap(child => runsOf(child, gapChars));
+const runsOf = (node: JSONContent, gapChars: number): Run[] => node.type === 'ipa' ? [{ text: `/${String(node.attrs?.text ?? '')}/` }] : node.type === 'stress' ? [{ text: (node.attrs?.syllables ?? []).join('') }] : node.type === 'sym' ? [{ text: String(node.attrs?.text ?? '') }] : node.type === 'inlineMedia' ? [{ text: `[${node.attrs?.kind === 'video' ? 'Video' : 'Recording'}: ${node.attrs?.title || 'Play'}]` }] : node.type === 'hardBreak' ? [{ text: ' ' }] : node.type === 'text' ? [{ text: node.text ?? '', bold: node.marks?.some(mark => mark.type === 'bold'), italic: node.marks?.some(mark => mark.type === 'italic'), underline: node.marks?.some(mark => mark.type === 'underline' || mark.type === 'link'), strike: node.marks?.some(mark => mark.type === 'strike'), href: node.marks?.find(mark => mark.type === 'link')?.attrs?.href as string | undefined }] : node.type === 'gap' || node.type === 'dropgap' ? [{ text: ` ${'_'.repeat(gapChars)} ` }] : node.type === 'choice' || node.type === 'mcq' ? [{ text: ` (${(node.attrs?.options ?? []).filter(Boolean).join(' / ')}) ` }] : (node.content ?? []).flatMap(child => runsOf(child, gapChars));
 /** One paper width per resource, based on the mean answer length rather than the longest outlier. */
 export function averageGapChars(sections: Section[]): number {
   const lengths: number[] = [];
@@ -205,8 +205,11 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
   const draw = (section: Section, placement: 'full' | 'top' | 'bottom' = 'full') => {
     begin(section, placement);
     if (hasDigitalOnlyItems(section.content)) lines('DIGITAL ONLY CONTENT · This print page does not reproduce every interactive or visual item. Use the Class activity for the complete task.', 9.5, true, 6);
-    const instruction = section.printInstructions?.trim() || section.instructions.trim();
-    if (instruction) lines(instruction, 10.5, true, 7);
+    const paperOverride = !!section.printInstructions?.trim() || !!section.printInstrDoc;
+    const instruction = paperOverride ? section.printInstructions?.trim() ?? '' : section.instructions.trim();
+    const instructionDoc = paperOverride ? section.printInstrDoc : section.instrDoc;
+    if (instructionDoc) richLines(runsOf(instructionDoc, gapChars), 10.5, true);
+    else if (instruction) lines(instruction, 10.5, true, 7);
     drawBlocks(section.content);
   };
   const drawTeacherGuide = () => {
@@ -215,7 +218,8 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
     // Teacher-led phases can stand alone; they do not need a matching learner page.
     for (const section of teachers.filter(item => item.kind === 'notes')) {
       lines(section.title, 13, true, 4);
-      if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, false, 5);
+      if (section.instrDoc) richLines(runsOf(section.instrDoc, gapChars), 10.5);
+      else if (section.instructions.trim()) lines(section.instructions.trim(), 10.5, false, 5);
       drawBlocks(section.content);
       y += 4;
     }
@@ -224,8 +228,11 @@ export async function makeEditorResourcePdf({ activity, collection, learnerIds, 
       const answers = generatedAnswerLinesForSection(section);
       if (!answers.length) continue;
       lines(section.versionLabel ? `${section.title} · ${section.versionLabel}` : section.title, 13, true, 4);
-      const instruction = section.printInstructions?.trim() || section.instructions.trim();
-      if (instruction) lines(instruction, 10.5, false, 4);
+      const paperOverride = !!section.printInstructions?.trim() || !!section.printInstrDoc;
+      const instruction = paperOverride ? section.printInstructions?.trim() ?? '' : section.instructions.trim();
+      const instructionDoc = paperOverride ? section.printInstrDoc : section.instrDoc;
+      if (instructionDoc) richLines(runsOf(instructionDoc, gapChars), 10.5);
+      else if (instruction) lines(instruction, 10.5, false, 4);
       answers.forEach(answer => lines(answer, 10.5, false, 1));
       y += 5;
     }

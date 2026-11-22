@@ -33,12 +33,13 @@ export interface HubActivity {
   energy: 1 | 2 | 3;
   mode: 'Face-to-face and online' | 'Face-to-face only' | 'Online only';
   status: HubActivityStatus;
+  publishedAt?: number;
   pages: HubPage[];
   supplementalImages?: { id: string; title: string; image: string; audience: 'learner' }[];
   notes: string[];
   worksheet: string[];
   tags: string[];
-  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; printInstructions?: string; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
+  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
   authoredParts?: { id: string; title: string; audience: 'learner' | 'teacher'; lines: string[] }[];
 }
 
