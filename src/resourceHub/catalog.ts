@@ -23,7 +23,7 @@ export interface HubActivity {
   number: string;
   collectionId: HubCollectionId;
   title: string;
-  kind: 'information-gap' | 'table' | 'cards' | 'board' | 'strips' | 'worksheet';
+  kind: 'information-gap' | 'table' | 'cards' | 'board' | 'strips' | 'worksheet' | 'lesson';
   focus: string;
   level: string;
   interaction: string;

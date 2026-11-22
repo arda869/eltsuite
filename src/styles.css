@@ -5856,6 +5856,20 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .lf-class { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); text-align: left; font: 14px var(--sans); color: inherit; cursor: pointer; }
 .lf-class i { width: 10px; height: 10px; border-radius: 50%; background: var(--cc); }
 .lf-class:hover { box-shadow: 0 0 0 1.5px var(--cc); }
+.lf-copy-tasks { display: grid; gap: 4px; max-height: 32vh; margin: 14px 0 10px; padding: 10px; overflow-y: auto; border: 1px solid var(--hair); border-radius: 10px; }
+.lf-copy-tasks legend { padding: 0 5px; font: 700 12px var(--sans); color: var(--muted); }
+.lf-copy-tasks label { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+.lf-copy-tasks label:hover { background: var(--surface); }
+.lf-copy-tasks label span { flex: none; min-width: 55px; font: 600 11px var(--sans); color: var(--muted); }
+.lf-copy-tasks label strong { overflow: hidden; font: 500 13px var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+.lf-copy-all { display: flex; gap: 8px; justify-content: flex-end; }
+.lf-copy-error { margin: 4px 0; color: var(--danger, #a33b32); font: 600 12px var(--sans); }
+.lf-preview-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 10px; }
+.lf-learner-preview { min-height: 320px; padding: 24px clamp(18px, 4vw, 52px); border: 1px solid var(--hair); border-radius: 16px; background: var(--paper); box-shadow: 0 12px 36px rgba(30, 26, 22, .05); }
+.lf-learner-preview header { margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--hair); }
+.lf-learner-preview header span { color: var(--accent-text, var(--accent)); font: 700 10px var(--sans); letter-spacing: .13em; }
+.lf-learner-preview h2 { margin: 6px 0 0; font: 600 clamp(24px, 3vw, 36px) var(--serif); }
+.lf-learner-preview h3 { margin: 0 0 16px; font: 600 21px var(--serif); }
 .dp.k-lesson { --dp: #c8764a; } .dp-icon.k-lesson { color: #c8764a; }
 .al-doc-art.k-lesson { display: grid; place-items: center; } .al-doc-art.k-lesson svg { width: 40px; height: 40px; }
 @media (max-width: 860px) { .lf { grid-template-columns: 1fr; } .lf-side { position: static; max-height: none; } }

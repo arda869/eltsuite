@@ -29,8 +29,8 @@ export function publishedResourceToActivity(edition: HubResourceEdition): HubAct
   const answerKey = authoredParts.filter(part => edition.sections.find(section => section.id === part.id)?.kind === 'answer-key').flatMap(part => [part.title, ...part.lines]);
   const worksheet = authoredParts.filter(part => part.audience === 'learner').flatMap(part => [part.title, ...part.lines]);
   return {
-    id: `${edition.collectionId}-${edition.number.padStart(3, '0')}`, number: edition.number.padStart(3, '0'), collectionId: edition.collectionId, title: edition.title,
-    kind: 'worksheet', focus: edition.focus, level: edition.level, interaction: edition.interaction,
+    id: edition.resourceType === 'lesson' ? `lesson-${edition.id}` : `${edition.collectionId}-${edition.number.padStart(3, '0')}`, number: edition.resourceType === 'lesson' ? '' : edition.number.padStart(3, '0'), collectionId: edition.collectionId, title: edition.title,
+    kind: edition.resourceType === 'lesson' ? 'lesson' : 'worksheet', focus: edition.focus, level: edition.level, interaction: edition.interaction,
     minutes: edition.minutes, summary: edition.summary, prep: edition.prep, energy: edition.energy,
     mode: edition.mode, status: 'ready', publishedAt: edition.publishedAt, pages: [], tags: [edition.focus.toLowerCase(), edition.title.toLowerCase()],
     notes: [...teacherNotes, ...(answerKey.length ? ['Key and suggested answers', ...answerKey] : [])], worksheet,

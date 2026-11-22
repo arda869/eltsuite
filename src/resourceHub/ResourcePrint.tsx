@@ -4,7 +4,9 @@ import { Select } from '../components/Select';
 import { PdfPreview } from '../components/PdfPreview';
 import type { HubActivity, HubCollection, HubPage } from './catalog';
 import { makeEditorResourcePdf } from './ResourceRichPdf';
+import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { monoContours } from './monoPrint';
+import { recordResourceMetric } from './usageMetrics';
 
 type Paper = 'a4' | 'letter';
 type Colour = 'colour' | 'mono';
@@ -99,6 +101,7 @@ function KitPrint({ activity, onClose }: { activity: HubActivity; onClose: () =>
       if (printWindow) {
         const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
         printWindow.location.href = url;
+        recordResourceMetric(activity.id, 'download');
         window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
       } else setPreview(bytes);
     } catch (cause) {
@@ -128,7 +131,7 @@ function KitPrint({ activity, onClose }: { activity: HubActivity; onClose: () =>
         <footer className="rh-dialog-foot"><span className="rh-form-error" role="alert">{error || (!selected.size ? 'Choose at least one page.' : '')}</span><div className="rh-dialog-actions"><button type="button" className="rh-secondary" onClick={onClose} disabled={busy}>Cancel</button><button type="button" className="rh-secondary" onClick={() => void generate(false)} disabled={!selected.size || busy}>{busy ? 'Preparing…' : 'Preview PDF'}</button><button type="button" className="rh-primary" onClick={() => void generate(true)} disabled={!selected.size || busy}>Open PDF to print ↗</button></div></footer>
       </section>
     </div>, document.body,
-  )}{preview && <PdfPreview bytes={preview} name={pdfName} onClose={() => setPreview(null)} />}</>;
+  )}{preview && <PdfPreview bytes={preview} name={pdfName} onClose={() => setPreview(null)} onDownload={() => recordResourceMetric(activity.id, 'download')} />}</>;
 }
 
 function RichPrint({ activity, collection, onClose }: { activity: HubActivity; collection?: HubCollection; onClose: () => void }) {
@@ -156,8 +159,9 @@ function RichPrint({ activity, collection, onClose }: { activity: HubActivity; c
     if (printNow && !printWindow) { setError('Your browser blocked the print window. Allow pop-ups, or use Preview PDF and print from there.'); return; }
     setBusy(true); setError('');
     try {
-      const bytes = await makeEditorResourcePdf({ activity, collection, learnerIds: learners.map(section => section.id), teacherIds: teachers.map(section => section.id), copies, paper, colour });
-      if (printWindow) { const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); printWindow.location.href = url; window.setTimeout(() => URL.revokeObjectURL(url), 120_000); }
+      const makePdf = activity.kind === 'lesson' ? makeResourceLessonPdf : makeEditorResourcePdf;
+      const bytes = await makePdf({ activity, collection, learnerIds: learners.map(section => section.id), teacherIds: teachers.map(section => section.id), copies, paper, colour });
+      if (printWindow) { const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); printWindow.location.href = url; recordResourceMetric(activity.id, 'download'); window.setTimeout(() => URL.revokeObjectURL(url), 120_000); }
       else setPreview(bytes);
     } catch (cause) { console.error('Resource Hub editor print failed', cause); printWindow?.close(); setError(cause instanceof Error ? cause.message : 'We couldn’t build the PDF. Try again.'); }
     finally { setBusy(false); }
@@ -168,7 +172,7 @@ function RichPrint({ activity, collection, onClose }: { activity: HubActivity; c
       <div className="rh-print-body"><div className="rh-print-options"><h3>Sections to include</h3>{sections.filter(section => section.audience === 'learner').map(section => <label className="rh-print-check" key={section.id}><input type="checkbox" checked={selected.has(section.id)} onChange={() => setSelected(current => { const next = new Set(current); next.has(section.id) ? next.delete(section.id) : next.add(section.id); return next; })} /><span className="rh-text-part-icon" aria-hidden="true">≡</span><span><b>{section.title}{section.versionLabel ? ` · ${section.versionLabel}` : ''}</b><small>{section.versionGroup ? 'Named learner version · repeated per copy' : 'Learner section · repeated per copy'}</small></span></label>)}{teacherSections.length > 0 && <label className="rh-print-check"><input type="checkbox" checked={includeTeacherGuide} onChange={toggleTeacherGuide} /><span className="rh-text-part-icon teacher" aria-hidden="true">✳</span><span><b>Teacher notes and answer key</b><small>Standalone guidance, then answers after each task’s instruction · printed once</small></span></label>}<div className="rh-print-controls"><label className="rh-field">Learner copies<input type="number" min={1} max={30} step={1} value={copies} onChange={event => setCopies(Math.max(1, Math.min(30, Number(event.target.value) || 1)))} /></label><div className="rh-field"><span>Paper size</span><Select value={paper} options={[{ v: 'a4', label: 'A4' }, { v: 'letter', label: 'US Letter' }]} onChange={setPaper} label="Paper size" /></div><div className="rh-field"><span>Colour</span><Select value={colour} options={[{ v: 'colour', label: 'Colour' }, { v: 'mono', label: 'Black and white' }]} onChange={setColour} label="Colour" /></div></div></div><aside className="rh-pack-summary"><span className="rh-eyebrow">Your pack</span><h3>{learners.length} learner section{learners.length === 1 ? '' : 's'} × {copies}</h3><p>{includeTeacherGuide ? 'Teacher notes and answer key once at the end' : 'Learner pages only'}</p><div className="rh-text-pack-list" role="region" aria-label="Selected section summary" tabIndex={0}>{learners.map(section => <div key={section.id}><span>≡</span><b>{section.title}{section.versionLabel ? ` · ${section.versionLabel}` : ''}</b><small>{section.versionGroup ? 'Learner version' : 'Learner'}</small></div>)}{includeTeacherGuide && <div><span>✳</span><b>Teacher notes and answer key</b><small>Private teacher pages</small></div>}</div><p className="rh-muted">Named learner versions share a page with a cut line when they fit; longer versions get separate pages. The final page count appears in Preview PDF.</p></aside></div>
       <footer className="rh-dialog-foot"><span className="rh-form-error" role="alert">{error || (!selected.size ? 'Choose at least one section.' : '')}</span><div className="rh-dialog-actions"><button type="button" className="rh-secondary" onClick={onClose} disabled={busy}>Cancel</button><button type="button" className="rh-secondary" onClick={() => void generate(false)} disabled={!selected.size || busy}>{busy ? 'Preparing…' : 'Preview PDF'}</button><button type="button" className="rh-primary" onClick={() => void generate(true)} disabled={!selected.size || busy}>Open PDF to print ↗</button></div></footer>
     </section>
-  </div>, document.body)}{preview && <PdfPreview bytes={preview} name={activity.title} onClose={() => setPreview(null)} />}</>;
+  </div>, document.body)}{preview && <PdfPreview bytes={preview} name={activity.title} onClose={() => setPreview(null)} onDownload={() => recordResourceMetric(activity.id, 'download')} />}</>;
 }
 
 export function ResourcePrint({ activity, collection, onClose }: { activity: HubActivity; collection?: HubCollection; onClose: () => void }) {

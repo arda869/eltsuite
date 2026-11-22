@@ -39,6 +39,7 @@ export { teachingDefinition } from './definitions/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';
+export { recordResourceHubMetric } from './resource-hub/metrics.js';
 export { recordingLyrics, recordingSong, recordingSongResult, recordingSongLesson } from './songs/index.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
 export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
