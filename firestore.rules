@@ -87,6 +87,14 @@ service cloud.firestore {
         allow read, write: if false;
       }
     }
+    // Standalone live lesson sessions accept guests through a scoped callable
+    // seat token. No client may query runs, codes, answer keys or submissions.
+    match /resourceLessonRuns/{runId} {
+      allow read, write: if false;
+      match /{nested=**} { allow read, write: if false; }
+    }
+    match /resourceLessonCodes/{code} { allow read, write: if false; }
+    match /resourceLessonJoinLimits/{id} { allow read, write: if false; }
     match /resourceHubStaticOverrides/{id} {
       allow read: if isTeacher() || isOwner();
       allow create, update, delete: if isOwner() && id == 'otp-002';
