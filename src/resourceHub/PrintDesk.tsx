@@ -6,7 +6,7 @@ import { useClassLessons, type ClassLesson } from '../lib/classFiles';
 import { useTeacherClasses } from '../lib/coteach';
 import { HUB_ACTIVITIES, HUB_COLLECTIONS, type HubActivity, type HubCollection, type HubPage } from './catalog';
 import { makeResourcePdf } from './ResourcePrint';
-import { makeEditorResourcePdf } from './ResourceRichPdf';
+import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { defaultTaskIndices, lessonKey, loadDeskLesson, makeDeskLessonPdfs, printableTasks, type DeskLesson } from './printDeskClass';
 import { mergePrintPdfs, type PdfSlice } from './printDeskMerge';
 import './hub-secondary.css';
@@ -98,8 +98,8 @@ export function PrintDesk({ basketIds, onBack, preferredClassId, activities: cat
         const learnerIds = activity.editorSections!.filter(section => section.audience === 'learner' && selected.has(pageKey(activity.id, section.id))).map(section => section.id);
         const teacherIds = activity.editorSections!.filter(section => section.audience === 'teacher' && selected.has(pageKey(activity.id, section.id))).map(section => section.id);
         const collection = collections.find(item => item.id === activity.collectionId);
-        if (learnerIds.length) learner.push({ bytes: await makeEditorResourcePdf({ activity, collection, learnerIds, teacherIds: [], copies: 1, paper, colour }), repeat: copies });
-        if (teacherIds.length) teacher.push({ bytes: await makeEditorResourcePdf({ activity, collection, learnerIds: [], teacherIds, copies: 1, paper, colour }) });
+        if (learnerIds.length) learner.push({ bytes: await makeResourceLessonPdf({ activity, collection, learnerIds, teacherIds: [], copies: 1, paper, colour }), repeat: copies });
+        if (teacherIds.length) teacher.push({ bytes: await makeResourceLessonPdf({ activity, collection, learnerIds: [], teacherIds, copies: 1, paper, colour }) });
       }
       for (const lesson of selectedLessons) {
         const key = lessonKey(lesson.classId, lesson.itemId), data = loaded[key], picked = taskPicks[key];

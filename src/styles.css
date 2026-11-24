@@ -8768,3 +8768,12 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
 .st-paper-row { display: flex; align-items: center; gap: 8px; margin: -2px 0 6px 32px; }
 .st-paper-k { flex: none; font: 700 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
 .st-paper-input { font-size: 14px; font-weight: 500; }
+
+/* Standalone lesson files: the page fills the window down to the Messages bar, and the task card
+   fills the page, so there is no empty strip under it. Writing space grows with the card. */
+.dp.k-lesson { height: calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px)); }
+.dp.k-lesson .lf-main { display: flex; flex-direction: column; }
+.dp.k-lesson .lf-main > .lf-task, .dp.k-lesson .lf-main > .lf-learner-preview, .dp.k-lesson .lf-main > .ma-empty { flex: 1 0 auto; }
+.dp.k-lesson .lf-main > .lf-task .lf-body { flex: 1 0 auto; display: flex; flex-direction: column; }
+.dp.k-lesson .lf-main > .lf-task .lf-body > * { flex: 1 0 auto; }
+.dp.k-lesson .lf-main > .sh-split { flex: 1; min-height: 0; }

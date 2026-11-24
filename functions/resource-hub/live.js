@@ -53,8 +53,16 @@ async function guestSeat(db, data) {
   return { ref, run: run.data(), pid, seat: seat.data() };
 }
 
+// An activity type is public: a name, a colour and an icon key, nothing private.
+function cleanIdentity(value) {
+  if (!value || typeof value !== 'object') return null;
+  const name = String(value.name ?? '').trim().slice(0, 40);
+  if (!name) return null;
+  return { id: String(value.id ?? '').slice(0, 40), name, colour: /^#[0-9a-f]{6}$/i.test(String(value.colour)) ? String(value.colour) : '#1f6aa5', icon: /^[a-z0-9]{1,24}$/.test(String(value.icon ?? '')) ? String(value.icon) : '' };
+}
+
 function publicTask(task) {
-  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ?? null, content: task.content, versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null };
+  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ?? null, content: task.content, versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null, identity: task.identity ?? null };
 }
 
 function marksFor(content, key, responses) {
@@ -120,7 +128,7 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
     const tasks = sections.map(s => {
       const { content, key } = splitKey(s.content);
       const instrDoc = s.instrDoc ? splitKey(s.instrDoc).content : null;
-      return { id: s.id, title: String(s.title ?? 'Task').slice(0, 160), instructions: String(s.instructions ?? '').slice(0, 5000), instrDoc, content, key, versionGroup: s.versionGroup ?? null, versionLabel: s.versionLabel ?? null };
+      return { id: s.id, title: String(s.title ?? 'Task').slice(0, 160), instructions: String(s.instructions ?? '').slice(0, 5000), instrDoc, content, key, versionGroup: s.versionGroup ?? null, versionLabel: s.versionLabel ?? null, identity: cleanIdentity(s.identity) };
     });
     const ref = db.collection('resourceLessonRuns').doc();
     let code = '';

@@ -295,10 +295,10 @@
 /* Resource Hub pages, 2026-11 feedback: the page itself doesn't scroll on a desktop. The top bar and
    tabs stay put and only the content area scrolls. Phones keep normal page scrolling. */
 @media(min-width:761px) and (min-height:560px) {
-  .rh-app-shell { height:100dvh; min-height:0; overflow:hidden; }
+  .rh-app-shell { height:calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px)); min-height:0; overflow:hidden; }
   .rh-app-shell .rh-main { display:flex; flex:1; flex-direction:column; min-height:0; }
   .rh-app-shell .rh-content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
-  .rhe-shell { height:100dvh; min-height:0; overflow:hidden; }
+  .rhe-shell { height:calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px)); min-height:0; overflow:hidden; }
   .rhe-shell .rhe-main { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
   .rhe-shell .rhe-main--activity { overflow:hidden; }
 }
@@ -312,3 +312,31 @@
   .rh-app-shell .rh-tabs { padding-right:var(--page-gutter); }
   .rh-app-shell .rh-content { padding-right:var(--page-gutter); }
 }
+
+/* 2026-11 brief: one bar for the Hub's navigation and actions, inside the page gutter. Discover and
+   My shelves show only on those pages; the actions show everywhere and never touch the edge. */
+.rh-app-shell .rh-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:52px; padding:8px var(--page-gutter, 24px) 8px 0; border-bottom:1px solid var(--rh-border); flex:none; }
+.rh-app-shell .rh-bar .rh-tabs { padding:0; border:0; background:transparent; margin:0; min-width:0; }
+.rh-app-shell .rh-bar .rh-heading-actions { margin-left:auto; flex:none; }
+.rh-app-shell .rh-bar .rh-print-desk-link { min-height:36px; }
+@media(max-width:560px) { .rh-app-shell .rh-bar { flex-wrap:wrap; } .rh-app-shell .rh-bar .rh-class-context { display:none; } }
+
+/* No empty row ends: cards share the full width, however many there are. A lone card becomes a
+   wide feature with a bigger page preview. */
+.rh-app-shell .rh-activity-grid { grid-template-columns:repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+@media(min-width:761px) {
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-main { grid-template-columns:minmax(150px, 220px) minmax(0,1fr); gap:24px; padding:20px 24px; min-height:200px; }
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-art { min-height:170px; }
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-art img { max-height:210px; }
+}
+.rh-activity-pages { display:none; }
+@media(min-width:900px) {
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-main { grid-template-columns:200px minmax(260px, 1fr) auto; align-items:stretch; }
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-copy strong { font-size:26px; }
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-summary { font-size:14px; max-width:46ch; }
+  .rh-app-shell .rh-activity-grid > .rh-activity-card:only-child .rh-activity-pages { display:flex; gap:12px; align-items:flex-end; }
+  .rh-activity-pages > span { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .rh-activity-pages img { width:118px; aspect-ratio:210/297; object-fit:cover; object-position:top; border:1px solid var(--rh-border); border-radius:4px; background:#fff; box-shadow:0 6px 16px -12px rgba(48,46,40,.5); }
+  .rh-activity-pages small { font:700 10px var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--rh-muted); }
+}
+@media(min-width:900px) and (max-width:1250px) { .rh-activity-pages > span:nth-child(n+3) { display:none; } }

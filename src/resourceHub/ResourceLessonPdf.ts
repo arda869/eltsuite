@@ -12,9 +12,12 @@ const textOf = (node: JSONContent): string => node.text ?? (node.content ?? []).
 
 /** A Resource Hub lesson uses the same worksheet renderer and PDF capture as Print in Classes. */
 export async function makeResourceLessonPdf({ activity, collection, learnerIds, teacherIds, copies, paper, colour }: Options): Promise<Uint8Array> {
-  if (!learnerIds.length) throw new Error('Choose at least one learner task.');
+  if (!learnerIds.length && !teacherIds.length) throw new Error('Choose at least one section.');
   if (!Number.isInteger(copies) || copies < 1 || copies > 30) throw new Error('Choose 1–30 learner copies.');
-  const tasks = publishedTasks(activity, new Set(learnerIds)).filter(task => !task.hidden);
+  // Teacher pages on their own still need the learner tasks for the answer key.
+  const learnerOnly = learnerIds.length > 0;
+  const keyIds = learnerOnly ? learnerIds : (activity.editorSections ?? []).filter(section => section.audience === 'learner').map(section => section.id);
+  const tasks = publishedTasks(activity, new Set(keyIds)).filter(task => !task.hidden);
   const rows = flattenWithSections(tasks, new Set(tasks.map((_, index) => index)), 'adult');
   const accent = collection?.paperAccent || collection?.accent || '#a06b50';
   const [media, sounds] = await Promise.all([
@@ -27,8 +30,8 @@ export async function makeResourceLessonPdf({ activity, collection, learnerIds, 
     paper: size, columns: 1 as const, size: 'standard' as const, clear: false, exam: false, marks: false,
     accent, className: 'Resource Hub', level: activity.level, origin: location.origin, media, sounds,
   };
-  const learner = await worksheetPdf(worksheetHtml(activity.title, rows, base), size);
-  if (copies === 1 && !teacherIds.length) return learner;
+  const learner = learnerOnly && rows.length ? await worksheetPdf(worksheetHtml(activity.title, rows, base), size) : null;
+  if (learner && copies === 1 && !teacherIds.length) return learner;
 
   // Keep copies and the optional teacher key as separate sheets, in the same order as Classes.
   const authoredNotes = (activity.editorSections ?? []).filter(section => section.audience === 'teacher' && teacherIds.includes(section.id)).map(section => {
@@ -37,12 +40,14 @@ export async function makeResourceLessonPdf({ activity, collection, learnerIds, 
     return body ? [section.title, body].filter(Boolean).join('\n') : '';
   }).filter(Boolean).join('\n\n');
   let notesPlaced = false;
-  const teacherRows = rows.map(row => {
+  const teacherRows: typeof rows = rows.map(row => {
     if (row.kind !== 'task') return row;
     const notes = !notesPlaced ? [row.task.notes, authoredNotes].filter(Boolean).join('\n\n') : row.task.notes;
     notesPlaced = true;
     return { ...row, task: { ...row.task, notes } };
   });
+  // Teacher guidance with no learner task still prints.
+  if (!notesPlaced && authoredNotes) teacherRows.push({ kind: 'task', task: { title: 'Teacher notes', blocks: [], answers: [], marks: 0, notes: authoredNotes } });
   const teacherHtml = teacherIds.length ? worksheetHtml(activity.title, teacherRows, { ...base, key: true, notes: true }) : '';
   const keyMarkup = teacherHtml.match(/<template id="u-key">([\s\S]*?)<\/template>/)?.[1] ?? '';
   const teacherOnly = keyMarkup.trim() ? teacherHtml
@@ -50,6 +55,8 @@ export async function makeResourceLessonPdf({ activity, collection, learnerIds, 
     .replace(/<template id="cards">[\s\S]*?<\/template>/, '<template id="cards"></template>')
     .replace(/<template id="activity-pages">[\s\S]*?<\/template>/, '<template id="activity-pages"></template>') : '';
   const teacher = teacherOnly ? await worksheetPdf(teacherOnly, size) : null;
+  if (!learner && !teacher) throw new Error('These sections have nothing to print yet.');
+  if (!learner) return teacher!;
   if (copies === 1 && !teacher) return learner;
   const { jsPDF } = await import('jspdf');
   const out = new jsPDF({ unit: 'mm', format: size.toLowerCase(), compress: true });

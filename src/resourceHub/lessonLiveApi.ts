@@ -3,7 +3,7 @@ import type { JSONContent } from '@tiptap/react';
 import type { Responses } from '../lib/questions';
 import { app } from '../lib/firebase';
 
-export type LessonLiveTask = { id: string; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent };
+export type LessonLiveTask = { id: string; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; identity?: import('../lib/identity').ActivityIdentity | null };
 export type LessonTaskSummary = { got: number; max: number; answered: number; submittedAt?: number };
 export type LessonLiveRun = { runId: string; sourceKind?: 'file' | 'resource'; resourceId: string | null; fileId?: string | null; title: string; edition: number | null; status: 'lobby' | 'running' | 'ended'; currentTaskId: string | null; taskIds: string[]; taskTitles: Record<string, string>; startedAt: number; endedAt: number | null; participantCount: number; codeExpiresAt?: number; expiresAt?: number; joinOpen?: boolean; expired?: boolean };
 export type LessonLiveParticipant = { pid: string; name: string; joinedAt: number; summaries: Record<string, LessonTaskSummary> };

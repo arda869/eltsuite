@@ -34,7 +34,8 @@
 /* Editor follows the same viewport and spacing contract as the Hub. */
 :root:has(.rhe-shell) { overflow:hidden; }
 :root .shell.rhe-shell {
-  height:calc(100dvh - var(--proxy-h, 0px));
+  /* The Messages bar sits below the workspace, never over an action. */
+  height:calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px));
   min-height:0;
   overflow:hidden;
   padding:0 var(--page-gutter);
