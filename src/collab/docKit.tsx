@@ -47,6 +47,7 @@ import { PickCard, RandomPick } from '../editor/RandomPick';
 import { Reflect } from '../editor/Reflect';
 import { StoryboardNode } from '../storyboard/StoryboardNode';
 import { imageToData } from '../lib/flash';
+import { EXTRA_NODES } from './docExtras';
 
 // Everything a shared document can hold: the lesson editor's text, language and teaching
 // elements, without learner tasks (gaps, choices and the other questions). Every editor that
@@ -95,6 +96,7 @@ export const DOC_NODES = [
   Stress,
   IconNode,
   SymNode,
+  ...EXTRA_NODES,
   ...LANG_MARKS,
   TextBox,
   RevealBox,

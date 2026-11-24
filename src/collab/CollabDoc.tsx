@@ -55,6 +55,7 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { DocNav, DocTabStrip } from './DocNav';
 import { savedPageDefault } from './PageSetup';
+import { BUILDING_BLOCKS, bookmarksOf, PersonPicker, SpecialChars, currentSpacing, insertBlock, newBookmarkId, setSpacing, today } from './docExtras';
 import { addTab, allTabsJSON, fieldOf, tabFragments, useDocTabs } from './tabs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import { PdfPreview } from '../components/PdfPreview';
@@ -172,6 +173,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const [wcOpen, setWcOpen] = useState(false);
   const [personAt, setPersonAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [charsOpen, setCharsOpen] = useState(false);
+  const [personOpen, setPersonOpen] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const citeStyle = useCiteStyle();
   const profileTeacher = useAuth().profile?.role === 'teacher';
@@ -271,6 +274,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   }, [editor, synced, mediaSpace, eff, session.provider]);
   const formAnchor=useRef('');
   useEffect(()=>{if(!editor||!synced)return;let frame=0;const go=()=>{const hash=location.hash;if(!/^#studio-form-[\w-]+$/.test(hash)||formAnchor.current===hash)return;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const target=document.getElementById(hash.slice(1));if(target){target.scrollIntoView({block:'start'});formAnchor.current=hash;}});};const changed=()=>{formAnchor.current='';go();};editor.on('update',go);window.addEventListener('hashchange',changed);go();return()=>{cancelAnimationFrame(frame);editor.off('update',go);window.removeEventListener('hashchange',changed);};},[editor,synced,docKey]);
+  // A link to a bookmark (#bm-<id>) opens the document there, once the text is in.
+  useEffect(() => {
+    if (!synced || !editor || !/^#bm-[\w-]+$/.test(location.hash)) return;
+    const id = location.hash.slice(4);
+    window.setTimeout(() => document.getElementById('bm-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }, [synced, editor]);
   const edRef = useRef(editor);
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
@@ -333,6 +342,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const viewing = eff === 'view';
   const viewDoc = viewing ? splitKey(withoutSuggestions(editor.getJSON())).content : null;
   const heads = headingsOf(editor.state.doc);
+  const goBookmark = (id: string) => {
+    const b = bookmarksOf(editor.state.doc).find((x) => x.id === id);
+    if (!b) return;
+    editor.chain().setTextSelection(b.pos).run();
+    (editor.view.nodeDOM(b.pos) as HTMLElement | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
   const wholeDoc = () => allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
   const goHeading = (h: Heading, i: number) => {
     if (viewing) {
@@ -612,6 +627,14 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Picture…', disabled: !writing, run: () => pickPictures(editor) },
           { label: 'Table', disabled: !writing, run: () => { editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); } },
           { label: 'Link…', disabled: !writing || editor.state.selection.empty, run: () => setLinkOpen(true) },
+          'sep',
+          { label: 'Date', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'dateChip', attrs: { date: today() } }).run(); } },
+          { label: 'Person…', icon: 'classes', disabled: !writing, run: () => setPersonOpen(true) },
+          { label: 'Bookmark', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'bookmark', attrs: { id: newBookmarkId(), label: editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to).slice(0, 80) } }).run(); } },
+          { label: 'Special characters…', icon: 'design', disabled: !writing, run: () => setCharsOpen(true) },
+          { label: 'Horizontal line', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().setHorizontalRule().run(); } },
+          'sep',
+          ...BUILDING_BLOCKS.map((b) => ({ label: `Building block: ${b.label}`, icon: 'script', hint: '', disabled: !writing, run: () => insertBlock(editor, b.key) })),
         ] },
         { label: 'Format', items: [
           { label: 'Increase indent', icon: 'next', disabled: !writing, run: () => { changeIndent(editor, 1); } },
@@ -624,6 +647,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
           'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, icon: 'align' + a[0].toUpperCase() + a.slice(1), disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
           'sep', { label: 'Checklist', disabled: !writing, run: () => { editor.chain().focus().toggleTaskList().run(); } },
+          'sep', ...([['1', 'Single'], ['1.15', '1.15'], ['1.5', '1.5'], ['2', 'Double']] as const).map(([v, l]) => ({ label: `Line spacing: ${l}`, checked: currentSpacing(editor).lineHeight === v, disabled: !writing, run: () => setSpacing(editor, { lineHeight: currentSpacing(editor).lineHeight === v ? null : v }) })),
+          { label: currentSpacing(editor).spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceBefore: currentSpacing(editor).spaceBefore ? null : 12 }) },
+          { label: currentSpacing(editor).spaceAfter === 0 ? 'Add space after paragraph' : 'Remove space after paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceAfter: currentSpacing(editor).spaceAfter === 0 ? null : 0 }) },
+          'sep',
           { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
         ] },
         { label: 'Tools', items: [
@@ -631,6 +658,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Contributions', run: () => setSide('people') },
         ] },
       ]} />}
+      {charsOpen && <SpecialChars onPick={(c) => { editor.chain().focus().insertContent(c).run(); }} onClose={() => setCharsOpen(false)} />}
+      {personOpen && <PersonPicker people={Object.entries(who).map(([uid, w]) => ({ uid, name: w.name, color: w.color }))} onPick={(x) => { setPersonOpen(false); editor.chain().focus().insertContent([{ type: 'personChip', attrs: x }, { type: 'text', text: ' ' }]).run(); }} onClose={() => setPersonOpen(false)} />}
       {page && documentTools.panel}
       {page && history.panel}
       {writing && page && PageBar()}
@@ -745,7 +774,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       )}
       {saveStatus !== 'saved' && <div className={'cd-save-status ' + saveStatus} role="status">{saveStatus === 'error' ? <>Changes are still on this device. <button type="button" className="btn small-btn" onClick={() => session.provider.retrySave()}>Retry save</button></> : 'Saving changes…'}</div>}
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '') + (page ? ' has-nav' + (navCollapsed ? ' nav-collapsed' : '') : '')}>
-        {page && <DocNav doc={session.doc} tabs={tabs} current={tabId} onTab={openTab} heads={heads} onHeading={(i) => goHeading(heads[i], i)} canEdit={eff === 'edit' && !locked} collapsed={navCollapsed} onCollapse={setNavCollapsed} />}
+        {page && <DocNav doc={session.doc} tabs={tabs} current={tabId} onTab={openTab} heads={heads} onHeading={(i) => goHeading(heads[i], i)} bookmarks={bookmarksOf(editor.state.doc)} onBookmark={goBookmark} canEdit={eff === 'edit' && !locked} collapsed={navCollapsed} onCollapse={setNavCollapsed} />}
         <div className={'cd-page' + (paged ? ' pg-on' : '')}>
           {!page && <DocTabStrip tabs={tabs} current={tabId} onTab={openTab} />}
           {!page && heads.length > 0 && (

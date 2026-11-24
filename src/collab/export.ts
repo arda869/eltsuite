@@ -16,6 +16,8 @@ export type ExportOpts = { style: CiteStyle; font: string; size: number; spacing
 export const EXPORT_DEFAULT: ExportOpts = { style: 'apa', font: 'Arial', size: 12, spacing: 1.5, title: true, pageNumbers: true, wordCount: false };
 export const FONTS = ['Arial', 'Calibri', 'Times New Roman', 'Georgia', 'Verdana'];
 
+// A date chip as written text: Tue, 24 November 2026.
+const chipDate = (iso: string) => { const d = new Date(iso + 'T12:00:00'); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }); };
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const cssString = (s: string) => JSON.stringify(s).replace(/</g, '\\3c ');
 const layoutOptions = (o: ExportOpts): ExportOpts => o.layout ? { ...o, font: o.layout.font, size: o.layout.pt, spacing: o.layout.lineSpacing, pageNumbers: o.layout.pageNumbers } : o;
@@ -100,6 +102,9 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
   if (n.type === 'mention') return '@'+esc(String(n.attrs?.label || n.attrs?.name || 'colleague'));
   if (n.type === 'lessonLink') return esc(String(n.attrs?.title || n.attrs?.label || 'Linked activity'));
   if (n.type === 'hardBreak') return '<br>';
+  if (n.type === 'dateChip') return esc(chipDate(String(n.attrs?.date ?? '')));
+  if (n.type === 'personChip') return '@' + esc(String(n.attrs?.name ?? ''));
+  if (n.type === 'bookmark') return '';
   if (n.type === 'cite' && n.attrs?.src) return esc(inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative, numOf(n.attrs.src)));
   if (n.type === 'ipa') return `<span class="ipa">/${esc(String(n.attrs?.text ?? ''))}/</span>`;
   if (n.type === 'stress') {
@@ -116,7 +121,7 @@ const align = (n: JSONContent) => {
 };
 // What the plain exporter writes itself; anything else (text boxes, timelines, sound cards,
 // pronunciation marks) is printed as it looks on screen.
-const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym', 'docPageBreak', 'docSection']);
+const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym', 'docPageBreak', 'docSection', 'dateChip', 'personChip', 'bookmark']);
 const PLAIN_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'textColor', 'highlight', 'definition', 'suggestIns', 'suggestDel', 'comment', 'link']);
 export function plainOnly(n: JSONContent): boolean {
   if (!PLAIN_BLOCKS.has(n.type ?? '')) return false;
@@ -244,6 +249,9 @@ function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []
     else if (n.type === 'stress') (n.attrs?.syllables ?? []).forEach((s: string, i: number) => out.push(i === Number(n.attrs?.stressed ?? 0) ? { text: s, bold: true, underline: {} } : { text: s }));
     else if (n.type === 'sym') out.push({ text: ` ${n.attrs?.text ?? ''} `, bold: true });
     else if (n.type === 'hardBreak') out.push({ text: '\n' });
+    else if (n.type === 'dateChip') out.push({ text: chipDate(String(n.attrs?.date ?? '')) });
+    else if (n.type === 'personChip') out.push({ text: '@' + String(n.attrs?.name ?? ''), bold: true });
+    else if (n.type === 'bookmark') { /* not printed */ }
     else runsOf(n.content, o, out);
   }
   return out;

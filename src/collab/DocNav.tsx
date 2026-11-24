@@ -8,7 +8,9 @@ export type NavHeading = { text: string; level: number };
 
 // The left sidebar of a document page, as in Google Docs: the document's tabs, and under the open
 // tab its headings. Click a heading to go to it. Editors add, rename, move, copy and remove tabs.
-export function DocNav({ doc, tabs, current, onTab, heads, onHeading, canEdit, collapsed, onCollapse }: {
+export function DocNav({ doc, tabs, current, onTab, heads, onHeading, canEdit, collapsed, onCollapse, bookmarks = [], onBookmark }: {
+  bookmarks?: { id: string; label: string }[];
+  onBookmark?: (id: string) => void;
   doc: Y.Doc;
   tabs: DocTab[];
   current: string;
@@ -92,6 +94,13 @@ export function DocNav({ doc, tabs, current, onTab, heads, onHeading, canEdit, c
               ) : (
                 <p className="dn-empty">Headings you add to this tab appear here.</p>
               )
+            )}
+            {t.id === current && bookmarks.length > 0 && (
+              <ul className="dn-outline dn-bms" aria-label="Bookmarks">
+                {bookmarks.map((b) => (
+                  <li key={b.id}><button type="button" className="dn-h dn-bm" onClick={() => onBookmark?.(b.id)}><svg width="10" height="12" viewBox="0 0 20 24" fill="currentColor" aria-hidden="true"><path d="M3 2h14v20l-7-5-7 5z" /></svg> {b.label || 'Bookmark'}</button></li>
+                ))}
+              </ul>
             )}
           </li>
         ))}
