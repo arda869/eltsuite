@@ -54,6 +54,7 @@ import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { DocNav, DocTabStrip } from './DocNav';
+import { savedPageDefault } from './PageSetup';
 import { addTab, allTabsJSON, fieldOf, tabFragments, useDocTabs } from './tabs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import { PdfPreview } from '../components/PdfPreview';
@@ -192,6 +193,14 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setTabWanted(id);
     if (page) try { const u = new URL(location.href); if (id === 'default') u.searchParams.delete('tab'); else u.searchParams.set('tab', id); window.history.replaceState(window.history.state, '', u); } catch { /* address is a convenience */ }
   };
+  // A new document starts from your saved page setup (Page setup > Set as default).
+  useEffect(() => {
+    if (!synced || !page || eff !== 'edit' || session.doc.getMap('layout').size > 0 || session.doc.getXmlFragment('default').length > 0) return;
+    const d = savedPageDefault();
+    if (d) setLayout(d);
+  }, [synced]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [showRuler, setShowRulerState] = useState(() => { try { return localStorage.getItem('cd.ruler') !== '0'; } catch { return true; } });
+  const setShowRuler = (v: boolean) => { setShowRulerState(v); try { localStorage.setItem('cd.ruler', v ? '1' : '0'); } catch { /* fine */ } };
   const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1'; } catch { return false; } });
   const setNavCollapsed = (v: boolean) => { setNavCollapsedState(v); try { localStorage.setItem('cd.navCollapsed', v ? '1' : ''); } catch { /* fine */ } };
   const paged = !!page && layout.paged;
@@ -589,6 +598,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Page colour: white', checked: paperAppearance === 'white', run: () => choosePaper('white') },
           { label: 'Page colour: black', checked: paperAppearance === 'black', run: () => choosePaper('black') },
           'sep', { label: 'Show tabs and outline', checked: !navCollapsed, run: () => setNavCollapsed(!navCollapsed) },
+          { label: 'Show ruler', checked: showRuler, disabled: !layout.paged, run: () => setShowRuler(!showRuler) },
           { label: 'Comments and suggestions', run: () => setSide(showSide ? 'none' : 'notes') },
           { label: 'Show paragraph marks', checked: !!marksKey.getState(editor.state), run: () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))) },
         ] },
@@ -775,7 +785,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged}>
+                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined}>
                   {heading}
                   {contents}
                 </Paper>
