@@ -11,7 +11,7 @@ import { useDismiss } from '../lib/useDismiss';
 
 import { LAYOUT_DEFAULT, SIZES, type Layout } from './documentLayout';
 export { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout } from './documentLayout';
-import { marginsOf } from './documentLayout';
+import { marginBoxesCss, marginsOf, runningOf } from './documentLayout';
 import { PageSetupDialog } from './PageSetup';
 import { Ruler } from './Ruler';
 
@@ -118,7 +118,8 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void }) {
+  const [running, setRunning] = useState<{ page: number; part: 'header' | 'footer' } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const desk = useRef<HTMLDivElement>(null);
@@ -216,11 +217,10 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   useEffect(() => {
     if (!paged) return;
     const st = document.createElement('style');
-    const footer = [layout.footer ? JSON.stringify(layout.footer) : '', layout.pageNumbers ? 'counter(page)' : ''].filter(Boolean).join(' " · " ');
-    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${mg.top / 96}in ${mg.right / 96}in ${mg.bottom / 96}in ${mg.left / 96}in; @top-center { content: ${JSON.stringify(layout.header)}; } @bottom-center { content: ${footer || 'none'}; } }`;
+    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${mg.top / 96}in ${mg.right / 96}in ${mg.bottom / 96}in ${mg.left / 96}in; } ${marginBoxesCss(layout)}`;
     document.head.appendChild(st);
     return () => st.remove();
-  }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers]);
+  }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers, layout.firstDifferent, layout.headerFirst, layout.footerFirst, layout.numberStyle, layout.numberAlign]);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
       <div className={paged ? 'pg-column' : 'pg-flow-column'}>
@@ -235,10 +235,37 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
             <span>Page {i + 2}</span>
           </span>
         ))}
-        {paged && Array.from({ length: pages }, (_, i) => <div key={'running-' + i} className="pg-running" aria-hidden="true">
-          {layout.header && <span className="pg-running-header" style={{ top: i * stride + 22, left: mg.left, right: mg.right }}>{layout.header}</span>}
-          {(layout.footer || layout.pageNumbers) && <span className="pg-running-footer" style={{ top: i * stride + s.h - 36, left: mg.left, right: mg.right }}>{layout.footer}{layout.footer && layout.pageNumbers ? ' · ' : ''}{layout.pageNumbers ? i + layout.pageNumberStart : ''}</span>}
-        </div>)}
+        {paged && Array.from({ length: pages }, (_, i) => {
+          const r = runningOf(layout, i, pages);
+          const first = i === 0 && !!layout.firstDifferent;
+          const edit = (part: 'header' | 'footer') => onRunning && setRunning({ page: i, part });
+          const numberAt = (side: 'left' | 'center' | 'right') => (r.number && r.align === side ? r.number : '');
+          return (
+            <div key={'running-' + i} className="pg-running">
+              {/* Double-click the top or bottom margin to write the header or footer there. */}
+              <span className={'pg-run-zone top' + (onRunning ? ' editable' : '')} style={{ top: i * stride, height: mg.top, left: 0, right: 0 }} onDoubleClick={() => edit('header')} title={onRunning ? 'Double-click to edit the header' : undefined} />
+              <span className={'pg-run-zone bottom' + (onRunning ? ' editable' : '')} style={{ top: i * stride + s.h - mg.bottom, height: mg.bottom, left: 0, right: 0 }} onDoubleClick={() => edit('footer')} title={onRunning ? 'Double-click to edit the footer' : undefined} />
+              {r.header && <span className="pg-running-header" aria-hidden="true" style={{ top: i * stride + Math.max(12, mg.top / 2 - 9), left: mg.left, right: mg.right }}>{r.header}</span>}
+              {(r.footer || r.number) && (
+                <span className="pg-running-footer pg-run-row" aria-hidden="true" style={{ top: i * stride + s.h - Math.max(26, mg.bottom / 2 + 9), left: mg.left, right: mg.right }}>
+                  <span className="l">{numberAt('left')}</span>
+                  <span className="c">{[r.footer, numberAt('center')].filter(Boolean).join(' · ')}</span>
+                  <span className="r">{numberAt('right')}</span>
+                </span>
+              )}
+              {running?.page === i && onRunning && (
+                <RunningEditor
+                  layout={layout}
+                  part={running.part}
+                  first={first}
+                  style={{ top: running.part === 'header' ? i * stride + 8 : i * stride + s.h - mg.bottom + 4, left: Math.max(8, mg.left - 8), right: Math.max(8, mg.right - 8) }}
+                  onChange={onRunning}
+                  onClose={() => setRunning(null)}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
@@ -249,6 +276,42 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
         </NSelect>
         <input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} />
       </div>}
+    </div>
+  );
+}
+
+// Writing a header or footer on the page, with its options.
+function RunningEditor({ layout, part, first, style, onChange, onClose }: { layout: Layout; part: 'header' | 'footer'; first: boolean; style: React.CSSProperties; onChange: (p: Partial<Layout>) => void; onClose: () => void }) {
+  const key = (first ? (part === 'header' ? 'headerFirst' : 'footerFirst') : part) as 'header' | 'footer' | 'headerFirst' | 'footerFirst';
+  const [text, setText] = useState(String(layout[key] ?? ''));
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as globalThis.Node) && save();
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  });
+  const save = () => { if (text !== String(layout[key] ?? '')) onChange({ [key]: text.slice(0, 160) }); onClose(); };
+  const label = `${first ? 'First page ' : ''}${part}`;
+  return (
+    <div ref={box} className="pg-run-edit" style={style} role="group" aria-label={`Edit the ${label}`} onMouseDown={(e) => e.stopPropagation()}>
+      <input autoFocus className="pg-run-input" value={text} maxLength={160} placeholder={part === 'header' ? 'Header, for example: Unit 4 · B1' : 'Footer'} aria-label={label} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose(); }} />
+      <span className="pg-run-opts">
+        <label className="pg-run-check"><input type="checkbox" checked={!!layout.firstDifferent} onChange={(e) => onChange({ firstDifferent: e.target.checked })} />Different first page</label>
+        <NSelect className="pg-run-sel" aria-label="Page numbers" value={layout.pageNumbers ? layout.numberStyle ?? 'n' : 'off'} onChange={(e) => onChange(e.target.value === 'off' ? { pageNumbers: false } : { pageNumbers: true, numberStyle: e.target.value as 'n' | 'page' | 'of' })}>
+          <option value="off">No page numbers</option>
+          <option value="n">3</option>
+          <option value="page">Page 3</option>
+          <option value="of">3 of 8</option>
+        </NSelect>
+        {layout.pageNumbers && (
+          <NSelect className="pg-run-sel" aria-label="Page number position" value={layout.numberAlign ?? 'center'} onChange={(e) => onChange({ numberAlign: e.target.value as 'left' | 'center' | 'right' })}>
+            <option value="left">Left</option>
+            <option value="center">Centre</option>
+            <option value="right">Right</option>
+          </NSelect>
+        )}
+        <button type="button" className="btn small-btn primary" onClick={save}>Done</button>
+      </span>
     </div>
   );
 }

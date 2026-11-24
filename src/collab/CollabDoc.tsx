@@ -831,7 +831,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined}>
+                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
                   {heading}
                   {contents}
                 </Paper>

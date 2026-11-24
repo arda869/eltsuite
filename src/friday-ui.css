@@ -339,3 +339,18 @@
 .dx-person-row .dx-av { width: 26px; height: 26px; font-size: 12px; }
 .dn-bm { display: flex; align-items: center; gap: 6px; }
 .dn-bm svg { color: var(--accent, #c8764a); flex: none; }
+
+/* Headers and footers written on the page. Every control in the row is 32px high. */
+.pg-running { pointer-events: none; }
+.pg-run-zone { position: absolute; z-index: 2; pointer-events: none; }
+.pg-run-zone.editable { pointer-events: auto; cursor: text; }
+.pg-run-zone.editable:hover { background: color-mix(in srgb, var(--accent, #c8764a) 6%, transparent); }
+.pg-run-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.pg-run-row .l { text-align: left; } .pg-run-row .c { text-align: center; } .pg-run-row .r { text-align: right; }
+.pg-run-edit { position: absolute; z-index: 40; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--accent, #c8764a); border-radius: 10px; background: var(--paper, #fff); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .35); pointer-events: auto; font: 13px var(--sans); color: var(--ink); }
+.pg-run-input { height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); box-sizing: border-box; }
+.pg-run-opts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pg-run-check { display: inline-flex; align-items: center; gap: 6px; height: 32px; }
+.pg-run-opts .btn, .pg-run-opts .pg-run-sel, .pg-run-opts .nsel > .sel { height: 32px; min-height: 32px; box-sizing: border-box; }
+.pg-run-opts .btn { margin-left: auto; }
+@media print { .pg-run-zone, .pg-run-edit { display: none !important; } }

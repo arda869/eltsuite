@@ -3,7 +3,8 @@ export type Margins = 'narrow' | 'normal' | 'wide';
 export type PageMargins = { top: number; bottom: number; left: number; right: number }; // px at 96 per inch
 export type TextStyle = { family?: string | null; pt?: number | null; color?: string | null; bold?: boolean };
 export type DocStyles = Partial<Record<'p' | 'h1' | 'h2' | 'h3', TextStyle>>;
-export type Layout = { styles?: DocStyles; paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
+export type NumberStyle = 'n' | 'page' | 'of';
+export type Layout = { firstDifferent?: boolean; headerFirst?: string; footerFirst?: string; numberStyle?: NumberStyle; numberAlign?: 'left' | 'center' | 'right'; styles?: DocStyles; paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
 export const LAYOUT_DEFAULT: Layout = { paged: false, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5, columns: 1, header: '', footer: '', pageNumbers: false, pageNumberStart: 1 };
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
   a4: { label: 'A4 (21 × 29.7 cm)', w: 794, h: 1123, css: 'A4' },
@@ -44,4 +45,29 @@ export function stylesCss(styles: DocStyles | undefined, scope: string, colour: 
     // On screen the document's styles win over the app's own heading sizes.
     return rules ? `${scope} ${STYLE_TAG[k]}{${strong ? rules.split(';').map((r) => r + ' !important').join(';') : rules}}` : '';
   }).join('');
+}
+
+// What a page's header and footer say: the first page can have its own; the page number in its style.
+export function runningOf(layout: Layout, i: number, total: number) {
+  const first = i === 0 && !!layout.firstDifferent;
+  const n = i + (layout.pageNumberStart || 1);
+  const last = total - 1 + (layout.pageNumberStart || 1);
+  const number = !layout.pageNumbers ? '' : layout.numberStyle === 'page' ? `Page ${n}` : layout.numberStyle === 'of' ? `${n} of ${last}` : String(n);
+  return { header: (first ? layout.headerFirst : layout.header) ?? '', footer: (first ? layout.footerFirst : layout.footer) ?? '', number, align: layout.numberAlign ?? 'center' };
+}
+// The page number as print CSS content, for @page margin boxes.
+export const numberCss = (layout: Layout) => (layout.numberStyle === 'page' ? '"Page " counter(page)' : layout.numberStyle === 'of' ? 'counter(page) " of " counter(pages)' : 'counter(page)');
+
+// Print CSS for headers, footers and page numbers in the page margins (Chrome and Edge print these).
+const cssStr = (t: string) => JSON.stringify(t);
+export function marginBoxesCss(layout: Layout): string {
+  const box = (header: string, footer: string) => {
+    const side = (where: 'left' | 'center' | 'right') => {
+      const parts = [where === 'center' && footer ? cssStr(footer) : '', layout.pageNumbers && (layout.numberAlign ?? 'center') === where ? numberCss(layout) : ''].filter(Boolean);
+      return parts.length ? `@bottom-${where} { content: ${parts.join(' " · " ')}; }` : `@bottom-${where} { content: none; }`;
+    };
+    return `@top-center { content: ${header ? cssStr(header) : 'none'}; } ${side('left')} ${side('center')} ${side('right')}`;
+  };
+  const first = layout.firstDifferent ? `@page:first { ${box(layout.headerFirst ?? '', layout.footerFirst ?? '')} }` : '';
+  return `@page { ${box(layout.header ?? '', layout.footer ?? '')} } ${first}`;
 }

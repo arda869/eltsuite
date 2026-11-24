@@ -1,4 +1,4 @@
-import { stylesCss } from './documentLayout';
+import { marginBoxesCss, stylesCss } from './documentLayout';
 import type { WsItem, WsTask } from '../lib/worksheet';
 import {studioDefinition} from '../coach/studioForms';
 import { credit } from '../lib/brand';
@@ -210,7 +210,8 @@ export async function printDoc(json: JSONContent, title: string, o: ExportOpts =
 <style>
 html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layout.pageColour) ? o.layout.pageColour : '#fff'} !important; min-height: 0 !important; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
-@page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; @top-center { content: ${cssString(o.layout?.header ?? '')}; } @bottom-center { content: ${footer || 'none'}; } }
+@page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; ${o.layout ? '' : `@top-center { content: none; } @bottom-center { content: ${footer || 'none'}; }`} }
+${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }) : ''}
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
 ${stylesCss(o.layout?.styles, 'body', (c) => textColor(c) ?? c)}
 body { font: ${o.size}pt/${o.spacing} ${cssString(o.font)}, Arial, sans-serif; color: #111; margin: 0; column-count: ${o.layout?.columns ?? 1}; column-gap: 18pt; }
@@ -375,13 +376,30 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   if (o.wordCount) out.push(new Paragraph({ spacing: { before: 360 }, children: [new TextRun({ text: `Word count: ${wordCount(json)} (without the reference list)`, font: o.font, size: sz - 2, color: '555555' })] }));
   const mark = (t: string) => new TextRun({ text: t, font: o.font, size: sz - 4, color: '8A847D' });
   finishSection();
-  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.layout?.footer ? [mark(o.layout.footer + '   ')] : []), ...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(credit().by)] }), new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: credit().note, font: o.font, size: sz - 6, color: '8A847D', italics: true })] })] }) };
+  // Footers: the text in the middle, the page number in its style and place; the first page can have its own.
+  const pageNo = () => {
+    const style = o.layout?.numberStyle ?? 'n';
+    const r = (x: unknown) => new TextRun({ children: [x as never], font: o.font, size: sz - 2 });
+    return style === 'page' ? [mark('Page '), r(PageNumber.CURRENT)] : style === 'of' ? [r(PageNumber.CURRENT), mark(' of '), r(PageNumber.TOTAL_PAGES)] : [r(PageNumber.CURRENT)];
+  };
+  const footerFor = (text: string) => {
+    const align = o.layout?.numberAlign ?? 'center';
+    const num = o.pageNumbers;
+    return new Footer({ children: [
+      ...(num && align !== 'center' ? [new Paragraph({ alignment: align === 'left' ? AlignmentType.LEFT : AlignmentType.RIGHT, children: pageNo() })] : []),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [...(text ? [mark(text + '   ')] : []), ...(num && align === 'center' ? [...pageNo(), mark('   ·   ')] : []), mark(credit().by)] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: credit().note, font: o.font, size: sz - 6, color: '8A847D', italics: true })] }),
+    ] });
+  };
+  const firstDiff = !!o.layout?.firstDifferent;
+  const footers = { default: footerFor(o.layout?.footer ?? ''), ...(firstDiff ? { first: footerFor(o.layout?.footerFirst ?? '') } : {}) };
   const { Header } = D;
-  const headers = brand || o.layout?.header ? { default: new Header({ children: [...(brand ? [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] : []), ...(o.layout?.header ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [mark(o.layout.header)] })] : [])] }) } : undefined;
+  const headerFor = (text: string) => new Header({ children: [...(brand ? [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] : []), ...(text ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [mark(text)] })] : [])] });
+  const headers = brand || o.layout?.header || (firstDiff && o.layout?.headerFirst) ? { default: headerFor(o.layout?.header ?? ''), ...(firstDiff ? { first: headerFor(o.layout?.headerFirst ?? '') } : {}) } : undefined;
   const metrics = o.layout ? pageMetrics(o.layout) : null;
   const doc = new Document({
     styles: { default: { document: { run: { font: o.font, size: sz } } } },
-    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? Math.round(metrics.m.top * 15) : 1440, bottom: metrics ? Math.round(metrics.m.bottom * 15) : 1440, left: metrics ? Math.round(metrics.m.left * 15) : 1440, right: metrics ? Math.round(metrics.m.right * 15) : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) } }, headers, footers, children: part.children })),
+    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? Math.round(metrics.m.top * 15) : 1440, bottom: metrics ? Math.round(metrics.m.bottom * 15) : 1440, left: metrics ? Math.round(metrics.m.left * 15) : 1440, right: metrics ? Math.round(metrics.m.right * 15) : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) }, ...(i === 0 && firstDiff ? { titlePage: true } : {}) }, headers, footers, children: part.children })),
   });
   return Packer.toBlob(doc);
 }

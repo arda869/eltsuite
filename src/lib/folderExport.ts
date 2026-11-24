@@ -1,4 +1,5 @@
 import { allTabsJSON } from '../collab/tabs';
+import { runningOf } from '../collab/documentLayout';
 import * as Y from 'yjs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import type { JSONContent } from '@tiptap/react';
@@ -72,6 +73,7 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
     }
     cuts.push(total);
     const pdf = new jsPDF({ unit: 'pt', format: metrics ? [pageW, pageH] : 'a4', orientation: layout?.orientation === 'landscape' ? 'landscape' : 'portrait' });
+    const pageTotal = cuts.length - 1;
     for (let i = 0; i < cuts.length - 1; i++) {
       const h = cuts[i + 1] - cuts[i];
       if (h < 2) continue;
@@ -90,9 +92,14 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
       pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', ml, mt, pageW - ml - mr, h * k);
       if (layout) {
         pdf.setFontSize(9); pdf.setTextColor(80);
-        if (layout.header) pdf.text(layout.header, pageW / 2, Math.max(14, mt / 2), { align: 'center' });
-        const footer = [layout.footer, layout.pageNumbers ? String(i + layout.pageNumberStart) : ''].filter(Boolean).join(' · ');
-        if (footer) pdf.text(footer, pageW / 2, pageH - Math.max(14, mb / 2), { align: 'center' });
+        // The first page can have its own header and footer; the page number in its style and place.
+        const r = runningOf(layout, i, pageTotal);
+        if (r.header) pdf.text(r.header, pageW / 2, Math.max(14, mt / 2), { align: 'center' });
+        const fy = pageH - Math.max(14, mb / 2);
+        const centre = [r.footer, r.align === 'center' ? r.number : ''].filter(Boolean).join(' · ');
+        if (centre) pdf.text(centre, pageW / 2, fy, { align: 'center' });
+        if (r.number && r.align === 'left') pdf.text(r.number, ml, fy, { align: 'left' });
+        if (r.number && r.align === 'right') pdf.text(r.number, pageW - mr, fy, { align: 'right' });
       }
     }
     return new Uint8Array(pdf.output('arraybuffer'));
