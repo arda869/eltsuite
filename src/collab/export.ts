@@ -1,3 +1,4 @@
+import { stylesCss } from './documentLayout';
 import type { WsItem, WsTask } from '../lib/worksheet';
 import {studioDefinition} from '../coach/studioForms';
 import { credit } from '../lib/brand';
@@ -211,6 +212,7 @@ html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layo
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
 @page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; @top-center { content: ${cssString(o.layout?.header ?? '')}; } @bottom-center { content: ${footer || 'none'}; } }
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
+${stylesCss(o.layout?.styles, 'body', (c) => textColor(c) ?? c)}
 body { font: ${o.size}pt/${o.spacing} ${cssString(o.font)}, Arial, sans-serif; color: #111; margin: 0; column-count: ${o.layout?.columns ?? 1}; column-gap: 18pt; }
 .doc-page-break { break-before: page; height:0 !important; min-height:0; } .doc-page-break span { display:none; }
 .doc-worksheet .blank { display:inline-block; border-bottom:1px solid #333; min-width:3em; height:1em; vertical-align:baseline; } .doc-worksheet .qn { margin-right:.5em; } .doc-worksheet .stack { display:flex; gap:1em; flex-wrap:wrap; } .doc-worksheet .line { display:block; height:1.5em; border-bottom:1px solid #777; }
@@ -392,5 +394,5 @@ export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EX
   o = layoutOptions(o);
   numberAll(json, o.style);
   const style = `font-family:${cssString(o.font)};font-size:${o.size}pt;line-height:${o.spacing};column-count:${o.layout?.columns ?? 1};column-gap:18pt`;
-  return `<style>.doc-worksheet .blank{display:inline-block;border-bottom:1px solid #333;min-width:3em;height:1em}.doc-worksheet .qn{margin-right:.5em}.doc-worksheet .stack{display:flex;gap:1em;flex-wrap:wrap}.doc-worksheet .line{display:block;height:1.5em;border-bottom:1px solid #777}.doc-page-break{height:0!important;min-height:0}.doc-page-break span{display:none}</style><div class="doc-export" style="${style.replace(/"/g, '&quot;')}">${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}</div>`;
+  return `<style>${stylesCss(o.layout?.styles, '.doc-export', (c) => textColor(c) ?? c)}.doc-worksheet .blank{display:inline-block;border-bottom:1px solid #333;min-width:3em;height:1em}.doc-worksheet .qn{margin-right:.5em}.doc-worksheet .stack{display:flex;gap:1em;flex-wrap:wrap}.doc-worksheet .line{display:block;height:1.5em;border-bottom:1px solid #777}.doc-page-break{height:0!important;min-height:0}.doc-page-break span{display:none}</style><div class="doc-export" style="${style.replace(/"/g, '&quot;')}">${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}</div>`;
 };

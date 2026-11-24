@@ -1,7 +1,9 @@
 export type PageSize = 'a4' | 'letter' | 'a5';
 export type Margins = 'narrow' | 'normal' | 'wide';
 export type PageMargins = { top: number; bottom: number; left: number; right: number }; // px at 96 per inch
-export type Layout = { paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
+export type TextStyle = { family?: string | null; pt?: number | null; color?: string | null; bold?: boolean };
+export type DocStyles = Partial<Record<'p' | 'h1' | 'h2' | 'h3', TextStyle>>;
+export type Layout = { styles?: DocStyles; paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
 export const LAYOUT_DEFAULT: Layout = { paged: false, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5, columns: 1, header: '', footer: '', pageNumbers: false, pageNumberStart: 1 };
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
   a4: { label: 'A4 (21 × 29.7 cm)', w: 794, h: 1123, css: 'A4' },
@@ -31,3 +33,15 @@ export const PAGE_COLOURS: { v: string; label: string }[] = [
   { v: '', label: 'White' }, { v: '#fbf7ee', label: 'Cream' }, { v: '#f3f2ef', label: 'Light grey' }, { v: '#eef4fb', label: 'Light blue' },
   { v: '#eef6ef', label: 'Light green' }, { v: '#fdf8e3', label: 'Light yellow' }, { v: '#fbeff1', label: 'Light pink' }, { v: '#f4effa', label: 'Light lilac' },
 ];
+
+// The document's own paragraph styles (Format > Update Heading 1 to match) as CSS for the text.
+const STYLE_TAG: Record<string, string> = { p: 'p', h1: 'h1', h2: 'h2', h3: 'h3' };
+export function stylesCss(styles: DocStyles | undefined, scope: string, colour: (c: string) => string = (c) => c, strong = false): string {
+  if (!styles) return '';
+  return Object.entries(styles).map(([k, st]) => {
+    if (!st || !STYLE_TAG[k]) return '';
+    const rules = [st.family ? `font-family:'${st.family.replace(/['"\\]/g, '')}',Georgia,serif` : '', st.pt ? `font-size:${Math.max(6, Math.min(96, st.pt))}pt` : '', st.color ? `color:${colour(st.color)}` : '', st.bold === true ? 'font-weight:700' : st.bold === false ? 'font-weight:400' : ''].filter(Boolean).join(';');
+    // On screen the document's styles win over the app's own heading sizes.
+    return rules ? `${scope} ${STYLE_TAG[k]}{${strong ? rules.split(';').map((r) => r + ' !important').join(';') : rules}}` : '';
+  }).join('');
+}

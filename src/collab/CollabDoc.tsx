@@ -55,6 +55,8 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { DocNav, DocTabStrip } from './DocNav';
 import { savedPageDefault } from './PageSetup';
+import { stylesCss } from './documentLayout';
+import { textColor } from '../editor/TextColor';
 import { BUILDING_BLOCKS, bookmarksOf, PersonPicker, SpecialChars, currentSpacing, insertBlock, newBookmarkId, setSpacing, today } from './docExtras';
 import { addTab, allTabsJSON, fieldOf, tabFragments, useDocTabs } from './tabs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
@@ -342,6 +344,17 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const viewing = eff === 'view';
   const viewDoc = viewing ? splitKey(withoutSuggestions(editor.getJSON())).content : null;
   const heads = headingsOf(editor.state.doc);
+  // Paragraph styles: the paragraph you are in becomes the look of every paragraph of its kind.
+  const styleKey = (): 'p' | 'h1' | 'h2' | 'h3' => { const n = editor.state.selection.$from.parent; return n.type.name === 'heading' ? (`h${Math.min(3, Number(n.attrs.level) || 1)}` as 'h1') : 'p'; };
+  const styleLabel = () => ({ p: 'Normal text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3' })[styleKey()];
+  const updateStyle = () => {
+    const font = editor.getAttributes('fontStyle') as { family?: string | null; pt?: number | null };
+    const colour = (editor.getAttributes('textColor') as { color?: string }).color ?? null;
+    // Headings are bold by their style, not a bold mark: weight changes only when you made it bold.
+    const bold = editor.isActive('bold') ? true : undefined;
+    setLayout({ styles: { ...(layout.styles ?? {}), [styleKey()]: JSON.parse(JSON.stringify({ family: font.family ?? null, pt: font.pt ?? null, color: colour, bold })) } });
+    void tell(`${styleLabel()} now looks like this paragraph across the document.`);
+  };
   const goBookmark = (id: string) => {
     const b = bookmarksOf(editor.state.doc).find((x) => x.id === id);
     if (!b) return;
@@ -651,6 +664,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: currentSpacing(editor).spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceBefore: currentSpacing(editor).spaceBefore ? null : 12 }) },
           { label: currentSpacing(editor).spaceAfter === 0 ? 'Add space after paragraph' : 'Remove space after paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceAfter: currentSpacing(editor).spaceAfter === 0 ? null : 0 }) },
           'sep',
+          { label: `Update ${styleLabel()} to match`, disabled: !writing, run: () => updateStyle() },
+          { label: 'Reset paragraph styles', disabled: !writing || !layout.styles || !Object.keys(layout.styles).length, run: () => setLayout({ styles: {} }) },
+          'sep',
           { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
         ] },
         { label: 'Tools', items: [
@@ -658,6 +674,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Contributions', run: () => setSide('people') },
         ] },
       ]} />}
+      {layout.styles && <style>{stylesCss(layout.styles, `[data-doc-styles="${docKey.replace(/[^\w-]/g, '')}"] .ProseMirror`, (c) => textColor(c) ?? c, true)}</style>}
       {charsOpen && <SpecialChars onPick={(c) => { editor.chain().focus().insertContent(c).run(); }} onClose={() => setCharsOpen(false)} />}
       {personOpen && <PersonPicker people={Object.entries(who).map(([uid, w]) => ({ uid, name: w.name, color: w.color }))} onPick={(x) => { setPersonOpen(false); editor.chain().focus().insertContent([{ type: 'personChip', attrs: x }, { type: 'text', text: ' ' }]).run(); }} onClose={() => setPersonOpen(false)} />}
       {page && documentTools.panel}
@@ -799,7 +816,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           <EditorClassContext.Provider value={{ classId: mediaSpace || classId, classmates: [] }}>
             {(() => {
               const hostEl = (
-                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing}>
+                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing} data-doc-styles={docKey.replace(/[^\w-]/g, '')}>
                   <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
                   {writing && <LineAdder editor={editor} host={host} />}
                   {writing && <BlockHandles editor={editor} host={host} space={classId} />}
