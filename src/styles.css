@@ -8836,3 +8836,8 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .textLayer span.pdf-hit-on { background: rgba(255, 140, 0, .55); border-radius: 2px; box-shadow: 0 0 0 2px rgba(255, 140, 0, .55); }
 .textLayer.off span.pdf-hit, .textLayer.off span.pdf-hit-on { opacity: 1; }
 .pdff-find { position: sticky; top: 122px; z-index: 11; box-shadow: 0 8px 20px -16px rgba(0, 0, 0, .35); }
+.pdf-shape-opts { display: inline-flex; align-items: center; gap: 10px; }
+.pdf-sh { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
+.pdf-sh:hover { background: var(--hover, rgba(0, 0, 0, .05)); }
+.pdf-sh.on { background: color-mix(in srgb, var(--accent, #c8764a) 16%, var(--paper)); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); }
+.pdf-sh:focus-visible { outline: 2px solid var(--accent, #c8764a); outline-offset: 1px; }

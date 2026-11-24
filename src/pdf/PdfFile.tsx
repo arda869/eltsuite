@@ -505,7 +505,7 @@ const Svg = ({ d }: { d: string }) => (
 // pen while you use them, and otherwise a word on what to do.
 function Context({ editor, inBox, fmt }: { editor: Editor; inBox: boolean; fmt: React.ReactNode }) {
   const st = usePdfTool(editor);
-  const colours = (st.tool === 'mark' && !st.pending) || st.tool === 'draw';
+  const colours = (st.tool === 'mark' && !st.pending) || st.tool === 'draw' || st.tool === 'shape';
   return (
     <span className="pdff-ctx">
       <span className="pb-sep" />

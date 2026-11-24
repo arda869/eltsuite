@@ -11,7 +11,9 @@ import { newMedia } from '../editor/MediaNode';
 // A PDF with notes on it: text boxes that hold anything a task can (text, IPA, gaps, choices)
 // and highlights. The same nodes work in a lesson and in a PDF in Files.
 
-export type PdfTool = 'select' | 'text' | 'mark' | 'draw' | 'erase';
+export type PdfTool = 'select' | 'text' | 'mark' | 'draw' | 'shape' | 'erase';
+export type ShapeKind = 'arrow' | 'line' | 'rect' | 'ellipse' | 'tick' | 'cross' | 'signA' | 'signB';
+const STAMPS: ShapeKind[] = ['tick', 'cross', 'signA', 'signB'];
 import { MARK_COLORS, INK_COLORS, inkColor } from './colours';
 export { MARK_COLORS, INK_COLORS, inkColor } from './colours';
 // Questions that can go on a page, given by the editor that holds the PDF.
@@ -20,12 +22,12 @@ let QUESTIONS: QCmd[] = [];
 export const setPdfQuestions = (list: QCmd[]) => void (QUESTIONS = list);
 const markBg = (k: string) => MARK_COLORS.find((c) => c.k === k)?.bg ?? MARK_COLORS[0].bg;
 
-type Store = { tool: PdfTool; color: string; ink: string; pending?: QCmd | null };
+type Store = { tool: PdfTool; color: string; ink: string; shape?: ShapeKind; pending?: QCmd | null };
 export const pdfStore = (e: Editor): Store => (e.storage as unknown as { pdfBlock: Store }).pdfBlock;
 export function setPdfTool(e: Editor, tool: PdfTool, color?: string, pending?: QCmd | null) {
   const s = pdfStore(e);
   s.tool = tool;
-  if (color && tool === 'draw') s.ink = color;
+  if (color && (tool === 'draw' || tool === 'shape')) s.ink = color;
   else if (color) s.color = color;
   s.pending = tool === 'text' ? pending ?? null : null;
   window.dispatchEvent(new CustomEvent('ll:pdf-tool'));
@@ -54,6 +56,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
   const pages = (node.attrs.pages as PageSize[]) ?? [];
   const [draft, setDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [line, setLine] = useState<{ page: number; pts: [number, number][]; color: string } | null>(null);
+  const [shapeDraft, setShapeDraft] = useState<ShapeAttrs | null>(null);
   const editable = editor.isEditable;
   const tool = editable ? store.tool : 'select';
   const down = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -73,6 +76,14 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
           const d = Math.hypot(x - e.clientX, y - e.clientY);
           if (!best || d < best.d) best = { pos: start + off, size: c.nodeSize, d };
         }
+      });
+      // Shapes and stamps: a click on or near one.
+      node.forEach((c, off) => {
+        if (c.type.name !== 'pdfShape') return;
+        const at = toStack(pages, c.attrs.page, 0, 0);
+        const xs = [c.attrs.x1, c.attrs.x2].map((v: number) => r.left + v * r.width), ys = [c.attrs.y1, c.attrs.y2].map((v: number) => r.top + ((at.top + v * at.pageH) / 100) * r.height);
+        const inside = e.clientX >= Math.min(...xs) - 8 && e.clientX <= Math.max(...xs) + 8 && e.clientY >= Math.min(...ys) - 8 && e.clientY <= Math.max(...ys) + 8;
+        if (inside && (!best || best.d > 0)) best = { pos: start + off, size: c.nodeSize, d: 0 };
       });
       const hit = best as { pos: number; size: number; d: number } | null;
       if (hit && hit.d < 12) {
@@ -112,6 +123,32 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
       const q = store.pending;
       setPdfTool(editor, 'select');
       if (q) q.run(editor);
+      return;
+    }
+    if (tool === 'shape') {
+      const kind = store.shape ?? 'arrow';
+      const a0 = fromStack(pages, fx, fy);
+      const ratio = pages[a0.page] ? pages[a0.page].h / pages[a0.page].w : 1.414;
+      if (STAMPS.includes(kind)) {
+        // A stamp: one click places it, about 4% of the page wide.
+        const w = 0.04, h = w / ratio;
+        editor.view.dispatch(editor.state.tr.insert(end, editor.state.schema.nodes.pdfShape.create({ page: a0.page, kind, x1: a0.x - w / 2, y1: a0.y - h / 2, x2: a0.x + w / 2, y2: a0.y + h / 2, color: store.ink })));
+        return;
+      }
+      // Lines, arrows, boxes and circles: drag from one corner (or end) to the other, on one page.
+      const pageTop = toStack(pages, a0.page, 0, 0).top / 100, pageH = toStack(pages, a0.page, 0, 0).pageH / 100;
+      const at = (cx: number, cy: number) => ({ x: Math.max(0, Math.min(1, (cx - r.left) / r.width)), y: Math.max(0, Math.min(1, ((cy - r.top) / r.height - pageTop) / pageH)) });
+      let cur = { x1: a0.x, y1: a0.y, x2: a0.x, y2: a0.y };
+      const move = (ev: PointerEvent) => { const b = at(ev.clientX, ev.clientY); cur = { ...cur, x2: b.x, y2: b.y }; setShapeDraft({ page: a0.page, kind, ...cur, color: store.ink }); };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        setShapeDraft(null);
+        if (Math.hypot(cur.x2 - cur.x1, (cur.y2 - cur.y1) * ratio) < 0.01) return;
+        editor.view.dispatch(editor.state.tr.insert(end, editor.state.schema.nodes.pdfShape.create({ page: a0.page, kind, ...cur, color: store.ink })));
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
       return;
     }
     if (tool === 'draw') {
@@ -172,6 +209,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
       <PdfStack src={node.attrs.src} classId={classId} pages={pages} onDown={down} tool={tool} first={Number(node.attrs.first) || 0}>
         <NodeViewContent className="pdf-layer" />
         {line && <InkSvg pages={pages} page={line.page} pts={line.pts} color={line.color} />}
+        {shapeDraft && <ShapeSvg pages={pages} a={shapeDraft} />}
         {draft && <span className="pdf-mark draft" style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%`, width: `${draft.w * 100}%`, height: `${draft.h * 100}%`, background: markBg(store.color) }} />}
       </PdfStack>
     </NodeViewWrapper>
@@ -190,6 +228,7 @@ export const TOOLS: { k: PdfTool; label: string; key: string; tip: string; icon:
   { k: 'text', label: 'Text', key: 'T', tip: 'Text box: then click on the page where it goes', icon: 'M5 6V4h14v2M12 4v16M9 20h6', hint: 'Click on the page where the text box goes.' },
   { k: 'mark', label: 'Highlight', key: 'H', tip: 'Highlight: then drag across the words', icon: 'M4 20h16M7 16l2-6 7-7 3 3-7 7-6 2zM13 6l3 3', hint: 'Drag across the words you want to highlight.' },
   { k: 'draw', label: 'Draw', key: 'D', tip: 'Draw freely on the page', icon: 'M4 20c3-1 4-4 6-7s4-7 7-8c2-1 3 1 2 3-2 4-8 6-11 9-1.5 1.5-2 3-4 3z', hint: 'Draw on the page with the mouse, a pen or your finger.' },
+  { k: 'shape', label: 'Shapes', key: 'S', tip: 'Shapes and stamps: arrows, lines, boxes, circles, ticks, crosses and Learner A or B', icon: 'M3.5 13.5h7v7h-7zM17 3.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM13.5 20.5l7-7', hint: 'Drag on the page for a line, arrow, box or circle. Click once for a tick, cross or Learner sign.' },
   { k: 'erase', label: 'Eraser', key: 'E', tip: 'Eraser: click a drawn line to remove it', icon: 'M8 20h12M4.5 15.5l9-9a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3L13 19H8.5z', hint: 'Click a line you drew to rub it out.' },
 ];
 export const toolHint = (e: Editor) => {
@@ -237,6 +276,23 @@ export function ToolOptions({ editor }: { editor: Editor }) {
         {MARK_COLORS.map((c) => (
           <button key={c.k} type="button" role="radio" aria-checked={store.color === c.k} className={'pdf-sw' + (store.color === c.k ? ' on' : '')} style={{ background: c.bg.replace(/[\d.]+\)$/, '.85)') }} aria-label={c.label} data-tip={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'mark', c.k)} />
         ))}
+      </span>
+    );
+  if (store.tool === 'shape')
+    return (
+      <span className="pdf-opts pdf-shape-opts">
+        <span role="radiogroup" aria-label="Shape" className="pdf-opts">
+          {SHAPES.map((k) => (
+            <button key={k.k} type="button" role="radio" aria-checked={(store.shape ?? 'arrow') === k.k} aria-label={k.label} data-tip={k.label} className={'pdf-sh' + ((store.shape ?? 'arrow') === k.k ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => { pdfStore(editor).shape = k.k; window.dispatchEvent(new CustomEvent('ll:pdf-tool')); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: k.icon }} />
+            </button>
+          ))}
+        </span>
+        <span role="radiogroup" aria-label="Colour" className="pdf-opts">
+          {INK_COLORS.map((c) => (
+            <button key={c.k} type="button" role="radio" aria-checked={(store.ink ?? 'ink') === c.k} className={'pdf-sw ink' + ((store.ink ?? 'ink') === c.k ? ' on' : '')} style={{ background: c.c }} aria-label={c.label} data-tip={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'shape', c.k)} />
+          ))}
+        </span>
       </span>
     );
   if (store.tool === 'draw')
@@ -328,12 +384,12 @@ function MarkView({ node, editor, getPos, deleteNode, selected }: NodeViewProps)
 export const PdfBlock = Node.create({
   name: 'pdfBlock',
   group: 'block',
-  content: '(pdfBox | pdfMark | pdfInk)*',
+  content: '(pdfBox | pdfMark | pdfInk | pdfShape)*',
   isolating: true,
   draggable: false,
   // Clicking a page never selects the whole PDF (which would light up every word on it).
   selectable: false,
-  addStorage: () => ({ tool: 'select' as PdfTool, color: 'yellow', ink: 'ink', pending: null }),
+  addStorage: () => ({ tool: 'select' as PdfTool, color: 'yellow', ink: 'ink', shape: 'arrow' as ShapeKind, pending: null }),
   addAttributes: () => ({
     src: { default: '' }, // "file:<id>" in Files, "media:<id>" in a class
     pages: { default: [] },
@@ -409,4 +465,60 @@ export const PdfInk = Node.create({
   addNodeView: () => ReactNodeViewRenderer(InkView),
 });
 
-export const PDF_NODES = [PdfBlock, PdfBox, PdfMark, PdfInk];
+// Shapes and stamps, kept in the page's own measures (fractions of its width and height).
+export type ShapeAttrs = { page: number; kind: ShapeKind; x1: number; y1: number; x2: number; y2: number; color: string };
+const SHAPES: { k: ShapeKind; label: string; icon: string }[] = [
+  { k: 'arrow', label: 'Arrow', icon: '<path d="M5 19 19 5M10 5h9v9"/>' },
+  { k: 'line', label: 'Line', icon: '<path d="M5 19 19 5"/>' },
+  { k: 'rect', label: 'Box', icon: '<rect x="4" y="6" width="16" height="12" rx="1"/>' },
+  { k: 'ellipse', label: 'Circle', icon: '<ellipse cx="12" cy="12" rx="8.5" ry="6.5"/>' },
+  { k: 'tick', label: 'Tick', icon: '<path d="M5 12.5l4.5 4.5L19 7.5"/>' },
+  { k: 'cross', label: 'Cross', icon: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>' },
+  { k: 'signA', label: 'Learner A sign', icon: '<rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/><path d="M9 16.5l3-9 3 9M10 13.5h4" stroke="#fff"/>' },
+  { k: 'signB', label: 'Learner B sign', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9.5 7.5h3.2a2.2 2.2 0 0 1 0 4.4H9.5zM9.5 11.9h3.7a2.3 2.3 0 0 1 0 4.6H9.5z"/>' },
+];
+// The drawing of a shape on its page. The page's shape (taller than wide) is kept, so ticks and
+// arrowheads aren't stretched.
+export function shapeInner(a: Pick<ShapeAttrs, 'kind' | 'x1' | 'y1' | 'x2' | 'y2'>, ratio: number, stroke: string): string {
+  const x1 = a.x1, y1 = a.y1 * ratio, x2 = a.x2, y2 = a.y2 * ratio;
+  const l = Math.min(x1, x2), t = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+  const sw = `stroke="${stroke}" fill="none" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"`;
+  if (a.kind === 'line') return `<path d="M${x1} ${y1}L${x2} ${y2}" ${sw}/>`;
+  if (a.kind === 'arrow') {
+    const ang = Math.atan2(y2 - y1, x2 - x1), len = Math.min(0.03, Math.hypot(x2 - x1, y2 - y1) * 0.35);
+    const p = (d: number) => `${x2 - len * Math.cos(ang + d)} ${y2 - len * Math.sin(ang + d)}`;
+    return `<path d="M${x1} ${y1}L${x2} ${y2}M${p(0.45)}L${x2} ${y2}L${p(-0.45)}" ${sw}/>`;
+  }
+  if (a.kind === 'rect') return `<rect x="${l}" y="${t}" width="${w}" height="${h}" rx="${Math.min(w, h) * 0.06}" ${sw}/>`;
+  if (a.kind === 'ellipse') return `<ellipse cx="${l + w / 2}" cy="${t + h / 2}" rx="${w / 2}" ry="${h / 2}" ${sw}/>`;
+  const at = (fx: number, fy: number) => `${l + fx * w} ${t + fy * h}`;
+  if (a.kind === 'tick') return `<path d="M${at(0.1, 0.55)}L${at(0.4, 0.85)}L${at(0.92, 0.15)}" ${sw.replace('2.4', '3.2')}/>`;
+  if (a.kind === 'cross') return `<path d="M${at(0.15, 0.15)}L${at(0.85, 0.85)}M${at(0.85, 0.15)}L${at(0.15, 0.85)}" ${sw.replace('2.4', '3.2')}/>`;
+  const letter = a.kind === 'signA' ? 'A' : 'B';
+  const fill = a.kind === 'signA' ? stroke : '#fff';
+  return `<rect x="${l}" y="${t}" width="${w}" height="${h}" rx="${w * 0.18}" fill="${fill}" stroke="${stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${l + w / 2}" y="${t + h * 0.72}" font-family="Karla, Arial, sans-serif" font-weight="800" font-size="${h * 0.68}" text-anchor="middle" fill="${a.kind === 'signA' ? '#fff' : stroke}">${letter}</text>`;
+}
+export function ShapeSvg({ pages, a }: { pages: PageSize[]; a: ShapeAttrs }) {
+  const at = toStack(pages, a.page, 0, 0);
+  const ratio = pages[a.page] ? pages[a.page].h / pages[a.page].w : 1.414;
+  return <svg className="pdf-ink pdf-shape" style={{ top: `${at.top}%`, height: `${at.pageH}%` }} viewBox={`0 0 1 ${ratio}`} preserveAspectRatio="none" aria-hidden="true" dangerouslySetInnerHTML={{ __html: shapeInner(a, ratio, inkColor(a.color)) }} />;
+}
+function ShapeView({ node, editor, getPos }: NodeViewProps) {
+  const pages = pagesOf(editor, getPos() ?? 0);
+  return (
+    <NodeViewWrapper as="span" className="pdf-ink-node" contentEditable={false}>
+      <ShapeSvg pages={pages} a={node.attrs as ShapeAttrs} />
+    </NodeViewWrapper>
+  );
+}
+export const PdfShape = Node.create({
+  name: 'pdfShape',
+  atom: true,
+  selectable: false,
+  addAttributes: () => ({ page: { default: 0 }, kind: { default: 'arrow' }, x1: { default: 0 }, y1: { default: 0 }, x2: { default: 0.1 }, y2: { default: 0.1 }, color: { default: 'ink' } }),
+  parseHTML: () => [{ tag: 'span[data-pdfshape]' }],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes({ 'data-pdfshape': '' }, { 'data-page': HTMLAttributes.page })],
+  addNodeView: () => ReactNodeViewRenderer(ShapeView),
+});
+
+export const PDF_NODES = [PdfBlock, PdfBox, PdfMark, PdfInk, PdfShape];
