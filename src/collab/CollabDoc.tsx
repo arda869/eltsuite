@@ -1,6 +1,6 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { useDocumentTools } from './DocumentEditingTools';
-import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns } from './DocumentStructure';
+import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
 import { useDocumentHistory } from './DocumentHistory';
 import { documentClipboard } from './documentClipboard';
 import { tell } from '../lib/ask';
@@ -634,6 +634,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Page break', icon: 'task', hint: keyLabel('Mod+Enter'), disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'docPageBreak' }).run(); } },
           { label: 'Tab', icon: 'task', disabled: eff !== 'edit' || locked, run: () => { openTab(addTab(session.doc, undefined, tabId)); setNavCollapsed(false); } },
           { label: 'Section break', icon: 'task', disabled: !writing, run: () => { if (!insertDocumentSection(editor, layout.columns)) void tell('Place the cursor in a top-level paragraph to start a new section.'); } },
+          { label: 'Landscape section from here', icon: 'task', disabled: !writing, run: () => { if (insertDocumentSection(editor, 1)) sectionOrientation(editor, 'landscape'); else void tell('Place the cursor in a top-level paragraph to start a landscape section.'); } },
           { label: 'Header, footer and page numbers…', icon: 'script', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           ...(profileTeacher ? [{ label: 'Cite a source…', icon: 'classes', disabled: !writing, run: () => setCitationRequest((n) => n + 1) }] : []),
           { label: 'Browse all elements…', disabled: !writing, run: () => setGallery(true) },
@@ -664,6 +665,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: currentSpacing(editor).spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceBefore: currentSpacing(editor).spaceBefore ? null : 12 }) },
           { label: currentSpacing(editor).spaceAfter === 0 ? 'Add space after paragraph' : 'Remove space after paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceAfter: currentSpacing(editor).spaceAfter === 0 ? null : 0 }) },
           'sep',
+          ...(currentSectionOrientation(editor) !== undefined ? (['landscape', 'portrait', null] as const).map((v) => ({ label: `This section: ${v === 'landscape' ? 'Landscape' : v === 'portrait' ? 'Portrait' : 'As the document'}`, checked: currentSectionOrientation(editor) === v, disabled: !writing, run: () => void sectionOrientation(editor, v) })) : []),
           { label: `Update ${styleLabel()} to match`, disabled: !writing, run: () => updateStyle() },
           { label: 'Reset paragraph styles', disabled: !writing || !layout.styles || !Object.keys(layout.styles).length, run: () => setLayout({ styles: {} }) },
           'sep',

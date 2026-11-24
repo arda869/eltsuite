@@ -141,7 +141,7 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Eleme
     case 'docPageBreak':
       return '<div data-doc-page-break="" class="doc-page-break"></div>';
     case 'docSection':
-      return `<section data-doc-section="" ${n.attrs?.newPage ? 'data-new-page=""' : ''} style="column-count:${Math.max(1, Math.min(3, Number(n.attrs?.columns) || 1))};column-gap:18pt;column-span:all;${n.attrs?.newPage ? 'break-before:page' : ''}">${kids()}</section>`;
+      return `<section data-doc-section="" ${n.attrs?.orientation ? `data-orient="${n.attrs.orientation === 'landscape' ? 'landscape' : 'portrait'}"` : ''} ${n.attrs?.newPage ? 'data-new-page=""' : ''} style="column-count:${Math.max(1, Math.min(3, Number(n.attrs?.columns) || 1))};column-gap:18pt;column-span:all;${n.attrs?.newPage ? 'break-before:page' : ''}">${kids()}</section>`;
     case 'paragraph':
       return `<p${align(n)}>${inl() || '&nbsp;'}</p>`;
     case 'heading': {
@@ -213,6 +213,7 @@ html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layo
 @page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; ${o.layout ? '' : `@top-center { content: none; } @bottom-center { content: ${footer || 'none'}; }`} }
 ${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }) : ''}
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
+${metrics ? `@page landscape { size: ${metrics.css} landscape; } @page portrait { size: ${metrics.css} portrait; } section[data-orient="landscape"] { page: landscape; break-before: page; } section[data-orient="portrait"] { page: portrait; break-before: page; }` : ''}
 ${stylesCss(o.layout?.styles, 'body', (c) => textColor(c) ?? c)}
 body { font: ${o.size}pt/${o.spacing} ${cssString(o.font)}, Arial, sans-serif; color: #111; margin: 0; column-count: ${o.layout?.columns ?? 1}; column-gap: 18pt; }
 .doc-page-break { break-before: page; height:0 !important; min-height:0; } .doc-page-break span { display:none; }
@@ -284,10 +285,11 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   const para = (runs: Run[], opts: Record<string, unknown> = {}) => new Paragraph({ spacing: { after: 160, line }, ...opts, children: runs.map((r) => run(r)) });
   type Block = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
   let out: Block[] = [];
-  const sectionParts: { children: Block[]; columns: number; newPage: boolean }[] = [];
+  const sectionParts: { children: Block[]; columns: number; newPage: boolean; orient?: string | null }[] = [];
+  let orient: string | null = null;
   let columns = o.layout?.columns ?? 1;
   let newPage = true;
-  const finishSection = () => { if (out.length) sectionParts.push({ children: out, columns, newPage }); out = []; };
+  const finishSection = () => { if (out.length) sectionParts.push({ children: out, columns, newPage, orient }); out = []; };
   if (o.title) out.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 320 }, heading: HeadingLevel.TITLE, children: [new TextRun({ text: title || 'Document', bold: true, font: o.font, size: sz + 12 })] }));
   const img = async (src: string) => {
     if (!src.startsWith('data:image/')) return null;
@@ -325,8 +327,10 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
         finishSection();
         columns = Math.max(1, Math.min(3, Number(n.attrs?.columns) || 1));
         newPage = !!n.attrs?.newPage;
+        orient = (n.attrs?.orientation as string | null) ?? null;
         for (const child of n.content ?? []) await walk(child);
         finishSection();
+        orient = null;
         columns = o.layout?.columns ?? 1;
         newPage = false;
         return;
@@ -399,7 +403,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   const metrics = o.layout ? pageMetrics(o.layout) : null;
   const doc = new Document({
     styles: { default: { document: { run: { font: o.font, size: sz } } } },
-    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? Math.round(metrics.m.top * 15) : 1440, bottom: metrics ? Math.round(metrics.m.bottom * 15) : 1440, left: metrics ? Math.round(metrics.m.left * 15) : 1440, right: metrics ? Math.round(metrics.m.right * 15) : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) }, ...(i === 0 && firstDiff ? { titlePage: true } : {}) }, headers, footers, children: part.children })),
+    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: (part.orient ?? o.layout!.orientation) === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? Math.round(metrics.m.top * 15) : 1440, bottom: metrics ? Math.round(metrics.m.bottom * 15) : 1440, left: metrics ? Math.round(metrics.m.left * 15) : 1440, right: metrics ? Math.round(metrics.m.right * 15) : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) }, ...(i === 0 && firstDiff ? { titlePage: true } : {}) }, headers, footers, children: part.children })),
   });
   return Packer.toBlob(doc);
 }

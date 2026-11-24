@@ -354,3 +354,7 @@
 .pg-run-opts .btn, .pg-run-opts .pg-run-sel, .pg-run-opts .nsel > .sel { height: 32px; min-height: 32px; box-sizing: border-box; }
 .pg-run-opts .btn { margin-left: auto; }
 @media print { .pg-run-zone, .pg-run-edit { display: none !important; } }
+/* A section with turned pages: a label on screen; printed and in Word the pages turn. */
+.cd-doc section[data-orient]::before { content: 'Portrait pages from here when printed'; display: block; column-span: all; width: fit-content; margin: 8px 0 10px; padding: 2px 10px; border: 1px dashed var(--hair-strong); border-radius: 999px; color: var(--muted); font: 600 11px/1.6 var(--sans); }
+.cd-doc section[data-orient="landscape"]::before { content: 'Landscape pages from here when printed'; border-color: var(--accent, #c8764a); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); }
+@media print { .cd-doc section[data-orient]::before { display: none; } }
