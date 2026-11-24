@@ -105,6 +105,8 @@ jobs:
         run: npm run build:information-gap
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: PDF OCR, repeated-match search and searchable download
+        run: node test/pdf-ocr.mjs
       - name: Communicative teacher and learner journeys and print exports (Firebase simulated)
         run: node test/communicative-suite.mjs
       - name: Save communicative failure evidence

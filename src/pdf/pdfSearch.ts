@@ -45,18 +45,36 @@ export function findHits(texts: string[], query: string, max = 500): Hit[] {
   return hits;
 }
 
-// Light up the words on the pages drawn so far. The text layer splits text into pieces, so a piece
-// lights up when it holds the whole search, or, for several words, one of them.
-export function markHits(root: ParentNode, query: string, current: number | null) {
+// Match the rendered text in reading order so Next highlights the selected occurrence, including
+// when a page contains several matches or a phrase runs across text-layer spans.
+export function markHits(root: ParentNode, query: string, hits: Hit[], selected: number) {
   const q = fold(query.trim());
-  const words = q.split(' ').filter((w) => w.length >= 2);
   root.querySelectorAll('.pdf-hit, .pdf-hit-on').forEach((el) => el.classList.remove('pdf-hit', 'pdf-hit-on'));
-  if (q.length < 2) return;
+  if (q.length < 2 || !hits.length) return;
+  const current = hits[selected]?.page;
+  const currentOrdinal = hits.slice(0, selected).filter((h) => h.page === current).length;
   const layers = [...root.querySelectorAll<HTMLElement>('.textLayer')];
   layers.forEach((layer, page) => {
+    if (!hits.some((h) => h.page === page)) return;
     const spans = [...layer.querySelectorAll<HTMLElement>('span')].filter((s) => !s.children.length);
-    let lit = spans.filter((s) => fold(s.textContent ?? '').includes(q));
-    if (!lit.length && words.length > 1) lit = spans.filter((s) => { const f = fold(s.textContent ?? ''); return words.some((w) => f.includes(w)); });
-    lit.forEach((s, k) => s.classList.add(page === current && k === 0 ? 'pdf-hit-on' : 'pdf-hit'));
+    const pieces: { span: HTMLElement; from: number; to: number }[] = [];
+    let text = '';
+    for (const span of spans) {
+      if (text) text += ' ';
+      const from = text.length;
+      text += fold(span.textContent ?? '');
+      pieces.push({ span, from, to: text.length });
+    }
+    let at = text.indexOf(q);
+    let ordinal = 0;
+    while (at >= 0) {
+      for (const piece of pieces) {
+        if (piece.from < at + q.length && piece.to > at) {
+          piece.span.classList.add(page === current && ordinal === currentOrdinal ? 'pdf-hit-on' : 'pdf-hit');
+        }
+      }
+      ordinal++;
+      at = text.indexOf(q, at + q.length);
+    }
   });
 }

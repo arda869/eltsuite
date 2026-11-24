@@ -226,9 +226,8 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     const root = document.querySelector('.pdff .pdf-pages');
     if (!root) return;
     const q = findOpen ? query : '';
-    const cur = hits[hitAt]?.page ?? null;
     let raf = 0;
-    const paint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => markHits(root, q, cur)); };
+    const paint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => markHits(root, q, hits, hitAt)); };
     paint();
     const mo = new MutationObserver((m) => { if (m.some((r) => !(r.target as HTMLElement).classList?.contains('pdf-hit'))) paint(); });
     mo.observe(root, { childList: true, subtree: true });
