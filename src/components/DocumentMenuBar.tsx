@@ -2,12 +2,25 @@ import { UiIcon } from './UiIcon';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { useMenuKeys } from './menuKeys';
+import { MenuSearch, ShortcutList } from './MenuSearch';
 export type DocumentMenuItem = { label: string; run: () => void; disabled?: boolean; checked?: boolean; hint?: string; icon?: string } | 'sep';
 const commandIcon = (label: string) => {
   const icons: Record<string, string> = { 'Page setup…': 'settings', 'Download Word': 'import', 'Download PDF': 'import', Print: 'script', Undo: 'prev', Redo: 'next', 'Select all': 'copyall', Pages: 'task', Pageless: 'script', 'Comments and suggestions': 'discuss', 'Show paragraph marks': 'script', 'Browse all elements…': 'plus', 'Picture…': 'picture', Table: 'board', 'Link…': 'link', 'Cite a source…': 'classes', Bold: 'textSize', Italic: 'textSize', Underline: 'textSize', Checklist: 'check', 'Clear text formatting': 'eraser', 'Word count': 'textSize', Contributions: 'groups' };
   return icons[label] ?? (label.startsWith('Page colour') ? 'design' : label.startsWith('Align ') ? 'script' : 'settings');
 };
-export function DocumentMenuBar({ menus }: { menus: { label: string; items: DocumentMenuItem[] }[] }) {
+export function DocumentMenuBar({ menus: given }: { menus: { label: string; items: DocumentMenuItem[] }[] }) {
+  // Help, as in Google Docs: search every command by name (Alt+/), and the keyboard shortcuts.
+  const [search, setSearch] = useState(false);
+  const [keys, setKeys] = useState(false);
+  const menus = [...given, { label: 'Help', items: [
+    { label: 'Search the menus', icon: 'search', hint: 'Alt+/', run: () => setSearch(true) },
+    { label: 'Keyboard shortcuts', icon: 'settings', run: () => setKeys(true) },
+  ] as DocumentMenuItem[] }];
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '/' || e.code === 'Slash')) { e.preventDefault(); setSearch(true); } };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
   const [active, setActive] = useState<number | null>(null);
   const root = useDismiss<HTMLDivElement>(active !== null, () => setActive(null));
   const [hidden,setHidden]=useState(false),[headerHeight,setHeaderHeight]=useState(64);
@@ -55,5 +68,7 @@ export function DocumentMenuBar({ menus }: { menus: { label: string; items: Docu
         {m.items.map((item, j) => item === 'sep' ? <span key={j} className="ctx-sep" role="separator" /> : <button key={j} type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemradio'} aria-checked={item.checked} className="ctx-item" disabled={item.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => { setActive(null); item.run(); }}><span className="ctx-ic"><UiIcon name={item.icon ?? commandIcon(item.label)} size={16} /></span><span className="ctx-l">{item.label}</span>{item.checked && <span className="document-menu-check" aria-hidden="true">✓</span>}{item.hint && <span className="ctx-hint">{item.hint}</span>}</button>)}
       </div>}
     </span>)}
+    {search && <MenuSearch menus={given} onClose={() => setSearch(false)} />}
+    {keys && <ShortcutList menus={given} onClose={() => setKeys(false)} />}
   </div>;
 }
