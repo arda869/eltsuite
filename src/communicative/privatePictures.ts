@@ -57,7 +57,7 @@ function mapSources<T>(value:T,map:(src:string)=>string,parentKey=''):T{
   if(!value||typeof value!=='object')return value;
   const node=value as Record<string,unknown>;
   return Object.fromEntries(Object.entries(node).map(([key,child])=>[key,
-    key==='src'&&['picture','matchPicture','imageAttrs'].includes(parentKey)&&typeof child==='string'?map(child):mapSources(child,map,key==='attrs'&&['picture','image'].includes(String(node.type))?'imageAttrs':key)
+    (key==='src'||key==='bw')&&['picture','matchPicture','imageAttrs'].includes(parentKey)&&typeof child==='string'?map(child):mapSources(child,map,key==='attrs'&&['picture','image'].includes(String(node.type))?'imageAttrs':key)
   ])) as T;
 }
 // Copy before saving a portable library task into a destination class. Both reads and

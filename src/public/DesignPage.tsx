@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useRef, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PublicLayout } from './PublicSite';
 import home from './design-pages/home.html?raw';
@@ -34,6 +34,25 @@ export type DesignPageName = keyof typeof PAGES;
 export function DesignPage({ page }: { page: DesignPageName }) {
   const navigate = useNavigate();
   const [html, css] = PAGES[page];
+  const main = useRef<HTMLElement>(null);
+  // Product recordings: load and play only while on screen. With reduced motion they stay as
+  // their still picture and get the browser's controls, so they play only when asked.
+  useEffect(() => {
+    const videos = [...(main.current?.querySelectorAll<HTMLVideoElement>('video[data-demo]') ?? [])];
+    if (!videos.length) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (still || typeof IntersectionObserver === 'undefined') {
+      videos.forEach((v) => { v.controls = true; v.preload = 'none'; });
+      return;
+    }
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      const v = e.target as HTMLVideoElement;
+      if (e.isIntersecting) { if (v.preload === 'none') v.preload = 'auto'; void v.play().catch(() => { v.controls = true; }); }
+      else v.pause();
+    }), { rootMargin: '120px 0px', threshold: 0.25 });
+    videos.forEach((v) => io.observe(v));
+    return () => io.disconnect();
+  }, [page]);
   const followInternalLink = (event: MouseEvent<HTMLElement>) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
     const target = event.target;
@@ -49,7 +68,7 @@ export function DesignPage({ page }: { page: DesignPageName }) {
       navigate(url.pathname + url.search + url.hash);
     }
   };
-  return <PublicLayout><style>{css}</style><main id="public-main" className={`pub-design pub-design-${page}`} onClick={followInternalLink} dangerouslySetInnerHTML={{ __html: html }} /></PublicLayout>;
+  return <PublicLayout><style>{css}</style><main ref={main} id="public-main" className={`pub-design pub-design-${page}`} onClick={followInternalLink} dangerouslySetInnerHTML={{ __html: html }} /></PublicLayout>;
 }
 
 export const DesignHome = () => <DesignPage page="home" />;

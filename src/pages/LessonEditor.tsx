@@ -86,6 +86,8 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { IdentityDialog, IdentityMark, RefsContext, VersionSign } from '../components/Identity';
+import { anchorOf, lessonIdentities, refTargets, versionLetter, type ActivityIdentity } from '../lib/identity';
 import { PaperBar, SheetView, type Zoom } from '../lessons/SheetView';
 import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
@@ -234,6 +236,26 @@ export function LessonEditor() {
   const vLabel = (t?: Task) => (!t ? '' : t.variant && /^[A-Z]$/.test(t.variant) ? `Version ${t.variant}` : t.variant ?? 'Version A');
   const gridOnly: string[] | null = !task || task.kind === 'section' ? null : fam.length > 1 && famMain?.dist?.mode === 'choose' ? Object.entries(choices).filter(([, tid]) => tid === task.id).map(([lid]) => lid) : task.allowed ?? null;
   const examRuns = useRuns(classId, examScope(item, task)?.id);
+  // References inside tasks: the lesson's activities by their anchors, and this activity's versions.
+  const refList = useMemo(() => refTargets(tasks), [tasks]);
+  const refsValue = useMemo(
+    () => ({ targets: refList, versions: fam.map((t, i) => versionLetter(t.variant) || (i === 0 ? 'A' : '')).filter(Boolean), here: famMain ? anchorOf(famMain) : undefined, strict: true }),
+    [refList, fam.map((t) => t.id + (t.variant ?? '')).join(), famMain?.id], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [idOpen, setIdOpen] = useState(false);
+  // An activity type belongs to the activity and its versions. "All" changes every activity of that type.
+  async function saveIdentity(v: ActivityIdentity | null, scope: 'here' | 'all') {
+    if (!task) return;
+    const cur = task.identity;
+    const these = scope === 'all' && cur && v ? tasks.filter((t) => t.identity?.id === cur.id) : familyOf(tasks, task);
+    try {
+      await Promise.all(these.map((t) => setTaskFlags(classId, itemId, t.id, { identity: v })));
+      setIdOpen(false);
+    } catch {
+      void tell('We couldn’t save the activity type just now. Check your connection and try again.');
+    }
+  }
+  const vBadge = (t?: Task) => { const l = versionLetter(t?.variant) || (t && !t.variant ? 'A' : ''); return <span className="ver-badge">{l ? <VersionSign v={l} /> : <i aria-hidden="true" />}{vLabel(t)}</span>; };
   const tagOf = (lid: string) => {
     const parts: string[] = [];
     const er = examRuns.find((r) => r.learnerId === lid);
@@ -942,7 +964,14 @@ export function LessonEditor() {
                       Done editing
                     </button>
                   )}
-                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
+                  <div className="aid-row">
+                    {task.identity ? <IdentityMark identity={task.identity} onClick={viewer ? undefined : () => setIdOpen(true)} /> : !viewer && (
+                      <button type="button" className="aid-add" onClick={() => setIdOpen(true)}>
+                        <span aria-hidden="true">+</span> Activity type
+                      </button>
+                    )}
+                  </div>
+                  {fam.length > 1 && vBadge(task)}
                   {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   {lessonStyleOf(c) === 'young' ? (
@@ -978,6 +1007,7 @@ export function LessonEditor() {
   ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
+    <RefsContext.Provider value={refsValue}>
     <div className="shell wide classes-shell" data-lesson-style={lessonStyleOf(c)} data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
@@ -1336,7 +1366,8 @@ export function LessonEditor() {
                       <UiIcon name="edit" size={14} /> Edit
                     </button>
                   )}
-                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
+                  {task.identity && <div className="aid-row"><IdentityMark identity={task.identity} /></div>}
+                  {fam.length > 1 && vBadge(task)}
                   <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{draft.title}</h1>
                   {lessonStyleOf(c) === 'young' && (draft.instrDoc || draft.instructions) ? (
                     <YoungInstr content={draft.content} icon={task.ylIcon}>
@@ -1739,7 +1770,9 @@ export function LessonEditor() {
         />
       )}
       {recapOpen && c && item && <RecapDialog c={c} item={item} items={nbItems} onClose={() => setRecapOpen(false)} />}
+      {idOpen && task && <IdentityDialog value={task.identity} used={lessonIdentities(tasks)} onSave={(v, scope) => void saveIdentity(v, scope)} onClose={() => setIdOpen(false)} />}
     </div>
+    </RefsContext.Provider>
     </ClassAvatarsContext.Provider>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
-import { flattenTask, type MediaInfo, type MediaMap, type WsItem } from '../lib/worksheet';
+import { flattenTask, withFreshRefs, type MediaInfo, type MediaMap, type WsItem } from '../lib/worksheet';
 import { sheetParts } from '../lib/worksheetHtml';
 import { sheetPictures, sheetSounds } from '../lib/sheetMedia';
 import { coverMarkup } from '../components/Covers';
@@ -9,12 +9,12 @@ import type { ExportTask } from '../lib/textformat';
 // The printed pieces of a lesson for the worksheet view: the page band and footer, and each task and
 // section as the print engine draws it, with its pictures and QR codes.
 
-export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; instrDoc?: JSONContent | null; show?: string; icon?: string } | null; ylIcon?: string | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
+export type SheetTask = { anchor?: string | null; identity?: import('../lib/identity').ActivityIdentity | null; family?: string | null; variant?: string | null; print?: { gap?: string; lines?: number | null; instr?: string; instrDoc?: JSONContent | null; show?: string; icon?: string } | null; ylIcon?: string | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
 export type SheetLook = { classId: string; itemId?: string; accent: string; className?: string; level?: string; cover?: string | null; lessonStyle?: import('../lib/lessonStyle').LessonStyle };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {
   // What prints: sections, and the tasks learners can see, in order.
-  const shown = useMemo(() => tasks.filter((t) => t.kind === 'section' || (!t.hidden && t.content && t.print?.show !== 'screen')), [tasks]);
+  const shown = useMemo(() => withFreshRefs(tasks as never as ExportTask[]).filter((t) => t.kind === 'section' || (!t.hidden && t.content && t.print?.show !== 'screen')) as unknown as SheetTask[], [tasks]);
   const items = useMemo<WsItem[]>(
     () => shown.map((t) => (t.kind === 'section' ? { kind: 'section' as const, title: t.title } : { kind: 'task' as const, task: flattenTask({ ...t, content: t.content! } as ExportTask, look.lessonStyle) })),
     [shown, look.lessonStyle],

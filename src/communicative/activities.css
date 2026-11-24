@@ -549,3 +549,26 @@ button.ca-die.ready:hover { transform: translateY(-2px) rotate(-4deg); }
 .ca .ca-cell img, .ca .ca-cell .ca-pic { max-height: 64px; }
 /* Text in activities is always the app's own type, never a pasted-in font. */
 .ca :is(.ca-strip-text, .ca-prompt-text, .ca-cell, .ca-mcard, .ca-sq, .ca-call-now) :is(p, span, li, b, i, em, strong) { font-family: inherit; }
+
+/* Paper preview while authoring: the real print engine, filling the preview pane. */
+.ca-paper { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.ca-paper-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ca-paper-frame { width: 100%; height: min(78vh, 980px); border: 1px solid var(--hair); border-radius: 12px; background: #e9e7e2; }
+/* On paper the preview takes the whole width of the activity: the settings sit above it in
+   columns, and the page is drawn as large as the space allows. */
+.ca-editor.on-paper { grid-template-columns: 1fr; }
+.ca-editor.on-paper .ca-editor-side { border-right: 0; border-bottom: 1px solid var(--hair); columns: 3 240px; column-gap: 24px; }
+.ca-editor.on-paper .ca-editor-side > * { break-inside: avoid; }
+.ca-editor.on-paper .ca-editor-preview { padding: 16px 20px 20px; }
+.ca-paper-full { margin-left: auto; }
+.ca-paper.is-full { position: fixed; inset: 16px; z-index: 400; padding: 14px 16px 16px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 100vmax rgba(30, 26, 20, .45), 0 24px 64px rgba(30, 26, 20, .3); }
+.ca-paper.is-full .ca-paper-frame { flex: 1; min-height: 0; }
+/* On paper the preview takes the whole width of the activity (every kind): the settings sit above
+   it in columns, and the page is drawn as large as the space allows. */
+.ca-editor.on-paper { grid-template-columns: 1fr; }
+.ca-editor.on-paper .ca-editor-side { border-right: 0; border-bottom: 1px solid var(--hair); columns: 3 240px; column-gap: 24px; }
+.ca-editor.on-paper .ca-editor-side > * { break-inside: avoid; }
+.ca-editor.on-paper .ca-editor-preview { padding: 16px 20px 20px; }
+.ca-paper-full { margin-left: auto; }
+.ca-paper.is-full { position: fixed; inset: 16px; z-index: 400; padding: 14px 16px 16px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 100vmax rgba(30, 26, 20, .45), 0 24px 64px rgba(30, 26, 20, .3); }
+.ca-paper.is-full .ca-paper-frame { flex: 1; min-height: 0; }

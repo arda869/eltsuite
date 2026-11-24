@@ -202,9 +202,9 @@ export async function printDoc(json: JSONContent, title: string, o: ExportOpts =
   const words = wordCount(json);
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>${needsApp ? `<base href="${location.origin}/">${appStyles()}` : ''}
 <style>
-html, body { background: #fff !important; min-height: 0 !important; display: block !important; }
+html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layout.pageColour) ? o.layout.pageColour : '#fff'} !important; min-height: 0 !important; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
-@page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.margin / 96}in` : '25mm'}; @top-center { content: ${cssString(o.layout?.header ?? '')}; } @bottom-center { content: ${footer || 'none'}; } }
+@page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; @top-center { content: ${cssString(o.layout?.header ?? '')}; } @bottom-center { content: ${footer || 'none'}; } }
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
 body { font: ${o.size}pt/${o.spacing} ${cssString(o.font)}, Arial, sans-serif; color: #111; margin: 0; column-count: ${o.layout?.columns ?? 1}; column-gap: 18pt; }
 .doc-page-break { break-before: page; height:0 !important; min-height:0; } .doc-page-break span { display:none; }
@@ -371,7 +371,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   const metrics = o.layout ? pageMetrics(o.layout) : null;
   const doc = new Document({
     styles: { default: { document: { run: { font: o.font, size: sz } } } },
-    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? metrics.margin * 15 : 1440, bottom: metrics ? metrics.margin * 15 : 1440, left: metrics ? metrics.margin * 15 : 1440, right: metrics ? metrics.margin * 15 : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) } }, headers, footers, children: part.children })),
+    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? Math.round(metrics.m.top * 15) : 1440, bottom: metrics ? Math.round(metrics.m.bottom * 15) : 1440, left: metrics ? Math.round(metrics.m.left * 15) : 1440, right: metrics ? Math.round(metrics.m.right * 15) : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) } }, headers, footers, children: part.children })),
   });
   return Packer.toBlob(doc);
 }

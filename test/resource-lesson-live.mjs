@@ -65,7 +65,8 @@ function fixture() {
   db.rows.set('accounts/teacher-1', { suspended: false });
   const edition = { id: 'published-1', resourceType: 'lesson', title: 'Paris lesson', edition: 7, sections: [
     { id: 'teacher-notes', audience: 'teacher', kind: 'notes', title: 'Do not show', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'SECRET TEACHER NOTES' }] }] } },
-    { id: 'task-1', audience: 'learner', kind: 'task', title: 'Task one', instructions: 'Answer the questions.', content: baseDoc },
+    { id: 'task-1', audience: 'learner', kind: 'task', title: 'Task one', instructions: 'Answer the questions.', content: baseDoc,
+      identity: { id: 'aid-1', name: 'Activation', colour: '#b4442e', icon: 'activation', privateNote: 'Do not send this' } },
   ] };
   db.rows.set('resourceHubPublished/published-1', edition);
   db.rows.set('resourceHubPublished/published-1/editions/7', edition);
@@ -91,6 +92,8 @@ test('standalone published lesson: secure guest join, answer, retry, end and tea
   const learner = await service(db, null, req('learnerState', seat), 3001);
   assert.deepEqual(learner.tasks, [{ id: 'task-1', title: 'Task one' }]);
   assert.equal(learner.currentTask.content.content[0].content[1].attrs.answers.length, 0);
+  assert.deepEqual(learner.currentTask.identity, { id: 'aid-1', name: 'Activation', colour: '#b4442e', icon: 'activation' });
+  assert.equal(JSON.stringify(learner).includes('Do not send this'), false);
   assert.equal(JSON.stringify(learner).includes('SECRET TEACHER NOTES'), false);
   assert.equal(JSON.stringify(learner).includes('Sample private model'), false);
   assert.equal(JSON.stringify(learner).includes('Paris'), true); // title is public; answer key is stripped below.

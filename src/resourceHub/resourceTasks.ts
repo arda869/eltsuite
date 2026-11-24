@@ -115,7 +115,7 @@ export function publishedTasks(activity: HubActivity, selected: Set<string>): Im
   });
   const chosen = sections.filter(section => section.audience === 'learner' && selected.has(section.id));
   const learnerTasks: ImportedTask[] = chosen.map((section, index) => ({
-    id: section.id, line: index + 1, kind: 'task', title: section.title, instructions: section.instructions, instrDoc: section.instrDoc ?? null,
+    id: section.id, anchor: section.id, ...(section.identity ? { identity: section.identity } : {}), line: index + 1, kind: 'task', title: section.title, instructions: section.instructions, instrDoc: section.instrDoc ?? null,
     ...(section.versionGroup && chosen.filter(item => item.versionGroup === section.versionGroup).length > 1 ? { family: section.versionGroup, variant: section.versionLabel || String.fromCharCode(65 + index) } : {}),
     content: structuredClone(section.content),
     // Class export prints these answers from the private key directly after this task.

@@ -49,6 +49,9 @@ export async function copyTask(fromClass: string, fromItem: string, taskId: stri
   const batch = writeBatch(db);
   const { data: d0, key } = await withMedia(fromClass, toClass, t.data() as DocumentData, k.exists() ? k.data() : {});
   const data: DocumentData = { ...d0, content: await rewriteCollab(d0.content, collab) };
+  // Keep its anchor in another lesson, so references copied with it still find it; a second copy
+  // in the same lesson is a new activity with its own.
+  data.anchor = fromClass === toClass && fromItem === toItem ? ref.id : data.anchor || taskId;
   batch.set(ref, { ...data, title: (data.title ?? '') + titleSuffix, order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   batch.set(keyRef(toClass, toItem, ref.id), key);
   if (n.exists()) batch.set(notesRef(toClass, toItem, ref.id), n.data());
@@ -71,7 +74,7 @@ export async function copyLesson(fromClass: string, itemId: string, toClass: str
   for (const t of tasks.docs) {
     const [k, n] = await Promise.all([getDoc(keyRef(fromClass, itemId, t.id)), getDoc(notesRef(fromClass, itemId, t.id))]);
     const { data: d0, key } = await withMedia(fromClass, toClass, t.data(), k.exists() ? k.data() : {});
-    prepared.push({ data: { ...d0, content: await rewriteCollab(d0.content, opts.collab ?? 'same') }, key, ...(n.exists() ? { notes: n.data() } : {}) });
+    prepared.push({ data: { ...d0, anchor: d0.anchor || t.id, content: await rewriteCollab(d0.content, opts.collab ?? 'same') }, key, ...(n.exists() ? { notes: n.data() } : {}) });
   }
   const batch = writeBatch(db);
   batch.set(newRef, {

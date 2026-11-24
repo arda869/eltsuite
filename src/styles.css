@@ -3310,6 +3310,11 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .pic-pop { width: 320px; gap: 10px; }
 .pic-row { display: flex; flex-direction: column; gap: 4px; }
 .pic-row input { height: 30px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 8px; font: 13px var(--sans); }
+.pic-bw { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.pic-bw img, .pic-bw-wait { width: 44px; height: 44px; object-fit: contain; border: 1px solid var(--hair-strong); border-radius: 6px; background: #fff; filter: grayscale(1); }
+.pic-bw-text { flex: 1 1 140px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+.ca-bw-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 12.5px; }
+.ca-bw-row > span:first-child { font-weight: 600; }
 .pic-dialog { width: min(560px, calc(100vw - 32px)); gap: 14px; max-height: 80dvh; overflow-y: auto; overscroll-behavior: contain; }
 .pic-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 26px 16px; border: 1.5px dashed var(--hair-strong); border-radius: 14px; background: var(--tint); text-align: center; cursor: pointer; font-family: var(--sans); }
 .pic-drop:hover, .pic-drop.over { border-color: var(--accent); }
@@ -8763,3 +8768,71 @@ p:has(> .node-picture ~ .node-picture) .pic-caption,p:has(> .pic-rendered ~ .pic
 .st-paper-row { display: flex; align-items: center; gap: 8px; margin: -2px 0 6px 32px; }
 .st-paper-k { flex: none; font: 700 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
 .st-paper-input { font-size: 14px; font-weight: 500; }
+
+/* Standalone lesson files: the page fills the window down to the Messages bar, and the task card
+   fills the page, so there is no empty strip under it. Writing space grows with the card. */
+.dp.k-lesson { height: calc(100dvh - var(--proxy-h, 0px) - var(--suite-dock-space, 0px)); }
+.dp.k-lesson .lf-main { display: flex; flex-direction: column; }
+.dp.k-lesson .lf-main > .lf-task, .dp.k-lesson .lf-main > .lf-learner-preview, .dp.k-lesson .lf-main > .ma-empty { flex: 1 0 auto; }
+.dp.k-lesson .lf-main > .lf-task .lf-body { flex: 1 0 auto; display: flex; flex-direction: column; }
+.dp.k-lesson .lf-main > .lf-task .lf-body > * { flex: 1 0 auto; }
+.dp.k-lesson .lf-main > .sh-split { flex: 1; min-height: 0; }
+
+/* Collab: tabs and outline on the left of a document page, as in Google Docs. The page keeps its
+   width in the middle; comments stay on the right. */
+body .dp .cd-main.has-nav.has-nav { grid-template-columns: 248px minmax(0, 1fr) 280px; }
+body .dp .cd-main.has-nav.has-nav.no-side { grid-template-columns: 248px minmax(0, 1fr); }
+body .dp .cd-main.has-nav.has-nav.nav-collapsed { grid-template-columns: 44px minmax(0, 1fr) 280px; }
+body .dp .cd-main.has-nav.has-nav.nav-collapsed.no-side { grid-template-columns: 44px minmax(0, 1fr); }
+.dn { position: sticky; top: 8px; align-self: start; max-height: calc(100dvh - 140px); overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 6px 16px 0; font-family: var(--sans); }
+.dn-top { display: flex; }
+.dn-close, .dn-open, .dn-add, .dn-more { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+.dn-close:hover, .dn-open:hover, .dn-add:hover, .dn-more:hover { background: var(--hover, rgba(0, 0, 0, .06)); color: var(--ink); }
+.dn-close:focus-visible, .dn-open:focus-visible, .dn-add:focus-visible, .dn-more:focus-visible, .dn-tab-btn:focus-visible, .dn-h:focus-visible { outline: 2px solid var(--accent, #c8764a); outline-offset: 1px; }
+.dn-collapsed { padding-top: 4px; }
+.dn-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 6px 12px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.dn-tabs, .dn-outline { list-style: none; margin: 0; padding: 0; }
+.dn-tab { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-radius: 999px; }
+.dn-tab-btn { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 38px; padding: 0 10px 0 14px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 14px var(--sans); text-align: left; cursor: pointer; }
+.dn-tab-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dn-tab-btn:hover { background: var(--hover, rgba(0, 0, 0, .05)); }
+.dn-tab.on > .dn-tab-btn { background: color-mix(in srgb, var(--accent, #c8764a) 16%, var(--paper, #fff)); color: var(--ink); font-weight: 700; }
+.dn-more { opacity: 0; width: 28px; height: 28px; margin-right: 4px; }
+.dn-tab:hover .dn-more, .dn-tab.on .dn-more, .dn-more:focus-visible { opacity: 1; }
+.dn-rename { min-height: 36px; margin: 1px 0; padding: 0 12px; border: 1px solid var(--accent, #c8764a); border-radius: 999px; font: 500 14px var(--sans); background: var(--paper, #fff); color: var(--ink); }
+.dn-outline, .dn-empty { grid-column: 1 / -1; margin: 4px 0 8px 22px; }
+.dn-empty { font-size: 12.5px; font-style: italic; color: var(--muted); line-height: 1.4; padding-right: 8px; }
+.dn-h { display: block; width: 100%; padding: 5px 10px; border: 0; border-left: 2px solid var(--hair); background: none; color: var(--ink-2, var(--muted)); font: 400 13px/1.35 var(--sans); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dn-h:hover { color: var(--ink); border-left-color: var(--accent, #c8764a); background: var(--hover, rgba(0, 0, 0, .03)); }
+.dn-h.l2 { padding-left: 22px; } .dn-h.l3 { padding-left: 34px; font-size: 12.5px; }
+.dn-strip { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 12px; padding: 3px; border-radius: 10px; background: var(--paper-soft, #f4f3f0); width: fit-content; max-width: 100%; }
+.dn-strip button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.dn-strip button.on { background: var(--paper, #fff); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+@media (max-width: 1100px) { body .dp .cd-main.has-nav.has-nav, body .dp .cd-main.has-nav.has-nav.no-side { grid-template-columns: 44px minmax(0, 1fr); } body .dp .cd-main.has-nav.has-nav:not(.nav-collapsed) .dn { position: fixed; left: 8px; top: 120px; z-index: 60; width: 260px; padding: 8px; border-radius: 14px; background: var(--paper, #fff); box-shadow: 0 16px 40px -18px rgba(0, 0, 0, .35); } }
+@media (max-width: 860px) { body .dp .cd-main.has-nav.has-nav { grid-template-columns: 1fr; } body .dp .cd-main.has-nav.has-nav .dn-collapsed { position: fixed; left: 8px; bottom: 56px; z-index: 60; background: var(--paper, #fff); border-radius: 999px; box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .35); padding: 2px; } }
+body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-gutter, 24px) - 8px)); }
+/* A page colour chosen in Page setup colours the sheets (not in the black reading view). */
+.pg-paper:not([data-paper-theme="black"]) .pg-sheet { background: var(--pg-page-colour, var(--pg-sheet-background, #fff)); }
+
+/* OCR: words found on a scanned page, invisible over it so they can be selected. */
+.textLayer .ocr-word { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; }
+.textLayer .ocr-word::selection { background: rgba(43, 76, 158, .3); }
+.pdff-ocr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 16px 0; padding: 10px 14px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); font: 13.5px var(--sans); color: var(--ink); }
+.pdff-ocr > svg { flex: none; color: var(--accent, #c8764a); }
+.pdff-ocr > span:first-of-type { flex: 1 1 260px; }
+.pdff-ocr .btn { height: 32px; min-height: 32px; }
+.pdff-ocr-bar { flex: 0 0 160px; height: 6px; border-radius: 99px; background: var(--surface, #eee); overflow: hidden; }
+.pdff-ocr-bar i { display: block; height: 100%; background: var(--accent, #c8764a); transition: width .3s; }
+.pdff-err { margin: 8px 16px 0; }
+
+/* PDF search. Every control in the row is 32px high. */
+.pdff-find { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 16px 0; padding: 6px 10px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--muted); }
+.pdff-find > svg { flex: none; }
+.pdff-find-in { flex: 1 1 220px; height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); box-sizing: border-box; }
+.pdff-find .ne-btn { height: 32px; min-height: 32px; }
+.pdff-find-n { min-width: 72px; font: 600 12.5px var(--sans); color: var(--muted); }
+.pdff-find-snip, .pdff-find-note { flex-basis: 100%; font: 12.5px var(--sans); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.textLayer span.pdf-hit { background: rgba(255, 196, 0, .35); border-radius: 2px; }
+.textLayer span.pdf-hit-on { background: rgba(255, 140, 0, .55); border-radius: 2px; box-shadow: 0 0 0 2px rgba(255, 140, 0, .55); }
+.textLayer.off span.pdf-hit, .textLayer.off span.pdf-hit-on { opacity: 1; }
+.pdff-find { position: sticky; top: 122px; z-index: 11; box-shadow: 0 8px 20px -16px rgba(0, 0, 0, .35); }

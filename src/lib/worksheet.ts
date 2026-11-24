@@ -1,3 +1,4 @@
+import { refreshRefs, refTargets, refText, resolveRef, type RefAttrs } from './identity';
 import { configFromNode, type ActivityConfig } from '../communicative/model';
 import { CRITERIA, DEVELOPMENT_FORMS, RATINGS, TT_KINDS, type TTKind, type TTField } from '../training/formDefinitions';
 import { studioDefinition } from '../coach/studioForms';
@@ -39,7 +40,7 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { caption?: Run[]; src: string; size: string; w?: number; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
+  pic?: { bw?: string; caption?: Run[]; src: string; size: string; w?: number; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
   kw?: boolean; // a key word in a frame, as on screen
   stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
@@ -48,6 +49,7 @@ export type Run = {
   pl?: { k: string; s: string }; // linking between words, or a pause
   subs?: string[]; // a substitution slot
   phon?: { type: string; a: Record<string, unknown> }; // the phonemic chart or a sound card
+  aref?: import('./identity').RefView; // a reference to another activity or to Learner A / B
 };
 export type Block =
   | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number'; mark?: string }
@@ -70,7 +72,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { family?: string | null; activityBlocks?: Record<string, Block[]>; activities?: ActivityConfig[]; id?: string; variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { identity?: import('./identity').ActivityIdentity | null; family?: string | null; activityBlocks?: Record<string, Block[]>; activities?: ActivityConfig[]; id?: string; variant?: string; online?: string[]; icon?: YoungAction | null; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -215,7 +217,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         case 'picture': {
           const mk = String(a.mark ?? '');
           if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), w: Number.isFinite(Number(a.w)) && Number(a.w) > 0 ? Math.round(Number(a.w)) : undefined, label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
+          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), w: Number.isFinite(Number(a.w)) && Number(a.w) > 0 ? Math.round(Number(a.w)) : undefined, label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, ...(a.bw ? { bw: String(a.bw) } : {}), tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
           if (a.credit) out.push({ t: ' ' + String(a.credit) + ' ' });
           break;
         }
@@ -223,6 +225,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           if (node.content) out.push(...runsOf(node.content));
           else if (node.type === 'mention') out.push({t:'@'+String(a.label || 'colleague')});
           else if (node.type === 'lessonLink') out.push({t:String(a.label || a.title || 'Linked activity')});
+          else if (node.type === 'activityRef') { const v = resolveRef(a as RefAttrs, null); out.push({ t: refText(v), aref: v }); }
           else if (node.type === 'ipa') out.push({ ipa: { text: String(a.text ?? ''), accent: String(a.accent ?? 'RP'), show: !!a.showAccent } });
           else if (node.type === 'stress') out.push({ stress: { syl: (a.syllables ?? []) as string[], on: Number(a.stressed ?? 0), style: String(a.style ?? 'box') } });
           else if (node.type === 'plink') out.push({ t: a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿', pl: { k: String(a.k ?? 'link'), s: String(a.s ?? 'under') } });
@@ -711,12 +714,13 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   }
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
   const icon = lessonStyle === 'young' ? youngIcon(t.print?.icon && t.print.icon !== 'same' ? t.print.icon : t.ylIcon, t.content) : null;
-  return { ...(t.id ? {id:t.id} : {}), ...(t.family ? {family:t.family} : {}), ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(activities.length ? { activities, activityBlocks } : {}), ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(t.identity ? { identity: t.identity } : {}), ...(t.id ? {id:t.id} : {}), ...(t.family ? {family:t.family} : {}), ...(online.length ? { online: [...new Set(online)] } : {}), ...(icon ? { icon } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(activities.length ? { activities, activityBlocks } : {}), ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
 // when at least one of its tasks is printed.
-export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsItem[] {
+export function flattenWithSections(tasksIn: ExportTask[], ids?: Set<number>, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsItem[] {
+  const tasks = withFreshRefs(tasksIn);
   const out: WsItem[] = [];
   let pending: string | null = null;
   tasks.forEach((t, i) => {
@@ -728,9 +732,13 @@ export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>, less
   return out;
 }
 
-export function flattenLesson(tasks: ExportTask[], ids?: Set<number>) {
+export function flattenLesson(tasksIn: ExportTask[], ids?: Set<number>) {
+  const tasks = withFreshRefs(tasksIn);
   return tasks.map((t, i) => ({ t, i })).filter(({ t, i }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen' && (!ids || ids.has(i))).map(({ t }) => flattenTask(t));
 }
+
+// References show the lesson's current names and numbers on paper.
+export const withFreshRefs = <T extends ExportTask>(tasks: T[]): T[] => refreshRefs(tasks, refTargets(tasks as never));
 
 // ---------------------------------------------------------------- DOCX
 
@@ -771,6 +779,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
       if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: S(20) })];
       if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));
+      if (r.aref) return [new TextRun({ text: r.aref.version ? ` [${r.aref.version}] ${r.aref.label}` : refText(r.aref), bold: true, font: SANS, color: (r.aref.colour || '').replace('#', '') || ACC_INK })];
       if (r.num !== undefined) return [new TextRun({ text: ` ${r.ql ?? r.num} `, bold: true, font: SERIF, color: ACC_INK })];
       if (r.ol) return [new TextRun({ text: `${r.ol}  `, bold: true, font: SANS, color: '8A847D' })];
       const q = /^\s*\((\d+)\)\s*$/.exec(r.t ?? '');
@@ -1105,6 +1114,7 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
   const out = new Map<string, { key: string; src: string; crop?: string; filter?: string }>();
   const pictures = (runs: Run[]) => runs.forEach(({pic}) => {
     if (pic) out.set(pic.key ?? pic.src, {key:pic.key ?? pic.src,src:pic.src,crop:pic.crop,filter:pic.filter});
+    if (pic?.bw) out.set(pic.bw, { key: pic.bw, src: pic.bw });
   });
   const blocks = (bs: Block[]) =>
     bs.forEach((b) => {
@@ -1119,7 +1129,7 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
     if (it.kind !== 'task') return;
     pictures(it.task.instrRuns ?? []);
     for (const activity of it.task.activities ?? []) {
-      for (const item of activity.items) for (const picture of [item.picture,item.matchPicture]) if (picture?.src) out.set(picture.src,{key:picture.src,src:picture.src});
+      for (const item of activity.items) for (const picture of [item.picture,item.matchPicture]) { if (picture?.src) out.set(picture.src,{key:picture.src,src:picture.src}); if (picture?.bw) out.set(picture.bw,{key:picture.bw,src:picture.bw}); }
       for (const version of activity.settings.versions ?? []) if (version.picture.src) out.set(version.picture.src, { key: version.picture.src, src: version.picture.src });
     }
     blocks(it.task.blocks);

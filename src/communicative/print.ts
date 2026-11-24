@@ -2,10 +2,10 @@ import { ACTIVITY_LABELS, bingoCards, boardArt, boardLayout, boardStyleOf, domin
 
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 export type ActivityPrintPiece = { html: string; cutout: boolean; label: string };
-export type ActivityPrintOptions = { cards?: number; seed?: number; renderItem?: (item: ActivityItem) => string; media?: Record<string, { data: string }> };
+export type ActivityPrintOptions = { cards?: number; seed?: number; renderItem?: (item: ActivityItem) => string; media?: Record<string, { data: string }>; mono?: boolean };
 const source = (src: string, o: ActivityPrintOptions) => o.media?.[src]?.data ?? (/^(https?:|data:image\/)/.test(src) ? src : '');
 const picture = (item: ActivityItem, o: ActivityPrintOptions) => {
-  const src = item.picture && source(item.picture.src, o);
+  const src = item.picture && ((o.mono && item.picture.bw && source(item.picture.bw, o)) || source(item.picture.src, o));
   return src ? `<img class="pa-picture" src="${esc(src)}" alt="${esc(item.picture?.alt)}" style="object-fit:${item.picture?.fit === 'contain' ? 'contain' : 'cover'};object-position:${esc(item.picture?.position || '50% 50%')}">` : '';
 };
 const text = (item: ActivityItem, o: ActivityPrintOptions) => o.renderItem?.(item) || esc(plainText(item.content) || item.title);

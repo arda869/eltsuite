@@ -1,3 +1,4 @@
+import { ActivityRefNode, insertActivityRef, REF_TOOL_FACE } from './ActivityRef';
 import { InlineMedia, newInlineMedia } from './MediaNode';
 import { EditorClassContext, useEditorClass } from './context';
 import { UiIcon } from '../components/UiIcon';
@@ -23,7 +24,7 @@ import { useToolGate } from '../lib/toolbarPrefs';
 // The task instruction as rich text: bold, colour, highlight, a definition on a word, IPA, word stress.
 // One line (Shift + Enter for a new line). The plain text is kept beside it for exports and search.
 const plainDoc = (text: string): JSONContent => ({ type: 'doc', content: [text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' }] });
-const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia)"/) !== null;
+const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia|activityRef)"/) !== null;
 
 export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
   const ctx=useEditorClass();
@@ -43,6 +44,7 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
       Stress,
       ...LANG_MARKS,
       Link.configure({ openOnClick: false, autolink: true }),
+      ActivityRefNode,
       Placeholder.configure({ placeholder }),
     ],
     content: doc ?? plainDoc(text),
@@ -96,6 +98,8 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
         {B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress: mark the stressed syllable')}
         {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
         {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
+        <span className="ne-sep" aria-hidden="true" />
+        {B(REF_TOOL_FACE, editor.isActive('activityRef'), () => void insertActivityRef(editor), 'Refer to another activity or to Learner A or B')}
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
     </div></EditorClassContext.Provider>

@@ -8,7 +8,6 @@ import { splitKey, type Response, type Responses } from '../lib/questions';
 import { openPdf } from '../pdf/pdfData';
 import type { HubCollection } from './catalog';
 import type { HubResourceDraft, HubResourceEdition } from './hubEditorData';
-import { makeEditorResourcePdf } from './ResourceRichPdf';
 import { makeResourceLessonPdf } from './ResourceLessonPdf';
 import { publishedResourceToActivity } from './usePublishedHubResources';
 import './resource-live-preview.css';
@@ -93,7 +92,7 @@ export function ResourceLivePreview({ draft, activeSectionId, collection }: { dr
     setA4Busy(true);
     const timer = window.setTimeout(() => {
       const activity = publishedResourceToActivity({ ...draft, edition: draft.revision, publishedAt: Date.now(), publishedBy: '' } as HubResourceEdition);
-      const makePdf = activity.kind === 'lesson' ? makeResourceLessonPdf : makeEditorResourcePdf;
+      const makePdf = makeResourceLessonPdf;
       void makePdf({ activity, collection, learnerIds: visibleIds.split(','), teacherIds: [], copies: 1, paper: 'a4', colour: 'colour' })
         .then(bytes => { if (!cancelled) { setA4Bytes(bytes); setA4Error(''); } })
         .catch(() => { if (!cancelled) { setA4Bytes(null); setA4Error('The A4 preview could not be made. Try Preview print PDF.'); } })

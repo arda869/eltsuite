@@ -187,6 +187,8 @@ export async function importBundle(classId: string, b: LessonBundle, opts: { top
     // task family links point at the new ids
     if (typeof data.family === 'string' && taskMap[data.family]) data.family = taskMap[data.family];
     if (Array.isArray(data.variants)) data.variants = data.variants.map((v: string) => taskMap[v] ?? v);
+    // References from other tasks find this one by its anchor, which stays the same in the copy.
+    if (!data.anchor) data.anchor = t.id;
     const batch = writeBatch(db);
     batch.set(taskRefs[i], { ...data, createdAt: serverTimestamp() });
     batch.set(keyRef(classId, itemRef.id, taskRefs[i].id), remap(t.key, mediaMap) as DocumentData);

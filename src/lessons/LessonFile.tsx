@@ -25,9 +25,14 @@ import { useNavigate } from 'react-router-dom';
 import { lessonLiveApi } from '../resourceHub/lessonLiveApi';
 import { openMenuAt } from '../components/ContextMenu';
 import { FileLessonAi } from './FileLessonAi';
+import { IdentityDialog, IdentityMark, RefsContext } from '../components/Identity';
+import { lessonIdentities, refTargets, type ActivityIdentity } from '../lib/identity';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
+
+// A small QR mark for "Invite learners".
+const QrGlyph = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 4 }}><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1" /><rect x="14" y="3.5" width="6.5" height="6.5" rx="1" /><rect x="3.5" y="14" width="6.5" height="6.5" rx="1" /><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 20.5h2M20.5 14v2" /></svg>;
 
 export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = [
   { v: 'lesson', label: 'Lesson', hint: 'Taught in class' },
@@ -35,7 +40,7 @@ export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = 
   { v: 'homework', label: 'Homework', hint: 'With a due date' },
   { v: 'exam', label: 'Exam', hint: 'Timed, with results released later' },
 ];
-export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null; teacherNotes?: string };
+export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null; teacherNotes?: string; anchor?: string; identity?: ActivityIdentity | null };
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
 const notesCol = (id: string) => collection(db, 'sharedDocs', id, 'taskNotes');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
@@ -69,7 +74,7 @@ export async function saveLessonToFiles(owner: { uid: string; name: string }, cl
   for (const t of s.docs) {
     const d = t.data();
     const body = d.kind === 'section' ? null : await lessonTaskBody({ classId, itemId, taskId: t.id });
-    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, print: d.print ?? null, content: body?.content ?? EMPTY })));
+    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', anchor: d.anchor || t.id, ...(d.identity ? { identity: d.identity } : {}), title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, print: d.print ?? null, content: body?.content ?? EMPTY })));
   }
   await b.commit();
   return id;
@@ -80,7 +85,8 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
   let i = 0;
   for (const r of rows) {
     const taskId = await addTask(c.id, itemId, i++, r.kind, { title: r.title, instructions: r.instructions, content: r.content ?? EMPTY });
-    if (r.instrDoc || r.print) await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}) })));
+    // The row's anchor goes with it, so references between its tasks still find them in the class.
+    await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ anchor: r.anchor || r.id, ...(r.identity ? { identity: r.identity } : {}), ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}) })));
     if (r.teacherNotes) await setDoc(doc(taskRef(c.id, itemId, taskId), 'private', 'notes'), { text: r.teacherNotes });
   }
   return itemId;
@@ -154,6 +160,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   const rows = useRows(d.id);
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState('');
+  const [idOpen, setIdOpen] = useState(false);
   const fileOrigin = d as SharedDoc & { originClassId?: string; sourceClassId?: string; classId?: string };
   const standaloneLive = canEdit && d.standaloneLesson === true && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
   const startLive = async () => {
@@ -254,6 +261,11 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   };
   const taskBlock = cur ? (
           <div className="lf-task" key={cur.id}>
+            {cur.kind === 'task' && (cur.identity || canEdit) && (
+              <div className="aid-row">
+                {cur.identity ? <IdentityMark identity={cur.identity} onClick={canEdit ? () => setIdOpen(true) : undefined} /> : <button type="button" className="aid-add" onClick={() => setIdOpen(true)}><span aria-hidden="true">+</span> Activity type</button>}
+              </div>
+            )}
             <div className="lf-head">
               <input className="lf-title" defaultValue={cur.title} disabled={!canEdit} onChange={(e) => patch(cur.id, { title: e.target.value })} aria-label="Title" />
               {canEdit && (
@@ -283,6 +295,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
           </div>
   ) : null;
   let n = 0;
+  const refsValue = { targets: refTargets(rows.map(r => ({ ...r, anchor: r.anchor || r.id }))), versions: [], here: cur ? cur.anchor || cur.id : undefined, strict: canEdit };
   return (
     <>
     {headerSlot && createPortal(<div className="lf-header-controls">
@@ -296,8 +309,9 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
         <button type="button" role="radio" aria-checked={learnerPreview} className={learnerPreview ? 'on' : ''} onClick={() => chooseView('learner')}>Learner <span className="lf-preview-word">preview</span></button>
       </span>
       {canEdit && <FileLessonAi fileId={d.id} selectedTaskId={cur?.kind === 'task' ? cur.id : undefined} beforeOpen={flushPending} onApplied={id => { if (id && id !== 'lesson') setSel(id); }} />}
-      {standaloneLive && <button type="button" className="btn primary lf-header-live" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : rows.some(row => row.kind === 'task') ? 'Start live' : 'Add a task first'}</button>}
+      {standaloneLive && <button type="button" className="btn primary lf-header-live" title="Start a live lesson. Learners join with a code or a QR code, no account needed." disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}>{liveBusy ? 'Starting…' : rows.some(row => row.kind === 'task') ? <><QrGlyph /> Invite learners</> : 'Add a task first'}</button>}
     </div>, headerSlot)}
+    <RefsContext.Provider value={refsValue}>
     <div className="lf">
       <aside className="lf-side">
         <span className="pd-k">The lesson</span>
@@ -322,7 +336,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
       </aside>
       <main className="lf-main">
         {liveError && <p role="alert" className="rll-error">{liveError}</p>}
-        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}><h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
+        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}>{cur.identity && <div className="aid-row"><IdentityMark identity={cur.identity} /></div>}<h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
         {sheet && rows.length && sheetData ? (
           <div className="sh-split lf-split">
             <section className="sh-left" aria-label="The worksheet">
@@ -379,7 +393,9 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
         )}</>}
       </main>
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
+      {idOpen && cur && <IdentityDialog value={cur.identity} used={lessonIdentities(rows)} onSave={(v, scope) => { const was = cur.identity; for (const r of rows) if (r.id === cur.id || (scope === 'all' && was && v && r.identity?.id === was.id)) patch(r.id, { identity: v }, 0); setIdOpen(false); }} onClose={() => setIdOpen(false)} />}
     </div>
+    </RefsContext.Provider>
     </>
   );
 }

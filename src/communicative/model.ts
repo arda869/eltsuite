@@ -6,7 +6,7 @@ export const ACTIVITY_LABELS: Record<ActivityKind, string> = {
   board: 'Board game', bingo: 'Bingo', dominoes: 'Dominoes', memory: 'Pelmanism', strips: 'Strip story', cue: 'Cue cards',
   survey: 'Survey', findSomeone: 'Find someone who', ranking: 'Ranking', opinion: 'Opinion line', spot: 'Spot the difference', taboo: 'Taboo cards', speaking: 'Speaking timer',
 };
-export type ActivityPicture = { src: string; alt: string; fit?: 'cover' | 'contain'; position?: string };
+export type ActivityPicture = { src: string; alt: string; fit?: 'cover' | 'contain'; position?: string; bw?: string }; // bw: a black-and-white version for black-and-white prints
 export type ActivityItem = {
   id: string; title: string; content?: JSONContent[]; picture?: ActivityPicture; matchPicture?: ActivityPicture;
   dominoRight?: {text:string;picture?:ActivityPicture}; match?: string; call?: string; useful?: string; taboo?: string[];

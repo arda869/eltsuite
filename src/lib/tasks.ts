@@ -47,6 +47,8 @@ export type Task = {
   examReleased?: boolean; // the teacher has released the results
   lib?: { uid: string; id: string } | null; // linked to a task in the teacher's resources library
   print?: PaperLook | null; // how it looks on the printed worksheet
+  anchor?: string | null; // a stable name other tasks' references use; kept when the task is copied
+  identity?: import('./identity').ActivityIdentity | null; // its activity type: name, colour, icon
 };
 // How a task prints: the length of its gaps, the space for writing, and its own instruction on paper.
 // show: on paper and on screen (the default), only on paper (learners don't see it online), or only on screen (not printed).
@@ -105,7 +107,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   if (patch.content && JSON.stringify(patch.content).includes('"text"')) noteFeature('lessons', classId + ':' + itemId);
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'spelling' | 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print' | 'ylIcon'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'spelling' | 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print' | 'ylIcon' | 'identity' | 'anchor'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

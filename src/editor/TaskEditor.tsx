@@ -82,6 +82,7 @@ import type { PackKind } from '../lib/pack';
 import { Mention, MentionMenu, useMentionMenu } from './Mention';
 import { CELL_COLORS, cellBg } from './tableStyle';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
+import { ActivityRefNode, insertActivityRef, REF_TOOL_FACE } from './ActivityRef';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
@@ -605,6 +606,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       TTNode,
       Ipa,
       LessonLink,
+      ActivityRefNode,
       jsonClip(Reflect, 'div', 'data-reflect'),
       FreshIds,
       Placeholder.configure({ placeholder: placeholder ?? 'Write the task. Type / for a question, list or image.' }),
@@ -841,6 +843,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                 TOOL_FACE.link,
               ),
             ],
+            ['ref', BTN('Refer to another activity or to Learner A or B, inside the sentence', editor.isActive('activityRef'), () => void insertActivityRef(editor), REF_TOOL_FACE)],
             ['sep', <span key="sep" className="tool-sep" />],
             ...(!textOnly
               ? ([

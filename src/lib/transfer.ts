@@ -86,6 +86,8 @@ export async function appendTasksFromImport(classId: string, itemId: string, tas
       ...(isOtherVersion ? { restricted: true, allowed: [] } : {}),
       ...(t.layout && t.layout !== 'single' ? { layout: t.layout } : {}),
       ...(t.exam ? { exam: t.exam } : {}),
+      ...(t.anchor ? { anchor: t.anchor } : {}),
+      ...(t.identity ? { identity: t.identity } : {}),
       createdAt: serverTimestamp(),
     });
     b.set(keyRef(classId, itemId, ref.id), key);

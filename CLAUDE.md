@@ -149,3 +149,21 @@ Messages uses GIPHY's Web SDK fetch API and requests G-rated GIFs. The super adm
 SDK key in the GIF picker; it is stored in `admin/gif.giphyKey` and checked before saving. An old
 Tenor key, if present, stays in use until the GIPHY key is added. The picker also accepts a GIF
 from the teacher's device when no key is set. Keep GIPHY attribution visible.
+
+## Collab documents: tabs, outline and page setup
+
+A Collab document's tabs are separate shared texts in the same Y.Doc (`src/collab/tabs.ts`): the first
+tab is the existing `default` fragment, others are `tab-<id>`, listed in the `tabList` array. Learners
+who can open a document see its tabs. Downloads, Print and the folder export include every tab
+(`allTabsJSON`). Version history snapshots the open tab. Page setup (`src/collab/PageSetup.tsx`) keeps
+exact margins per side (`layout.margin`, px at 96 per inch) and a page colour (`layout.pageColour`);
+`marginsOf` falls back to the old presets. Every control in a toolbar row has one height.
+
+## PDF files: export and OCR
+
+Download PDF and Print (`src/pdf/pdfExport.ts`) keep the original pages and draw highlights and
+drawings as shapes and text boxes as pictures; answer boxes only when the answer key is showing.
+OCR (`src/pdf/ocr.ts`) runs tesseract.js in the browser from our own copy in `public/ocr`
+(`scripts/ocr-assets.mjs`, at install and build); pages are never sent to a service. Words found are
+kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer, read aloud, and
+invisible text in the download so it can be searched.

@@ -9,8 +9,11 @@ import { useDismiss } from '../lib/useDismiss';
 // text. The setting is part of the shared document, so everyone writing in it sees the same pages.
 // Switching layout preserves the document's text formatting.
 
-import { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout, type PageSize, type Margins } from './documentLayout';
+import { LAYOUT_DEFAULT, SIZES, type Layout } from './documentLayout';
 export { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout } from './documentLayout';
+import { marginsOf } from './documentLayout';
+import { PageSetupDialog } from './PageSetup';
+import { Ruler } from './Ruler';
 
 export const PAGE_FONTS = ['Georgia', 'Times New Roman', 'Arial', 'Calibri', 'Verdana', 'Trebuchet MS', 'Garamond', 'Courier New', 'Comic Sans MS', 'Helvetica', 'Palatino', 'Book Antiqua', 'Tahoma', 'Cambria', 'Candara', 'Consolas', 'system-ui'];
 export const PAGE_SIZES_PT = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48];
@@ -80,7 +83,6 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
     if (!sizeDraft.trim() || !Number.isFinite(value)) { setSizeDraft(String(selectedSize)); return; }
     changeSize(value);
   };
-  const toPageless = () => {setLayout({paged:false});setOpen(false);};
   return (
     <>
       {part !== 'setup' && (
@@ -108,85 +110,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
           </svg>
           <span>{layout.paged ? 'Pages' : 'Pageless'}</span>
         </button>
-        {open && (
-          <div className="pg-pop" role="dialog" aria-label="Page setup">
-            <span className="pg-seg" role="radiogroup" aria-label="Layout">
-              <button type="button" role="radio" aria-checked={!layout.paged} className={!layout.paged ? 'on' : ''} onClick={() => layout.paged && void toPageless()}>
-                <b>Pageless</b>
-                <span>One long page that fits your screen</span>
-              </button>
-              <button type="button" role="radio" aria-checked={layout.paged} className={layout.paged ? 'on' : ''} onClick={() => setLayout({ paged: true })}>
-                <b>Pages</b>
-                <span>Like Word: page size, margins, fonts</span>
-              </button>
-            </span>
-            {layout.paged && (
-              <div className="pg-grid">
-                <label><span>Document columns</span><NSelect aria-label="Document columns" value={layout.columns} onChange={(e) => setLayout({ columns: Number(e.target.value) })}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</NSelect></label>
-                <label>
-                  <span>Orientation</span>
-                  <NSelect aria-label="Page orientation" className="pg-sel" value={layout.orientation} onChange={(e) => setLayout({ orientation: e.target.value as Layout['orientation'] })}>
-                    <option value="portrait">Portrait</option>
-                    <option value="landscape">Landscape</option>
-                  </NSelect>
-                </label>
-                <label>
-                  <span>Line spacing</span>
-                  <NSelect aria-label="Line spacing" className="pg-sel" value={layout.lineSpacing} onChange={(e) => setLayout({ lineSpacing: Number(e.target.value) })}>
-                    {[1, 1.15, 1.5, 2, 2.5, 3].map((n) => <option key={n} value={n}>{n === 1 ? 'Single' : n === 2 ? 'Double' : String(n)}</option>)}
-                  </NSelect>
-                </label>
-                <label>
-                  <span>Page size</span>
-                  <NSelect aria-label="Page size" className="pg-sel" value={layout.size} onChange={(e) => setLayout({ size: e.target.value as PageSize })}>
-                    {Object.entries(SIZES).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </NSelect>
-                </label>
-                <label>
-                  <span>Margins</span>
-                  <NSelect aria-label="Margins" className="pg-sel" value={layout.margins} onChange={(e) => setLayout({ margins: e.target.value as Margins })}>
-                    {Object.entries(MARGINS).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </NSelect>
-                </label>
-                <label>
-                  <span>Font</span>
-                  <NSelect aria-label="Default font" className="pg-sel" value={layout.font} onChange={(e) => setLayout({ font: e.target.value })}>
-                    {PAGE_FONTS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </NSelect>
-                </label>
-                <label>
-                  <span>Size</span>
-                  <NSelect aria-label="Default font size" className="pg-sel" value={layout.pt} onChange={(e) => setLayout({ pt: Number(e.target.value) })}>
-                    {PAGE_SIZES_PT.filter((n) => n <= 18).map((n) => (
-                      <option key={n} value={n}>
-                        {n} pt
-                      </option>
-                    ))}
-                  </NSelect>
-                </label>
-              </div>
-            )}
-            {layout.paged && <div className="pg-running-settings">
-              <label>Header<input aria-label="Page header" maxLength={160} value={layout.header} onChange={(e) => setLayout({ header: e.target.value })} /></label>
-              <label>Footer<input aria-label="Page footer" maxLength={160} value={layout.footer} onChange={(e) => setLayout({ footer: e.target.value })} /></label>
-              <label className="pg-check"><input type="checkbox" checked={layout.pageNumbers} onChange={(e) => setLayout({ pageNumbers: e.target.checked })} />Show page numbers</label>
-              {layout.pageNumbers && <label>Start numbering at<input type="number" min="1" max="9999" aria-label="Starting page number" value={layout.pageNumberStart} onChange={(e) => setLayout({ pageNumberStart: Math.max(1, Math.min(9999, Number(e.target.value) || 1)) })} /></label>}
-            </div>}
-            <span className="hint">{layout.paged ? 'Select text to give it its own font and size, in the toolbar. Everyone in the document sees the same pages.' : 'Fonts and text formatting stay the same in either layout. Choose Pages to set a page size and margins.'}</span>
-          </div>
-        )}
+        {open && <PageSetupDialog layout={layout} onApply={setLayout} onClose={() => setOpen(false)} />}
       </span>}
     </>
   );
@@ -194,19 +118,21 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const desk = useRef<HTMLDivElement>(null);
-  const [zoomChoice, setZoomChoice] = useState('fit');
+  // Pages open as wide as the space allows (up to 125%), so the page fills the window.
+  const [zoomChoice, setZoomChoice] = useState('fill');
   const [available, setAvailable] = useState({ width: 800, height: 650 });
   const base = SIZES[layout.size];
   const s = layout.orientation === 'landscape' ? { ...base, w: base.h, h: base.w } : base;
-  const m = MARGINS[layout.margins].px;
-  const inner = s.h - 2 * m;
+  const mg = marginsOf(layout);
+  const m = mg.top;
+  const inner = s.h - mg.top - mg.bottom;
   const pageGap=24, stride=s.h+pageGap;
   const fitWidth = available.width / s.w;
-  const scale = zoomChoice === 'fit' ? Math.min(fitWidth, available.height / s.h) : zoomChoice === 'fill' ? fitWidth : Number(zoomChoice) / 100;
+  const scale = zoomChoice === 'fit' ? Math.min(fitWidth, available.height / s.h) : zoomChoice === 'fill' ? Math.min(1.25, fitWidth) : Number(zoomChoice) / 100;
   const zoom = Math.max(10, Math.min(200, Math.floor(scale * 100)));
   const liveZoom = useRef(zoom);
   liveZoom.current = zoom;
@@ -277,27 +203,29 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
       const scale=Number.parseFloat(getComputedStyle(paper).zoom)||1,top=paper.getBoundingClientRect().top;
       const roots=[...el.querySelectorAll<HTMLElement>('.ProseMirror > *, .cd-view > *')].filter(b=>b.getClientRects().length>0);
       const blocks=roots.flatMap(b=>b.matches('.studio-form')&&b.offsetHeight>inner?[...b.children].filter(c=>c instanceof HTMLElement) as HTMLElement[]:[b]);
-      for(const block of blocks){const r=block.getBoundingClientRect(),y=(r.top-top)/scale,height=r.height/scale,page=Math.max(0,Math.floor(y/stride)),end=page*stride+s.h-m;
+      for(const block of blocks){const r=block.getBoundingClientRect(),y=(r.top-top)/scale,height=r.height/scale,page=Math.max(0,Math.floor(y/stride)),end=page*stride+s.h-mg.bottom;
         const forced=block.matches('.doc-page-break,.doc-section[data-new-page]');
         if(forced||(height<=inner&&y+height>end)||y>end){const delta=(page+1)*stride+m-y;if(delta>0){originals.set(block,block.style.marginBlockStart);const margin=parseFloat(getComputedStyle(block).marginBlockStart)||0;block.style.marginBlockStart=(margin+delta)+'px';}}
       }
-      const height=el.offsetHeight+2*m;setPages(Math.max(1,Math.ceil((height+pageGap)/stride)));});measuring=false;
+      const height=el.offsetHeight+mg.top+mg.bottom;setPages(Math.max(1,Math.ceil((height+pageGap)/stride)));});measuring=false;
     };
     const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure);};measure();
     const ro=new ResizeObserver(schedule);ro.observe(el);const mo=new MutationObserver(records=>{if(records.some(r=>r.type!=='attributes'||r.attributeName!=='style'))schedule();});mo.observe(el,{subtree:true,childList:true,characterData:true});
     return()=>{cancelAnimationFrame(frame);ro.disconnect();mo.disconnect();mutate(restore);};
-  },[m,inner,s.h,stride,paged,zoom,editor]);
+  },[m,mg.bottom,inner,s.h,stride,paged,zoom,editor]);
   useEffect(() => {
     if (!paged) return;
     const st = document.createElement('style');
     const footer = [layout.footer ? JSON.stringify(layout.footer) : '', layout.pageNumbers ? 'counter(page)' : ''].filter(Boolean).join(' " · " ');
-    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${m / 96}in; @top-center { content: ${JSON.stringify(layout.header)}; } @bottom-center { content: ${footer || 'none'}; } }`;
+    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${mg.top / 96}in ${mg.right / 96}in ${mg.bottom / 96}in ${mg.left / 96}in; @top-center { content: ${JSON.stringify(layout.header)}; } @bottom-center { content: ${footer || 'none'}; } }`;
     document.head.appendChild(st);
     return () => st.remove();
-  }, [s.css, m, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers]);
+  }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers]);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
-      <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h + (pages-1)*pageGap, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
+      <div className={paged ? 'pg-column' : 'pg-flow-column'}>
+      {paged && ruler && <Ruler width={s.w} zoom={zoom} margins={mg} onChange={(m2) => onMargins?.(m2)} canEdit={!!onMargins} />}
+      <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h + (pages-1)*pageGap, padding: `${mg.top}px ${mg.right}px ${mg.bottom}px ${mg.left}px`, ...(layout.pageColour && appearance !== 'black' ? { ['--pg-page-colour' as string]: layout.pageColour } : {}), ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
         {paged&&Array.from({length:pages},(_,i)=><div key={'sheet-'+i} className="pg-sheet" aria-hidden="true" style={{top:i*stride,height:s.h}}/>)}
         <div ref={ref} className={paged ? 'pg-text' : undefined}>
           {children}
@@ -308,9 +236,10 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
           </span>
         ))}
         {paged && Array.from({ length: pages }, (_, i) => <div key={'running-' + i} className="pg-running" aria-hidden="true">
-          {layout.header && <span className="pg-running-header" style={{ top: i * stride + 22, left: m, right: m }}>{layout.header}</span>}
-          {(layout.footer || layout.pageNumbers) && <span className="pg-running-footer" style={{ top: i * stride + s.h - 36, left: m, right: m }}>{layout.footer}{layout.footer && layout.pageNumbers ? ' · ' : ''}{layout.pageNumbers ? i + layout.pageNumberStart : ''}</span>}
+          {layout.header && <span className="pg-running-header" style={{ top: i * stride + 22, left: mg.left, right: mg.right }}>{layout.header}</span>}
+          {(layout.footer || layout.pageNumbers) && <span className="pg-running-footer" style={{ top: i * stride + s.h - 36, left: mg.left, right: mg.right }}>{layout.footer}{layout.footer && layout.pageNumbers ? ' · ' : ''}{layout.pageNumbers ? i + layout.pageNumberStart : ''}</span>}
         </div>)}
+      </div>
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>

@@ -39,7 +39,7 @@ export interface HubActivity {
   notes: string[];
   worksheet: string[];
   tags: string[];
-  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; content: JSONContent }[];
+  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; content: JSONContent }[];
   authoredParts?: { id: string; title: string; audience: 'learner' | 'teacher'; lines: string[] }[];
 }
 

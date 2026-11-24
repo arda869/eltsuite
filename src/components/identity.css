@@ -1,0 +1,126 @@
+/* Activity identities, inline references and the Learner A / B sign.
+   An inline reference sits on the text baseline at the compact scale of a question number:
+   line-height 0 on the box so it never pushes the line taller. */
+
+.aref {
+  display: inline;
+  white-space: nowrap;
+  padding: 0;
+  margin: 0 .05em;
+  border: 0;
+  background: none;
+  font: 700 .86em/0 var(--sans);
+  letter-spacing: .01em;
+  color: var(--aid, var(--accent-text, var(--ink)));
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .22em;
+  vertical-align: baseline;
+}
+span.aref { text-decoration: none; }
+button.aref { cursor: pointer; border-radius: .25em; }
+button.aref:hover { text-decoration-color: currentColor; }
+button.aref:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.aref b { font-weight: 800; }
+.aref .aid-ic { display: inline-block; line-height: 0; vertical-align: -.14em; margin-right: .22em; }
+.aref .aid-ic svg { display: block; }
+.aref-v { color: var(--accent-text, var(--ink)); }
+.aref.is-missing { color: var(--danger, #b3261e); text-decoration: underline wavy; text-decoration-color: var(--danger, #b3261e); }
+.aref.is-missing::after { content: ' ?'; font-weight: 800; }
+.aref.is-editing { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* The sign: a letter in a small tile. A solid, B an outline, others a double outline, so the
+   shape tells them apart without colour. */
+.vsign {
+  display: inline-block;
+  min-width: 1.3em;
+  padding: .12em .18em;
+  margin-right: .28em;
+  box-sizing: border-box;
+  border-radius: .3em;
+  border: .09em solid var(--accent, var(--ink));
+  background: var(--accent, var(--ink));
+  color: var(--accent-on, #fff);
+  font: 800 .84em/1 var(--sans);
+  text-align: center;
+  vertical-align: .08em;
+  text-decoration: none;
+}
+.vsign[data-v="B"] { background: var(--paper, #fff); color: var(--accent-text, var(--ink)); }
+.vsign:not([data-v="A"]):not([data-v="B"]) { background: var(--paper, #fff); color: var(--accent-text, var(--ink)); box-shadow: inset 0 0 0 .12em var(--paper, #fff), inset 0 0 0 .2em var(--accent, var(--ink)); }
+.ver-badge .vsign { font-size: 1.05em; margin: 0 .1em 0 -.2em; letter-spacing: 0; }
+
+/* The identity above a task heading. */
+.aid-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--aid);
+  font: 800 11px/1.2 var(--sans);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.aid-mark .aid-ic { line-height: 0; }
+button.aid-mark { cursor: pointer; border-radius: 6px; padding: 3px 6px; margin: -3px -6px; }
+button.aid-mark:hover { background: color-mix(in srgb, var(--aid) 9%, transparent); }
+button.aid-mark:focus-visible { outline: 2px solid var(--aid); outline-offset: 1px; }
+.aid-add { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 3px 8px; margin: -3px -8px 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font: 700 11px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.aid-add:hover { color: var(--ink); background: var(--hover, rgba(0,0,0,.04)); }
+.aid-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.aid-row { display: flex; align-items: center; gap: 14px; min-height: 18px; margin: 0 0 6px; }
+
+/* The picker. */
+.aid-dialog { width: min(680px, calc(100vw - 32px)); max-height: min(860px, calc(100vh - 32px)); padding: 0; border: 0; border-radius: 16px; background: var(--paper, #fff); color: var(--ink); box-shadow: 0 24px 64px rgba(30, 26, 20, .28); }
+.aid-dialog::backdrop { background: rgba(30, 26, 20, .38); }
+.aid-form { display: flex; flex-direction: column; gap: 16px; padding: 22px 24px 0; max-height: inherit; overflow: auto; box-sizing: border-box; }
+.aid-head h2 { font: 500 22px/1.2 var(--serif); margin: 0 0 4px; }
+.aid-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 52ch; }
+.aid-cap { display: block; margin-bottom: 6px; font: 700 11px/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.aid-cap small { margin-left: 6px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.aid-field { display: block; }
+.aid-field .input { width: 100%; box-sizing: border-box; }
+.aid-used-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.aid-used-btn { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper, #fff); cursor: pointer; font: 600 12.5px var(--sans); color: var(--ink); }
+.aid-used-btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.aid-used-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.aid-colours { display: flex; flex-wrap: wrap; gap: 8px; }
+.aid-swatch { width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--aid); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.aid-swatch.on { box-shadow: 0 0 0 2px var(--paper, #fff), 0 0 0 4px var(--aid); }
+.aid-swatch.on::after { content: ''; display: block; width: 9px; height: 5px; margin: 10px auto 0; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
+.aid-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.aid-icons-top { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.aid-icons-top .aid-cap { margin: 0 0 8px; }
+.aid-search { flex: 1 1 240px; max-width: 320px; margin-bottom: 6px; }
+.aid-icons { max-height: 268px; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--ink) 2%, var(--paper, #fff)); color: var(--aid); }
+.aid-icon-group + .aid-icon-group { margin-top: 10px; }
+.aid-group-cap { display: block; margin: 4px 2px 6px; font: 700 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.aid-icon-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 4px; }
+.aid-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 64px; padding: 8px 4px 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: inherit; cursor: pointer; }
+.aid-icon:hover { background: var(--paper, #fff); border-color: var(--line); }
+.aid-icon.on { background: var(--paper, #fff); border-color: var(--aid); box-shadow: 0 0 0 2px color-mix(in srgb, var(--aid) 22%, transparent); }
+.aid-icon:focus-visible { outline: 2px solid var(--aid); outline-offset: 1px; }
+.aid-icon .aid-ic { line-height: 0; }
+.aid-icon-l { font: 500 10.5px/1.2 var(--sans); color: var(--ink-2, var(--muted)); text-align: center; overflow-wrap: anywhere; }
+.aid-icon.none { flex-direction: row; justify-content: center; min-height: 32px; width: auto; margin-bottom: 4px; padding: 4px 12px; font: 600 12px var(--sans); color: var(--muted); border-color: var(--line); }
+.aid-preview-card { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; }
+.aid-preview-line { margin: 8px 0 0; font: 400 15px/1.55 var(--serif); }
+.aid-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.aid-foot { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 -24px; padding: 14px 24px 18px; border-top: 1px solid var(--line); background: var(--paper, #fff); }
+.aid-foot-r { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+@media (max-width: 560px) {
+  .aid-form { padding: 18px 16px 0; }
+  .aid-foot { margin: 0 -16px; padding: 12px 16px 16px; }
+  .aid-icon-row { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+}
+
+/* The reference picker in the editor. */
+.aref-node { display: inline; }
+.aref-pop { display: flex; flex-direction: column; gap: 8px; width: 300px; }
+.aref-pop .link-list { max-height: 240px; overflow: auto; }
+.aref-pop .link-item .aref { pointer-events: none; }
+.aref-warn { margin: 0; color: var(--danger, #b3261e); font-size: 12.5px; }
