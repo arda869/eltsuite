@@ -8813,3 +8813,14 @@ body .dp .cd-main.has-nav.has-nav.nav-collapsed.no-side { grid-template-columns:
 body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-gutter, 24px) - 8px)); }
 /* A page colour chosen in Page setup colours the sheets (not in the black reading view). */
 .pg-paper:not([data-paper-theme="black"]) .pg-sheet { background: var(--pg-page-colour, var(--pg-sheet-background, #fff)); }
+
+/* OCR: words found on a scanned page, invisible over it so they can be selected. */
+.textLayer .ocr-word { position: absolute; color: transparent; white-space: pre; transform-origin: 0 0; cursor: text; }
+.textLayer .ocr-word::selection { background: rgba(43, 76, 158, .3); }
+.pdff-ocr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 16px 0; padding: 10px 14px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); font: 13.5px var(--sans); color: var(--ink); }
+.pdff-ocr > svg { flex: none; color: var(--accent, #c8764a); }
+.pdff-ocr > span:first-of-type { flex: 1 1 260px; }
+.pdff-ocr .btn { height: 32px; min-height: 32px; }
+.pdff-ocr-bar { flex: 0 0 160px; height: 6px; border-radius: 99px; background: var(--surface, #eee); overflow: hidden; }
+.pdff-ocr-bar i { display: block; height: 100%; background: var(--accent, #c8764a); transition: width .3s; }
+.pdff-err { margin: 8px 16px 0; }

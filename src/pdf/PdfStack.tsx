@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdf, openPdf, pdfjs, type PageSize } from './pdfData';
+import { useOcrWords, type OcrWord } from './ocr';
 
 // The pages of a PDF, one under the other at the same width, drawn when they come into view.
 // Anything placed on the pages goes in `children`, positioned in % of the whole stack.
@@ -48,6 +49,12 @@ function usePdf(src: string, classId: string) {
   return { pdf, error };
 }
 
+// The opened PDF, shared with the pages already drawn.
+export function getPdf(src: string, classId = ''): Promise<PDFDocumentProxy> {
+  const key = classId + '|' + src;
+  if (!docs.has(key)) docs.set(key, loadPdf(src, classId).then(openPdf));
+  return docs.get(key)!;
+}
 // The words on a page, for reading it aloud. A scanned page has none (it is a picture of text).
 export async function pageText(src: string, classId: string, n: number): Promise<string> {
   const key = classId + '|' + src;
@@ -58,7 +65,8 @@ export async function pageText(src: string, classId: string, n: number): Promise
   return (tc.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join('').replace(/[ \t]+/g, ' ').trim();
 }
 
-function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size: PageSize; words?: boolean }) {
+function Page({ pdf, n, size, words, src }: { pdf: PDFDocumentProxy; n: number; size: PageSize; words?: boolean; src: string }) {
+  const ocrWords = useOcrWords(src, n);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const ref = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -98,6 +106,9 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
         host.style.setProperty('--scale-factor', String(tvp.scale));
         void Promise.all([pdfjs(), pg.getTextContent()]).then(([lib, tc]) => {
           if (!live) return;
+          // A scanned page: the words OCR found, invisible over the picture, so they can be selected.
+          const own = (tc.items as { str?: string }[]).reduce((k, i) => k + (i.str ?? '').trim().length, 0);
+          if (own <= 20 && ocrWords?.length) return void drawOcrWords(host, ocrWords, w, w * (size.h / size.w));
           const tl = new lib.TextLayer({ textContentSource: tc, container: host, viewport: tvp });
           void tl.render().catch(() => {});
         });
@@ -109,7 +120,7 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
       live = false;
       task?.cancel();
     };
-  }, [seen, w, pdf, n]);
+  }, [seen, w, pdf, n, ocrWords]);
   // Always the same elements, so changing tool never throws away the drawn page.
   return (
     <span ref={wrapRef} className="pdf-pagewrap" style={{ aspectRatio: `${size.w} / ${size.h}` }}>
@@ -126,7 +137,7 @@ export function PdfStack({ src, classId = '', pages, children, onDown, tool, fir
   return (
     <div className={'pdf-stack' + (tool ? ' tool-' + tool : '') + (words ? ' with-words' : '')} onPointerDown={onDown}>
       <div className="pdf-pages" contentEditable={false} suppressContentEditableWarning>
-        {pages.map((p, i) => (pdf ? <Page key={i} pdf={pdf} n={i + first} size={p} words={words} /> : <span key={i} className="pdf-page pdf-wait" style={{ aspectRatio: `${p.w} / ${p.h}` }} />))}
+        {pages.map((p, i) => (pdf ? <Page key={i} pdf={pdf} n={i + first} size={p} words={words} src={src} /> : <span key={i} className="pdf-page pdf-wait" style={{ aspectRatio: `${p.w} / ${p.h}` }} />))}
         {error && <span className="pdf-err">{error}</span>}
       </div>
       {children}
@@ -165,4 +176,25 @@ export function PdfThumb({ src, classId = '', n, size }: { src: string; classId?
     };
   }, [pdf, seen, n]);
   return <canvas ref={ref} className="pdf-thumb" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-hidden="true" />;
+}
+
+// OCR words as a text layer: each word in its place, stretched to its width, transparent.
+function drawOcrWords(host: HTMLElement, words: OcrWord[], width: number, height: number) {
+  host.replaceChildren();
+  const ctx = document.createElement('canvas').getContext('2d');
+  const frag = document.createDocumentFragment();
+  for (const wd of words) {
+    const span = document.createElement('span');
+    const fs = Math.max(4, wd.h * height * 0.92);
+    span.textContent = wd.t + ' ';
+    span.className = 'ocr-word';
+    span.style.cssText = `left:${wd.x * 100}%;top:${wd.y * 100}%;font-size:${fs}px;line-height:1;`;
+    if (ctx) {
+      ctx.font = `${fs}px sans-serif`;
+      const natural = ctx.measureText(wd.t).width || 1;
+      span.style.transform = `scaleX(${(wd.w * width) / natural})`;
+    }
+    frag.append(span);
+  }
+  host.append(frag);
 }

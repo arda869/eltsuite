@@ -1,5 +1,5 @@
 import { BUILD, NewerGuard, OlderCopyBanner } from '../collab/guard';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import StarterKit from '@tiptap/starter-kit';
@@ -25,7 +25,8 @@ import { keyLabel } from '../lib/keys';
 import { PDF_NODES, ToolButtons, ToolOptions, pdfStore, setPdfTool, toolHint, usePdfTool, TOOLS } from './PdfNodes';
 import type { Editor } from '@tiptap/core';
 import { filePdfInfo, type PageSize } from './pdfData';
-import { PdfThumb, pageText } from './PdfStack';
+import { PdfThumb, getPdf, pageText } from './PdfStack';
+import { ocrText, pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
 import { MediaBlock } from '../editor/MediaNode';
 
 // A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
@@ -47,6 +48,13 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const [missing, setMissing] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [showKey, setShowKey] = useState(true);
+  const [exporting, setExporting] = useState<'' | 'download' | 'print'>('');
+  // Scanned pages (no text of their own) and reading them with OCR.
+  const [scanned, setScanned] = useState<number[] | null>(null);
+  const [ocrRun, setOcrRun] = useState<{ done: number; total: number } | null>(null);
+  const [ocrMsg, setOcrMsg] = useState('');
+  const ocrStop = useRef(false);
+  const [exportError, setExportError] = useState('');
   const [zoom, setZoomRaw] = useState(1);
   // Zooming keeps the middle of what you see in the middle, across and down.
   const setZoom = (f: (z: number) => number) =>
@@ -187,7 +195,9 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const goPage = (i: number) => canvases()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const readAloud = async () => {
     if (reading) return (speechSynthesis.cancel(), setReading(false));
-    const text = await pageText(String(block?.attrs.src ?? ''), '', cur).catch(() => '');
+    const own = await pageText(String(block?.attrs.src ?? ''), '', cur).catch(() => '');
+    // A scanned page: the words OCR found.
+    const text = own.trim().length > 20 ? own : ocrText(String(block?.attrs.src ?? ''), cur) || own;
     if (!text) return void tell('This page is a picture of text (a scan), so there are no words to read yet. Reading scanned pages is on the way.');
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-GB';
@@ -205,6 +215,52 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   );
   const src = String(block?.attrs.src ?? '');
   const first = Number(block?.attrs.first) || 0;
+  const ocr = useOcr(d.id, src);
+  useEffect(() => {
+    if (!src || !pages.length) return;
+    let live = true;
+    void getPdf(src).then(async (pdf) => {
+      const out: number[] = [];
+      for (let i = 0; i < pdf.numPages && live; i++) if (!(await pageHasText(pdf, i).catch(() => true))) out.push(i);
+      if (live) setScanned(out);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [src, pages.length]);
+  const toRead = (scanned ?? []).filter((n) => !ocr[n]);
+  const runOcr = async () => {
+    if (!src || !toRead.length) return;
+    ocrStop.current = false;
+    setOcrMsg('');
+    setOcrRun({ done: 0, total: toRead.length });
+    try {
+      const pdf = await getPdf(src);
+      const done = await readScannedPages(pdf, d.id, toRead, (k, total) => setOcrRun({ done: k, total }), () => ocrStop.current);
+      setOcrMsg(ocrStop.current ? `Stopped. ${done} ${done === 1 ? 'page has' : 'pages have'} text now. You can carry on later.` : 'Done. You can now select and copy the words, and read the pages aloud.');
+    } catch (e) {
+      console.error(e);
+      setOcrMsg('We couldn’t read the pages just now. Check your connection and try again. Your PDF is unchanged.');
+    } finally {
+      setOcrRun(null);
+      if (ocrStop.current) void stopOcr();
+    }
+  };
+  // Download or print: the original pages with the notes drawn on, sharp at any size.
+  const exportPdf = async (how: 'download' | 'print') => {
+    if (!src) return;
+    setExporting(how);
+    setExportError('');
+    try {
+      const [{ annotatedPdf, savePdf, printPdf: openForPrint }, { loadPdf }] = await Promise.all([import('./pdfExport'), import('./pdfData')]);
+      const bytes = await annotatedPdf(await loadPdf(src), editor, { answers: !hasKey || showKey, ocr });
+      if (how === 'download') savePdf(bytes, d.title || 'PDF');
+      else openForPrint(bytes);
+    } catch (e) {
+      console.error(e);
+      setExportError(e instanceof Error && /pop-ups/.test(e.message) ? e.message : 'We couldn’t prepare the PDF just now. Try again. Your notes are safe.');
+    } finally {
+      setExporting('');
+    }
+  };
   const fmt = (
     <span className="pdff-fmt" role="group" aria-label="The text in the box">
       {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), `Bold (${keyLabel('Mod+B')})`)}
@@ -231,7 +287,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span className="pdff-grp">
-          <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
+          <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-label={reading ? 'Stop reading' : 'Read aloud'} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
             <UiIcon name="music" size={15} />
             <span className="pdff-act-l">{reading ? 'Stop' : 'Read aloud'}</span>
           </button>
@@ -241,14 +297,43 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
               <span className="pdff-act-l">Answer key</span>
             </button>
           )}
-          <button type="button" className="pdff-act" onClick={() => printPdf()} data-tip="Print it, or save it as a PDF, with the notes on the pages">
+          <button type="button" className="pdff-act" aria-label="Download PDF" disabled={!!exporting || !src} onClick={() => void exportPdf('download')} data-tip={`Download the PDF with the boxes, highlights and drawings on it${hasKey ? (showKey ? ', answers included' : ', without the answers') : ''}`}>
             <UiIcon name="import" size={15} />
-            <span className="pdff-act-l">Print or save</span>
+            <span className="pdff-act-l">{exporting === 'download' ? 'Preparing…' : 'Download PDF'}</span>
+          </button>
+          <button type="button" className="pdff-act" aria-label="Print" disabled={!!exporting || !src} onClick={() => void exportPdf('print')} data-tip="Print the PDF with everything on it">
+            <UiIcon name="script" size={15} />
+            <span className="pdff-act-l">{exporting === 'print' ? 'Preparing…' : 'Print'}</span>
           </button>
         </span>
         <PeopleHere people={people} me={me.uid} max={4} />
       </div>
       {canEdit && <Hint editor={editor} />}
+      {exportError && <p className="rll-error pdff-err" role="alert">{exportError}</p>}
+      {canEdit && (ocrRun || toRead.length > 0 || ocrMsg) && (
+        <div className="pdff-ocr" role="status">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9h8M8 12h8M8 15h5" /></svg>
+          {ocrRun ? (
+            <>
+              <span>Reading page {Math.min(ocrRun.done + 1, ocrRun.total)} of {ocrRun.total}… This happens on your computer and can take a few seconds a page.</span>
+              <span className="pdff-ocr-bar" aria-hidden="true"><i style={{ width: `${(ocrRun.done / Math.max(1, ocrRun.total)) * 100}%` }} /></span>
+              <button type="button" className="btn small-btn" onClick={() => (ocrStop.current = true)}>Stop</button>
+            </>
+          ) : ocrMsg && toRead.length > 0 ? (
+            <>
+              <span>{ocrMsg}</span>
+              <button type="button" className="btn small-btn primary" onClick={() => void runOcr()}>{/couldn’t/.test(ocrMsg) ? 'Try again' : 'Carry on'}</button>
+            </>
+          ) : toRead.length > 0 ? (
+            <>
+              <span>{toRead.length === (scanned?.length ?? 0) ? 'This PDF is a scan, so its words can’t be selected, copied or read aloud yet.' : `${toRead.length} ${toRead.length === 1 ? 'page is' : 'pages are'} scanned and not read yet.`}</span>
+              <button type="button" className="btn small-btn primary" onClick={() => void runOcr()}>Read the text</button>
+            </>
+          ) : (
+            <span>{ocrMsg}</span>
+          )}
+        </div>
+      )}
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
       {missing && !pages.length && (
         <div className="dp-msg" role="alert">
@@ -356,28 +441,3 @@ function Hint({ editor }: { editor: Editor }) {
 }
 
 // Print the pages as they are, with the notes on them: canvases become pictures first.
-function printPdf() {
-  const stack = document.querySelector('.pdff .pdf-stack');
-  if (!stack) return;
-  const clone = stack.cloneNode(true) as HTMLElement;
-  const src = stack.querySelectorAll('canvas');
-  clone.querySelectorAll('canvas').forEach((c, i) => {
-    const img = document.createElement('img');
-    try {
-      img.src = (src[i] as HTMLCanvasElement).toDataURL('image/jpeg', 0.9);
-    } catch {
-      /* a page not drawn yet */
-    }
-    img.className = 'pdf-page';
-    c.replaceWith(img);
-  });
-  clone.querySelectorAll('button, .pdf-box-bar, .pdf-size, .pdf-tools, .pdf-keytag, .textLayer').forEach((x) => x.remove());
-  if (stack.closest('.no-key')) clone.querySelectorAll('.is-key').forEach((x) => x.remove());
-  const w = window.open('', '_blank');
-  if (!w) return;
-  const css = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((x) => x.outerHTML)
-    .join('');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${document.title}</title><base href="${location.origin}/">${css}<style>html,body{background:#fff!important;margin:0;padding:0;display:block!important;height:auto!important;overflow:visible!important}.pdf-stack{box-shadow:none!important;border-radius:0!important;width:100%}.pdf-page+.pdf-page{border-top:0!important;break-before:page}@page{margin:0}</style></head><body>${clone.outerHTML}<script>setTimeout(()=>print(),900)</script></body></html>`);
-  w.document.close();
-}
