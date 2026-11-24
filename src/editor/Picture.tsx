@@ -241,7 +241,7 @@ function EditTag({ t, edit }: { t: PicTag; edit: TagEdit }) {
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; designerId?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
+  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; designerId?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[]; bw?: string };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -436,6 +436,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
               )}
             </span>
           )}
+          <PrintVersionRow classId={classId} bw={String(a.bw ?? '')} activity={insideCommunicativeActivity(editor)} onChange={(bw) => updateAttributes({ bw })} />
           <span className="pic-row">
             <span className="hint">Description</span>
             <button type="button" className="btn small-btn" onClick={() => {
@@ -464,6 +465,45 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
   );
 }
 
+// A second picture for black-and-white printing: a line drawing or a high-contrast version that
+// photocopies well. On screen and in colour prints the colour picture is used.
+function PrintVersionRow({ classId, bw, activity, onChange }: { classId: string; bw: string; activity: boolean; onChange: (bw: string) => void }) {
+  const url = useImageSrc(classId, bw);
+  const [busy, setBusy] = useState('');
+  const file = useRef<HTMLInputElement>(null);
+  const add = async (f?: File) => {
+    if (!f) return;
+    setBusy('Uploading…');
+    try {
+      const src = classId ? (activity ? await savePrivateActivityPicture(classId, await preparePicture(f, 'standard')) : await uploadPicture(classId, f, 'standard')) : await imageToData(f, 1100);
+      onChange(src);
+      setBusy('');
+    } catch {
+      setBusy('We couldn’t upload that picture. Try a smaller one. The colour picture is still here.');
+    }
+  };
+  return (
+    <span className="pic-row pic-bw-row">
+      <span className="hint">Black-and-white print</span>
+      {bw ? (
+        <span className="pic-bw">
+          {url ? <img src={url} alt="" /> : <span className="pic-bw-wait" />}
+          <span className="pic-bw-text">Used when you print in black and white.</span>
+          <button type="button" className="btn small-btn" onClick={() => file.current?.click()}>Change</button>
+          <button type="button" className="btn link small" onClick={() => onChange('')}>Remove</button>
+        </span>
+      ) : (
+        <span className="pic-bw">
+          <button type="button" className="btn small-btn" onClick={() => file.current?.click()} disabled={!!busy && busy !== '' && busy.endsWith('…')}>Add a black-and-white version</button>
+          <span className="pic-bw-text">Optional. Without one, black-and-white prints use this picture in grey.</span>
+        </span>
+      )}
+      {busy && <span className={busy.endsWith('…') ? 'hint' : 'error small'} role="status">{busy}</span>}
+      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => (void add(e.target.files?.[0]), (e.target.value = ''))} />
+    </span>
+  );
+}
+
 export const Picture = Node.create({
   name: 'picture',
   group: 'inline',
@@ -487,6 +527,7 @@ export const Picture = Node.create({
     pid: { default: '' }, // keeps the class's opened boxes together while teaching
     w: { default: 0 }, // a width set by dragging a corner, in pixels
     tags: { default: [] }, // words placed on the picture: { id, x, y, text }
+    bw: { default: '' }, // a black-and-white version, used when the worksheet prints in black and white
   }),
   // Pictures pasted or dropped from anywhere become pictures you can edit.
   parseHTML: () => [{ tag: 'span[data-picture]' }, { tag: 'img[src]', priority: 60, getAttrs: (el: HTMLElement | string) => (typeof el === 'string' ? {} : { src: el.getAttribute('src') ?? '', alt: el.getAttribute('alt') ?? '' }) }],

@@ -1,7 +1,7 @@
 import {savePrivateActivityPicture,copyPrivateActivityPicture} from './privatePictures';
 import { Extension, Node, mergeAttributes } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { Grip } from '../editor/nodes';
 import { newId } from '../lib/tasks';
@@ -37,6 +37,20 @@ export function newCommunicativeActivity(kind: ActivityKind) {
   const count = kind === 'spot' ? 2 : kind === 'board' ? 12 : kind === 'bingo' ? 18 : kind === 'findSomeone' ? 6 : kind === 'ranking' ? 4 : ['opinion', 'speaking', 'cue'].includes(kind) ? 1 : 3;
   // No ready-made instruction: teachers write their own. The suggestion shows as a placeholder.
   return { type: 'communicativeActivity', attrs: { id: newId(), kind, instruction: '', settings: { mode: 'class', gridSize: 4, boardStyle: 'snake', seconds: 60, scoring: true, showNames: true, showCalls: false, nameOnce: false, layout: 'list', noCorrectAnswer: ['ranking', 'opinion', 'cue', 'survey', 'findSomeone', 'speaking'].includes(kind) } }, content: Array.from({ length: count }, (_, n) => ({ type: 'pickCard', attrs: { title: kind === 'board' && n === 0 ? 'Start' : kind === 'board' && n === count - 1 ? 'Finish' : '', activityItemId: newId(), ...(kind === 'board' && (n === 0 || n === count - 1) ? { special: n === 0 ? 'start' : 'finish' } : {}) }, content: [{ type: 'paragraph' }] })) };
+}
+
+// A black-and-white version of a card's picture, used when the cards print in black and white.
+function ActivityBwPicture({ bw, onChange }: { bw: string; onChange: (bw: string) => void }) {
+  const { classId } = useEditorClass();
+  const [state, setState] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  const add = async (file?: File) => {
+    if (!file) return;
+    setState('Uploading…');
+    try { onChange(await savePrivateActivityPicture(classId, await preparePicture(file))); setState(''); }
+    catch { setState('We couldn’t add that picture. Try again. The colour picture is still here.'); }
+  };
+  return <span className="ca-bw-row"><span>Black-and-white print</span>{bw ? <><span className="hint">Added. Used when you print in black and white.</span><button type="button" className="btn small-btn" onClick={() => input.current?.click()}>Change</button><button type="button" className="btn link small" onClick={() => onChange('')}>Remove</button></> : <button type="button" className="btn small-btn" disabled={state === 'Uploading…'} onClick={() => input.current?.click()}>Add a black-and-white version</button>}{state && <span className={state.endsWith('…') ? 'hint' : 'error small'} role="status">{state}</span>}<input ref={input} type="file" accept="image/*" hidden onChange={e => (void add(e.target.files?.[0]), (e.target.value = ''))} /></span>;
 }
 
 function ActivityPicturePicker({item, onChange}: {item: ActivityItem; onChange: (picture: ActivityItem['picture']) => void}) {
@@ -191,7 +205,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
     {gridColumns(c.kind).length > 0 && <div className="ca-grid-wrap" contentEditable={false}><div className="ca-grid-head"><b>{c.kind === 'board' ? 'Squares' : ['dominoes', 'memory'].includes(c.kind) ? 'Pairs' : c.kind === 'strips' ? 'Strips, in the correct order' : 'Items'}</b><span className="hint">{c.items.length} {c.kind === 'board' ? 'squares' : c.items.length === 1 ? 'item' : 'items'}</span><button type="button" className="btn small-btn ca-cards-toggle" aria-expanded={showCards} onClick={() => setShowCards(v => !v)}>{showCards ? 'Hide pictures and formatting' : 'Pictures and formatting'}</button></div><ItemGrid kind={c.kind} items={c.items} maxRows={c.kind === 'board' ? 48 : 200} minRows={c.kind === 'board' ? 12 : 1} onChange={applyGrid} onRemove={removeRows} /></div>}
     {(showCards || c.kind === 'spot') && (PER_ITEM.includes(c.kind) || c.kind === 'spot' || c.items.some(i => i.picture?.src)) && <div className="ca-item-settings" contentEditable={false}><p className="ca-item-settings-head">{c.kind === 'board' ? 'Special squares' : ['dominoes', 'memory'].includes(c.kind) ? 'Pairs: each card and the half it matches' : 'More for each card'}</p>{c.items.map((item, n) => <details key={item.id} className="ca-item" open={['dominoes', 'memory'].includes(c.kind) && !item.match?.trim() && !item.matchPicture?.src}><summary>{c.kind === 'board' ? 'Square' : ['dominoes', 'memory'].includes(c.kind) ? 'Pair' : 'Card'} {n + 1}{item.title ? ` · ${item.title}` : ''}{item.match ? ` = ${item.match}` : ''}{item.special ? ` · ${item.special === 'back' ? 'Go back' : item.special === 'miss' ? 'Miss a turn' : item.special === 'again' ? 'Roll again' : item.special === 'start' ? 'Start' : 'Finish'}` : ''}</summary>
       {c.kind === 'spot' && <ActivityPicturePicker item={item} onChange={picture => itemAttrs(n, {picture: picture ?? null})} />}
-      {item.picture?.src && <><label>Picture description<input value={item.picture.alt} onChange={e => itemAttrs(n, { picture: { ...item.picture, alt: e.target.value } })} /></label><button type="button" className="btn small-btn" onClick={() => itemAttrs(n, { picture: null })}>Remove this picture</button><label>Fit<select value={item.picture.fit ?? 'cover'} onChange={e => itemAttrs(n, { picture: { ...item.picture, fit: e.target.value } })}><option value="cover">Fill the frame</option><option value="contain">Show the whole picture</option></select></label></>}
+      {item.picture?.src && <><label>Picture description<input value={item.picture.alt} onChange={e => itemAttrs(n, { picture: { ...item.picture, alt: e.target.value } })} /></label><button type="button" className="btn small-btn" onClick={() => itemAttrs(n, { picture: null })}>Remove this picture</button><label>Fit<select value={item.picture.fit ?? 'cover'} onChange={e => itemAttrs(n, { picture: { ...item.picture, fit: e.target.value } })}><option value="cover">Fill the frame</option><option value="contain">Show the whole picture</option></select></label><ActivityBwPicture bw={item.picture.bw ?? ''} onChange={bw => itemAttrs(n, { picture: { ...item.picture, bw } })} /></>}
       {['dominoes', 'memory'].includes(c.kind) && <><label>Matching half<input value={item.match ?? ''} onChange={e => itemAttrs(n, { match: e.target.value })} /></label><ActivityPicturePicker item={{...item,title:'Matching half',picture:item.matchPicture}} onChange={picture=>itemAttrs(n,{matchPicture:picture??null})}/>{item.matchPicture?.src&&<label>Matching picture description<input value={item.matchPicture.alt} onChange={e=>itemAttrs(n,{matchPicture:{...item.matchPicture,alt:e.target.value}})}/></label>}</>}
       {c.kind === 'bingo' && <label>Call (optional)<input value={item.call ?? ''} placeholder="The caller reads the item if this is blank" onChange={e => itemAttrs(n, { call: e.target.value })} /></label>}
       {c.kind === 'cue' && <><label>Card type<select value={item.cardType ?? 'character'} onChange={e => itemAttrs(n, { cardType: e.target.value })}><option value="character">Character or persona</option><option value="secret">Secret objective</option><option value="opinion">Opinion prompt</option><option value="problem">Problem scenario</option></select></label><label>Useful language (optional)<textarea value={item.useful ?? ''} onChange={e => itemAttrs(n, { useful: e.target.value })} /></label></>}

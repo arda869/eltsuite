@@ -65,14 +65,16 @@ function runs(rs: Run[]): string {
       if (r.icon) return `<span class="emo tone-${esc(r.icon.tone)}">${iconSvg(r.icon.name)}</span>`;
       if (r.sym) return symHtml(r.sym);
       if (r.pic) {
-        const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
+        const useBw = MONO && !!r.pic.bw;
+        const pk = useBw ? r.pic.bw! : r.pic.key ?? r.pic.src;
+        const src = useBw ? MEDIA[pk]?.data ?? (/^(media:|private-activity:|activity-picture:|comparison-picture:)/.test(pk) ? '' : pk) : MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
         const dots = (r.pic.pts ?? []).map((p, i) => `<span class="pic-pt" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join('');
         const tags = (r.pic.tags ?? []).map((t) => `<span class="pic-tag" style="left:${t.x}%;top:${t.y}%">${esc(t.text)}</span>`).join('');
         // Match the existing screen/print presets: 300 screen px is 46 mm on paper.
         // A custom width still fits its paper column, including in two-column worksheets.
         const customW = Number(r.pic.w);
         const width = Number.isFinite(customW) && customW > 0 ? ` style="width:min(100%,${Math.max(9.2, Math.round(customW * 46 / 300 * 10) / 10)}mm)"` : '';
-        return `<span class="ws-picture pic-${esc(r.pic.size)}"${width}><span class="pic${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>${r.pic.caption?.length ? `<span class="ws-picture-caption">${runs(r.pic.caption)}</span>` : ''}</span>`;
+        return `<span class="ws-picture pic-${esc(r.pic.size)}"${width}><span class="pic${tags ? ' has-tags' : ''}">${src ? `<img${useBw ? ' class="bw-version"' : ''} src="${esc(src)}" ${MEDIA[pk] ? 'width="'+MEDIA[pk].w+'" height="'+MEDIA[pk].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>${r.pic.caption?.length ? `<span class="ws-picture-caption">${runs(r.pic.caption)}</span>` : ''}</span>`;
       }
       if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
       if (r.phon) return renderToStaticMarkup(createElement(PhonView, { type: r.phon.type, a: r.phon.a }));
@@ -236,6 +238,8 @@ function taskUnit(t: WsTask, num: number, marks: boolean) {
 let MEDIA: NonNullable<Options['media']> = {};
 let SOUNDS: NonNullable<Options['sounds']> = {};
 let QR_ON = true;
+// Printing in black and white: pictures with a black-and-white version use it.
+let MONO = false;
 // Recordings and videos are numbered in the order they first come in the worksheet. One used again
 // keeps its number, and its QR code is printed only the first time.
 let MEDIA_NO: Record<string, number> = {};
@@ -496,6 +500,8 @@ const MONO_CSS = `
 .band-right, .band-cover { background: #fff !important; }
 .band-cover::before, .band-cover::after { display: none !important; }
 img { filter: grayscale(1) contrast(1.18); }
+img.bw-version { filter: grayscale(1); }
+.aref, .ex-aid { color: #1d1b18 !important; }
 .band img, .band-cover img { filter: grayscale(1) contrast(1.3) brightness(1.04); }
 :is(.pa-bingo-grid span, .ca-cell, .pa-sq, .pa-counter-card, .pa-tiles .cut-card) { background: #fff !important; }
 .pa-sq { border: .9pt solid #1d1b18 !important; }
@@ -520,20 +526,21 @@ img { filter: grayscale(1) contrast(1.18); }
 // The pieces of a worksheet for the worksheet view in the lesson editor: its styles, the header band,
 // the footer, and each item (a section or a task) printed on its own, in order.
 export function inlineWorksheetHtml(task: WsTask, pictures: Options['media'] = {}, sounds: Options['sounds'] = {}) {
-  MEDIA = pictures; SOUNDS = sounds; QR_ON = true; MEDIA_SEEN.clear();
+  MEDIA = pictures; SOUNDS = sounds; QR_ON = true; MONO = false; MEDIA_SEEN.clear();
   const cards = (task.cutouts ?? []).flatMap(set => set.cards.map(card =>
     `<section class="paper-card"><strong>${esc(card.title)}</strong>${card.blocks.map(block).join('')}</section>`
   ));
-  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}${cards.join('')}${(task.activities ?? []).flatMap(c => printActivity(c, { media: MEDIA, renderItem: item => (task.activityBlocks?.[item.id] ?? []).map(block).join('') })).map(p => p.html).join('')}</div>`;
+  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}${cards.join('')}${(task.activities ?? []).flatMap(c => printActivity(c, { mono: MONO, media: MEDIA, renderItem: item => (task.activityBlocks?.[item.id] ?? []).map(block).join('') })).map(p => p.html).join('')}</div>`;
 }
 export function sheetParts(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
+  MONO = !!opts.mono;
   SOUNDS = opts.sounds ?? {};
   QR_ON = opts.qr !== false;
   const marks = !!opts.marks;
   numberMedia(items);
   let num = 0;
-  const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks) + (it.task.activities ?? []).flatMap(c => printActivity(c, {media: MEDIA, renderItem: item => (it.task.activityBlocks?.[item.id] ?? []).map(block).join('')})).map(p => p.html).join('')));
+  const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks) + (it.task.activities ?? []).flatMap(c => printActivity(c, {mono: MONO, media: MEDIA, renderItem: item => (it.task.activityBlocks?.[item.id] ?? []).map(block).join('')})).map(p => p.html).join('')));
   const html = worksheetHtml(title, items, opts);
   const pick = (id: string) => html.match(new RegExp(`<template id="${id}">([\\s\\S]*?)</template>`))?.[1] ?? '';
   return { css: sheetCss(opts), band: pick('band-main'), foot: pick('foot'), pieces, credit: '' };
@@ -541,6 +548,7 @@ export function sheetParts(title: string, items: WsItem[], opts: Options) {
 
 export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
+  MONO = !!opts.mono;
   SOUNDS = opts.sounds ?? {};
   QR_ON = opts.qr !== false;
   // An organisation's teachers print with its logo and colour.
@@ -616,7 +624,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
     }
   }
 
-  const activityPages = tasks.flatMap(t => (t.activities ?? []).flatMap(c => printActivity(c, { media: MEDIA, renderItem: item => (t.activityBlocks?.[item.id] ?? []).map(block).join('') }).map(piece => `<section data-cut="${piece.cutout ? '1' : '0'}" data-label="${esc(piece.label)}">${piece.html}</section>`)));
+  const activityPages = tasks.flatMap(t => (t.activities ?? []).flatMap(c => printActivity(c, { mono: MONO, media: MEDIA, renderItem: item => (t.activityBlocks?.[item.id] ?? []).map(block).join('') }).map(piece => `<section data-cut="${piece.cutout ? '1' : '0'}" data-label="${esc(piece.label)}">${piece.html}</section>`)));
   for (const family of roleFamilies.values()) activityPages.push(`<section data-cut="1" data-label="Task versions"><div class="pa-versions pa-task-versions">${family.map((t,n) => `<section class="pa-version"><h3 class="pa-role">${versionSignHtml(versionLetter(t.variant) || String.fromCharCode(65+n))}Version ${esc(t.variant || String.fromCharCode(65+n))}</h3>${taskUnit({...t,variant:undefined},tasks.indexOf(t)+1,marks)}${(t.activities ?? []).flatMap(c=>printActivity(c,{media:MEDIA})).map(p=>p.html).join('')}</section>`).join('')}</div></section>`);
   const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `

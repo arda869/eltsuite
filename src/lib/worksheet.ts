@@ -40,7 +40,7 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { caption?: Run[]; src: string; size: string; w?: number; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
+  pic?: { bw?: string; caption?: Run[]; src: string; size: string; w?: number; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[]; tags?: { x: number; y: number; text: string }[] };
   kw?: boolean; // a key word in a frame, as on screen
   stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
@@ -217,7 +217,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         case 'picture': {
           const mk = String(a.mark ?? '');
           if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), w: Number.isFinite(Number(a.w)) && Number(a.w) > 0 ? Math.round(Number(a.w)) : undefined, label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
+          if (a.src) out.push({ pic: { caption: runsOf(node.content), src: String(a.src), size: String(a.size ?? 'm'), w: Number.isFinite(Number(a.w)) && Number(a.w) > 0 ? Math.round(Number(a.w)) : undefined, label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, ...(a.bw ? { bw: String(a.bw) } : {}), tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
           if (a.credit) out.push({ t: ' ' + String(a.credit) + ' ' });
           break;
         }
@@ -1114,6 +1114,7 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
   const out = new Map<string, { key: string; src: string; crop?: string; filter?: string }>();
   const pictures = (runs: Run[]) => runs.forEach(({pic}) => {
     if (pic) out.set(pic.key ?? pic.src, {key:pic.key ?? pic.src,src:pic.src,crop:pic.crop,filter:pic.filter});
+    if (pic?.bw) out.set(pic.bw, { key: pic.bw, src: pic.bw });
   });
   const blocks = (bs: Block[]) =>
     bs.forEach((b) => {
@@ -1128,7 +1129,7 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
     if (it.kind !== 'task') return;
     pictures(it.task.instrRuns ?? []);
     for (const activity of it.task.activities ?? []) {
-      for (const item of activity.items) for (const picture of [item.picture,item.matchPicture]) if (picture?.src) out.set(picture.src,{key:picture.src,src:picture.src});
+      for (const item of activity.items) for (const picture of [item.picture,item.matchPicture]) { if (picture?.src) out.set(picture.src,{key:picture.src,src:picture.src}); if (picture?.bw) out.set(picture.bw,{key:picture.bw,src:picture.bw}); }
       for (const version of activity.settings.versions ?? []) if (version.picture.src) out.set(version.picture.src, { key: version.picture.src, src: version.picture.src });
     }
     blocks(it.task.blocks);
