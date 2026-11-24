@@ -11,6 +11,7 @@ p.on('pageerror', e => console.log('PAGEERROR', e.message.slice(0,300)));
 p.on('console', m => m.type()==='error' && console.log('CONSOLE', m.text().slice(0,200)));
 await p.goto('http://localhost:5197/dev.html?seed&as=teacher');
 await p.waitForFunction(async () => { if (!window.__mockReady) return false; await window.__mockReady; return !!localStorage.getItem('mockdemo'); }, null, { timeout: 180000 });
+await p.waitForLoadState('networkidle');
 const jpg = await p.evaluate(() => {
   // A scan: a picture of a page of text, with no text of its own.
   const c = document.createElement('canvas'); c.width = 1240; c.height = 1754; const g = c.getContext('2d');
@@ -20,6 +21,8 @@ const jpg = await p.evaluate(() => {
 });
 const { PDFDocument } = await import('pdf-lib');
 const doc = await PDFDocument.create(); const img = await doc.embedJpg(Buffer.from(jpg, 'base64')); const pg = doc.addPage([595.28, 841.89]); pg.drawImage(img, { x: 0, y: 0, width: 595.28, height: 841.89 });
+const textPage = doc.addPage([595.28, 841.89]); textPage.drawText('A second page also mentions Lisbon.', { x: 72, y: 720, size: 20 });
+textPage.drawText('Lisbon appears again in this paragraph.', { x: 72, y: 680, size: 20 });
 const b64 = Buffer.from(await doc.save()).toString('base64');
 const id = await p.evaluate(async (b64) => {
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -37,6 +40,34 @@ console.log('ocr secs', ((Date.now() - t0) / 1000).toFixed(1), await p.locator('
 await p.waitForTimeout(1500);
 assert.ok(await p.locator('.ocr-word').count() > 40, 'the words are on the page');
 assert.match(await p.locator('.textLayer').first().innerText(), /Lisbon/);
+await p.getByRole('button', { name: 'Search the PDF' }).click();
+const find = p.getByRole('searchbox', { name: 'Search the PDF' });
+await find.fill('lisbon');
+await p.locator('.pdff-find-n').filter({ hasText: '1 of 3' }).waitFor();
+await p.locator('.pdf-hit-on').first().waitFor();
+await find.press('Enter');
+await find.press('Enter');
+await p.locator('.pdff-find-n').filter({ hasText: '2 of 3' }).waitFor();
+await p.locator('.pdf-pagewrap').nth(1).locator('.pdf-hit-on').waitFor();
+const firstSecondPageMatch = await p.locator('.pdf-pagewrap').nth(1).locator('.pdf-hit-on').first().innerText();
+await find.press('Enter');
+await p.locator('.pdff-find-n').filter({ hasText: '3 of 3' }).waitFor();
+await p.waitForFunction((previous) => { const selected = document.querySelector('.pdf-pagewrap:nth-child(2) .pdf-hit-on'); return !!selected && selected.textContent !== previous; }, firstSecondPageMatch);
+assert.notEqual(await p.locator('.pdf-pagewrap').nth(1).locator('.pdf-hit-on').first().innerText(), firstSecondPageMatch, 'Next selects the later match on the same page');
+await find.press('Shift+Enter');
+await p.locator('.pdff-find-n').filter({ hasText: '2 of 3' }).waitFor();
+await find.press('Shift+Enter');
+await p.locator('.pdff-find-n').filter({ hasText: '1 of 3' }).waitFor();
+await p.locator('.pdf-pagewrap').first().locator('.pdf-hit-on').waitFor();
+await find.fill('Lisbon Madrid');
+await p.locator('.pdff-find-n').filter({ hasText: 'No matches' }).waitFor();
+assert.equal(await p.locator('.pdf-hit, .pdf-hit-on').count(), 0, 'unmatched phrases do not highlight unrelated words');
+await find.press('Escape');
+assert.equal(await p.getByRole('searchbox', { name: 'Search the PDF' }).count(), 0, 'Escape closes search');
+await p.keyboard.press('ControlOrMeta+f');
+await p.getByRole('searchbox', { name: 'Search the PDF' }).waitFor();
+await p.getByRole('searchbox', { name: 'Search the PDF' }).press('Escape');
+console.log('PASS PDF search across OCR and selectable text pages, with next and previous matches');
 await p.getByRole('radio', { name: /Highlight/ }).first().click().catch(async () => p.getByRole('button', { name: /Highlight/ }).first().click()); const pgbox = await p.locator('.pdf-pagewrap').first().boundingBox(); await p.mouse.move(pgbox.x + pgbox.width*0.09, pgbox.y + pgbox.height*0.205); await p.mouse.down(); await p.mouse.move(pgbox.x + pgbox.width*0.72, pgbox.y + pgbox.height*0.225, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(800);
 await p.screenshot({ path: out });
 const dl = p.waitForEvent('download'); await p.getByRole('button', { name: /Download PDF/ }).click(); const f = await dl; const path = out.replace('.png', '.pdf'); await f.saveAs(path);
