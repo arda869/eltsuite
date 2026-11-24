@@ -8824,3 +8824,15 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .pdff-ocr-bar { flex: 0 0 160px; height: 6px; border-radius: 99px; background: var(--surface, #eee); overflow: hidden; }
 .pdff-ocr-bar i { display: block; height: 100%; background: var(--accent, #c8764a); transition: width .3s; }
 .pdff-err { margin: 8px 16px 0; }
+
+/* PDF search. Every control in the row is 32px high. */
+.pdff-find { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 16px 0; padding: 6px 10px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--muted); }
+.pdff-find > svg { flex: none; }
+.pdff-find-in { flex: 1 1 220px; height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); box-sizing: border-box; }
+.pdff-find .ne-btn { height: 32px; min-height: 32px; }
+.pdff-find-n { min-width: 72px; font: 600 12.5px var(--sans); color: var(--muted); }
+.pdff-find-snip, .pdff-find-note { flex-basis: 100%; font: 12.5px var(--sans); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.textLayer span.pdf-hit { background: rgba(255, 196, 0, .35); border-radius: 2px; }
+.textLayer span.pdf-hit-on { background: rgba(255, 140, 0, .55); border-radius: 2px; box-shadow: 0 0 0 2px rgba(255, 140, 0, .55); }
+.textLayer.off span.pdf-hit, .textLayer.off span.pdf-hit-on { opacity: 1; }
+.pdff-find { position: sticky; top: 122px; z-index: 11; box-shadow: 0 8px 20px -16px rgba(0, 0, 0, .35); }

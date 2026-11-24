@@ -27,6 +27,7 @@ import type { Editor } from '@tiptap/core';
 import { filePdfInfo, type PageSize } from './pdfData';
 import { PdfThumb, getPdf, pageText } from './PdfStack';
 import { ocrText, pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
+import { findHits, forgetTexts, markHits, pageTexts, type Hit } from './pdfSearch';
 import { MediaBlock } from '../editor/MediaNode';
 
 // A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
@@ -172,6 +173,67 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const teacher = profile?.role === 'teacher';
   const cmds = useMemo(() => docCommands().filter((c) => teacher || (!c.key.startsWith('tt-') && c.key !== 'cite')), [teacher]);
   const slash = useSlash(editor, cmds, false, true, () => true);
+  // Search (Ctrl+F): matches on every page, stepped through with Enter.
+  const [findOpen, setFindOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [hitAt, setHitAt] = useState(0);
+  const [finding, setFinding] = useState(false);
+  const findInput = useRef<HTMLInputElement>(null);
+  const shownHit = useRef(false); // the first Enter goes to the first match, then on
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'f' && !(e.target as HTMLElement).closest?.('.pdf-doc .pdf-box')) {
+        e.preventDefault();
+        setFindOpen(true);
+        window.setTimeout(() => findInput.current?.select(), 0);
+      }
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
+  // Hooks before the early return: the file, its OCR words, and which pages are scanned.
+  const srcNow = String(editor?.state.doc.firstChild?.attrs.src ?? '');
+  const pageCount = ((editor?.state.doc.firstChild?.attrs.pages as PageSize[] | undefined) ?? []).length;
+  const ocr = useOcr(d.id, srcNow);
+  useEffect(() => {
+    if (!srcNow || !pageCount) return;
+    let live = true;
+    void getPdf(srcNow).then(async (pdf) => {
+      const out: number[] = [];
+      for (let i = 0; i < pdf.numPages && live; i++) if (!(await pageHasText(pdf, i).catch(() => true))) out.push(i);
+      if (live) setScanned(out);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [srcNow, pageCount]);
+  const firstNow = Number(editor?.state.doc.firstChild?.attrs.first) || 0;
+  const ocrCount = Object.keys(ocr).length;
+  useEffect(() => { forgetTexts(); }, [ocrCount]);
+  useEffect(() => {
+    if (!findOpen || !srcNow || query.trim().length < 2) { setHits([]); return; }
+    let live = true;
+    setFinding(true);
+    const t = window.setTimeout(() => void pageTexts(srcNow, firstNow, pageCount).then((texts) => {
+      if (!live) return;
+      setHits(findHits(texts, query));
+      setHitAt(0);
+      shownHit.current = false;
+    }).catch(() => live && setHits([])).finally(() => live && setFinding(false)), 200);
+    return () => { live = false; window.clearTimeout(t); };
+  }, [findOpen, query, srcNow, firstNow, pageCount, ocrCount]);
+  // Light the matches on the pages, again as pages are drawn.
+  useEffect(() => {
+    const root = document.querySelector('.pdff .pdf-pages');
+    if (!root) return;
+    const q = findOpen ? query : '';
+    const cur = hits[hitAt]?.page ?? null;
+    let raf = 0;
+    const paint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => markHits(root, q, cur)); };
+    paint();
+    const mo = new MutationObserver((m) => { if (m.some((r) => !(r.target as HTMLElement).classList?.contains('pdf-hit'))) paint(); });
+    mo.observe(root, { childList: true, subtree: true });
+    return () => { mo.disconnect(); cancelAnimationFrame(raf); };
+  }, [findOpen, query, hits, hitAt]);
   if (!editor) return <div className="dp-msg">Opening the PDF…</div>;
   const inBox = editor.isActive('pdfBox');
   const block = editor.state.doc.firstChild;
@@ -193,6 +255,15 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   };
   const canvases = () => Array.from(document.querySelectorAll<HTMLElement>('.pdff .pdf-page'));
   const goPage = (i: number) => canvases()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const goHit = (k: number) => {
+    if (!hits.length) return;
+    const n = (k + hits.length) % hits.length;
+    shownHit.current = true;
+    setHitAt(n);
+    goPage(hits[n].page);
+    // Then bring the lit words into view, once the page is drawn.
+    window.setTimeout(() => document.querySelector('.pdff .pdf-hit-on')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 700);
+  };
   const readAloud = async () => {
     if (reading) return (speechSynthesis.cancel(), setReading(false));
     const own = await pageText(String(block?.attrs.src ?? ''), '', cur).catch(() => '');
@@ -215,17 +286,6 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   );
   const src = String(block?.attrs.src ?? '');
   const first = Number(block?.attrs.first) || 0;
-  const ocr = useOcr(d.id, src);
-  useEffect(() => {
-    if (!src || !pages.length) return;
-    let live = true;
-    void getPdf(src).then(async (pdf) => {
-      const out: number[] = [];
-      for (let i = 0; i < pdf.numPages && live; i++) if (!(await pageHasText(pdf, i).catch(() => true))) out.push(i);
-      if (live) setScanned(out);
-    }).catch(() => {});
-    return () => { live = false; };
-  }, [src, pages.length]);
   const toRead = (scanned ?? []).filter((n) => !ocr[n]);
   const runOcr = async () => {
     if (!src || !toRead.length) return;
@@ -287,6 +347,10 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span className="pdff-grp">
+          <button type="button" className={'pdff-act' + (findOpen ? ' on' : '')} aria-label="Search the PDF" aria-pressed={findOpen} onClick={() => { setFindOpen((v) => !v); window.setTimeout(() => findInput.current?.focus(), 0); }} data-tip={`Search the PDF (${keyLabel('Mod+F')})`}>
+            <Svg d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" />
+            <span className="pdff-act-l">Search</span>
+          </button>
           <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-label={reading ? 'Stop reading' : 'Read aloud'} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
             <UiIcon name="music" size={15} />
             <span className="pdff-act-l">{reading ? 'Stop' : 'Read aloud'}</span>
@@ -309,6 +373,31 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         <PeopleHere people={people} me={me.uid} max={4} />
       </div>
       {canEdit && <Hint editor={editor} />}
+      {findOpen && (
+        <div className="pdff-find" role="search">
+          <Svg d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" />
+          <input
+            ref={findInput}
+            className="pdff-find-in"
+            type="search"
+            aria-label="Search the PDF"
+            placeholder="Search the PDF"
+            value={query}
+            autoFocus
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); if (shownHit.current) goHit(hitAt + (e.shiftKey ? -1 : 1)); else goHit(hitAt); }
+              if (e.key === 'Escape') { e.preventDefault(); setFindOpen(false); }
+            }}
+          />
+          <span className="pdff-find-n" aria-live="polite">{query.trim().length < 2 ? '' : finding ? 'Searching…' : hits.length ? `${hitAt + 1} of ${hits.length}` : 'No matches'}</span>
+          {B(<Svg d="m6 15 6-6 6 6" />, false, () => goHit(hitAt - 1), 'Previous match (Shift+Enter)', !hits.length)}
+          {B(<Svg d="m6 9 6 6 6-6" />, false, () => goHit(hitAt + 1), 'Next match (Enter)', !hits.length)}
+          {B(<Svg d="M6 6l12 12M18 6 6 18" />, false, () => setFindOpen(false), 'Close search (Esc)')}
+          {hits.length > 0 && hits[hitAt] && <span className="pdff-find-snip">Page {hits[hitAt].page + 1}: {hits[hitAt].snippet}</span>}
+          {(scanned ?? []).some((n) => !ocr[n]) && <span className="pdff-find-note">Scanned pages are searched once their text has been read.</span>}
+        </div>
+      )}
       {exportError && <p className="rll-error pdff-err" role="alert">{exportError}</p>}
       {canEdit && (ocrRun || toRead.length > 0 || ocrMsg) && (
         <div className="pdff-ocr" role="status">
