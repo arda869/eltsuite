@@ -131,7 +131,7 @@ export function ItemGrid({ kind, items, onChange, maxRows = 200, minRows = 1, on
     else if (e.key === 'Escape' && many) { e.preventDefault(); setAnchor({ r, c }); setFocus({ r, c }); }
     else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' && !input?.value) { e.preventDefault(); setAnchor({ r: 0, c: 0 }); setFocus({ r: Math.max(0, rows - 1), c: cols.length - 1 }); }
   };
-  const down = (e: MouseEvent, r: number, c: number) => { if (e.shiftKey && focus) { e.preventDefault(); setFocus({ r, c }); return; } setAnchor({ r, c }); setFocus({ r, c }); setDragging(true); };
+  const down = (e: MouseEvent, r: number, c: number) => { if (e.shiftKey && focus) { e.preventDefault(); extending.current = true; setFocus({ r, c }); return; } setAnchor({ r, c }); setFocus({ r, c }); setDragging(true); };
   const enter = (r: number, c: number) => { if (dragging) { setFocus({ r, c }); window.getSelection()?.removeAllRanges(); } };
   const removable = rows > minRows;
   if (!cols.length) return null;
