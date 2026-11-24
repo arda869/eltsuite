@@ -182,7 +182,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
   };
   return <NodeViewWrapper className={`ca ca-editor-node block-node ca-editing-${c.kind} ${showCards || !gridColumns(c.kind).length ? '' : 'ca-cards-hidden'}`}>
     <div className="mcq-tools" contentEditable={false}><Grip editor={editor} getPos={getPos} /><span className="block-label">{ACTIVITY_LABELS[c.kind]}</span><button type="button" className="btn small-btn" onClick={deleteNode}>Remove</button></div>
-    <div className="ca-editor" contentEditable={false}>
+    <div className={'ca-editor' + (onPaper ? ' on-paper' : '')} contentEditable={false}>
       <div className="ca-editor-side">
         <label className="ca-setting">Instruction<input value={c.instruction} placeholder={`For example: ${defaults[c.kind]}`} onChange={e => updateAttributes({ instruction: e.target.value })} /></label>
         <div className="ca-setting ca-colour-setting"><span>Colours</span><span className="ca-swatches" role="radiogroup" aria-label="Colours">{ACTIVITY_COLOURS.map(o => <button key={o.v} type="button" role="radio" aria-checked={(c.settings.colours ?? 'class') === o.v} aria-label={o.label} title={o.label} className={`ca-swatch ca-pal-${o.v} ${(c.settings.colours ?? 'class') === o.v ? 'on' : ''}`} onClick={() => settings({ colours: o.v })} />)}</span></div>
