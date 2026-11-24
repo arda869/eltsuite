@@ -10,6 +10,8 @@ import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
 import { InstrView } from '../editor/InstrEditor';
+import { IdentityMark, RefsContext, VersionSign } from '../components/Identity';
+import { refTargets, versionLetter } from '../lib/identity';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { LiveWho } from '../components/LiveWho';
@@ -300,6 +302,14 @@ export function LearnerLesson() {
   }, [classId, itemId, current, user, saves]);
 
   const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
+  // References inside tasks find their activity by its anchor; the link opens the version this
+  // learner has. A target the learner can't see yet shows its name without a link.
+  const refsValue = useMemo(() => {
+    const mains = withBodies.filter((t) => !isVariant(t) || !withBodies.some((x) => x.id === t.family));
+    const seen = new Set(tasks.map((t) => t.family || t.id));
+    const targets = refTargets(mains.filter((m) => m.kind === 'section' || seen.has(m.id))).map((rt) => ({ ...rt, id: tasks.find((x) => x.id === rt.id || x.family === rt.id)?.id ?? rt.id }));
+    return { targets, versions: [] };
+  }, [withBodies, tasks]);
   useLearningTime(classId,itemId,current,user?.uid??'',learnerId,!!task&&!task.locked&&!checked);
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
@@ -540,6 +550,7 @@ export function LearnerLesson() {
 
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
+    <RefsContext.Provider value={refsValue}>
     <div className="shell wide lesson-shell" data-lesson-style={lessonStyleOf(c)} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <header className="topbar">
         <Link to="/" style={{ textDecoration: 'none' }}>
@@ -629,10 +640,11 @@ export function LearnerLesson() {
               <div className="frame-head">
                 {!task.levels && (task.variant || task.family || (task.variants?.length ?? 0) > 0) && (
                   <span className="ver-badge">
-                    <i aria-hidden="true" />
+                    {versionLetter(task.variant) || !task.variant ? <VersionSign v={versionLetter(task.variant) || 'A'} /> : <i aria-hidden="true" />}
                     {task.variant ? (/^[A-Z]$/.test(task.variant) ? `Version ${task.variant}` : task.variant) : 'Version A'}
                   </span>
                 )}
+                {task.identity && <div className="aid-row"><IdentityMark identity={task.identity} /></div>}
                 <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{task.title}</h1>
                 {lessonStyleOf(c) === 'young' && (task.instrDoc || task.instructions) ? (
                   <YoungInstr content={task.content} icon={task.ylIcon}>
@@ -871,6 +883,7 @@ export function LearnerLesson() {
         </div>
       </div>
     </div>
+    </RefsContext.Provider>
     </ClassAvatarsContext.Provider>
   );
 }

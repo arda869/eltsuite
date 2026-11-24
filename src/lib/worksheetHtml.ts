@@ -1,3 +1,4 @@
+import { identityCss, identityHtml, refHtml, versionLetter, versionSignHtml } from './identity';
 import { printActivity } from '../communicative/print';
 import activityPrintCss from '../communicative/print.css?raw';
 import { youngSheetCss } from './youngWorksheet';
@@ -49,6 +50,7 @@ function runs(rs: Run[]): string {
   let stack = '';
   const inline = rs
     .map((r) => {
+      if (r.aref) return refHtml(r.aref);
       if (r.num !== undefined) return `<b class="qn">${esc(String(r.ql ?? r.num))}</b>`;
       if (r.ol) return `<b class="ml">${esc(r.ol)}</b>`;
       if (r.letters) return `<span class="lgp">${r.letters.split(' ').map((w) => `<span class="lgp-w">${Array.from(w).map((c) => (c === '_' ? '<i></i>' : `<b>${esc(c)}</b>`)).join('')}</span>`).join('')}</span>`;
@@ -224,9 +226,10 @@ function taskUnit(t: WsTask, num: number, marks: boolean) {
   // on one line, as in a coursebook.
   if (!t.instructions?.trim() && !runsText && first?.kind === 'subtask') {
     const rest = t.blocks.slice(firstIndex+1);
-    return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><b class="subex-l">${esc(first.letter)}</b><span class="ex-text">${exIcons(t)}${esc(first.text)}</span></div><div class="ex-body">${t.blocks.slice(0,firstIndex).map(block).join('')}<div class="subex-b">${first.blocks.map(block).join('')}</div>${rest.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+    return `<div class="unit task">${identityHtml(t.identity)}<div class="ex-head"><b class="ex-n">${num}</b><b class="subex-l">${esc(first.letter)}</b><span class="ex-text">${exIcons(t)}${esc(first.text)}</span></div><div class="ex-body">${t.blocks.slice(0,firstIndex).map(block).join('')}<div class="subex-b">${first.blocks.map(block).join('')}</div>${rest.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
   }
-  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}${t.variant ? ' · '+esc(t.variant) : ''}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+  const vl = versionLetter(t.variant);
+  return `<div class="unit task">${identityHtml(t.identity)}<div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}${t.variant ? (vl ? ` <span class="ws-vsign">${versionSignHtml(vl)}</span>` : ' · '+esc(t.variant)) : ''}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
 }
 
 // Pictures for this print, set at the start of worksheetHtml.
@@ -264,6 +267,7 @@ export function sheetCss(opts: Options) {
   const cols = opts.columns ?? 2;
   return `${BOX_CSS}
 ${extrasCss}
+${identityCss}
 .dcut { break-inside: avoid; } .dcut-wrap { break-inside: avoid; }
 ${opts.size && opts.size !== 'standard' ? `.cols .unit { zoom: ${opts.size === 'xl' ? 1.4 : 1.2}; }` : ''}
 ${opts.clear ? `.cols, .cols :not(svg, svg *) { font-family: 'Atkinson Hyperlegible', Verdana, sans-serif !important; } .cols { --serif: 'Atkinson Hyperlegible', Verdana, sans-serif; --sans: 'Atkinson Hyperlegible', Verdana, sans-serif; letter-spacing: .02em; } .cols p { line-height: 1.65; }` : ''}
@@ -613,7 +617,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   }
 
   const activityPages = tasks.flatMap(t => (t.activities ?? []).flatMap(c => printActivity(c, { media: MEDIA, renderItem: item => (t.activityBlocks?.[item.id] ?? []).map(block).join('') }).map(piece => `<section data-cut="${piece.cutout ? '1' : '0'}" data-label="${esc(piece.label)}">${piece.html}</section>`)));
-  for (const family of roleFamilies.values()) activityPages.push(`<section data-cut="1" data-label="Task versions"><div class="pa-versions pa-task-versions">${family.map((t,n) => `<section class="pa-version"><h3 class="pa-role">Version ${esc(t.variant || String.fromCharCode(65+n))}</h3>${taskUnit({...t,variant:undefined},tasks.indexOf(t)+1,marks)}${(t.activities ?? []).flatMap(c=>printActivity(c,{media:MEDIA})).map(p=>p.html).join('')}</section>`).join('')}</div></section>`);
+  for (const family of roleFamilies.values()) activityPages.push(`<section data-cut="1" data-label="Task versions"><div class="pa-versions pa-task-versions">${family.map((t,n) => `<section class="pa-version"><h3 class="pa-role">${versionSignHtml(versionLetter(t.variant) || String.fromCharCode(65+n))}Version ${esc(t.variant || String.fromCharCode(65+n))}</h3>${taskUnit({...t,variant:undefined},tasks.indexOf(t)+1,marks)}${(t.activities ?? []).flatMap(c=>printActivity(c,{media:MEDIA})).map(p=>p.html).join('')}</section>`).join('')}</div></section>`);
   const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `
     <header class="band">

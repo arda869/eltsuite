@@ -58,6 +58,7 @@ import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
 import { LINK_ICON } from '../editor/LessonLink';
+import { RefChip, useRefView } from './Identity';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
@@ -1113,6 +1114,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </button>
         );
       }
+      case 'activityRef':
+        return <ActivityRefShow key={key} attrs={node.attrs ?? {}} onOpen={onOpenTask && ((id: string) => (taskState?.(id) ?? 'open') === 'open' && onOpenTask(id))} />;
       case 'gap':
         return node.attrs?.example ? exampleOf(node, key) : gap(node, key);
       case 'choice':
@@ -1419,4 +1422,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     );
   }
   return <div className="task-body">{render(content, 'r')}</div>;
+}
+
+// A reference to another activity or to a learner version, as learners and teachers see it.
+function ActivityRefShow({ attrs, onOpen }: { attrs: Record<string, unknown>; onOpen?: (taskId: string) => void }) {
+  const view = useRefView(attrs);
+  const id = view.id;
+  return <RefChip view={view} onClick={!view.version && !view.missing && id && onOpen ? () => onOpen(id) : undefined} />;
 }
