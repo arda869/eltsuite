@@ -549,3 +549,8 @@ button.ca-die.ready:hover { transform: translateY(-2px) rotate(-4deg); }
 .ca .ca-cell img, .ca .ca-cell .ca-pic { max-height: 64px; }
 /* Text in activities is always the app's own type, never a pasted-in font. */
 .ca :is(.ca-strip-text, .ca-prompt-text, .ca-cell, .ca-mcard, .ca-sq, .ca-call-now) :is(p, span, li, b, i, em, strong) { font-family: inherit; }
+
+/* Paper preview while authoring: the real print engine, filling the preview pane. */
+.ca-paper { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.ca-paper-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ca-paper-frame { width: 100%; height: min(78vh, 980px); border: 1px solid var(--hair); border-radius: 12px; background: #e9e7e2; }
