@@ -1,3 +1,4 @@
+import { allTabsJSON } from '../collab/tabs';
 import * as Y from 'yjs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import type { JSONContent } from '@tiptap/react';
@@ -98,7 +99,8 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
 async function collabDoc(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> {
   const { docxBlob, docBodyHtml, prepareDocumentPrint, EXPORT_DEFAULT } = await import('../collab/export');
   const state = await yDoc(d.docKey);
-  const json = yXmlFragmentToProsemirrorJSON(state.getXmlFragment('default')) as JSONContent;
+  // Every tab of the document, in order.
+  const json = allTabsJSON(state, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
   const layout = { ...LAYOUT_DEFAULT, ...state.getMap('layout').toJSON() } as Layout;
   state.destroy();
   const o = { ...EXPORT_DEFAULT, layout, style: ((d as SharedDoc & { citeStyle?: CiteStyle }).citeStyle) || EXPORT_DEFAULT.style };

@@ -53,6 +53,9 @@ import { useCollabSession, useCollabSaveStatus, type CollabSession } from './ses
 import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
+import { DocNav, DocTabStrip } from './DocNav';
+import { addTab, allTabsJSON, fieldOf, tabFragments, useDocTabs } from './tabs';
+import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import { PdfPreview } from '../components/PdfPreview';
 import { splitKey, type Responses } from '../lib/questions';
 import { documentSearchCard } from '../coach/documentIndex';
@@ -126,7 +129,7 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
       }
     } else t.toArray().forEach((c) => walk(c as Y.XmlElement | Y.XmlText));
   };
-  walk(doc.getXmlFragment('default'));
+  for (const { fragment } of tabFragments(doc)) walk(fragment);
   return out;
 }
 
@@ -181,6 +184,16 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const gate = useToolGate();
   const [picFor, setPicFor] = useState<Editor | null>(null);
   const [layout, setLayout] = useLayout(session.doc);
+  // Document tabs: the open tab is remembered in the address (?tab=), so a link opens it.
+  const tabs = useDocTabs(session.doc);
+  const [tabWanted, setTabWanted] = useState(() => { try { return new URLSearchParams(location.search).get('tab') || 'default'; } catch { return 'default'; } });
+  const tabId = tabs.some((t) => t.id === tabWanted) ? tabWanted : tabs[0].id;
+  const openTab = (id: string) => {
+    setTabWanted(id);
+    if (page) try { const u = new URL(location.href); if (id === 'default') u.searchParams.delete('tab'); else u.searchParams.set('tab', id); window.history.replaceState(window.history.state, '', u); } catch { /* address is a convenience */ }
+  };
+  const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1'; } catch { return false; } });
+  const setNavCollapsed = (v: boolean) => { setNavCollapsedState(v); try { localStorage.setItem('cd.navCollapsed', v ? '1' : ''); } catch { /* fine */ } };
   const paged = !!page && layout.paged;
   useEffect(() => {
     const f = (e: Event) => setPicFor((e as CustomEvent<Editor>).detail);
@@ -197,7 +210,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         CommentMark,
         Suggestions.configure({ get: () => live.current }),
         Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : 'Type / to add a heading, table, picture, IPA and more'), showOnlyCurrent: true }),
-        Collaboration.configure({ document: session.doc }),
+        Collaboration.configure({ document: session.doc, field: fieldOf(tabId) }),
         CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid, build: BUILD } }),
         NewerGuard,
         ShowMarks,
@@ -226,7 +239,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       },
       onTransaction: () => tick((n) => n + 1),
     },
-    [session],
+    [session, tabId],
   );
   useEffect(() => {
     if (!editor || !synced || !mediaSpace?.startsWith('doc:') || eff !== 'edit') return;
@@ -267,7 +280,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     if (!editor) return;
     session.provider.whenSynced(async () => {
       setSynced(true);
-      if (!template || session.doc.getXmlFragment('default').length > 0) return;
+      if (!template || tabId !== 'default' || session.doc.getXmlFragment('default').length > 0) return;
       if (await claimStart(docKey))
         editor
           .chain()
@@ -311,6 +324,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const viewing = eff === 'view';
   const viewDoc = viewing ? splitKey(withoutSuggestions(editor.getJSON())).content : null;
   const heads = headingsOf(editor.state.doc);
+  const wholeDoc = () => allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
   const goHeading = (h: Heading, i: number) => {
     if (viewing) {
       const same = heads.slice(0, i).filter((x) => x.text === h.text).length;
@@ -335,7 +349,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setPdfError('');
     try {
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
-      const content = editor.getJSON();
+      const content = allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
       await prepareDocumentPrint(content, mediaSpace || classId);
       const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout);
       setPdfPrev({ bytes, name: title || 'Document' });
@@ -553,9 +567,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           ...(onCitationStyle ? [{label:'Citation style…',icon:'classes',run:onCitationStyle}] : []),
           { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           { label: 'Version history…', icon: 'prev', run: history.open },
-          { label: 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          { label: 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          'sep', { label: 'Print', disabled: !(teacher || canDownload), run: () => printDoc(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }, editor.view.dom) },
+          { label: tabs.length > 1 ? 'Download Word (all tabs)' : 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }) },
+          ...(tabs.length > 1 ? [{ label: 'Download Word (this tab)', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), `${title} – ${tabs.find((t) => t.id === tabId)?.title ?? ''}`, { ...EXPORT_DEFAULT, style: citeStyle, layout }) }] : []),
+          { label: tabs.length > 1 ? 'Download PDF (all tabs)' : 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle, layout }) },
+          'sep', { label: tabs.length > 1 ? 'Print (all tabs)' : 'Print', disabled: !(teacher || canDownload), run: () => printDoc(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }, editor.view.dom) },
         ] },
         { label: 'Edit', items: [
           { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
@@ -573,11 +588,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Page colour: match app theme', checked: paperAppearance === 'auto', run: () => choosePaper('auto') },
           { label: 'Page colour: white', checked: paperAppearance === 'white', run: () => choosePaper('white') },
           { label: 'Page colour: black', checked: paperAppearance === 'black', run: () => choosePaper('black') },
-          'sep', { label: 'Comments and suggestions', run: () => setSide(showSide ? 'none' : 'notes') },
+          'sep', { label: 'Show tabs and outline', checked: !navCollapsed, run: () => setNavCollapsed(!navCollapsed) },
+          { label: 'Comments and suggestions', run: () => setSide(showSide ? 'none' : 'notes') },
           { label: 'Show paragraph marks', checked: !!marksKey.getState(editor.state), run: () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))) },
         ] },
         { label: 'Insert', items: [
           { label: 'Page break', icon: 'task', hint: keyLabel('Mod+Enter'), disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'docPageBreak' }).run(); } },
+          { label: 'Tab', icon: 'task', disabled: eff !== 'edit' || locked, run: () => { openTab(addTab(session.doc, undefined, tabId)); setNavCollapsed(false); } },
           { label: 'Section break', icon: 'task', disabled: !writing, run: () => { if (!insertDocumentSection(editor, layout.columns)) void tell('Place the cursor in a top-level paragraph to start a new section.'); } },
           { label: 'Header, footer and page numbers…', icon: 'script', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           ...(profileTeacher ? [{ label: 'Cite a source…', icon: 'classes', disabled: !writing, run: () => setCitationRequest((n) => n + 1) }] : []),
@@ -717,9 +734,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         </div>
       )}
       {saveStatus !== 'saved' && <div className={'cd-save-status ' + saveStatus} role="status">{saveStatus === 'error' ? <>Changes are still on this device. <button type="button" className="btn small-btn" onClick={() => session.provider.retrySave()}>Retry save</button></> : 'Saving changes…'}</div>}
-      <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
+      <div className={'cd-main' + (page && !showSide ? ' no-side' : '') + (page ? ' has-nav' + (navCollapsed ? ' nav-collapsed' : '') : '')}>
+        {page && <DocNav doc={session.doc} tabs={tabs} current={tabId} onTab={openTab} heads={heads} onHeading={(i) => goHeading(heads[i], i)} canEdit={eff === 'edit' && !locked} collapsed={navCollapsed} onCollapse={setNavCollapsed} />}
         <div className={'cd-page' + (paged ? ' pg-on' : '')}>
-          {heads.length > 0 && (
+          {!page && <DocTabStrip tabs={tabs} current={tabId} onTab={openTab} />}
+          {!page && heads.length > 0 && (
             <div className={'cd-toc' + (toc ? ' open' : '')}>
               <button type="button" className="cd-toc-btn" onClick={() => setToc((v) => !v)} aria-expanded={toc} aria-label={toc ? 'Hide the contents' : 'Show the contents'} data-tip={toc ? 'Hide the contents' : 'Contents'}>
                 <SV d="M4 6h16M4 12h11M4 18h13" size={16} />
