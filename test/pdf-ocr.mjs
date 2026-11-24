@@ -4,12 +4,26 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import fs from 'node:fs';
+import { spawn } from 'node:child_process';
 mkdirSync('outputs/pdf', { recursive: true });
 const out = 'outputs/pdf/ocr.png';
-const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }); const p = await ctx.newPage();
+const base = process.env.TEST_BASE_URL || 'http://localhost:5197';
+const vite = process.env.TEST_BASE_URL ? null : spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', '5197', '--strictPort'], { stdio: 'ignore', detached: true });
+let b;
+try {
+if (vite) {
+  let ready = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if (await fetch(base).then((response) => response.ok, () => false)) { ready = true; break; }
+    if (vite.exitCode !== null) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (!ready) throw Error('The PDF test server did not start.');
+}
+b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }); const p = await ctx.newPage();
 p.on('pageerror', e => console.log('PAGEERROR', e.message.slice(0,300)));
 p.on('console', m => m.type()==='error' && console.log('CONSOLE', m.text().slice(0,200)));
-await p.goto('http://localhost:5197/dev.html?seed&as=teacher');
+await p.goto(`${base}/dev.html?seed&as=teacher`);
 await p.waitForFunction(async () => { if (!window.__mockReady) return false; await window.__mockReady; return !!localStorage.getItem('mockdemo'); }, null, { timeout: 180000 });
 await p.waitForLoadState('networkidle');
 const jpg = await p.evaluate(() => {
@@ -76,4 +90,7 @@ const saved = await getDocument({ data: new Uint8Array(fs.readFileSync(path)) })
 const text = (await (await saved.getPage(1)).getTextContent()).items.map((i) => i.str).join(' ');
 assert.match(text, /Lisbon/, 'the downloaded PDF can be searched');
 console.log('PASS OCR on a scanned PDF, its text layer, and a searchable download with highlights');
-await b.close();
+} finally {
+  await b?.close();
+  if (vite) { try { process.kill(-vite.pid); } catch { vite.kill(); } }
+}

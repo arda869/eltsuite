@@ -111,6 +111,8 @@ jobs:
 
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
+      - name: PDF OCR, repeated-match search and searchable download
+        run: node test/pdf-ocr.mjs
       - name: Designer and Classes visual regression checks
         run: node --test --test-concurrency=1 test/classes-picture-width.mjs test/classes-picture-zoom.mjs test/designer-chart-legend.mjs test/map-symbol-semantics.mjs test/messages-settings-menu-phone.mjs test/designer-download-menu-keys.mjs
 
