@@ -1611,7 +1611,7 @@ const J = {
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
     await see(p, '.pub-design-home', 'public homepage');
-    await see(p, '.pub-design-home img[src="/landing/editor.webp"]', 'lesson editor screenshot');
+    await see(p, '.pub-design-home video[poster="/landing/demo/prepare.webp"]', 'lesson editor recording');
     await p.reload();
     await see(p, '.pub-design-home', 'public homepage after reload');
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in',exact:true}).click();
