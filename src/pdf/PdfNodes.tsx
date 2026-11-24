@@ -48,6 +48,18 @@ const pagesOf = (e: Editor, pos: number): PageSize[] => {
     return [];
   }
 };
+// The pages a note sits on, kept up to date: when pages are turned, added or removed, every note
+// is drawn again on the new pages (a note's own view doesn't change by itself).
+function usePagesOf(e: Editor, getPos: () => number | undefined): PageSize[] {
+  const [pages, setPages] = useState<PageSize[]>(() => pagesOf(e, getPos() ?? 0));
+  useEffect(() => {
+    let last = JSON.stringify(pages);
+    const f = () => { const next = pagesOf(e, getPos() ?? 0); const k = JSON.stringify(next); if (k !== last) { last = k; setPages(next); } };
+    e.on('update', f);
+    return () => void e.off('update', f);
+  }, [e]); // eslint-disable-line react-hooks/exhaustive-deps
+  return pages;
+}
 const stackOf = (el: Element | null) => el?.closest('.pdf-stack') as HTMLElement | null;
 
 function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
@@ -206,7 +218,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
           </button>
         </span>
       )}
-      <PdfStack src={node.attrs.src} classId={classId} pages={pages} onDown={down} tool={tool} first={Number(node.attrs.first) || 0}>
+      <PdfStack src={node.attrs.src} classId={classId} pages={pages} onDown={down} tool={tool} first={Number(node.attrs.first) || 0} rev={Number(node.attrs.rev) || 0}>
         <NodeViewContent className="pdf-layer" />
         {line && <InkSvg pages={pages} page={line.page} pts={line.pts} color={line.color} />}
         {shapeDraft && <ShapeSvg pages={pages} a={shapeDraft} />}
@@ -311,7 +323,7 @@ export function ToolOptions({ editor }: { editor: Editor }) {
 
 function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const pages = pagesOf(editor, getPos() ?? 0);
+  const pages = usePagesOf(editor, getPos);
   const a = node.attrs as { page: number; x: number; y: number; w: number; tone: string; key?: boolean };
   const at = toStack(pages, a.page, a.x, a.y);
   const editable = editor.isEditable;
@@ -367,7 +379,7 @@ function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected 
 }
 
 function MarkView({ node, editor, getPos, deleteNode, selected }: NodeViewProps) {
-  const pages = pagesOf(editor, getPos() ?? 0);
+  const pages = usePagesOf(editor, getPos);
   const a = node.attrs as { page: number; x: number; y: number; w: number; h: number; color: string };
   const at = toStack(pages, a.page, a.x, a.y);
   return (
@@ -398,6 +410,7 @@ export const PdfBlock = Node.create({
     inLesson: { default: false },
     first: { default: 0 }, // the first page of the PDF shown here (a lesson can take a few pages)
     units: { default: [] }, // a coursebook's units: { name, from, to }, pages counted from 1
+    rev: { default: 0 }, // goes up when the pages change (Page tools), so everyone reads the new file
   }),
   parseHTML: () => [{ tag: 'div[data-pdf]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-pdf': '' }), 0],
@@ -447,7 +460,7 @@ export function InkSvg({ pages, page, pts, color, onErase }: { pages: PageSize[]
 }
 function InkView({ node, editor, getPos, deleteNode }: NodeViewProps) {
   const store = useTool(editor);
-  const pages = pagesOf(editor, getPos() ?? 0);
+  const pages = usePagesOf(editor, getPos);
   const a = node.attrs as { page: number; pts: [number, number][]; color: string };
   return (
     <NodeViewWrapper as="span" className="pdf-ink-node" contentEditable={false}>
@@ -504,7 +517,7 @@ export function ShapeSvg({ pages, a }: { pages: PageSize[]; a: ShapeAttrs }) {
   return <svg className="pdf-ink pdf-shape" style={{ top: `${at.top}%`, height: `${at.pageH}%` }} viewBox={`0 0 1 ${ratio}`} preserveAspectRatio="none" aria-hidden="true" dangerouslySetInnerHTML={{ __html: shapeInner(a, ratio, inkColor(a.color)) }} />;
 }
 function ShapeView({ node, editor, getPos }: NodeViewProps) {
-  const pages = pagesOf(editor, getPos() ?? 0);
+  const pages = usePagesOf(editor, getPos);
   return (
     <NodeViewWrapper as="span" className="pdf-ink-node" contentEditable={false}>
       <ShapeSvg pages={pages} a={node.attrs as ShapeAttrs} />

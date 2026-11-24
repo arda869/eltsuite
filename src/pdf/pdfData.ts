@@ -66,8 +66,9 @@ export async function saveClassPdf(classId: string, bytes: Uint8Array, pages: Pa
 
 const cache = new Map<string, Promise<Uint8Array>>();
 // src: "file:<id>" or "media:<id>" (in the class given).
-export function loadPdf(src: string, classId = ''): Promise<Uint8Array> {
-  const key = src.startsWith('media:') ? classId + '/' + src : src;
+// The PDF's bytes. `rev` goes up when its pages change (Page tools), so a new copy is read.
+export function loadPdf(src: string, classId = '', rev = 0): Promise<Uint8Array> {
+  const key = (src.startsWith('media:') ? classId + '/' + src : src) + (rev ? '#' + rev : '');
   if (!cache.has(key)) {
     const p = (async () => {
       if (src.startsWith('file:')) {
@@ -91,6 +92,9 @@ export function loadPdf(src: string, classId = ''): Promise<Uint8Array> {
     cache.set(key, p);
   }
   return cache.get(key)!;
+}
+export function forgetPdf(src: string) {
+  for (const k of [...cache.keys()]) if (k === src || k.startsWith(src + '#') || k.endsWith('/' + src)) cache.delete(k);
 }
 export async function filePdfInfo(id: string): Promise<{ pages: PageSize[] } | null> {
   const s = await getDoc(doc(db, 'sharedDocs', id, 'pdf', 'info'));

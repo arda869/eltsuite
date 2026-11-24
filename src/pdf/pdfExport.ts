@@ -25,7 +25,7 @@ function markRgb(k: string): [number, number, number] {
 export type ExportChoice = { answers: boolean; ocr?: Record<number, import('./ocr').OcrPage> };
 
 export async function annotatedPdf(bytes: Uint8Array, editor: Editor, opts: ExportChoice): Promise<Uint8Array> {
-  const [{ PDFDocument, rgb, BlendMode, StandardFonts }, { toPng }] = await Promise.all([import('pdf-lib/dist/pdf-lib.esm.js'), import('html-to-image')]); // the self-contained ES module build
+  const [{ PDFDocument, rgb, BlendMode, StandardFonts, pushGraphicsState, popGraphicsState, concatTransformationMatrix }, { toPng }] = await Promise.all([import('pdf-lib/dist/pdf-lib.esm.js'), import('html-to-image')]); // the self-contained ES module build
   const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
   let block: PMNode | null = null;
   editor.state.doc.descendants((n) => { if (!block && n.type.name === 'pdfBlock') block = n; return !block; });
@@ -33,12 +33,26 @@ export async function annotatedPdf(bytes: Uint8Array, editor: Editor, opts: Expo
   const b = block as PMNode;
   const first = Number(b.attrs.first) || 0;
   const pageAt = (i: number) => pdf.getPage(Math.min(pdf.getPageCount() - 1, first + i));
+  // A turned page (Page tools, or a scan saved sideways): notes are kept as the page shows, so we
+  // draw in the page as shown, through a transform to the page's own coordinates.
+  type P = ReturnType<typeof pdf.getPage>;
+  const turned = new Set<P>();
+  const shown = (page: P) => {
+    const { width, height } = page.getSize();
+    const r = ((page.getRotation().angle % 360) + 360) % 360;
+    if (r && !turned.has(page)) {
+      turned.add(page);
+      const m = r === 90 ? [0, 1, -1, 0, width, 0] : r === 180 ? [-1, 0, 0, -1, width, height] : [0, -1, 1, 0, 0, height];
+      page.pushOperators(pushGraphicsState(), concatTransformationMatrix(m[0], m[1], m[2], m[3], m[4], m[5]));
+    }
+    return r === 90 || r === 270 ? { width: height, height: width } : { width, height };
+  };
   const jobs: Promise<void>[] = [];
   const shapes: { page: ReturnType<typeof pageAt>; W: number; H: number; a: Record<string, unknown> }[] = [];
   b.forEach((child, offset) => {
     const a = child.attrs as Record<string, unknown>;
     const page = pageAt(Number(a.page) || 0);
-    const { width: W, height: H } = page.getSize();
+    const { width: W, height: H } = shown(page);
     if (child.type.name === 'pdfMark') {
       const [r, g, bl] = markRgb(String(a.color || 'yellow'));
       page.drawRectangle({ x: Number(a.x) * W, y: H - (Number(a.y) + Number(a.h)) * H, width: Number(a.w) * W, height: Number(a.h) * H, color: rgb(r, g, bl), opacity: 0.45, blendMode: BlendMode.Multiply });
@@ -112,7 +126,7 @@ export async function annotatedPdf(bytes: Uint8Array, editor: Editor, opts: Expo
       const n = Number(k);
       if (n < 0 || n >= pdf.getPageCount()) continue;
       const page = pdf.getPage(n);
-      const { width: W, height: H } = page.getSize();
+      const { width: W, height: H } = shown(page);
       for (const w of p.words) {
         const t = safe(w.t);
         if (!t) continue;
@@ -121,6 +135,7 @@ export async function annotatedPdf(bytes: Uint8Array, editor: Editor, opts: Expo
       }
     }
   }
+  turned.forEach((page) => page.pushOperators(popGraphicsState()));
   return pdf.save();
 }
 

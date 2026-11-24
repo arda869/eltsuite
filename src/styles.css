@@ -8841,3 +8841,9 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .pdf-sh:hover { background: var(--hover, rgba(0, 0, 0, .05)); }
 .pdf-sh.on { background: color-mix(in srgb, var(--accent, #c8764a) 16%, var(--paper)); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); }
 .pdf-sh:focus-visible { outline: 2px solid var(--accent, #c8764a); outline-offset: 1px; }
+.pdff-rail-i { position: relative; }
+.pdff-th-more { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 999px; background: var(--paper); color: var(--ink); box-shadow: 0 1px 4px rgba(0, 0, 0, .2); opacity: 0; cursor: pointer; }
+.pdff-rail-i:hover .pdff-th-more, .pdff-th-more:focus-visible, .pdff-th-more[aria-expanded="true"] { opacity: 1; }
+.pdff-th-more:focus-visible { outline: 2px solid var(--accent, #c8764a); outline-offset: 1px; }
+@media (hover: none) { .pdff-th-more { opacity: 1; } }
+.pdff-busy { display: block; padding: 6px 4px; font-size: 12.5px; }
