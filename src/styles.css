@@ -8847,3 +8847,25 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .pdff-th-more:focus-visible { outline: 2px solid var(--accent, #c8764a); outline-offset: 1px; }
 @media (hover: none) { .pdff-th-more { opacity: 1; } }
 .pdff-busy { display: block; padding: 6px 4px; font-size: 12.5px; }
+
+/* PDF: comments pinned to a spot on a page. */
+.pcm-catch { position: absolute; inset: 0; z-index: 25; cursor: crosshair; }
+.pcm-pin { position: absolute; z-index: 26; transform: translate(-50%, -100%); }
+.pcm-pin.on { z-index: 40; }
+.pcm-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 6px; border: 2px solid #fff; border-radius: 14px 14px 14px 3px; background: var(--accent, #c8764a); color: #fff; font: 800 12px var(--sans); box-shadow: 0 3px 10px rgba(0, 0, 0, .3); cursor: pointer; box-sizing: border-box; }
+.pcm-dot.new { background: var(--ink); }
+.pcm-pin.done .pcm-dot { background: var(--muted); }
+.pcm-dot:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pcm-pop { position: absolute; left: 0; top: 34px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: 80vw; padding: 12px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--ink); box-shadow: 0 16px 40px -16px rgba(0, 0, 0, .4); font: 13.5px/1.45 var(--sans); cursor: default; }
+.pcm-msg { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--hair); }
+.pcm-who { display: flex; align-items: center; gap: 8px; }
+.pcm-who .btn { margin-left: auto; }
+.pcm-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pcm-new { display: flex; flex-direction: column; gap: 6px; }
+.pcm-new textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--hair-strong); border-radius: 8px; font: 13.5px var(--sans); resize: vertical; background: var(--paper); color: var(--ink); }
+.pcm-new .btn { align-self: flex-end; height: 32px; }
+.pcm-acts { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.pcm-acts .btn { height: 32px; }
+.fcm-spot { padding: 0; }
+.fcm-reply { margin: 4px 0 0 12px; padding-left: 8px; border-left: 2px solid var(--hair); font-size: 13px; }
+.pcm-layer { position: absolute; inset: 0; z-index: 25; pointer-events: none; } .pcm-layer > * { pointer-events: auto; }

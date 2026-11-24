@@ -30,6 +30,7 @@ import { ocrText, pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
 import { findHits, forgetTexts, markHits, pageTexts, type Hit } from './pdfSearch';
 import { changePages, pagesToNewFile, parsePages, type PageOp } from './pageTools';
 import { openMenuAt } from '../components/ContextMenu';
+import { PdfCommentPins } from './PdfComments';
 import { MediaBlock } from '../editor/MediaNode';
 
 // A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
@@ -38,13 +39,14 @@ import { MediaBlock } from '../editor/MediaNode';
 const PdfDocument = Document.extend({ content: 'pdfBlock' });
 const NODES = [...DOC_NODES.slice(1), PdfDocument, ...PDF_NODES, MediaBlock];
 
-export function PdfFile({ d, canEdit, me }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string } }) {
+export function PdfFile({ d, canEdit, canComment = canEdit, me }: { d: SharedDoc; canEdit: boolean; canComment?: boolean; me: { uid: string; name: string } }) {
   const session = useCollabSession(d.docKey, me.uid);
   if (!session) return <div className="dp-msg">Opening the PDF…</div>;
-  return <Inner d={d} canEdit={canEdit} me={me} session={session} />;
+  return <Inner d={d} canEdit={canEdit} canComment={canComment} me={me} session={session} />;
 }
 
-function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string }; session: CollabSession }) {
+function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit: boolean; canComment: boolean; me: { uid: string; name: string }; session: CollabSession }) {
+  const [placingComment, setPlacingComment] = useState(false);
   const { profile } = useAuth();
   const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
@@ -372,6 +374,12 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span className="pdff-grp">
+          {canComment && (
+            <button type="button" className={'pdff-act' + (placingComment ? ' on' : '')} aria-label="Comment on the page" aria-pressed={placingComment} onClick={() => setPlacingComment((v) => !v)} data-tip={placingComment ? 'Click on the page where the comment goes' : 'Comment on a spot on the page'}>
+              <Svg d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7l-4.5 4v-4H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5zM12 8.5v5M9.5 11h5" />
+              <span className="pdff-act-l">Comment</span>
+            </button>
+          )}
           <button type="button" className={'pdff-act' + (findOpen ? ' on' : '')} aria-label="Search the PDF" aria-pressed={findOpen} onClick={() => { setFindOpen((v) => !v); window.setTimeout(() => findInput.current?.focus(), 0); }} data-tip={`Search the PDF (${keyLabel('Mod+F')})`}>
             <Svg d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" />
             <span className="pdff-act-l">Search</span>
@@ -508,6 +516,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         <div className={'pdff-page' + (showKey && teacher ? '' : ' no-key')} style={{ ['--pdf-zoom' as string]: zoom }}>
           <EditorClassContext.Provider value={{ classId: 'doc:' + d.id, classmates: [] }}>
             <EditorContent editor={editor} />
+            {pages.length > 0 && <PdfCommentPins fileId={d.id} pages={pages} me={me} canWrite={canComment} canResolve={canEdit} owner={d.owner === me.uid} placing={placingComment} onPlaced={() => setPlacingComment(false)} showDone={false} />}
           </EditorClassContext.Provider>
         </div>
       </div>

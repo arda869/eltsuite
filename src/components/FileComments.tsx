@@ -9,7 +9,7 @@ import { ago } from '../lib/activity';
 // it is shared with reads them; people who can comment or edit write them; anyone who can edit
 // marks one done.
 
-type Comment = { id: string; by: string; name: string; text: string; at: number; done?: boolean };
+type Comment = { id: string; by: string; name: string; text: string; at: number; done?: boolean; spot?: { page: number }; parent?: string };
 
 export function FileComments({ d, role, me }: { d: SharedDoc; role: DocRole; me: { uid: string; name: string } }) {
   const [open, setOpen] = useState(false);
@@ -35,8 +35,9 @@ export function FileComments({ d, role, me }: { d: SharedDoc; role: DocRole; me:
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
-  const live = list.filter((c) => !c.done);
-  const shown = showDone ? list : live;
+  const live = list.filter((c) => !c.done && !c.parent);
+  const shown = (showDone ? list : live).filter((c) => !c.parent);
+  const replies = (id: string) => list.filter((c) => c.parent === id);
   const send = async () => {
     const t = text.trim();
     if (!t) return;
@@ -80,7 +81,9 @@ export function FileComments({ d, role, me }: { d: SharedDoc; role: DocRole; me:
                     </button>
                   )}
                 </span>
+                {c.spot && <button type="button" className="btn link small fcm-spot" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('ll:pdf-goto-spot', { detail: c.id })); }}>On page {c.spot.page + 1}</button>}
                 <p>{c.text}</p>
+                {replies(c.id).map((r) => <p key={r.id} className="fcm-reply"><b>{r.name}:</b> {r.text}</p>)}
               </div>
             ))}
           </div>
