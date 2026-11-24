@@ -8869,3 +8869,26 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .fcm-spot { padding: 0; }
 .fcm-reply { margin: 4px 0 0 12px; padding-left: 8px; border-left: 2px solid var(--hair); font-size: 13px; }
 .pcm-layer { position: absolute; inset: 0; z-index: 25; pointer-events: none; } .pcm-layer > * { pointer-events: auto; }
+
+/* PDF: part of a page as a task. Every control in a row is 36px high. */
+.rtt-layer { position: absolute; inset: 0; z-index: 30; }
+.rtt-catch { position: absolute; inset: 0; cursor: crosshair; background: rgba(38, 36, 32, .06); }
+.rtt-box { position: absolute; border: 2px dashed var(--accent, #c8764a); background: color-mix(in srgb, var(--accent, #c8764a) 10%, transparent); pointer-events: none; }
+.pdff-picking { position: fixed; left: 50%; top: 150px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--paper); font: 600 13px var(--sans); }
+.pdff-picking .btn { color: var(--paper); }
+.rtt-back { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(30, 26, 20, .4); }
+.rtt-dialog { width: min(860px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 22px 24px; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 64px rgba(30, 26, 20, .3); box-sizing: border-box; }
+.rtt-dialog h2 { margin: 0 0 16px; font: 500 22px var(--serif); }
+.rtt-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, 1fr); gap: 24px; align-items: start; }
+.rtt-pic { display: grid; place-items: center; min-height: 160px; padding: 10px; border: 1px solid var(--hair); border-radius: 12px; background: var(--surface, #f4f3f0); }
+.rtt-pic img { display: block; max-width: 100%; max-height: 60vh; object-fit: contain; background: #fff; box-shadow: 0 4px 14px -8px rgba(0, 0, 0, .35); }
+.rtt-form { display: flex; flex-direction: column; gap: 14px; }
+.rtt-form p { margin: 0; font: 15px/1.5 var(--serif); }
+.rtt-field { display: flex; flex-direction: column; gap: 6px; font: 600 12.5px var(--sans); color: var(--muted); }
+.rtt-input, .rtt-dialog .rtt-sel, .rtt-dialog .rtt-sel .sel, .rtt-dialog .nsel > .sel { height: 36px; min-height: 36px; box-sizing: border-box; }
+.rtt-input { padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); }
+.rtt-check { display: flex; align-items: flex-start; gap: 8px; font: 13.5px/1.4 var(--sans); }
+.rtt-error { color: var(--danger, #b3261e) !important; font: 13px var(--sans) !important; }
+.rtt-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.rtt-acts .btn, .rtt-form > .btn { height: 36px; min-height: 36px; box-sizing: border-box; }
+@media (max-width: 700px) { .rtt-body { grid-template-columns: 1fr; } }

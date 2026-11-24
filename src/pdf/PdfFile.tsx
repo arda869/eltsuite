@@ -31,6 +31,7 @@ import { findHits, forgetTexts, markHits, pageTexts, type Hit } from './pdfSearc
 import { changePages, pagesToNewFile, parsePages, type PageOp } from './pageTools';
 import { openMenuAt } from '../components/ContextMenu';
 import { PdfCommentPins } from './PdfComments';
+import { RegionPicker, RegionToTaskDialog } from './RegionToTask';
 import { MediaBlock } from '../editor/MediaNode';
 
 // A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
@@ -47,6 +48,8 @@ export function PdfFile({ d, canEdit, canComment = canEdit, me }: { d: SharedDoc
 
 function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit: boolean; canComment: boolean; me: { uid: string; name: string }; session: CollabSession }) {
   const [placingComment, setPlacingComment] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [region, setRegion] = useState<{ page: number; x: number; y: number; w: number; h: number } | null>(null);
   const { profile } = useAuth();
   const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
@@ -374,6 +377,12 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
           </span>
         )}
         <span className="pdff-grp">
+          {canEdit && teacher && (
+            <button type="button" className={'pdff-act' + (picking ? ' on' : '')} aria-label="Make a task from part of a page" aria-pressed={picking} onClick={() => { setPicking((v) => !v); setPlacingComment(false); }} data-tip={picking ? 'Drag round the part of the page you want' : 'Make a task from part of a page: drag round it, then choose a lesson'}>
+              <Svg d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M12 9v6M9 12h6" />
+              <span className="pdff-act-l">Make a task</span>
+            </button>
+          )}
           {canComment && (
             <button type="button" className={'pdff-act' + (placingComment ? ' on' : '')} aria-label="Comment on the page" aria-pressed={placingComment} onClick={() => setPlacingComment((v) => !v)} data-tip={placingComment ? 'Click on the page where the comment goes' : 'Comment on a spot on the page'}>
               <Svg d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7l-4.5 4v-4H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5zM12 8.5v5M9.5 11h5" />
@@ -516,10 +525,13 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
         <div className={'pdff-page' + (showKey && teacher ? '' : ' no-key')} style={{ ['--pdf-zoom' as string]: zoom }}>
           <EditorClassContext.Provider value={{ classId: 'doc:' + d.id, classmates: [] }}>
             <EditorContent editor={editor} />
+            {pages.length > 0 && <RegionPicker pages={pages} active={picking} onPick={(r) => { setPicking(false); setRegion(r); }} />}
             {pages.length > 0 && <PdfCommentPins fileId={d.id} pages={pages} me={me} canWrite={canComment} canResolve={canEdit} owner={d.owner === me.uid} placing={placingComment} onPlaced={() => setPlacingComment(false)} showDone={false} />}
           </EditorClassContext.Provider>
         </div>
       </div>
+      {region && <RegionToTaskDialog region={region} src={src} rev={revNow} first={first} title={d.title || 'PDF'} onClose={() => setRegion(null)} />}
+      {picking && <p className="pdff-picking" role="status">Drag round the part of the page for the task. <button type="button" className="btn link small" onClick={() => setPicking(false)}>Cancel</button></p>}
       <div className="pdff-float" role="toolbar" aria-label="Pages and zoom">
         {pages.length > 1 && (
           <span className="pdff-pg" role="group" aria-label="Pages">
