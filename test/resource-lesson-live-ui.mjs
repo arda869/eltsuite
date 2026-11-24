@@ -62,12 +62,14 @@ try {
     localStorage.setItem('rll.fixture', JSON.stringify(fixture));
   });
   await teacher.goto(`${base}/doc/standalone-file`);
-  await teacher.getByRole('button', { name: 'Start live', exact: true }).waitFor();
+  await teacher.getByRole('button', { name: 'Invite learners', exact: true }).waitFor();
   const header = await teacher.locator('.dp-bar').boundingBox();
   const view = await teacher.getByRole('radiogroup', { name: 'Lesson view' }).boundingBox();
   const outline = await teacher.locator('.lf-side').boundingBox();
+  const shell = await teacher.locator('.dp.k-lesson').boundingBox();
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-layout.png` });
   assert.ok(header && view && outline && view.y >= header.y && view.y + view.height <= header.y + header.height, 'Digital, Paper and Learner preview belong in the document header');
-  assert.ok(outline.y + outline.height >= 820, 'the lesson outline should fill the viewport under the header');
+  assert.ok(shell && outline && Math.abs(outline.y + outline.height - (shell.y + shell.height)) <= 2, 'the lesson outline should fill its available height above Messages');
   await teacher.getByRole('button', { name: '+ Add' }).click();
   await teacher.getByRole('menuitem', { name: 'New task' }).waitFor();
   await teacher.keyboard.press('Escape');
@@ -81,15 +83,15 @@ try {
   await teacher.getByRole('radio', { name: 'Digital' }).click();
   await teacher.locator('.lf-task').waitFor();
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
-  await teacher.getByRole('button', { name: 'Start live', exact: true }).click();
+  await teacher.getByRole('button', { name: 'Invite learners', exact: true }).click();
   await teacher.getByText('482193').waitFor();
   assert.match(teacher.url(), /\/resource-hub\/lesson\/live\/file-run/);
   await teacher.goto(`${base}/doc/class-origin-file`);
   await teacher.locator('.lf-side').waitFor();
-  assert.equal(await teacher.getByRole('button', { name: 'Start live', exact: true }).count(), 0);
+  assert.equal(await teacher.getByRole('button', { name: 'Invite learners', exact: true }).count(), 0);
   await teacher.goto(`${base}/doc/legacy-file`);
   await teacher.locator('.lf-side').waitFor();
-  assert.equal(await teacher.getByRole('button', { name: 'Start live', exact: true }).count(), 0);
+  assert.equal(await teacher.getByRole('button', { name: 'Invite learners', exact: true }).count(), 0);
   console.log('PASS Resource Hub and personal Lesson file live entry, guest join, task, submit, end, history, and Class-origin gate (mock callable).');
 } finally {
   await browser.close();

@@ -62,7 +62,7 @@
 .overflow-tools.is-open { visibility: visible; pointer-events: auto; }
 .overflow-tools .pb-g { border-left: 0; }
 
-.document-menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 24px; background: var(--paper); color: var(--ink); position: relative; z-index: 12; }
+.document-menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 24px; background: var(--paper); color: var(--ink); position: relative; z-index: 80; }
 .document-menu { position: relative; }
 .document-menu-trigger { border: 0; background: transparent; color: var(--ink); font: 13px var(--sans); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 .document-menu-trigger:hover, .document-menu-trigger.on { background: var(--surface); }
@@ -207,11 +207,9 @@
 .dp.k-doc .cd-page:not(.pg-on) {width:100%;max-width:none;padding-inline:clamp(20px, 3vw, 40px);}
 .dp.k-doc:has(.pg-on) {background:var(--surface);}
 
-/* The document menus return on the first upward scroll. */
-.dp.k-doc .document-menubar { position: sticky; transition: transform .12s ease, visibility .12s; }
-.dp.k-doc .document-menubar.is-hidden { transform: translateY(-100%); visibility: hidden; pointer-events: none; }
+/* Keep document commands available while editing lower on the page. */
+.dp.k-doc .document-menubar { position: sticky; }
 .dp.k-doc .dp-acts .btn, .dp.k-doc .dp-acts .dp-ib, .dp.k-doc .dp-slot .cd-mode .sel { height: 36px; min-height:36px; box-sizing:border-box; }
-@media(prefers-reduced-motion:reduce){.dp.k-doc .document-menubar{transition:none;}}
 
 .pq-hl-turn {display:flex;align-items:baseline;gap:16px;margin:0 0 12px;}
 .pq-hl-speaker {flex:0 0 90px;font:600 14px var(--sans);color:var(--muted);overflow-wrap:anywhere;}

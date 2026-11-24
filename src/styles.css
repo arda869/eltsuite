@@ -8796,7 +8796,7 @@ body .dp .cd-main.has-nav.has-nav.nav-collapsed.no-side { grid-template-columns:
 .dn-tab-btn { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 38px; padding: 0 10px 0 14px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 14px var(--sans); text-align: left; cursor: pointer; }
 .dn-tab-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dn-tab-btn:hover { background: var(--hover, rgba(0, 0, 0, .05)); }
-.dn-tab.on > .dn-tab-btn { background: color-mix(in srgb, var(--accent, #c8764a) 16%, var(--paper, #fff)); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); font-weight: 700; }
+.dn-tab.on > .dn-tab-btn { background: color-mix(in srgb, var(--accent, #c8764a) 16%, var(--paper, #fff)); color: var(--ink); font-weight: 700; }
 .dn-more { opacity: 0; width: 28px; height: 28px; margin-right: 4px; }
 .dn-tab:hover .dn-more, .dn-tab.on .dn-more, .dn-more:focus-visible { opacity: 1; }
 .dn-rename { min-height: 36px; margin: 1px 0; padding: 0 12px; border: 1px solid var(--accent, #c8764a); border-radius: 999px; font: 500 14px var(--sans); background: var(--paper, #fff); color: var(--ink); }
