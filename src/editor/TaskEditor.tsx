@@ -311,7 +311,14 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
+      // Inside a communicative activity's card (a bingo square, a board square, a cue card…): only what fits
+      // in a card — gaps and choices, pictures, a list, phonetics and the grammar and pronunciation marks.
+      const $sel = editor.state.selection.$from;
+      let inActivity = false;
+      for (let d = 1; d <= $sel.depth; d++) if ($sel.node(d).type.name === 'communicativeActivity') inActivity = true;
       const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter(c=>investigations||!FAMILIES.some(f=>f.id===c.key)).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const CARD_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'truefalse', 'subst', 'phonchart', 'phoncard', 'phonhow', 'stress', 'ipa', 'list', 'numbered', 'image', 'picture', 'linkcard', 'bankpick'];
+      if (inActivity) fit.splice(0, fit.length, ...fit.filter((c) => CARD_KEYS.includes(c.key) || c.key.startsWith('b-') || c.group === 'Language'));
       const q = state.query.trim();
       // In the order the menu shows them (by group), so the arrow keys go down the list as seen.
       const shown = (l: Cmd[]) => l.map((c, i) => [c, i] as const).sort((a, b) => GROUP_RANK.indexOf(a[0].group) - GROUP_RANK.indexOf(b[0].group) || a[1] - b[1]).map(([c]) => c);

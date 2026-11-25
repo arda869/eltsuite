@@ -391,3 +391,24 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 .ca-taboo ul::before { content: 'Don’t say'; font: 700 10.5px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
 .ca-taboo-word { font-size: 34px; }
 .ca-private { overflow: hidden; }
+/* Strip story and ranking: equal spaces between strips, a lifted strip while dragging, a clear line where it will land. */
+.ca-strips { display: flex !important; flex-direction: column; gap: 10px !important; margin: 0; padding: 0; }
+.ca-strips > .ca-strip { margin: 0 !important; }
+.ca-strip.lift, .ca-rank-item.lift { opacity: .45; transform: scale(.98); }
+.ca-strip.drop, .ca-rank-item.drop { box-shadow: 0 -3px 0 var(--accent); }
+.ca-rank-item { cursor: grab; transition: box-shadow .12s, opacity .12s; }
+.ca-rank-item:active { cursor: grabbing; }
+/* Cue cards: dealing the cards, one row per learner, one chip per card. */
+.ca-deal { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); margin-bottom: 14px; }
+.ca-deal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ca-deal-acts { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ca-deal-acts .btn, .ca-deal-acts .sel { height: 32px; min-height: 32px; }
+.ca-deal-rows { display: flex; flex-direction: column; gap: 6px; }
+.ca-deal-row { display: grid; grid-template-columns: 32px minmax(90px, 160px) 1fr; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; }
+.ca-deal-row:hover { background: var(--surface); }
+.ca-deal-name { font: 600 14px var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-deal-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+.ca-deal-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); font: 500 13px var(--sans); cursor: pointer; text-align: left; }
+.ca-deal-chip small { font: 700 9.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ca-deal-chip.on { border-color: var(--accent); background: var(--tint, #f6ebe4); box-shadow: inset 0 0 0 1px var(--accent); }
+.ca-deal-chip.on small { color: var(--accent-text); }
