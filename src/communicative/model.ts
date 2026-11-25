@@ -23,6 +23,7 @@ export const ACTIVITY_COLOURS: { v: ActivityColours; label: string }[] = [
 ];
 export type ActivitySettings = {
   randomColours?: boolean; // bingo: each card in its own colour
+  dominoPlay?: 'chain' | 'hands'; // dominoes: build the line together, or take turns from your own tiles
   mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'ladders'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';

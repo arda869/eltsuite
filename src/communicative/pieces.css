@@ -412,3 +412,25 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 .ca-deal-chip small { font: 700 9.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .ca-deal-chip.on { border-color: var(--accent); background: var(--tint, #f6ebe4); box-shadow: inset 0 0 0 1px var(--accent); }
 .ca-deal-chip.on small { color: var(--accent-text); }
+/* Dominoes, taking turns: the line, the ends to place at, your tiles. Tiles stand up on narrow screens. */
+.ca-dz { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; }
+.ca-dz-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 8%, var(--paper)); box-shadow: inset 0 0 0 1px var(--hair); min-height: 96px; }
+.ca-dz-tile { display: inline-grid; grid-template-columns: 1fr 1fr; min-width: 180px; border-radius: 12px; border: 1.5px solid var(--ink); background: var(--paper); overflow: hidden; font: 500 15px var(--serif); color: var(--ink); padding: 0; cursor: default; }
+.ca-dz-tile > span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 12px; min-height: 64px; text-align: center; }
+.ca-dz-tile > span + span { border-left: 1.5px dashed var(--hair-strong); }
+.ca-dz-tile img { max-width: 64px; max-height: 48px; object-fit: contain; }
+.ca-dz-hand .ca-dz-tile { cursor: grab; transition: transform .15s, box-shadow .15s; }
+.ca-dz-hand .ca-dz-tile:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .4); }
+.ca-dz-hand .ca-dz-tile.picked { box-shadow: 0 0 0 3px var(--accent); transform: translateY(-4px); }
+.ca-dz-hand .ca-dz-tile:disabled { opacity: .6; cursor: default; }
+.ca-dz-end { width: 44px; min-height: 64px; align-self: stretch; border-radius: 12px; border: 2px dashed var(--hair-strong); background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; }
+.ca-dz-end.ready { border-color: var(--accent); color: var(--accent-text); background: var(--paper); animation: ca-dz-pulse 1.4s infinite; }
+@keyframes ca-dz-pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); } }
+.ca-dz-hand-head { display: flex; align-items: center; gap: 10px; }
+.ca-dz-hand-head .btn { margin-left: auto; }
+.ca-dz-hand { display: flex; flex-wrap: wrap; gap: 10px; }
+.ca-dz-others { display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-dz-who { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: var(--surface); font-size: 13px; }
+.ca-dz-who.now { box-shadow: 0 0 0 2px var(--accent); }
+.ca-dz-done { font-weight: 600; color: var(--right, #4e6b55); }
+@container (max-width: 520px) { .ca-dz-tile { grid-template-columns: 1fr; min-width: 88px; } .ca-dz-tile > span + span { border-left: 0; border-top: 1.5px dashed var(--hair-strong); } .ca-dz-end { width: 100%; min-height: 36px; } }

@@ -152,6 +152,7 @@ function diagramHtml(b: Extract<Block, { kind: 'diagram' }>): string {
 }
 
 function block(b: Block): string {
+  if (b.kind === 'pagebreak') return '<div class="ws-pb"></div>';
   switch (b.kind) {
     case 'form':
       return `<div class="form">${b.title ? `<p class="form-t">${esc(b.title)}</p>` : ''}${b.peer ? '<p class="form-name">Classmate’s name <span class="line"></span></p>' : ''}${b.items.map(formItem).join('')}</div>`;
@@ -748,6 +749,18 @@ ${sheetCss(opts)}
     function hasOther(col, u) { for (var k = 0; k < col.children.length; k++) { var c = col.children[k]; if (c !== u && !c.classList.contains('section')) return true; } return false; }
     for (var i = 0; i < units.length; i++) {
       var u = units[i], col = cols[ci];
+      // A page break in a task: what comes before it ends the page; the rest starts a new one.
+      if (u.classList.contains('ws-force')) { cols = newPage(bandId); ci = 0; continue; }
+      var pbBody = u.querySelector('.ex-body'), pb = pbBody && pbBody.querySelector(':scope > .ws-pb');
+      if (pb) {
+        var kids = Array.prototype.slice.call(pbBody.children), at = kids.indexOf(pb);
+        var after = u.cloneNode(true), afterBody = after.querySelector('.ex-body');
+        Array.prototype.slice.call(afterBody.children).slice(0, at + 1).forEach(function (k) { afterBody.removeChild(k); });
+        var head2 = after.querySelector('.ex-head'); if (head2) head2.style.visibility = 'hidden';
+        kids.slice(at).forEach(function (k) { pbBody.removeChild(k); });
+        var force = document.createElement('div'); force.className = 'ws-force';
+        units.splice(i + 1, 0, force, after);
+      }
       if (u.classList.contains('section') && units[i + 1]) {
         // a section heading always stays with the exercise after it
         col.appendChild(u); col.appendChild(units[i + 1]);

@@ -1,4 +1,5 @@
 import {insideCommunicativeActivity} from '../communicative/pictureContext';
+import { PageBreak } from '../collab/DocumentStructure';
 import { dropSourceNumbers } from '../lib/olNumbers';
 import {savePrivateActivityPicture} from '../communicative/privatePictures';
 import { CommunicativeActivity, ActivityCardAttributes, COMMUNICATIVE_INSERTS } from '../communicative/ActivityEditor';
@@ -192,6 +193,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
+  { key: 'pagebreak', label: 'Page break', hint: 'On paper, what comes next starts a new page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'docPageBreak' }, { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
   { key: 'info', label: 'Information box', hint: 'Grammar rules, tips, useful language', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('info', 'sand', 'Grammar', '!'), { type: 'paragraph' }]).run() },
@@ -596,6 +598,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       RevealBox,
       SubTask,
       RemovedStoryboard,
+      PageBreak,
       ...PDF_NODES,
       LinkCard,
       MediaBlock,

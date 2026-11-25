@@ -87,6 +87,7 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
   const [reason, setReason] = useState(s.opinions[selfId]?.reason ?? '');
   const [position, setPosition] = useState(s.opinions[selfId]?.value ?? 50);
   const [dropped, setDropped] = useState(false);
+  const [pickedTile, setPickedTile] = useState('');
   // Ordering (strips, dominoes, ranking): the order changes here straight away, and every move glides.
   const [localOrder, setLocalOrder] = useState<string[] | null>(null);
   const order = localOrder ?? s.order;
@@ -151,7 +152,7 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
     const item = itemById(id); if (!item) return null;
     return <div key={id} data-flip={id} className={`ca-rank-item ${dragging === id ? 'lift' : ''} ${dropAt === n && dragging !== id ? 'drop' : ''}`} draggable={canAct} onDragStart={e => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; setDragging(id); }} onDragEnd={() => { setDragging(''); setDropAt(-1); }} onDragOver={e => { e.preventDefault(); if (dropAt !== n) setDropAt(n); }} onDrop={e => { e.preventDefault(); move(order.indexOf(e.dataTransfer.getData('text/plain')), n); setDragging(''); setDropAt(-1); }}><span className="ca-rank-n">{n + 1}</span><span>{body(item)}</span>{orderControls(n, item.title || `item ${n + 1}`)}</div>;
   })}</div>;
-  const turn = ['board', 'memory', 'taboo'].includes(c.kind) && active ? <div className={`ca-turn ${active.id === selfId ? 'mine' : 'theirs'}`} style={vars({ '--c': colour(s.turn) })}><span className="avatar c" aria-hidden="true">{initials(active.name)}</span><span className="ca-turn-who">{active.id === selfId ? 'Your turn' : `${active.name}’s turn`}</span>{remaining !== null && <span className="timer-chip" role="timer" aria-label={`${remaining} seconds remaining`}>{remaining}s</span>}</div> : null;
+  const turn = (['board', 'memory', 'taboo'].includes(c.kind) || (c.kind === 'dominoes' && c.settings.dominoPlay === 'hands')) && active ? <div className={`ca-turn ${active.id === selfId ? 'mine' : 'theirs'}`} style={vars({ '--c': colour(s.turn) })}><span className="avatar c" aria-hidden="true">{initials(active.name)}</span><span className="ca-turn-who">{active.id === selfId ? 'Your turn' : `${active.name}’s turn`}</span>{remaining !== null && <span className="timer-chip" role="timer" aria-label={`${remaining} seconds remaining`}>{remaining}s</span>}</div> : null;
 
   let inner: ReactNode;
   switch (c.kind) {
@@ -188,6 +189,24 @@ export function ActivityStage({ config: c, state: s, selfId, teacher = false, se
       })}</ol><button type="button" className="btn primary ca-go" disabled={!canAct} onClick={() => send({ type: 'check' })}>Check the order</button>{s.checked && <p role="status">{s.correct ? 'The order is correct.' : 'Not quite. Move the strips and try again.'}</p>}</>;
       break;
     case 'dominoes':
+      if (c.settings.dominoPlay === 'hands' && s.line && s.hands) {
+        // Taking turns: the line on the table, then your own tiles. Drag a tile to an end of the line,
+        // or choose it and then an end. Tiles stand up when the screen is narrow.
+        const tileOf = (id: string) => { const item = itemById(id); if (!item) return null; const t = item.dominoRight ? { left: item.title, leftPicture: item.picture, right: item.dominoRight.text, rightPicture: item.dominoRight.picture } : dominoTiles(c.items).find((x) => x.id === id); return t ? { item, t } : null; };
+        const face = (id: string) => { const x = tileOf(id); return x ? <><span><Picture item={{ ...x.item, picture: x.t.leftPicture }} />{x.t.left}</span><span><Picture item={{ ...x.item, picture: x.t.rightPicture }} />{x.t.right}</span></> : null; };
+        const mine = teacher ? (s.hands[active?.id ?? ''] ?? []) : (s.hands[selfId] ?? []);
+        const myGo = canAct && myTurn;
+        const place = (end: 'start' | 'end', id = pickedTile) => { if (!id) return; setPickedTile(''); send({ type: 'place', tileId: id, end }); };
+        const endZone = (end: 'start' | 'end') => <button type="button" className={`ca-dz-end ${pickedTile ? 'ready' : ''}`} disabled={!myGo || !pickedTile} aria-label={end === 'start' ? 'Put the tile at the start of the line' : 'Put the tile at the end of the line'} onDragOver={(e) => { if (myGo) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); place(end, e.dataTransfer.getData('text/plain')); }} onClick={() => place(end)}>{end === 'start' ? '◀' : '▶'}</button>;
+        inner = <div className="ca-dz">
+          <div className="ca-dz-line" aria-label="The line of tiles">{endZone('start')}{s.line.map((id) => <div key={id} data-flip={id} className="ca-domino ca-dz-tile">{face(id)}</div>)}{endZone('end')}</div>
+          <div className="ca-dz-hand-head"><b>{teacher ? `${active?.name ?? 'Learner'}’s tiles` : 'Your tiles'}</b><span className="hint">{mine.length} left{myGo ? ' · your turn' : ''}</span>{myGo && <button type="button" className="btn small-btn" onClick={() => send({ type: 'pass' })}>No tile fits · pass</button>}</div>
+          <div className="ca-dz-hand">{mine.map((id) => <button key={id} type="button" data-flip={id} className={`ca-domino ca-dz-tile ${pickedTile === id ? 'picked' : ''}`} draggable={myGo} disabled={!myGo} onDragStart={(e) => e.dataTransfer.setData('text/plain', id)} onClick={() => setPickedTile(pickedTile === id ? '' : id)} aria-pressed={pickedTile === id}>{face(id)}</button>)}{!mine.length && <p className="hint">{s.finished?.includes(teacher ? active?.id ?? '' : selfId) ? 'All your tiles are down.' : 'No tiles.'}</p>}</div>
+          {teacher && <div className="ca-dz-others">{s.people.map((p, i) => <span key={p.id} className={`ca-dz-who ${active?.id === p.id ? 'now' : ''}`}><span className="avatar c" style={vars({ '--c': colour(i) })}>{initials(p.name)}</span>{p.name} · {s.hands![p.id]?.length ?? 0}</span>)}</div>}
+          {s.correct && <p role="status" className="ca-dz-done">The line is complete.</p>}
+        </div>;
+        break;
+      }
       inner = <><div className={c.kind === 'dominoes' ? 'ca-chain' : 'ca-strips'}>{order.map((id, n) => {
         const item = itemById(id); if (!item) return null;
         const tile = item.dominoRight ? {left:item.title,leftPicture:item.picture,right:item.dominoRight.text,rightPicture:item.dominoRight.picture} : dominoTiles(c.items).find(t => t.id === id)!;

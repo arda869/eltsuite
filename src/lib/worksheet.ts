@@ -58,6 +58,7 @@ export type Block =
   | { kind: 'lines'; n: number; count: number; prompt?: string }
   | { kind: 'table'; rows: string[][]; head?: boolean; structure?: { header: boolean; colspan: number; rowspan: number }[][]; cells?: Run[][][] }
   | { kind: 'note'; text: string }
+  | { kind: 'pagebreak' }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
   | { kind: 'dict'; word: string; d: DefData }
@@ -603,6 +604,10 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         // A message board or post-it wall: the question, and room to write.
         if (a.prompt) cur.push({ kind: 'p', runs: [{ t: String(a.prompt) }] });
         cur.push({ kind: 'lines', n: 0, count: 3 });
+        return;
+      case 'docPageBreak':
+        // The teacher's page break: on paper what follows starts a new page.
+        cur.push({ kind: 'pagebreak' });
         return;
       case 'timeline':
         cur.push({ kind: 'timeline', a: a as TlAttrs });
