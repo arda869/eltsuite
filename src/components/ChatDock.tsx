@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { autoFocusOk } from '../lib/keys';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, chatTitle, chime, markGot, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
+import { withShownNames, isSelf, chatTitle, chime, isQuiet, markGot, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
 import { useDirectory, whoLine, type Directory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { renewPush } from '../lib/push';
@@ -161,7 +161,7 @@ export function ChatDock() {
     seen.current = Object.fromEntries(chats.map((c) => [c.id, c.lastAt]));
     if (!prev) return;
     const fresh = chats.filter((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0));
-    if (!fresh.length) return;
+    if (!fresh.length || isQuiet()) return;
     chime('in');
     // On a phone, away from Messages: a banner at the top with the message.
     const c = fresh.sort((a, b) => b.lastAt - a.lastAt)[0];

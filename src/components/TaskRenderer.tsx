@@ -1,4 +1,5 @@
 import { useContext } from 'react';
+import { dropSourceNumbers, olStarts } from '../lib/olNumbers';
 import { LocalActivity, LocalActivityMode } from '../communicative/LocalActivity';
 import { LiveActivity } from '../communicative/LiveActivity';
 import { InlineGame } from '../quiz/InlineGame';
@@ -46,8 +47,6 @@ import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
 import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
-import { StoryStripFit } from '../storyboard/Stage';
-import type { SbAttrs } from '../storyboard/StoryboardNode';
 import { NextSub, subLetter, subShown, subTasksOf, useOpenSubs } from '../editor/SubTask';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
@@ -207,8 +206,12 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results: resultsIn, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed: revealedIn, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, itemId, taskId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+export function TaskRenderer({ content: contentIn, responses: responsesIn, onChange, results: resultsIn, checkedQuestionIds, checkedSubTasks, checkingSubTask, onCheckSubTask, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed: revealedIn, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, itemId, taskId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
   const offlineActivity = useContext(LocalActivityMode);
+  // A coursebook's own numbers before gaps are left out: we number the questions.
+  const content = useMemo(() => dropSourceNumbers(contentIn), [contentIn]);
+  // Numbered lists carry on through the task, so no two questions share a number.
+  const listStart = useMemo(() => olStarts(content), [content]);
   const ungraded = useMemo(() => {
     const ids = new Set<string>();
     const visit = (node: JSONContent) => { if (node.attrs?.noCorrectAnswer && node.attrs.id) ids.add(String(node.attrs.id)); node.content?.forEach(visit); };
@@ -991,7 +994,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <ul key={key}>{kids()}</ul>;
       case 'orderedList':
         return (
-          <ol key={key} type={(node.attrs?.listType ?? '1') as '1' | 'a' | 'A' | 'i' | 'I'} start={node.attrs?.start ?? 1}>
+          <ol key={key} type={(node.attrs?.listType ?? '1') as '1' | 'a' | 'A' | 'i' | 'I'} start={listStart.get(node) ?? node.attrs?.start ?? 1}>
             {kids()}
           </ol>
         );
@@ -1292,14 +1295,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       case 'bankLink':
         return <BankLinkCard key={key} bank={node.attrs?.bank ?? 'grammar'} title={node.attrs?.title} label={node.attrs?.label} onOpen={onOpenNotebook && node.attrs?.entryId ? () => onOpenNotebook(node.attrs!.entryId) : undefined} />;
-      case 'storyboard': {
-        const a = node.attrs as SbAttrs;
-        return a.snap?.scenes?.length ? (
-          <div key={key} data-bk={key} className="sbn-read">
-            <StoryStripFit snap={a.snap} cols={a.cols} />
-          </div>
-        ) : null;
-      }
+      case 'storyboard':
+        return null; // storyboards were removed
       case 'timeline':
         return <TimelineFigure key={key} a={node.attrs as TlAttrs} />;
       case 'diagram': {

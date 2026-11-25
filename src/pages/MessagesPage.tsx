@@ -327,6 +327,15 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
 
 export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void; onMin?: () => void }) {
   const { msgs, hasOlder, loadOlder } = useMessageHistory(c.id);
+  // From search: go to the message found, and show it for a moment.
+  const found = useRef('');
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('m');
+    if (!id || !msgs || found.current === c.id + id) return;
+    if (!msgs.some((x) => x.id === id)) { if (hasOlder && msgs.length < 3000) loadOlder(); return; }
+    found.current = c.id + id;
+    window.setTimeout(() => { const el = document.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`); if (!el) return; el.scrollIntoView({ block: 'center' }); el.classList.add('bub-found'); window.setTimeout(() => el.classList.remove('bub-found'), 2600); }, 120);
+  }, [msgs, c.id, hasOlder]); // eslint-disable-line react-hooks/exhaustive-deps
   // Enter sends (Shift + Enter for a new line), unless the person turned that off.
   const [enterSends] = useState(enterSendOn);
   // Every message starts as plain text; Aa shows the writing tools for this one.
@@ -716,6 +725,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   };
   return (
     <div
+      data-mid={m.id}
       className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' picked' : '') + (swipe.dx ? ' swiping' : '')}
       id={'m-' + m.id}
       style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}

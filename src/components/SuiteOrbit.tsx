@@ -28,7 +28,6 @@ const INNER = available([
   [pick('rooms'), 46],
   [pick('files'), 40],
   [pick('colleagues'), 36],
-  [pick('storyboard'), 34],
 ]);
 
 function Ring({ items, r, cls }: { items: [Orb, number][]; r: number; cls: string }) {

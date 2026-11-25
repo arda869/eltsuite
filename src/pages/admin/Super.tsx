@@ -1,4 +1,5 @@
 import { DeleteAccountDialog } from '../../components/DeleteAccountDialog';
+import { DEFAULT_STUDIO_MINUTES, setStudioLimit, watchStudioLimit } from '../../lib/studio';
 import { VoicePreviews } from './VoicePreviews';
 import { QuizMusic } from './QuizMusic';
 import { useEffect, useState } from 'react';
@@ -562,6 +563,38 @@ export function SuperDefaults() {
       <Panel title="Sounds of English">
         <SoundRecordings />
       </Panel>
+      <Panel title="Recording together">
+        <StudioLimit />
+      </Panel>
+    </div>
+  );
+}
+
+// How long one recording in the recording studio may last, for every teacher.
+function StudioLimit() {
+  const [minutes, setMinutes] = useState<number | null>(null);
+  const [draft, setDraft] = useState('');
+  const [note, setNote] = useState('');
+  useEffect(() => watchStudioLimit((m) => { setMinutes(m); setDraft(String(m)); }), []);
+  const n = Number(draft);
+  const ok = Number.isInteger(n) && n >= 1 && n <= 180;
+  const save = async () => {
+    setNote('Saving…');
+    try { await setStudioLimit(n); setNote(`Saved. Recordings now stop at ${n} minutes.`); }
+    catch { setNote('We couldn’t save that just now. Check your connection and try again.'); }
+  };
+  return (
+    <div className="hq-row-form">
+      <p className="hint">When teachers record together, a recording stops by itself at this limit. The usual limit is {DEFAULT_STUDIO_MINUTES} minutes.</p>
+      <label className="field">
+        <span>Longest recording, in minutes</span>
+        <input type="number" min={1} max={180} value={draft} onChange={(e) => { setDraft(e.target.value); setNote(''); }} style={{ maxWidth: 140 }} />
+      </label>
+      {!ok && draft !== '' && <span className="error">Choose a whole number from 1 to 180.</span>}
+      <span className="pe-actions">
+        <button type="button" className="btn primary" disabled={!ok || n === minutes} onClick={() => void save()}>Save</button>
+        {note && <span className="hint" role="status">{note}</span>}
+      </span>
     </div>
   );
 }

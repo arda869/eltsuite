@@ -4,8 +4,8 @@ import { CRITERIA, DEVELOPMENT_FORMS, RATINGS, TT_KINDS, type TTKind, type TTFie
 import { studioDefinition } from '../coach/studioForms';
 import { credit } from './brand';
 import type { TlAttrs } from '../editor/Timeline';
-import type { SbAttrs } from '../storyboard/StoryboardNode';
 import { listLabel } from './listLabel';
+import { dropSourceNumbers, olStarts } from './olNumbers';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType, ImageRun } from 'docx';
 import type { ExportTask } from './textformat';
@@ -58,13 +58,13 @@ export type Block =
   | { kind: 'lines'; n: number; count: number; prompt?: string }
   | { kind: 'table'; rows: string[][]; head?: boolean; structure?: { header: boolean; colspan: number; rowspan: number }[][]; cells?: Run[][][] }
   | { kind: 'note'; text: string }
+  | { kind: 'pagebreak' }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
   | { kind: 'dict'; word: string; d: DefData }
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
   | { kind: 'timeline'; a: TlAttrs }
-  | { kind: 'storyboard'; a: SbAttrs }
   | { kind: 'diagram'; dkind: string; title: string; labels: string[]; cells: { label: string; blocks: Block[] }[] }
   | { kind: 'media'; id: string; title: string; video: boolean; mode: string; game?: boolean }
   | { kind: 'subtask'; letter: string; text: string; blocks: Block[] };
@@ -104,10 +104,13 @@ const GAP: Record<string, number> = { short: 8, medium: 18, long: 36 };
 const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChart: 'Phonemic chart', phonCard: 'Sound card', lessonLink: 'Link to another task', refList: 'Reference list', stress: 'Word stress', poll: 'Poll' };
 
 export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsTask {
+  t = { ...t, content: dropSourceNumbers(t.content) };
   const blocks: Block[] = [];
   const activities: ActivityConfig[] = [];
   const activityBlocks: Record<string, Block[]> = {};
   let cur: Block[] = blocks;
+  // Numbered lists carry on through the task, so no two questions share a number.
+  const listStart = olStarts(t.content);
   const answers: { n: number; label?: string; text: string }[] = [];
   let n = 0;
   let marks = 0;
@@ -305,7 +308,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       case 'orderedList': {
         // Keep the teacher's start and style: 4, 5, 6 · d, e, f · iv, v, vi
-        const start = typeof a.start === 'number' ? a.start : 1;
+        const start = listStart.get(node) ?? (typeof a.start === 'number' ? a.start : 1);
         node.content?.forEach((li, i) => {
           const label = listLabel(start + i, String(a.listType ?? '1'));
           const firstBlock = cur.length;
@@ -602,13 +605,15 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         if (a.prompt) cur.push({ kind: 'p', runs: [{ t: String(a.prompt) }] });
         cur.push({ kind: 'lines', n: 0, count: 3 });
         return;
+      case 'docPageBreak':
+        // The teacher's page break: on paper what follows starts a new page.
+        cur.push({ kind: 'pagebreak' });
+        return;
       case 'timeline':
         cur.push({ kind: 'timeline', a: a as TlAttrs });
         return;
       case 'storyboard':
-        if ((a as SbAttrs).snap?.scenes?.length) cur.push({ kind: 'storyboard', a: a as SbAttrs });
-        else cur.push({kind:'note',text:String(a.title || 'Storyboard')+' · Open the storyboard in ELT Suite.'});
-        return;
+        return; // storyboards were removed
       case 'diagram': {
         // Each box keeps what is in it, gaps and all; the drawing is made around them.
         const prev = cur;
@@ -938,11 +943,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         );
       else if (b.kind === 'diagram')
         out.push(shaded(ACC_TINT, [...(b.title ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.title)], spacing: { after: 80 } })] : []), ...b.cells.flatMap((c, i) => [new Paragraph({ keepNext: kn, keepLines: true, children: [label(`${i + 1}${c.label ? '  ' + c.label : ''}`)], spacing: { before: 60 } }), ...(toParas(c.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
-      else if (b.kind === 'storyboard') {
-        const sc = [...(b.a.snap?.scenes ?? [])].sort((x, y) => x.order - y.order);
-        out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('STORYBOARD  '), new TextRun({ text: b.a.title || '', font: SERIF })], spacing: { after: 60 } }));
-        sc.forEach((x, i) => x.caption && out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: `${i + 1}  `, bold: true, font: SANS, color: ACC_INK }), new TextRun({ text: x.caption, font: SERIF })] })));
-      } else if (b.kind === 'timeline') {
+      else if (b.kind === 'timeline') {
         const t = b.a;
         out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
       } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: S(18) })] }));

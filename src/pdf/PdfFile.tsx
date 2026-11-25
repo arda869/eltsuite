@@ -28,21 +28,28 @@ import { filePdfInfo, type PageSize } from './pdfData';
 import { PdfThumb, getPdf, pageText } from './PdfStack';
 import { ocrText, pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
 import { findHits, forgetTexts, markHits, pageTexts, type Hit } from './pdfSearch';
+import { changePages, pagesToNewFile, parsePages, type PageOp } from './pageTools';
+import { openMenuAt } from '../components/ContextMenu';
+import { PdfCommentPins } from './PdfComments';
+import { RegionPicker, RegionToTaskDialog } from './RegionToTask';
 import { MediaBlock } from '../editor/MediaNode';
 
-// A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
+// A PDF in My Files: its pages, with text boxes and highlights everyone it is shared with sees and
 // changes live. The boxes hold anything a lesson can: text, IPA, gaps, choices.
 
 const PdfDocument = Document.extend({ content: 'pdfBlock' });
 const NODES = [...DOC_NODES.slice(1), PdfDocument, ...PDF_NODES, MediaBlock];
 
-export function PdfFile({ d, canEdit, me }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string } }) {
+export function PdfFile({ d, canEdit, canComment = canEdit, me }: { d: SharedDoc; canEdit: boolean; canComment?: boolean; me: { uid: string; name: string } }) {
   const session = useCollabSession(d.docKey, me.uid);
   if (!session) return <div className="dp-msg">Opening the PDF…</div>;
-  return <Inner d={d} canEdit={canEdit} me={me} session={session} />;
+  return <Inner d={d} canEdit={canEdit} canComment={canComment} me={me} session={session} />;
 }
 
-function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string }; session: CollabSession }) {
+function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit: boolean; canComment: boolean; me: { uid: string; name: string }; session: CollabSession }) {
+  const [placingComment, setPlacingComment] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [region, setRegion] = useState<{ page: number; x: number; y: number; w: number; h: number } | null>(null);
   const { profile } = useAuth();
   const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
@@ -56,6 +63,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const [ocrMsg, setOcrMsg] = useState('');
   const ocrStop = useRef(false);
   const [exportError, setExportError] = useState('');
+  const [pageBusy, setPageBusy] = useState('');
   const [zoom, setZoomRaw] = useState(1);
   // Zooming keeps the middle of what you see in the middle, across and down.
   const setZoom = (f: (z: number) => number) =>
@@ -195,17 +203,18 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   // Hooks before the early return: the file, its OCR words, and which pages are scanned.
   const srcNow = String(editor?.state.doc.firstChild?.attrs.src ?? '');
   const pageCount = ((editor?.state.doc.firstChild?.attrs.pages as PageSize[] | undefined) ?? []).length;
+  const revNow = Number(editor?.state.doc.firstChild?.attrs.rev) || 0;
   const ocr = useOcr(d.id, srcNow);
   useEffect(() => {
     if (!srcNow || !pageCount) return;
     let live = true;
-    void getPdf(srcNow).then(async (pdf) => {
+    void getPdf(srcNow, '', revNow).then(async (pdf) => {
       const out: number[] = [];
       for (let i = 0; i < pdf.numPages && live; i++) if (!(await pageHasText(pdf, i).catch(() => true))) out.push(i);
       if (live) setScanned(out);
     }).catch(() => {});
     return () => { live = false; };
-  }, [srcNow, pageCount]);
+  }, [srcNow, pageCount, revNow]);
   const firstNow = Number(editor?.state.doc.firstChild?.attrs.first) || 0;
   const ocrCount = Object.keys(ocr).length;
   useEffect(() => { forgetTexts(); }, [ocrCount]);
@@ -213,14 +222,14 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     if (!findOpen || !srcNow || query.trim().length < 2) { setHits([]); return; }
     let live = true;
     setFinding(true);
-    const t = window.setTimeout(() => void pageTexts(srcNow, firstNow, pageCount).then((texts) => {
+    const t = window.setTimeout(() => void pageTexts(srcNow, firstNow, pageCount, revNow).then((texts) => {
       if (!live) return;
       setHits(findHits(texts, query));
       setHitAt(0);
       shownHit.current = false;
     }).catch(() => live && setHits([])).finally(() => live && setFinding(false)), 200);
     return () => { live = false; window.clearTimeout(t); };
-  }, [findOpen, query, srcNow, firstNow, pageCount, ocrCount]);
+  }, [findOpen, query, srcNow, firstNow, pageCount, ocrCount, revNow]);
   // Light the matches on the pages, again as pages are drawn.
   useEffect(() => {
     const root = document.querySelector('.pdff .pdf-pages');
@@ -252,6 +261,27 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     const to = Math.min(pages.length, Math.max(from, Number(await askText(`Last page of ${name}`, String(from))) || from));
     setUnits([...units, { name, from, to }]);
   };
+  // Page tools: for a PDF file of your own pages (not a few pages shown in a lesson).
+  const pageEdit = canEdit && srcNow.startsWith('file:') && firstNow === 0;
+  const pageOp = async (op: PageOp, busy: string) => {
+    setPageBusy(busy);
+    try { await changePages(editor, d.id, op); }
+    catch (e) { console.error(e); void tell(e instanceof Error && /at least one page/.test(e.message) ? e.message : 'We couldn’t change the pages just now. Check your connection and try again. Your PDF is unchanged.'); }
+    finally { setPageBusy(''); }
+  };
+  const extractPages = async () => {
+    const pick = await askText(`Which pages? For example 1-3, 5 (this PDF has ${pages.length})`, `${cur + 1}`);
+    if (pick === null) return;
+    const list = parsePages(pick, pages.length);
+    if (!list.length) return void tell('Type page numbers from this PDF, for example 1-3, 5.');
+    const w = window.open('about:blank', '_blank');
+    setPageBusy('Making the new PDF…');
+    try {
+      const id = await pagesToNewFile(srcNow, revNow, me, `${d.title || 'PDF'} (pages ${pick.replace(/\s+/g, '')})`, list);
+      if (w) w.location.href = `/doc/${id}`;
+    } catch (e) { console.error(e); w?.close(); void tell('We couldn’t make the new PDF just now. Try again. This PDF is unchanged.'); }
+    finally { setPageBusy(''); }
+  };
   const canvases = () => Array.from(document.querySelectorAll<HTMLElement>('.pdff .pdf-page'));
   const goPage = (i: number) => canvases()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const goHit = (k: number) => {
@@ -265,7 +295,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   };
   const readAloud = async () => {
     if (reading) return (speechSynthesis.cancel(), setReading(false));
-    const own = await pageText(String(block?.attrs.src ?? ''), '', cur).catch(() => '');
+    const own = await pageText(String(block?.attrs.src ?? ''), '', cur, revNow).catch(() => '');
     // A scanned page: the words OCR found.
     const text = own.trim().length > 20 ? own : ocrText(String(block?.attrs.src ?? ''), cur) || own;
     if (!text) return void tell('This page is a picture of text (a scan), so there are no words to read yet. Reading scanned pages is on the way.');
@@ -292,7 +322,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     setOcrMsg('');
     setOcrRun({ done: 0, total: toRead.length });
     try {
-      const pdf = await getPdf(src);
+      const pdf = await getPdf(src, '', revNow);
       const done = await readScannedPages(pdf, d.id, toRead, (k, total) => setOcrRun({ done: k, total }), () => ocrStop.current);
       setOcrMsg(ocrStop.current ? `Stopped. ${done} ${done === 1 ? 'page has' : 'pages have'} text now. You can carry on later.` : 'Done. You can now select and copy the words, and read the pages aloud.');
     } catch (e) {
@@ -310,7 +340,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     setExportError('');
     try {
       const [{ annotatedPdf, savePdf, printPdf: openForPrint }, { loadPdf }] = await Promise.all([import('./pdfExport'), import('./pdfData')]);
-      const bytes = await annotatedPdf(await loadPdf(src), editor, { answers: !hasKey || showKey, ocr });
+      const bytes = await annotatedPdf(await loadPdf(src, '', revNow), editor, { answers: !hasKey || showKey, ocr });
       if (how === 'download') savePdf(bytes, d.title || 'PDF');
       else openForPrint(bytes);
     } catch (e) {
@@ -346,6 +376,18 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span className="pdff-grp">
+          {canEdit && teacher && (
+            <button type="button" className={'pdff-act' + (picking ? ' on' : '')} aria-label="Make a task from part of a page" aria-pressed={picking} onClick={() => { setPicking((v) => !v); setPlacingComment(false); }} data-tip={picking ? 'Drag round the part of the page you want' : 'Make a task from part of a page: drag round it, then choose a lesson'}>
+              <Svg d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M12 9v6M9 12h6" />
+              <span className="pdff-act-l">Make a task</span>
+            </button>
+          )}
+          {canComment && (
+            <button type="button" className={'pdff-act' + (placingComment ? ' on' : '')} aria-label="Comment on the page" aria-pressed={placingComment} onClick={() => setPlacingComment((v) => !v)} data-tip={placingComment ? 'Click on the page where the comment goes' : 'Comment on a spot on the page'}>
+              <Svg d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-7l-4.5 4v-4H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5zM12 8.5v5M9.5 11h5" />
+              <span className="pdff-act-l">Comment</span>
+            </button>
+          )}
           <button type="button" className={'pdff-act' + (findOpen ? ' on' : '')} aria-label="Search the PDF" aria-pressed={findOpen} onClick={() => { setFindOpen((v) => !v); window.setTimeout(() => findInput.current?.focus(), 0); }} data-tip={`Search the PDF (${keyLabel('Mod+F')})`}>
             <Svg d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" />
             <span className="pdff-act-l">Search</span>
@@ -425,12 +467,12 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
       {missing && !pages.length && (
         <div className="dp-msg" role="alert">
-          We couldn’t find the pages of this PDF. Its upload may not have finished. Upload the PDF again to Resources.
+          We couldn’t find the pages of this PDF. Its upload may not have finished. Upload the PDF again to My Files.
         </div>
       )}
       <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
       <div className="pdff-body">
-        {pages.length > 1 && (
+        {(pages.length > 1 || pageEdit) && (
           <nav className="pdff-rail" aria-label="Pages">
             {pages.map((p, i) => {
               const u = units.find((x) => x.from === i + 1);
@@ -448,12 +490,30 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
                     </span>
                   )}
                   <button type="button" className={'pdff-th' + (i === cur ? ' on' : '') + (inUnit ? ' in-unit' : '')} aria-current={i === cur ? 'page' : undefined} aria-label={`Page ${i + 1}`} onClick={() => goPage(i)}>
-                    <PdfThumb src={src} n={i + first} size={p} />
+                    <PdfThumb src={src} n={i + first} size={p} rev={revNow} />
                     <span className="pdff-th-n">{i + 1}</span>
                   </button>
+                  {pageEdit && (
+                    <button type="button" className="pdff-th-more" aria-label={`Page ${i + 1}: more`} disabled={!!pageBusy} onClick={(e) => openMenuAt(e.currentTarget, [
+                      { label: 'Turn right', icon: 'next', onClick: () => void pageOp({ kind: 'rotate', page: i, dir: 1 }, 'Turning the page…') },
+                      { label: 'Turn left', icon: 'prev', onClick: () => void pageOp({ kind: 'rotate', page: i, dir: -1 }, 'Turning the page…') },
+                      ...(i > 0 ? [{ label: 'Move up', icon: 'prev', onClick: () => void pageOp({ kind: 'move', page: i, to: i - 1 }, 'Moving the page…') }] : []),
+                      ...(i < pages.length - 1 ? [{ label: 'Move down', icon: 'next', onClick: () => void pageOp({ kind: 'move', page: i, to: i + 1 }, 'Moving the page…') }] : []),
+                      { label: 'Add a blank page after', icon: 'plus', onClick: () => void pageOp({ kind: 'blank', after: i }, 'Adding a page…') },
+                      ...(pages.length > 1 ? [{ label: 'Delete page', icon: 'trash', onClick: () => void ask(`Delete page ${i + 1}? Its boxes, highlights and drawings go too. You can’t undo this.`, { ok: 'Delete page' }).then((ok) => ok && void pageOp({ kind: 'delete', page: i }, 'Deleting the page…')) }] : []),
+                    ])}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5.5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="18.5" r="1.6" /></svg>
+                    </button>
+                  )}
                 </span>
               );
             })}
+            {pageEdit && (
+              <button type="button" className="pdff-unit-add" disabled={!!pageBusy} onClick={() => void extractPages()} data-tip="Make a new PDF in Files from some of these pages">
+                Save pages as a new PDF…
+              </button>
+            )}
+            {pageBusy && <span className="hint pdff-busy" role="status">{pageBusy}</span>}
             {canEdit && (
               <button type="button" className="pdff-unit-add" onClick={() => void addUnit()} data-tip="Name a few pages as a unit, to put them into a lesson on their own">
                 + Name a unit
@@ -464,9 +524,13 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         <div className={'pdff-page' + (showKey && teacher ? '' : ' no-key')} style={{ ['--pdf-zoom' as string]: zoom }}>
           <EditorClassContext.Provider value={{ classId: 'doc:' + d.id, classmates: [] }}>
             <EditorContent editor={editor} />
+            {pages.length > 0 && <RegionPicker pages={pages} active={picking} onPick={(r) => { setPicking(false); setRegion(r); }} />}
+            {pages.length > 0 && <PdfCommentPins fileId={d.id} pages={pages} me={me} canWrite={canComment} canResolve={canEdit} owner={d.owner === me.uid} placing={placingComment} onPlaced={() => setPlacingComment(false)} showDone={false} />}
           </EditorClassContext.Provider>
         </div>
       </div>
+      {region && <RegionToTaskDialog region={region} src={src} rev={revNow} first={first} title={d.title || 'PDF'} onClose={() => setRegion(null)} />}
+      {picking && <p className="pdff-picking" role="status">Drag round the part of the page for the task. <button type="button" className="btn link small" onClick={() => setPicking(false)}>Cancel</button></p>}
       <div className="pdff-float" role="toolbar" aria-label="Pages and zoom">
         {pages.length > 1 && (
           <span className="pdff-pg" role="group" aria-label="Pages">
@@ -504,7 +568,7 @@ const Svg = ({ d }: { d: string }) => (
 // pen while you use them, and otherwise a word on what to do.
 function Context({ editor, inBox, fmt }: { editor: Editor; inBox: boolean; fmt: React.ReactNode }) {
   const st = usePdfTool(editor);
-  const colours = (st.tool === 'mark' && !st.pending) || st.tool === 'draw';
+  const colours = (st.tool === 'mark' && !st.pending) || st.tool === 'draw' || st.tool === 'shape';
   return (
     <span className="pdff-ctx">
       <span className="pb-sep" />

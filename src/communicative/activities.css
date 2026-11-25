@@ -572,3 +572,49 @@ button.ca-die.ready:hover { transform: translateY(-2px) rotate(-4deg); }
 .ca-paper-full { margin-left: auto; }
 .ca-paper.is-full { position: fixed; inset: 16px; z-index: 400; padding: 14px 16px 16px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 100vmax rgba(30, 26, 20, .45), 0 24px 64px rgba(30, 26, 20, .3); }
 .ca-paper.is-full .ca-paper-frame { flex: 1; min-height: 0; }
+/* At rest (clicked away): the activity as it looks when teaching; click to edit again. */
+.ca-editor-node.ca-at-rest > :not(.ca-rest):not(.mcq-tools) { display: none !important; }
+.ca-rest { position: relative; cursor: pointer; border-radius: 16px; }
+.ca-rest-stage { pointer-events: none; }
+.ca-rest-edit { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 99px; background: var(--ink); color: var(--paper); font: 600 12px var(--sans); opacity: 0; transition: opacity .15s; }
+.ca-rest:hover .ca-rest-edit { opacity: 1; }
+.ca-rest:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+/* Errors before starting, folded away. */
+details.ca-validation > summary { cursor: pointer; font-weight: 600; }
+/* Preview in a window of its own. */
+.ca-preview-open { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.ca-preview-back { position: fixed; inset: 0; z-index: 1400; display: grid; place-items: center; padding: 20px; background: rgba(28, 26, 23, .45); }
+.ca-preview-win { width: min(1100px, 100%); max-height: calc(100dvh - 40px); overflow: auto; border-radius: 20px; background: var(--paper); box-shadow: 0 24px 70px rgba(0, 0, 0, .3); padding: 0 22px 22px; }
+.ca-preview-win-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 16px 0 12px; background: var(--paper); border-bottom: 1px solid var(--hair); margin-bottom: 14px; }
+.ca-preview-win-head .btn { margin-left: auto; }
+.ca-preview-win .ca-editor-preview { display: block !important; width: 100%; }
+/* The settings use the whole width now the preview opens in its own window. */
+.ca-editor { grid-template-columns: 1fr !important; }
+.ca-editor-side { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); border-right: 0 !important; }
+.ca-editor-side .ca-colour-setting, .ca-editor-side > details, .ca-editor-side textarea { grid-column: 1 / -1; }
+.ca-editor-node.ca-at-rest { display: flex; flex-direction: column; }
+.ca-editor-node.ca-at-rest > .mcq-tools { order: 1; }
+.ca-editor-node.ca-at-rest > .ca-rest { order: 2; }
+/* Spot the difference, marking: A beside B, numbered rings, the list of differences to name. */
+.ca-spot-mark { display: flex; flex-direction: column; gap: 12px; margin: 10px 0; padding: 14px; border: 1px solid var(--hair); border-radius: 16px; background: var(--paper); }
+.ca-spot-mark-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.ca-spot-count { margin-left: auto; padding: 2px 10px; border-radius: 99px; background: var(--tint, #f3ece6); color: var(--accent-text); font: 700 12px var(--sans); }
+.ca-spot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ca-spot-pair figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.ca-spot-pair figcaption { font: 700 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ca-spot-editor { cursor: crosshair; }
+.ca-spot-mark .ca-ring { display: grid; place-items: center; color: #fff; font: 800 12px var(--sans); }
+.ca-spot-mark .ca-ring.ghost { opacity: .45; pointer-events: none; }
+.ca-spot-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.ca-spot-list li { display: flex; align-items: center; gap: 8px; }
+.ca-spot-list input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; font: inherit; }
+.ca-spot-n { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; font: 800 12px var(--sans); }
+@media (max-width: 700px) { .ca-spot-pair { grid-template-columns: 1fr; } }
+.ca-faces { padding-left: 3px; }
+.ca-room { overflow: visible; }
+.ca-live-host .ca-paper { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.ca-live-host .ca-paper h3 { margin: 0; }
+.ca-live-host .ca-paper p { margin: 0; }
+.ca-showing { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--ink); color: var(--paper); font: 600 13.5px var(--sans); margin: 8px 0; }
+.ca-showing i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e0534e; margin-right: 6px; }
+.ca-showing .btn { margin-left: auto; }

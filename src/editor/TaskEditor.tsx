@@ -1,4 +1,6 @@
 import {insideCommunicativeActivity} from '../communicative/pictureContext';
+import { PageBreak } from '../collab/DocumentStructure';
+import { dropSourceNumbers } from '../lib/olNumbers';
 import {savePrivateActivityPicture} from '../communicative/privatePictures';
 import { CommunicativeActivity, ActivityCardAttributes, COMMUNICATIVE_INSERTS } from '../communicative/ActivityEditor';
 import { GameNode } from '../quiz/LegacyGameNode';
@@ -53,7 +55,7 @@ import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
 import { RevealBox, newReveal } from './Reveal';
 import { SubTask, newSubTask } from './SubTask';
-import { StoryboardNode, newStoryboard } from '../storyboard/StoryboardNode';
+import { RemovedStoryboard } from './RemovedNode';
 import { LinkCard } from './LinkCard';
 import { MediaBlock, InlineMedia, newInlineMedia, newMedia } from './MediaNode';
 import { UploadBlock, newUpload } from './UploadNode';
@@ -185,13 +187,13 @@ export const COMMANDS: Cmd[] = [
       });
       if (at >= 0) e.chain().focus().setTextSelection(at + 2).run();
     } },
-  { key: 'storyboard', label: 'Storyboard', hint: 'Scenes with people and speech bubbles, from your files', group: 'Text', run: (e) => e.chain().focus().insertContent([newStoryboard(), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
   { key: 'speaking', label: 'AI conversation', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(e), { type: 'paragraph' }]).run() },
   { key: 'inline-video', label: 'Video in line', hint: 'Embed a video within text, tables, dialogues or any rich element', group: 'Text', run: e => e.chain().focus().insertContent(newInlineMedia()).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
+  { key: 'pagebreak', label: 'Page break', hint: 'On paper, what comes next starts a new page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'docPageBreak' }, { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
   { key: 'info', label: 'Information box', hint: 'Grammar rules, tips, useful language', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('info', 'sand', 'Grammar', '!'), { type: 'paragraph' }]).run() },
@@ -311,7 +313,14 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
+      // Inside a communicative activity's card (a bingo square, a board square, a cue card…): only what fits
+      // in a card — gaps and choices, pictures, a list, phonetics and the grammar and pronunciation marks.
+      const $sel = editor.state.selection.$from;
+      let inActivity = false;
+      for (let d = 1; d <= $sel.depth; d++) if ($sel.node(d).type.name === 'communicativeActivity') inActivity = true;
       const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter(c=>investigations||!FAMILIES.some(f=>f.id===c.key)).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const CARD_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'truefalse', 'subst', 'phonchart', 'phoncard', 'phonhow', 'stress', 'ipa', 'list', 'numbered', 'image', 'picture', 'linkcard', 'bankpick'];
+      if (inActivity) fit.splice(0, fit.length, ...fit.filter((c) => CARD_KEYS.includes(c.key) || c.key.startsWith('b-') || c.group === 'Language'));
       const q = state.query.trim();
       // In the order the menu shows them (by group), so the arrow keys go down the list as seen.
       const shown = (l: Cmd[]) => l.map((c, i) => [c, i] as const).sort((a, b) => GROUP_RANK.indexOf(a[0].group) - GROUP_RANK.indexOf(b[0].group) || a[1] - b[1]).map(([c]) => c);
@@ -390,7 +399,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -588,7 +597,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       ...(handles ? [TrailingLine] : []),
       RevealBox,
       SubTask,
-      StoryboardNode,
+      RemovedStoryboard,
+      PageBreak,
       ...PDF_NODES,
       LinkCard,
       MediaBlock,
@@ -611,7 +621,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       FreshIds,
       Placeholder.configure({ placeholder: placeholder ?? 'Write the task. Type / for a question, list or image.' }),
     ],
-    content: withPictures(content),
+    content: withPictures(dropSourceNumbers(content)),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': label, ...(enterHint ? { enterkeyhint: enterHint } : {}) },

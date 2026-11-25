@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openMenuAt } from '../components/ContextMenu';
 import type { Ctx } from './Editor';
 import { FONTS, MM, SIZES, SWATCHES, VIEWS, ensureFont, type ArtView, type El, type Fx } from './model';
-import { SCENES } from '../storyboard/scenes';
+import { SCENES } from './art/scenes';
 import { isLine, textHeight } from './render';
 import { nameOf } from './Drawers';
 import { FigureProps } from './FigureProps';
@@ -238,7 +238,7 @@ export function Props({ cx }: { cx: Ctx }) {
             <span>Under it</span>
             <input value={one.text ?? ''} onChange={(e) => live({ text: e.target.value }, 'cap')} placeholder="Listen" />
           </label>
-          <p className="hint">Copy a recording’s link from Recordings, or a video’s from Resources.</p>
+          <p className="hint">Copy a recording’s link from Recordings, or a video’s from My Files.</p>
         </Sec>
       )}
       {one?.t === 'lines' && (
@@ -386,7 +386,7 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
   const [faces, setFaces] = useState<Record<string, { name: string }> | null>(null);
   const [people, setPeople] = useState<Record<string, { name: string }> | null>(null);
   const [views, setViews] = useState<ArtView[] | null>(null);
-  useEffect(() => void import('../storyboard/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE), setViews(e.art === 'person' ? VIEWS.map((v) => v.k) : m.THINGS[e.ref ?? '']?.views ?? []))), [e.art, e.ref]);
+  useEffect(() => void import('./art/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE), setViews(e.art === 'person' ? VIEWS.map((v) => v.k) : m.THINGS[e.ref ?? '']?.views ?? []))), [e.art, e.ref]);
   return (
     <Sec title={e.art === 'person' ? 'Person' : 'Thing'}>
       {views && views.length > 1 && (
@@ -432,7 +432,7 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
 
 function PageProps({ cx }: { cx: Ctx }) {
   const p = cx.page;
-  const imageSizes = SIZES.filter(s=>['square','slide','story','banner'].includes(s.k));
+  const imageSizes = SIZES;
   const size = imageSizes.find((s) => s.w === p.w && s.h === p.h);
   return (
     <div className="dz-props-in">

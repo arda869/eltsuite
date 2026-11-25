@@ -80,6 +80,14 @@ service cloud.firestore {
     }
     // Aggregates are visible only to the owner. The callable function writes all
     // counters and private actor/event records after validating the signed-in teacher.
+    // Search words teachers used in the Resource Hub (server writes only).
+    match /resourceHubSearches/{id} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+    match /resourceHubSearchActors/{id} {
+      allow read, write: if false;
+    }
     match /resourceHubMetrics/{id} {
       allow read: if isOwner();
       allow write: if false;
@@ -1014,7 +1022,7 @@ service cloud.firestore {
         && !('purgingAt' in request.resource.data)
         && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0)
         && (resource.data.owner == request.auth.uid
-        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType', 'coachIndex'])
+        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType', 'coachIndex', 'searchAt'])
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coachIndex'])
               || (request.resource.data.coachIndex is map
                 && request.resource.data.coachIndex.keys().hasOnly(['version', 'preview', 'forms'])
@@ -1364,6 +1372,11 @@ service cloud.firestore {
           allow read, write: if signedIn() && request.auth.uid in studioOf(id).members && pairId.matches('.*' + request.auth.uid + '.*');
         }
       }
+      // Each person's level while recording, so everyone sees the tracks grow.
+      match /live/{uid} {
+        allow read: if signedIn() && request.auth.uid in studioOf(id).members;
+        allow write: if signedIn() && uid == request.auth.uid && request.auth.uid in studioOf(id).members;
+      }
       match /takes/{takeId} {
         allow read: if signedIn() && request.auth.uid in studioOf(id).members;
         allow write: if signedIn() && request.auth.uid in studioOf(id).members && takeId.matches('.*_' + request.auth.uid);
@@ -1374,6 +1387,10 @@ service cloud.firestore {
           allow delete: if signedIn() && studioOf(id).host == request.auth.uid;
         }
       }
+    }
+    // While someone records in the studio: their messages arrive without notifications.
+    match /quiet/{uid} {
+      allow read, write: if isSelf(uid);
     }
     match /chats/{id} {
       allow read: if inChat(resource.data);

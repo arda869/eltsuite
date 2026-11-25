@@ -16,9 +16,9 @@ const SECTIONS: Section[] = [
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress', 'phonchart', 'phoncard', 'phonhow'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['game', 'pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['speaking', 'writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
-  { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
+  { title: 'Collaboration tools', blurb: 'Live, together: a shared document or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['subtask', 'dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'storyboard', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['subtask', 'dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
@@ -48,7 +48,6 @@ const ABOUT: Record<string, string> = {
   'activity-spot': 'Give partners different private pictures. They describe what they can see and mark differences before you reveal the answer regions.',
   'activity-taboo': 'Learners describe a word while avoiding the words underneath. Use a timer and optional scoring for each turn.',
   'activity-speaking': 'Give one learner a timed speaking prompt and their partner a listening task. Swap roles for another turn.',
-  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update.',
   'dg-mind': 'A word or topic in the middle with ideas around it. Every box is text, so a branch can be a gap or a choice. Up to eight branches.',
   'dg-venn': 'Two circles: what belongs only to one, and what they share. Name each circle; learners can fill the parts with gaps or drag words.',
   'dg-compare': 'A T-chart: two to four columns with titles, for pros and cons, formal and informal, then and now.',
@@ -133,7 +132,6 @@ const ABOUT: Record<string, string> = {
   'b-didyouknow': 'A culture or fact box.',
   'b-note': 'A sticky note for examples or a list.',
   'b-cando': 'An end-of-lesson self-assessment; answers go to you.',
-  'collab-slides': 'Shared slides, made live like Google Slides: text boxes, pictures, shapes, layouts and backgrounds. The whole class, each group or each learner; learners can each make their own slides in one deck. Present full screen; download as PowerPoint or PDF.',
   dialogue: 'A short conversation: A and B, or real names. One line under the other, or the speakers side by side. Put gaps and choices in the lines, and use it inside a numbered list.',
   timeline: 'A timeline for teaching tenses: NOW, single events, actions in progress, periods, repeated actions, arrows and “not sure”, each with a label. Start from a ready-made tense and change it.',
   drawboard: 'A drawing board, live: draw, write and add pictures. One for the whole class, each group or each learner; lock it, show everyone’s cursor, use the pointer.',
@@ -601,22 +599,6 @@ const PREVIEW: Record<string, () => ReactNode> = {
       <text x="125" y="64" textAnchor="middle" fontSize="9" fill="currentColor">NOW</text>
     </svg>
   ),
-  'collab-slides': () => (
-    <span className="gl-col">
-      <span className="gl-collab">
-        <i style={{ background: '#3d6fb6' }} />
-        <i style={{ background: '#7a5cb8' }} />
-      </span>
-      <span className="gl-slides">
-        <i className="on" />
-        <i />
-        <b>
-          <em />
-          <u />
-        </b>
-      </span>
-    </span>
-  ),
   upload: () => (
     <span className="gl-files">
       <span className="gl-file pdf"><b>PDF</b><small>my-poster.pdf</small></span>
@@ -825,7 +807,6 @@ Object.assign(PREVIEW, {
  cite:()=> <span className="gl-col"><Sent>Language grows through use.</Sent><Chip pen>(Ellis, 2003, p. 42)</Chip></span>,
  reflist:()=> <Box label="References" tone="grey"><Sent>Ellis, R. (2003). <i>Task-based</i></Sent><Sent><i>language learning and teaching.</i></Sent><Line w="80%" faint/></Box>,
  subtask:()=> <span className="gl-col"><Sent><b>a</b> Read and compare.</Sent><Line w="80%" faint/><Sent><b>b</b> Share your opinion.</Sent><Line w="65%" faint/></span>,
- storyboard:()=> <span className="gl-story-strip">{['1 · Arrive','2 · Discover','3 · Decide'].map(t=><span key={t}><span className="gl-photo"/><small>{t}</small></span>)}</span>,
  'inline-video':()=> <span className="gl-video-preview"><span>▶</span><small>0:32 ━━━━━━ 1:45</small></span>,
  pdf:()=> <Box label="PDF worksheet" tone="grey"><Sent><b>1</b> Read and choose.</Sent><Line w="80%" faint/><Sent><b>2</b> Tell your partner.</Sent></Box>,
  speaking:()=> <span className="gl-col"><Chip>What would you choose?</Chip><Sent>◖ ▂ ▅ ▇ ▃ ▆ ▂ ◗</Sent><Chip pen>Start speaking · 2:00</Chip></span>,

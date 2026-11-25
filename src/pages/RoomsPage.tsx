@@ -480,7 +480,6 @@ function CallSomeone({ me, dir, chats, calling, onCall, onJoin }: { me: Person; 
     <section className="rm-card rm-call" aria-labelledby="rm-call-h">
       <div className="rm-card-h">
         <h2 id="rm-call-h">Call someone</h2>
-        <span className="hint">Audio or video, in one click.</span>
       </div>
       <label className="rm-search">
         <UiIcon name="search" size={16} />

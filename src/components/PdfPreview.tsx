@@ -8,7 +8,7 @@ import { docLink, newSharedDoc, useSharedDoc } from '../lib/sharedDocs';
 import { openPdf, pageSizes, saveFilePdf } from '../pdf/pdfData';
 import { ShareDialog } from '../pages/DocPage';
 
-// A PDF that was just made, in a viewer: download it, or save it in Resources, and once it is
+// A PDF that was just made, in a viewer: download it, or save it in My Files, and once it is
 // saved, share it or copy its link. Leaving without saving asks first.
 export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8Array; name: string; onClose: () => void; onDownload?: () => void }) {
   const { user } = useAuth();
@@ -25,7 +25,7 @@ export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8A
     return () => URL.revokeObjectURL(u);
   }, [bytes]);
   const leave = async () => {
-    if (!id && !(await ask('This PDF isn’t saved in your Resources. You can make it again at any time.', { ok: 'Close without saving', cancel: 'Keep it open' }))) return;
+    if (!id && !(await ask('This PDF isn’t saved in My Files. You can make it again at any time.', { ok: 'Close without saving', cancel: 'Keep it open' }))) return;
     onClose();
   };
   // The browser's back button closes the viewer, as it would a page, instead of leaving the lesson
@@ -102,7 +102,7 @@ export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8A
         </span>
         <span className="pv-names">
           <input className="dp-title" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="File name" disabled={!!id} />
-          <span className="dp-sub">{id ? 'Saved in your Resources' : 'Not saved yet'}</span>
+          <span className="dp-sub">{id ? 'Saved in My Files' : 'Not saved yet'}</span>
         </span>
         <span className="dp-acts">
           <button type="button" className="dp-ib" onClick={download} aria-label="Download" data-tip="Download the PDF">
@@ -110,7 +110,7 @@ export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8A
           </button>
           {!id ? (
             <button type="button" className="btn primary dp-share" disabled={busy} onClick={() => void save()}>
-              <UiIcon name="archive" size={15} /> {busy ? 'Saving…' : 'Save in Resources'}
+              <UiIcon name="archive" size={15} /> {busy ? 'Saving…' : 'Save in My Files'}
             </button>
           ) : (
             <>
@@ -121,7 +121,7 @@ export function PdfPreview({ bytes, name, onClose, onDownload }: { bytes: Uint8A
                 <UiIcon name="link" size={14} /> {copied ? 'Copied' : 'Copy link'}
               </button>
               <a className="btn small-btn" href={`/doc/${id}`} target="_blank" rel="noopener">
-                Open in Resources
+                Open in My Files
               </a>
             </>
           )}

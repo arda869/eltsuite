@@ -74,7 +74,7 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
             [
               ['record', 'mic', 'Record'],
               ['upload', 'upload', 'Upload sound or video'],
-              ['archive', 'archive', 'Resources library'],
+              ['archive', 'archive', 'My Files'],
               ['link', 'link', 'YouTube or link'],
             ] as const
           ).map(([k, icon, l]) => (

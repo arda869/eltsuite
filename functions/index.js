@@ -39,7 +39,7 @@ export { teachingDefinition } from './definitions/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';
-export { recordResourceHubMetric } from './resource-hub/metrics.js';
+export { recordResourceHubMetric, recordResourceHubSearch } from './resource-hub/metrics.js';
 export { resourceLessonLive } from './resource-hub/live.js';
 export { recordingLyrics, recordingSong, recordingSongResult, recordingSongLesson } from './songs/index.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
@@ -122,12 +122,17 @@ export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', re
   if (call?.at && d.last.by === call.by && Math.abs(d.lastAt - call.at) < 15e3) return;
   const to = (d.members ?? []).filter((k) => k !== d.last.by && (d.seen?.[k] ?? 0) < d.lastAt && (d.pushed?.[k] ?? 0) < d.lastAt);
   if (!to.length) return;
+  // Anyone recording in the studio gets the message quietly: no phone notification.
+  const quietDocs = await getFirestore().getAll(...to.map((k) => getFirestore().doc(`quiet/${k}`))).catch(() => []);
+  const quietNow = new Set(quietDocs.filter((q) => q.exists && Number(q.get('until')) > Date.now()).map((q) => q.id));
+  const loud = to.filter((k) => !quietNow.has(k));
+  if (!loud.length) return;
   const title = d.kind === 'group' ? d.title || 'Group' : d.names?.[d.last.by] ?? 'New message';
   const who = String(d.last.name || '').split(' ')[0];
   const body = d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text || '';
   const data = { title: String(title).slice(0, 80), body: String(body).slice(0, 180), link: `/messages?c=${event.params.chatId}`, tag: 'chat-' + event.params.chatId };
   const patch = {};
-  const complete = await sendTo(to, data, 86400);
+  const complete = await sendTo(loud, data, 86400);
   for (const k of complete) patch[`pushed.${k}`] = d.lastAt;
   if (Object.keys(patch).length) await event.data.after.ref.update(patch);
 });

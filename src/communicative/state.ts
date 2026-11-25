@@ -16,6 +16,8 @@ export type ActivityState = {
   foundPoints?: Record<string, Record<string, {x: number; y: number}>>;
   surveyResults?: Record<string, Record<string, number>>;
   found: Record<string, string[]>; startedAt: number | null; endsAt: number | null;
+  // Dominoes, taking turns: each learner's tiles, and the line of tiles on the table (in order).
+  hands?: Record<string, string[]>; line?: string[]; finished?: string[];
 };
 export type ActivityAction =
   | { type: 'start' | 'reveal' | 'end' | 'reset' | 'settle' | 'nextTurn' | 'claim' | 'agree' | 'check' | 'skip' | 'gotIt' | 'swap' | 'timerElapsed' }
@@ -24,6 +26,8 @@ export type ActivityAction =
   | { type: 'mark'; itemId: string }
   | { type: 'flip'; cardId: string }
   | { type: 'order'; ids: string[] }
+  | { type: 'place'; tileId: string; end: 'start' | 'end' }
+  | { type: 'pass' }
   | { type: 'assign'; assignments: Record<string, string[]> }
   | { type: 'answer'; itemId: string; value: string; detail?: string }
   | { type: 'opinion'; value: number; reason?: string }
@@ -78,6 +82,14 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       if (!s.people.length) throw new Error('Add learners before starting.');
       s.phase = 'running'; s.startedAt = now;
       if (['speaking', 'taboo'].includes(c.kind)) s.endsAt = now + (c.settings.seconds ?? 60) * 1000;
+      // Dominoes in turns: one tile starts the line; the rest are dealt round the group.
+      if (c.kind === 'dominoes' && c.settings.dominoPlay === 'hands') {
+        const ids = c.items.map((i) => i.id), first = ids[Math.floor(random() * ids.length)];
+        const rest = shuffled(ids.filter((id) => id !== first), random);
+        s.line = [first]; s.finished = [];
+        s.hands = Object.fromEntries(s.people.map((p) => [p.id, [] as string[]]));
+        rest.forEach((id, n) => s.hands![s.people[n % s.people.length].id].push(id));
+      }
       if (c.kind === 'cue' && !Object.keys(s.assignments).length) {
         const items = shuffled(c.items, random);
         s.assignments = Object.fromEntries(s.people.map((p, n) => [p.id, [items[n % items.length].id]]));
@@ -145,6 +157,29 @@ export function transition(c: ActivityConfig, state: ActivityState, a: ActivityA
       break;
     }
     case 'settle': running(); ownTurn(); if (c.kind !== 'memory' || s.faceUp.length !== 2) throw new Error('Turn over two cards first.'); s.faceUp = []; advance(); break;
+    case 'place': {
+      // A tile goes at either end of the line, only where it fits: its left half matches the end's right half.
+      running(); ownTurn();
+      if (c.kind !== 'dominoes' || !s.hands || !s.line) throw new Error('This activity has no tiles to place.');
+      const who = actor.teacher ? currentPerson(s)?.id ?? '' : actor.id;
+      const hand = s.hands[who] ?? [];
+      if (!hand.includes(a.tileId)) throw new Error('That tile is not in your hand.');
+      const n = c.items.findIndex((i) => i.id === a.tileId);
+      const firstN = c.items.findIndex((i) => i.id === s.line![0]), lastN = c.items.findIndex((i) => i.id === s.line![s.line!.length - 1]);
+      const fits = a.end === 'end' ? n === (lastN + 1) % c.items.length : (n + 1) % c.items.length === firstN;
+      if (!fits) throw new Error('That tile doesn’t fit there. Try the other end, or another tile.');
+      s.line = a.end === 'end' ? [...s.line, a.tileId] : [a.tileId, ...s.line];
+      s.hands = { ...s.hands, [who]: hand.filter((id) => id !== a.tileId) };
+      if (!s.hands[who].length && !s.finished?.includes(who)) { s.finished = [...(s.finished ?? []), who]; s.scores = { ...s.scores, [who]: (s.scores[who] ?? 0) + Math.max(1, s.people.length - (s.finished.length - 1)) }; }
+      if (s.line.length === c.items.length) { s.checked = true; s.correct = true; s.phase = 'revealed'; }
+      else if (s.people.length) { for (let k = 0; k < s.people.length; k++) { s.turn = (s.turn + 1) % s.people.length; if ((s.hands[currentPerson(s)!.id] ?? []).length) break; } }
+      break;
+    }
+    case 'pass':
+      running(); ownTurn();
+      if (c.kind !== 'dominoes' || !s.hands) throw new Error('There is nothing to pass.');
+      s.turn = (s.turn + 1) % Math.max(1, s.people.length);
+      break;
     case 'order':
       running();
       if (!['ranking', 'strips', 'dominoes'].includes(c.kind) || !sameIds(a.ids, c.items.map(i => i.id))) throw new Error('Keep every item in the list once.');

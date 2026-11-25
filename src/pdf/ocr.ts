@@ -49,6 +49,7 @@ export function useOcrWords(src: string, n: number): OcrWord[] | null {
   return byFile.get(src)?.[n]?.words ?? null;
 }
 export const ocrText = (src: string, n: number) => byFile.get(src)?.[n]?.text ?? '';
+export const ocrWordsOf = (src: string, n: number): OcrWord[] => byFile.get(src)?.[n]?.words ?? [];
 
 // Does the page have real text? A scan has none, or only a few stray characters.
 export async function pageHasText(pdf: PDFDocumentProxy, n: number): Promise<boolean> {

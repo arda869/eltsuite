@@ -383,3 +383,54 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 /* The cards themselves (for pictures and formatting) open on request. */
 .ca-cards-hidden > .ca-rich-items { display: none; }
 .ca-editor-preview, .ca-editor-side { min-width: 0; }
+
+/* Taboo: a card of a sensible size, the words to avoid plain (not struck through), one rounded frame. */
+.ca-kind-taboo .ca-private { max-width: 420px; margin-inline: auto; }
+.ca-private .ca-taboo { border-radius: 0; box-shadow: none; animation: none; }
+.ca-taboo li { text-decoration: none !important; color: var(--ink); }
+.ca-taboo ul::before { content: 'Don’t say'; font: 700 10.5px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.ca-taboo-word { font-size: 34px; }
+.ca-private { overflow: hidden; }
+/* Strip story and ranking: equal spaces between strips, a lifted strip while dragging, a clear line where it will land. */
+.ca-strips { display: flex !important; flex-direction: column; gap: 10px !important; margin: 0; padding: 0; }
+.ca-strips > .ca-strip { margin: 0 !important; }
+.ca-strip.lift, .ca-rank-item.lift { opacity: .45; transform: scale(.98); }
+.ca-strip.drop, .ca-rank-item.drop { box-shadow: 0 -3px 0 var(--accent); }
+.ca-rank-item { cursor: grab; transition: box-shadow .12s, opacity .12s; }
+.ca-rank-item:active { cursor: grabbing; }
+/* Cue cards: dealing the cards, one row per learner, one chip per card. */
+.ca-deal { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); margin-bottom: 14px; }
+.ca-deal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ca-deal-acts { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ca-deal-acts .btn, .ca-deal-acts .sel { height: 32px; min-height: 32px; }
+.ca-deal-rows { display: flex; flex-direction: column; gap: 6px; }
+.ca-deal-row { display: grid; grid-template-columns: 32px minmax(90px, 160px) 1fr; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; }
+.ca-deal-row:hover { background: var(--surface); }
+.ca-deal-name { font: 600 14px var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-deal-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+.ca-deal-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--ink); font: 500 13px var(--sans); cursor: pointer; text-align: left; }
+.ca-deal-chip small { font: 700 9.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ca-deal-chip.on { border-color: var(--accent); background: var(--tint, #f6ebe4); box-shadow: inset 0 0 0 1px var(--accent); }
+.ca-deal-chip.on small { color: var(--accent-text); }
+/* Dominoes, taking turns: the line, the ends to place at, your tiles. Tiles stand up on narrow screens. */
+.ca-dz { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; }
+.ca-dz-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 8%, var(--paper)); box-shadow: inset 0 0 0 1px var(--hair); min-height: 96px; }
+.ca-dz-tile { display: inline-grid; grid-template-columns: 1fr 1fr; min-width: 180px; border-radius: 12px; border: 1.5px solid var(--ink); background: var(--paper); overflow: hidden; font: 500 15px var(--serif); color: var(--ink); padding: 0; cursor: default; }
+.ca-dz-tile > span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 12px; min-height: 64px; text-align: center; }
+.ca-dz-tile > span + span { border-left: 1.5px dashed var(--hair-strong); }
+.ca-dz-tile img { max-width: 64px; max-height: 48px; object-fit: contain; }
+.ca-dz-hand .ca-dz-tile { cursor: grab; transition: transform .15s, box-shadow .15s; }
+.ca-dz-hand .ca-dz-tile:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .4); }
+.ca-dz-hand .ca-dz-tile.picked { box-shadow: 0 0 0 3px var(--accent); transform: translateY(-4px); }
+.ca-dz-hand .ca-dz-tile:disabled { opacity: .6; cursor: default; }
+.ca-dz-end { width: 44px; min-height: 64px; align-self: stretch; border-radius: 12px; border: 2px dashed var(--hair-strong); background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; }
+.ca-dz-end.ready { border-color: var(--accent); color: var(--accent-text); background: var(--paper); animation: ca-dz-pulse 1.4s infinite; }
+@keyframes ca-dz-pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); } }
+.ca-dz-hand-head { display: flex; align-items: center; gap: 10px; }
+.ca-dz-hand-head .btn { margin-left: auto; }
+.ca-dz-hand { display: flex; flex-wrap: wrap; gap: 10px; }
+.ca-dz-others { display: flex; flex-wrap: wrap; gap: 8px; }
+.ca-dz-who { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: var(--surface); font-size: 13px; }
+.ca-dz-who.now { box-shadow: 0 0 0 2px var(--accent); }
+.ca-dz-done { font-weight: 600; color: var(--right, #4e6b55); }
+@container (max-width: 520px) { .ca-dz-tile { grid-template-columns: 1fr; min-width: 88px; } .ca-dz-tile > span + span { border-left: 0; border-top: 1.5px dashed var(--hair-strong); } .ca-dz-end { width: 100%; min-height: 36px; } }

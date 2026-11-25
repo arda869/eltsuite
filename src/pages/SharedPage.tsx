@@ -18,7 +18,6 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { CollabDoc } from '../collab/CollabDoc';
-import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import { MediaPlayer } from '../media/Player';
 import { useImageSrc } from '../editor/PackNode';
 import { questionIds, scoreTask, type AnswerKey } from '../lib/questions';
@@ -171,7 +170,7 @@ function SharedContent({ sh, tasks, cur, setCur, onCopy, play }: { sh: Share; ta
       {sh.kind === 'doc' && sh.src.docKey && user && (
         <div className="sp-docwrap">
           {sh.src.docKind === 'slides' ? (
-            <SlidesDoc docKey={sh.src.docKey} title={sh.title} modes={['view']} me={{ uid: user.uid, name: user.displayName || 'Teacher' }} classId="" display="inline" canDownload />
+            <p className="hint">Slides are no longer part of ELT Suite.</p>
           ) : (
             <CollabDoc docKey={sh.src.docKey} title={sh.title} modes={['view']} me={{ uid: user.uid, name: user.displayName || 'Teacher' }} classId="" display="inline" canDownload />
           )}

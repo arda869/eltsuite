@@ -7,11 +7,11 @@ import { ocrText } from './ocr';
 export const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
 
 const cache = new Map<string, Promise<string[]>>();
-export function pageTexts(src: string, first: number, count: number): Promise<string[]> {
-  const key = `${src}|${first}|${count}`;
+export function pageTexts(src: string, first: number, count: number, rev = 0): Promise<string[]> {
+  const key = `${src}|${first}|${count}|${rev}`;
   if (!cache.has(key)) {
     cache.set(key, (async () => {
-      const pdf = await getPdf(src);
+      const pdf = await getPdf(src, '', rev);
       const out: string[] = [];
       for (let i = 0; i < count; i++) {
         const n = i + first;

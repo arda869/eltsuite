@@ -310,3 +310,62 @@
 .pg-handle[aria-disabled="true"] { cursor: default; } .pg-handle[aria-disabled="true"]::before { border-top-color: var(--muted); }
 .pg-handle-tip { position: absolute; top: -26px; left: 0; transform: translateX(-50%); padding: 3px 6px; border-radius: 6px; background: var(--ink); color: var(--paper, #fff); font: 600 11px var(--sans); font-style: normal; white-space: nowrap; }
 @media print { .pg-ruler { display: none !important; } }
+
+/* Collab: chips, bookmarks, special characters and people. */
+.dx-chip { display: inline-flex; align-items: center; gap: 5px; vertical-align: baseline; position: relative; }
+.dx-chip-btn, .dx-person { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface, #f4f3f0); color: var(--ink); font: 600 .86em/1.5 var(--sans); cursor: pointer; }
+.dx-person { cursor: default; }
+.dx-av { display: inline-flex; align-items: center; justify-content: center; width: 1.35em; height: 1.35em; border-radius: 50%; color: #fff; font: 800 .72em var(--sans); }
+.dx-date-in { position: absolute; top: 100%; left: 0; z-index: 30; height: 32px; margin-top: 4px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 13px var(--sans); }
+.dx-bm { position: relative; display: inline; }
+.dx-bm-btn { display: inline-flex; padding: 0 2px; border: 0; background: none; color: var(--accent, #c8764a); vertical-align: baseline; cursor: pointer; }
+.dx-pop { position: absolute; top: 100%; left: 0; z-index: 30; display: flex; flex-direction: column; gap: 8px; width: 240px; margin-top: 4px; padding: 10px; border: 1px solid var(--hair); border-radius: 10px; background: var(--paper); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .35); font: 13px var(--sans); }
+.dx-pop-row { display: flex; align-items: center; gap: 8px; }
+.dx-pop-row .btn { height: 32px; }
+.dx-in { box-sizing: border-box; height: 36px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); width: 100%; }
+.dx-dialog { width: min(620px, calc(100vw - 32px)); max-height: min(78vh, 720px); padding: 20px 22px; border: 0; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 64px rgba(30, 26, 20, .3); }
+.dx-dialog::backdrop { background: rgba(30, 26, 20, .35); }
+.dx-dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dx-dialog-head h2 { margin: 0; font: 500 22px var(--serif); }
+.dx-dialog-head .btn { height: 36px; }
+.dx-chars { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.dx-chars h3 { margin: 0 0 6px; font: 700 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.dx-char-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; }
+.dx-char { height: 40px; border: 1px solid var(--hair); border-radius: 8px; background: var(--paper); color: var(--ink); font: 18px var(--serif); cursor: pointer; }
+.dx-char:hover, .dx-char:focus-visible { border-color: var(--accent, #c8764a); background: var(--surface, #f4f3f0); outline: none; }
+.dx-people-list { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.dx-person-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 14px var(--sans); text-align: left; cursor: pointer; }
+.dx-person-row:hover, .dx-person-row:focus-visible { background: var(--surface, #f4f3f0); outline: none; }
+.dx-person-row .dx-av { width: 26px; height: 26px; font-size: 12px; }
+.dn-bm { display: flex; align-items: center; gap: 6px; }
+.dn-bm svg { color: var(--accent, #c8764a); flex: none; }
+
+/* Headers and footers written on the page. Every control in the row is 32px high. */
+.pg-running { pointer-events: none; }
+.pg-run-zone { position: absolute; z-index: 2; pointer-events: none; }
+.pg-run-zone.editable { pointer-events: auto; cursor: text; }
+.pg-run-zone.editable:hover { background: color-mix(in srgb, var(--accent, #c8764a) 6%, transparent); }
+.pg-run-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.pg-run-row .l { text-align: left; } .pg-run-row .c { text-align: center; } .pg-run-row .r { text-align: right; }
+.pg-run-edit { position: absolute; z-index: 40; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--accent, #c8764a); border-radius: 10px; background: var(--paper, #fff); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .35); pointer-events: auto; font: 13px var(--sans); color: var(--ink); }
+.pg-run-input { height: 32px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); box-sizing: border-box; }
+.pg-run-opts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pg-run-check { display: inline-flex; align-items: center; gap: 6px; height: 32px; }
+.pg-run-opts .btn, .pg-run-opts .pg-run-sel, .pg-run-opts .nsel > .sel { height: 32px; min-height: 32px; box-sizing: border-box; }
+.pg-run-opts .btn { margin-left: auto; }
+@media print { .pg-run-zone, .pg-run-edit { display: none !important; } }
+/* A section with turned pages: a label on screen; printed and in Word the pages turn. */
+.cd-doc section[data-orient]::before { content: 'Portrait pages from here when printed'; display: block; column-span: all; width: fit-content; margin: 8px 0 10px; padding: 2px 10px; border: 1px dashed var(--hair-strong); border-radius: 999px; color: var(--muted); font: 600 11px/1.6 var(--sans); }
+.cd-doc section[data-orient="landscape"]::before { content: 'Landscape pages from here when printed'; border-color: var(--accent, #c8764a); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); }
+@media print { .cd-doc section[data-orient]::before { display: none; } }
+/* Headers and footers: places, fields, style and logo. Every control in a row is one height. */
+.pg-running-header { pointer-events: none; }
+.pg-run-logo { height: 20px; width: auto; max-width: 120px; object-fit: contain; vertical-align: middle; margin: 0 6px; }
+.pg-run-line { display: flex; gap: 8px; align-items: center; }
+.pg-run-line .pg-run-input { flex: 1; min-width: 0; }
+.pg-run-line .pg-run-sel, .pg-run-line .nsel > .sel { height: 32px; min-height: 32px; box-sizing: border-box; }
+.pg-run-seg { display: inline-flex; height: 32px; border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; box-sizing: border-box; }
+.pg-run-ic { width: 32px; height: 30px; display: grid; place-items: center; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; font: 600 14px var(--sans); padding: 0; }
+.pg-run-ic + .pg-run-ic { border-left: 1px solid var(--hair); }
+.pg-run-ic.on { background: var(--selected, #efefee); color: var(--accent-text, var(--ink)); }
+.pg-run-num { width: 56px; height: 32px; box-sizing: border-box; padding: 0 6px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); }

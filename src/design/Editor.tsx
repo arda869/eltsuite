@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { NSelect } from '../components/Select';
 import { AiMark } from '../components/AiMark';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
@@ -21,7 +22,7 @@ import { eraseFrom, pagePointToImage } from './tools';
 import { DownloadMenu } from './Download';
 import { bubbleFor, settle, standAt, standsOnGround } from './scene';
 import { dragging, isOurs, type Payload } from './dnd';
-import { FACES, POSES, THINGS } from '../storyboard/art';
+import { FACES, POSES, THINGS } from './art/art';
 import { CharacterBar } from './CharacterBar';
 import './design.css';
 
@@ -83,7 +84,7 @@ const SNAP = 6;
 const HANDLES: [number, number][] = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
 const keepRatio = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr' || e.t === 'figure' || (e.t === 'shape' && (e.shape === 'star' || e.shape === 'heart'));
 
-export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
+export function DesignFile({ d, canEdit, toolSlot }: { d: SharedDoc; canEdit: boolean; toolSlot?: HTMLElement | null }) {
   const { pages, els: server, meta } = useDesign(d.id);
   const edits = useEdits(d.id, server);
   const { live, setLive, flush, commit, patch } = edits;
@@ -383,7 +384,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   // ------------------------------------------------------------------ scenes
 
-  const mode: 'design' | 'storyboard' = meta.type === 'storyboard' ? 'storyboard' : 'design';
+  // Storyboards were removed: the Designer is always a design (the panel wording goes with the redesign).
+  const mode = 'design' as 'design' | 'storyboard';
 
   // A person or thing from the library, standing where it is put.
   const place = useCallback(
@@ -1130,7 +1132,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   return (
     <div className="dz" data-tool={tool}>
-      <div className="dz-top">
+      {(() => {
+        // Undo, zoom, saved and Download sit in the page's own header when there is room for them.
+        const tools = <>
         <div className="dz-group">
           <button type="button" className="dz-ib" onClick={edits.undo} disabled={!edits.canUndo} data-tip="Undo (Ctrl+Z)" aria-label="Undo">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
@@ -1147,7 +1151,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         <span className="dz-grow" />
         {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? <>Not saved. <button type="button" className="btn small-btn" onClick={() => void edits.retry()}>Retry save</button></> : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
         <DownloadMenu cx={cx} beforeReturn={async () => { edits.flush(); return edits.retry(); }} />
-      </div>
+      </>;
+        return toolSlot ? createPortal(<div className="dz-top dz-top-in">{tools}</div>, toolSlot) : <div className="dz-top">{tools}</div>;
+      })()}
       <div className="dz-body">
         {canEdit && <nav className="dz-rail" aria-label="Tools">
           {(

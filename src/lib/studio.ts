@@ -7,8 +7,8 @@ import { db } from './firebase';
 // them all in the Sound editor, one track per person, lined up in time, and saves the result in
 // their own resources library. Everyone should wear headphones, so the others are not recorded.
 
-export type Session = { id: string; host: string; hostName: string; title: string; members: string[]; names: Record<string, string>; state: 'waiting' | 'counting' | 'recording' | 'stopped'; round: number; startAt?: number; createdAt: number };
-export type Peer = { uid: string; name: string; seen: number; mic: boolean; offset?: number; uploading?: number };
+export type Session = { chatId?: string; id: string; host: string; hostName: string; title: string; members: string[]; names: Record<string, string>; state: 'waiting' | 'counting' | 'recording' | 'stopped'; round: number; startAt?: number; createdAt: number };
+export type Peer = { video?: boolean; uid: string; name: string; seen: number; mic: boolean; offset?: number; uploading?: number };
 export type Take = { id: string; uid: string; name: string; round: number; parts: number; type: string; start: number; duration: number };
 
 const sessions = collection(db, 'studios');
@@ -33,14 +33,14 @@ export function watchPeers(id: string, on: (p: Peer[]) => void): Unsubscribe {
 }
 // Being here: a heartbeat every few seconds, and how far this device's clock is from the server's,
 // so everyone starts recording at the same moment.
-export function joinSession(id: string, me: { uid: string; name: string }, mic: () => boolean, onOffset: (ms: number) => void) {
+export function joinSession(id: string, me: { uid: string; name: string }, mic: () => boolean, onOffset: (ms: number) => void, video: () => boolean = () => false) {
   const ref = doc(sessions, id, 'peers', me.uid);
   let dead = false;
   let sentAt = 0;
   const beat = () => {
     if (dead) return;
     sentAt = Date.now();
-    void setDoc(ref, { name: me.name, seen: Date.now(), mic: mic(), ping: serverTimestamp() }, { merge: true }).catch(() => {});
+    void setDoc(ref, { name: me.name, seen: Date.now(), mic: mic(), video: video(), ping: serverTimestamp() }, { merge: true }).catch(() => {});
   };
   const un = onSnapshot(ref, { includeMetadataChanges: true }, (s) => {
     const ping = s.data()?.ping as { toMillis?: () => number } | undefined;
@@ -51,8 +51,11 @@ export function joinSession(id: string, me: { uid: string; name: string }, mic: 
   });
   beat();
   const t = window.setInterval(beat, 4000);
+  const onVideo = () => beat();
+  window.addEventListener('studio-video', onVideo);
   return () => {
     dead = true;
+    window.removeEventListener('studio-video', onVideo);
     window.clearInterval(t);
     un();
     void deleteDoc(ref).catch(() => {});
@@ -64,8 +67,11 @@ export function joinSession(id: string, me: { uid: string; name: string }, mic: 
 const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 
 // One connection to each other person; the one whose id sorts first makes the offer.
+// The call carries each person's microphone, and their camera when it is on.
 export function connectAudio(id: string, me: string, others: () => string[], mic: MediaStream, onRemote: (uid: string, s: MediaStream | null) => void) {
   const pcs = new Map<string, { pc: RTCPeerConnection; unsub: Unsubscribe[] }>();
+  const videoSenders = new Map<string, RTCRtpSender>();
+  let cam: MediaStreamTrack | null = null;
   const pair = (a: string, b: string) => (a < b ? `${a}_${b}` : `${b}_${a}`);
   const open = (other: string) => {
     if (pcs.has(other)) return;
@@ -73,7 +79,12 @@ export function connectAudio(id: string, me: string, others: () => string[], mic
     const unsub: Unsubscribe[] = [];
     pcs.set(other, { pc, unsub });
     mic.getTracks().forEach((t) => pc.addTrack(t, mic));
-    pc.ontrack = (e) => onRemote(other, e.streams[0] ?? new MediaStream([e.track]));
+    // A video line from the start, so the camera can go on and off without starting again. The
+    // one who offers adds it; the other takes the line the offer brings (see below).
+    const useVideo = (t: RTCRtpTransceiver) => { t.direction = 'sendrecv'; videoSenders.set(other, t.sender); if (cam) void t.sender.replaceTrack(cam).catch(() => {}); };
+    if (me < other) useVideo(pc.addTransceiver('video', { direction: 'sendrecv', streams: [mic] }));
+    const incoming = new MediaStream();
+    pc.ontrack = (e) => { incoming.addTrack(e.track); onRemote(other, new MediaStream(incoming.getTracks())); };
     pc.onconnectionstatechange = () => (pc.connectionState === 'failed' || pc.connectionState === 'closed') && onRemote(other, null);
     const sig = doc(sessions, id, 'signal', pair(me, other));
     pc.onicecandidate = (e) => e.candidate && void addDoc(collection(sig, 'ice_' + me), e.candidate.toJSON()).catch(() => {});
@@ -86,6 +97,8 @@ export function connectAudio(id: string, me: string, others: () => string[], mic
           if (offerer && d?.answer && !pc.currentRemoteDescription) await pc.setRemoteDescription(d.answer);
           if (!offerer && d?.offer && !pc.currentRemoteDescription) {
             await pc.setRemoteDescription(d.offer);
+            const vt = pc.getTransceivers().find((t) => t.receiver.track.kind === 'video');
+            if (vt) useVideo(vt);
             const ans = await pc.createAnswer();
             await pc.setLocalDescription(ans);
             await setDoc(sig, { answer: { type: ans.type, sdp: ans.sdp } }, { merge: true });
@@ -111,6 +124,7 @@ export function connectAudio(id: string, me: string, others: () => string[], mic
     c.unsub.forEach((u) => u());
     c.pc.close();
     pcs.delete(other);
+    videoSenders.delete(other);
     onRemote(other, null);
   };
   const sync = () => {
@@ -119,7 +133,11 @@ export function connectAudio(id: string, me: string, others: () => string[], mic
     [...pcs.keys()].filter((k) => !want.has(k)).forEach(close);
   };
   sync();
-  return { sync, stop: () => [...pcs.keys()].forEach(close) };
+  const setVideo = (track: MediaStreamTrack | null) => {
+    cam = track;
+    videoSenders.forEach((sender) => void sender.replaceTrack(track).catch(() => {}));
+  };
+  return { sync, setVideo, stop: () => [...pcs.keys()].forEach(close) };
 }
 
 // ------------------------------------------------------------------ takes
@@ -164,3 +182,23 @@ export async function endSession(id: string) {
   }
   await updateDoc(doc(sessions, id), { state: 'stopped', ended: true }).catch(() => {});
 }
+
+// ------------------------------------------------------------------ the recording as it happens
+
+// While recording, each person's level ten times a second (0–255), so everyone sees every track
+// grow live in the studio. The sound itself is recorded on each device at full quality.
+export type Live = { uid: string; name: string; round: number; start: number; peaks: number[] };
+export const LIVE_RATE = 10;
+export const saveLive = (id: string, me: { uid: string; name: string }, round: number, start: number, peaks: number[]) =>
+  setDoc(doc(sessions, id, 'live', me.uid), { name: me.name, round, start, peaks }).catch(() => {});
+export function watchLive(id: string, on: (l: Live[]) => void): Unsubscribe {
+  return onSnapshot(collection(sessions, id, 'live'), (s) => on(s.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Live, 'uid'>) }))), () => on([]));
+}
+
+// How long one recording may last. A super admin sets it (admin/studio.maxMinutes); 20 minutes
+// unless they change it.
+export const DEFAULT_STUDIO_MINUTES = 20;
+export function watchStudioLimit(on: (minutes: number) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'admin', 'studio'), (s) => { const m = Number(s.data()?.maxMinutes); on(Number.isFinite(m) && m >= 1 && m <= 180 ? m : DEFAULT_STUDIO_MINUTES); }, () => on(DEFAULT_STUDIO_MINUTES));
+}
+export const setStudioLimit = (minutes: number) => setDoc(doc(db, 'admin', 'studio'), { maxMinutes: minutes }, { merge: true });

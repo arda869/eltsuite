@@ -1,6 +1,6 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { useDocumentTools } from './DocumentEditingTools';
-import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns } from './DocumentStructure';
+import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
 import { useDocumentHistory } from './DocumentHistory';
 import { documentClipboard } from './documentClipboard';
 import { tell } from '../lib/ask';
@@ -9,7 +9,7 @@ import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
-import { doc as fsDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc as fsDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
@@ -55,6 +55,9 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { DocNav, DocTabStrip } from './DocNav';
 import { savedPageDefault } from './PageSetup';
+import { stylesCss } from './documentLayout';
+import { textColor } from '../editor/TextColor';
+import { BUILDING_BLOCKS, bookmarksOf, PersonPicker, SpecialChars, currentSpacing, insertBlock, newBookmarkId, setSpacing, today } from './docExtras';
 import { addTab, allTabsJSON, fieldOf, tabFragments, useDocTabs } from './tabs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import { PdfPreview } from '../components/PdfPreview';
@@ -172,6 +175,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const [wcOpen, setWcOpen] = useState(false);
   const [personAt, setPersonAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [charsOpen, setCharsOpen] = useState(false);
+  const [personOpen, setPersonOpen] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const citeStyle = useCiteStyle();
   const profileTeacher = useAuth().profile?.role === 'teacher';
@@ -261,7 +266,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       const serialized = JSON.stringify(card);
       if (serialized === last) return;
       last = serialized;
-      void updateDoc(fsDoc(db, 'sharedDocs', docId), { coachIndex: card }).catch(() => { last = ''; });
+      // Every tab's words, for search everywhere (src/search).
+      const words = (n: JSONContent): string => (n.text ?? '') + (n.content ?? []).map(words).join('') + (['paragraph', 'heading', 'listItem', 'tableRow', 'tableCell'].includes(n.type ?? '') ? '\n' : '');
+      const text = words(allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent).replace(/\n{3,}/g, '\n\n').slice(0, 200_000);
+      void setDoc(fsDoc(db, 'sharedDocs', docId, 'index', 'text'), { text, at: Date.now() }).catch(() => {});
+      void updateDoc(fsDoc(db, 'sharedDocs', docId), { coachIndex: card, searchAt: Date.now() }).catch(() => { last = ''; });
     };
     const schedule = () => { window.clearTimeout(timer); timer = window.setTimeout(saveCard, 1800); };
     editor.on('update', schedule);
@@ -271,6 +280,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   }, [editor, synced, mediaSpace, eff, session.provider]);
   const formAnchor=useRef('');
   useEffect(()=>{if(!editor||!synced)return;let frame=0;const go=()=>{const hash=location.hash;if(!/^#studio-form-[\w-]+$/.test(hash)||formAnchor.current===hash)return;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const target=document.getElementById(hash.slice(1));if(target){target.scrollIntoView({block:'start'});formAnchor.current=hash;}});};const changed=()=>{formAnchor.current='';go();};editor.on('update',go);window.addEventListener('hashchange',changed);go();return()=>{cancelAnimationFrame(frame);editor.off('update',go);window.removeEventListener('hashchange',changed);};},[editor,synced,docKey]);
+  // A link to a bookmark (#bm-<id>) opens the document there, once the text is in.
+  useEffect(() => {
+    if (!synced || !editor || !/^#bm-[\w-]+$/.test(location.hash)) return;
+    const id = location.hash.slice(4);
+    window.setTimeout(() => document.getElementById('bm-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }, [synced, editor]);
   const edRef = useRef(editor);
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
@@ -333,6 +348,23 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const viewing = eff === 'view';
   const viewDoc = viewing ? splitKey(withoutSuggestions(editor.getJSON())).content : null;
   const heads = headingsOf(editor.state.doc);
+  // Paragraph styles: the paragraph you are in becomes the look of every paragraph of its kind.
+  const styleKey = (): 'p' | 'h1' | 'h2' | 'h3' => { const n = editor.state.selection.$from.parent; return n.type.name === 'heading' ? (`h${Math.min(3, Number(n.attrs.level) || 1)}` as 'h1') : 'p'; };
+  const styleLabel = () => ({ p: 'Normal text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3' })[styleKey()];
+  const updateStyle = () => {
+    const font = editor.getAttributes('fontStyle') as { family?: string | null; pt?: number | null };
+    const colour = (editor.getAttributes('textColor') as { color?: string }).color ?? null;
+    // Headings are bold by their style, not a bold mark: weight changes only when you made it bold.
+    const bold = editor.isActive('bold') ? true : undefined;
+    setLayout({ styles: { ...(layout.styles ?? {}), [styleKey()]: JSON.parse(JSON.stringify({ family: font.family ?? null, pt: font.pt ?? null, color: colour, bold })) } });
+    void tell(`${styleLabel()} now looks like this paragraph across the document.`);
+  };
+  const goBookmark = (id: string) => {
+    const b = bookmarksOf(editor.state.doc).find((x) => x.id === id);
+    if (!b) return;
+    editor.chain().setTextSelection(b.pos).run();
+    (editor.view.nodeDOM(b.pos) as HTMLElement | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
   const wholeDoc = () => allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
   const goHeading = (h: Heading, i: number) => {
     if (viewing) {
@@ -353,14 +385,14 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const sel = editor.state.selection;
   const quote = sel.empty ? '' : editor.state.doc.textBetween(sel.from, sel.to, ' ').slice(0, 160);
 
-  // The document as a PDF, opened in the viewer to save in Resources or download.
+  // The document as a PDF, opened in the viewer to save in My Files or download.
   const makePdf = async (o: ExportOpts) => {
     setPdfError('');
     try {
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
       const content = allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
       await prepareDocumentPrint(content, mediaSpace || classId);
-      const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout);
+      const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout, title);
       setPdfPrev({ bytes, name: title || 'Document' });
     } catch (e) {
       setPdfError('The PDF could not be created. Please try the download again.');
@@ -606,12 +638,21 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Page break', icon: 'task', hint: keyLabel('Mod+Enter'), disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'docPageBreak' }).run(); } },
           { label: 'Tab', icon: 'task', disabled: eff !== 'edit' || locked, run: () => { openTab(addTab(session.doc, undefined, tabId)); setNavCollapsed(false); } },
           { label: 'Section break', icon: 'task', disabled: !writing, run: () => { if (!insertDocumentSection(editor, layout.columns)) void tell('Place the cursor in a top-level paragraph to start a new section.'); } },
+          { label: 'Landscape section from here', icon: 'task', disabled: !writing, run: () => { if (insertDocumentSection(editor, 1)) sectionOrientation(editor, 'landscape'); else void tell('Place the cursor in a top-level paragraph to start a landscape section.'); } },
           { label: 'Header, footer and page numbers…', icon: 'script', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           ...(profileTeacher ? [{ label: 'Cite a source…', icon: 'classes', disabled: !writing, run: () => setCitationRequest((n) => n + 1) }] : []),
           { label: 'Browse all elements…', disabled: !writing, run: () => setGallery(true) },
           { label: 'Picture…', disabled: !writing, run: () => pickPictures(editor) },
           { label: 'Table', disabled: !writing, run: () => { editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); } },
           { label: 'Link…', disabled: !writing || editor.state.selection.empty, run: () => setLinkOpen(true) },
+          'sep',
+          { label: 'Date', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'dateChip', attrs: { date: today() } }).run(); } },
+          { label: 'Person…', icon: 'classes', disabled: !writing, run: () => setPersonOpen(true) },
+          { label: 'Bookmark', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'bookmark', attrs: { id: newBookmarkId(), label: editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to).slice(0, 80) } }).run(); } },
+          { label: 'Special characters…', icon: 'design', disabled: !writing, run: () => setCharsOpen(true) },
+          { label: 'Horizontal line', icon: 'task', disabled: !writing, run: () => { editor.chain().focus().setHorizontalRule().run(); } },
+          'sep',
+          ...BUILDING_BLOCKS.map((b) => ({ label: `Building block: ${b.label}`, icon: 'script', hint: '', disabled: !writing, run: () => insertBlock(editor, b.key) })),
         ] },
         { label: 'Format', items: [
           { label: 'Increase indent', icon: 'next', disabled: !writing, run: () => { changeIndent(editor, 1); } },
@@ -624,6 +665,14 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
           'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, icon: 'align' + a[0].toUpperCase() + a.slice(1), disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
           'sep', { label: 'Checklist', disabled: !writing, run: () => { editor.chain().focus().toggleTaskList().run(); } },
+          'sep', ...([['1', 'Single'], ['1.15', '1.15'], ['1.5', '1.5'], ['2', 'Double']] as const).map(([v, l]) => ({ label: `Line spacing: ${l}`, checked: currentSpacing(editor).lineHeight === v, disabled: !writing, run: () => setSpacing(editor, { lineHeight: currentSpacing(editor).lineHeight === v ? null : v }) })),
+          { label: currentSpacing(editor).spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceBefore: currentSpacing(editor).spaceBefore ? null : 12 }) },
+          { label: currentSpacing(editor).spaceAfter === 0 ? 'Add space after paragraph' : 'Remove space after paragraph', disabled: !writing, run: () => setSpacing(editor, { spaceAfter: currentSpacing(editor).spaceAfter === 0 ? null : 0 }) },
+          'sep',
+          ...(currentSectionOrientation(editor) !== undefined ? (['landscape', 'portrait', null] as const).map((v) => ({ label: `This section: ${v === 'landscape' ? 'Landscape' : v === 'portrait' ? 'Portrait' : 'As the document'}`, checked: currentSectionOrientation(editor) === v, disabled: !writing, run: () => void sectionOrientation(editor, v) })) : []),
+          { label: `Update ${styleLabel()} to match`, disabled: !writing, run: () => updateStyle() },
+          { label: 'Reset paragraph styles', disabled: !writing || !layout.styles || !Object.keys(layout.styles).length, run: () => setLayout({ styles: {} }) },
+          'sep',
           { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
         ] },
         { label: 'Tools', items: [
@@ -631,6 +680,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           { label: 'Contributions', run: () => setSide('people') },
         ] },
       ]} />}
+      {layout.styles && <style>{stylesCss(layout.styles, `[data-doc-styles="${docKey.replace(/[^\w-]/g, '')}"] .ProseMirror`, (c) => textColor(c) ?? c, true)}</style>}
+      {charsOpen && <SpecialChars onPick={(c) => { editor.chain().focus().insertContent(c).run(); }} onClose={() => setCharsOpen(false)} />}
+      {personOpen && <PersonPicker people={Object.entries(who).map(([uid, w]) => ({ uid, name: w.name, color: w.color }))} onPick={(x) => { setPersonOpen(false); editor.chain().focus().insertContent([{ type: 'personChip', attrs: x }, { type: 'text', text: ' ' }]).run(); }} onClose={() => setPersonOpen(false)} />}
       {page && documentTools.panel}
       {page && history.panel}
       {writing && page && PageBar()}
@@ -745,7 +797,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       )}
       {saveStatus !== 'saved' && <div className={'cd-save-status ' + saveStatus} role="status">{saveStatus === 'error' ? <>Changes are still on this device. <button type="button" className="btn small-btn" onClick={() => session.provider.retrySave()}>Retry save</button></> : 'Saving changes…'}</div>}
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '') + (page ? ' has-nav' + (navCollapsed ? ' nav-collapsed' : '') : '')}>
-        {page && <DocNav doc={session.doc} tabs={tabs} current={tabId} onTab={openTab} heads={heads} onHeading={(i) => goHeading(heads[i], i)} canEdit={eff === 'edit' && !locked} collapsed={navCollapsed} onCollapse={setNavCollapsed} />}
+        {page && <DocNav doc={session.doc} tabs={tabs} current={tabId} onTab={openTab} heads={heads} onHeading={(i) => goHeading(heads[i], i)} bookmarks={bookmarksOf(editor.state.doc)} onBookmark={goBookmark} canEdit={eff === 'edit' && !locked} collapsed={navCollapsed} onCollapse={setNavCollapsed} />}
         <div className={'cd-page' + (paged ? ' pg-on' : '')}>
           {!page && <DocTabStrip tabs={tabs} current={tabId} onTab={openTab} />}
           {!page && heads.length > 0 && (
@@ -770,7 +822,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           <EditorClassContext.Provider value={{ classId: mediaSpace || classId, classmates: [] }}>
             {(() => {
               const hostEl = (
-                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing}>
+                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing} data-doc-styles={docKey.replace(/[^\w-]/g, '')}>
                   <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
                   {writing && <LineAdder editor={editor} host={host} />}
                   {writing && <BlockHandles editor={editor} host={host} space={classId} />}
@@ -785,7 +837,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined}>
+                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
                   {heading}
                   {contents}
                 </Paper>
@@ -1016,7 +1068,7 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
             Word document (.docx)…
           </button>
           <button type="button" role="menuitem" onClick={() => setOpen('pdf')}>
-            PDF, to save in Resources…
+            PDF, to save in My Files…
           </button>
         </span>
       )}

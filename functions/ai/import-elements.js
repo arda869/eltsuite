@@ -15,7 +15,9 @@ function communicativeCard(card,id,kind,index){
  if(kind==='spot'&&picture)attrs.picture=communicativePicture(picture,alt||title||'Comparison picture');
  return {type:'pickCard',attrs,content};
 }
-const gapLine=(prompt,node)=>{const [before,after]=prompt.includes('___')?prompt.split('___'):[prompt+' ',''];return {type:'paragraph',content:[...textNodes(before),node,...textNodes(after)]};};
+// A coursebook's own question number before the gap (“me, ¹ ___” or “me, (1) ___”) is left out: ELT Suite numbers the questions.
+const noSourceNumber=t=>String(t).replace(/\s*(?:[⁰¹²³⁴⁵⁶⁷⁸⁹]+|\(\d{1,3}\))\s*$/,' ');
+const gapLine=(prompt,node)=>{const [rawBefore,after]=prompt.includes('___')?prompt.split('___'):[prompt+' ',''];const before=noSourceNumber(rawBefore);return {type:'paragraph',content:[...textNodes(before),node,...textNodes(after)]};};
 function letterPattern(answer,firstLetter){let start=true;return Array.from(answer.trim()).map(ch=>{const letter=/[\p{L}\p{N}]/u.test(ch),out=letter?(firstLetter&&start?ch:'_'):ch;start=!letter&&!/['’-]/.test(ch)?true:letter?false:start;return out;}).join('');}
 export function importRequirements(elements=[]){
  return [...new Set(elements.flatMap(e=>{

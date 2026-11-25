@@ -2,7 +2,6 @@ async function openPlanning(p){const details=p.locator('.lesson-support-tools');
 async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {documentSharing} from './document-sharing.mjs';
-import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
 import {chooseSelect} from './select.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
@@ -177,15 +176,14 @@ const J = {
     await s.p.locator('.apps-scrim').click({position:{x:4,y:4}});
     if(await s.p.locator('.apps-pop').count())throw Error('Tapping outside did not close the apps menu');
     await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('Resources');
-    await s.p.getByRole('menuitem',{name:'Resources',exact:true}).click();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('My Files');
+    await s.p.getByRole('menuitem',{name:'My Files',exact:true}).click();
     await s.p.waitForURL('**/archive');
     if(await s.p.locator('.apps-pop').count())throw Error('Apps menu stayed open after navigation');
     return s;
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
-  'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
   'Tuesday wishlist: available inline forms and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},
@@ -1473,7 +1471,7 @@ const J = {
     await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
     await panel.getByRole('searchbox').fill('files');
     await panel.locator('summary').filter({ hasText: 'Keep your resources together' }).click();
-    await panel.getByRole('link', { name: 'Open Resources' }).waitFor();
+    await panel.getByRole('link', { name: 'Open My Files' }).waitFor();
     await panel.getByRole('button', { name: 'Ask a question', exact: true }).click();
     await panel.getByRole('button', { name: 'Clear chat' }).click();
     await panel.getByRole('heading', { name: 'How can I help?' }).waitFor();
@@ -1890,11 +1888,11 @@ const J = {
     if (result.includes('FAIL')) throw new Error(result);
     await s.p.goto(BASE + '/archive');
     await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
-    await see(s.p, '.apps-pop a[role="menuitem"]:has-text("Resources")', 'Resources in the app launcher');
+    await see(s.p, '.apps-pop a[role="menuitem"]:has-text("My Files")', 'My Files in the app launcher');
     if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation library still appears as a separate app.');
-    if (await s.p.locator('.apps-pop a[href="/archive"]').innerText().then((text) => !text.includes('Resources'))) throw new Error('The Resources app still has its old name.');
+    if (await s.p.locator('.apps-pop a[href="/archive"]').innerText().then((text) => !text.includes('My Files'))) throw new Error('The My Files app still has its old name.');
     await s.p.keyboard.press('Escape');
-    await see(s.p, 'nav[aria-label="Resources"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
+    await see(s.p, 'nav[aria-label="My Files"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
     await s.p.getByRole('button', { name: 'Recycle bin', exact: true }).click();
     await see(s.p, 'h1:has-text("Recycle bin")', 'the recycle bin');
     await s.p.locator('.file-bin-list li').filter({ hasText: 'Restore me' }).getByRole('button', { name: 'Restore', exact: true }).click();

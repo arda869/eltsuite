@@ -87,7 +87,7 @@ export type Teacher = { uid: string; name: string; email: string; avatar?: strin
 
 export const APP_KEYS: { k: string; name: string }[] = [
   { k: 'classes', name: 'Classes' },
-  { k: 'files', name: 'Resources' },
+  { k: 'files', name: 'My Files' },
   { k: 'messages', name: 'Messages' },
   { k: 'colleagues', name: 'Colleagues' },
 ];
@@ -105,7 +105,7 @@ export function levelsFor(o: Org | null | undefined): string[] {
   return list.length ? [...list, 'Mixed'] : [...CEFR, 'Mixed'];
 }
 // The organisation library's name: the admins' choice, or the organisation's name.
-export const libName = (o: Org | null | undefined) => (o ? o.libraryName?.trim() || `${o.name} library` : 'Organisation library');
+export const libName = (o: Org | null | undefined) => (o ? o.libraryName?.trim() || `${o.name} Files` : 'Organisation Files');
 export const isOwnerEmail = (e?: string | null) => lower(e) === OWNER_EMAIL;
 
 // Super admins: the owner, always, and every account a super admin has made one
@@ -177,8 +177,6 @@ export function useFeatures() {
 // Whether an app is on for this teacher: their own switch, then the one for everyone.
 // Apps still early: off for everyone unless a super admin turns them on, for a teacher, an organisation
 // or everyone.
-// Designer now contains the previously available Storyboards app. Explicit account
-// and organisation switches still take precedence over this default.
 export const EARLY_APPS = new Set<string>();
 export const appDefault = (k: string) => !EARLY_APPS.has(k);
 
@@ -549,7 +547,7 @@ export const APP_LIST: { k: string; name: string; about: string }[] = [
   { k: 'classes', name: 'Classes', about: 'Classes, lessons, homework and live teaching' },
   { k: 'timetable', name: 'Timetable', about: 'Classes and meetings, week by week' },
   { k: 'rooms', name: 'Rooms', about: 'Audio and video calls, and each class’s video room' },
-  { k: 'files', name: 'Resources', about: 'Lessons, documents, flashcards and reading' },
+  { k: 'files', name: 'My Files', about: 'Lessons, documents, flashcards and reading' },
   { k: 'messages', name: 'Messages', about: 'Chats with learners and other teachers' },
   { k: 'colleagues', name: 'Colleagues', about: 'Sharing lessons and files with other teachers' },
   { k: 'guide', name: 'Guide', about: 'How ELT Suite works, with things to try' },

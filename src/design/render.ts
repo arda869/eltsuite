@@ -1,5 +1,5 @@
 import { getStroke } from 'perfect-freehand';
-import { drawnOf } from '../storyboard/bounds';
+import { drawnOf } from './art/bounds';
 import type { DPage, El, Fx, ShapeKind } from './model';
 import { drawFigure } from './figures';
 

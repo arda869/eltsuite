@@ -167,3 +167,34 @@ OCR (`src/pdf/ocr.ts`) runs tesseract.js in the browser from our own copy in `pu
 (`scripts/ocr-assets.mjs`, at install and build); pages are never sent to a service. Words found are
 kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer, read aloud, and
 invisible text in the download so it can be searched.
+
+## Search everything
+
+Ctrl+K (⌘K) or Search in the top bar (`src/search/`). `sources.ts` gathers what the person can see:
+files and the words in Collab documents (`sharedDocs/{id}/index/text`, written as the document is
+edited, with `searchAt` on the file) and scanned PDFs (`ocr`), recordings' and videos' scripts (also
+`mediaScripts` kept with a class, and the captions in video projects), chats and their
+messages, classes, topics, lessons, learners, the Resource Hub, apps, the Guide and settings. Message
+and document words are cached in the browser (IndexedDB, `kv.ts`) and topped up with only what is new.
+`engine.ts` ranks: every word must match, names above text, accents and case ignored.
+
+## Recordings keep their tracks
+
+Saving in the Recording editor also keeps each raw sound the clips use (its own media, saved once)
+and the project (`project` on the media manifest), via `src/media/trackStore.ts`. Opening it again
+rebuilds every track, lined up past the MP3 lead-in. Older recordings open as one mixed track.
+
+## Record together
+
+`src/pages/StudioSession.tsx`, `src/lib/studio.ts`: a WebRTC call (microphone and camera) between the
+colleagues invited, with the session's own chat (`studios/{id}.chatId`). Each person records their
+own microphone on their own device at full quality; the levels (`studios/{id}/live/{uid}`) let
+everyone watch the tracks grow. Everyone can open all the tracks afterwards. A recording stops at
+`admin/studio.maxMinutes` (20 unless a super admin changes it in Sounds for everyone).
+
+## Resource Hub insights
+
+`recordResourceHubMetric` counts opens, PDFs, Class copies, saves, live teaching and AI adaptations,
+in total, by day and by organisation; `recordResourceHubSearch` keeps search words (no names) and
+searches with no results. The super admin dashboard (`ResourceActivityMetrics.tsx`) downloads the
+full report, the figures by day and the searches as CSV.

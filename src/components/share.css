@@ -1,0 +1,82 @@
+/* The share window, the same everywhere (ShareShell.tsx). */
+.s2-back { position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center; padding: 16px; background: rgba(28, 26, 23, .42); }
+.s2 { width: min(560px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; border-radius: 22px; background: var(--paper, #fff); color: var(--ink, #262420); box-shadow: 0 24px 70px rgba(0, 0, 0, .3); font-family: var(--sans); overflow: visible; }
+.s2-head { display: flex; align-items: flex-start; gap: 12px; padding: 24px 26px 6px; }
+.s2-head h2 { flex: 1; margin: 0; font: 400 22px/1.3 var(--sans); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.s2-head h2 span { display: block; font-weight: 500; }
+.s2-ic { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 50%; color: var(--muted); }
+.s2-ic:hover { background: var(--surface); color: var(--ink); }
+.s2-body { padding: 12px 26px 4px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.s2-body h3, .s2-label { margin: 0 0 6px; font: 500 15px var(--sans); color: var(--ink); }
+
+/* Add people: an outlined field whose label floats when it is in use. */
+.s2-add { position: relative; }
+.s2-field { position: relative; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--hair-strong, #c9c5be); border-radius: 10px; background: var(--paper); cursor: text; box-sizing: border-box; }
+.s2-add.on .s2-field { border: 2px solid var(--accent-text, #3667a6); padding: 7px 11px; }
+.s2-float { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); padding: 0 4px; background: var(--paper); color: var(--muted); font-size: 15px; pointer-events: none; transition: top .15s, font-size .15s, color .15s; }
+.s2-add.on .s2-float, .s2-add.has .s2-float { top: 0; font-size: 12px; color: var(--accent-text, #3667a6); }
+.s2-add.has:not(.on) .s2-float { color: var(--muted); }
+.s2-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.s2-chips input { flex: 1; min-width: 120px; height: 30px; border: 0; outline: 0; background: transparent; font: 15px var(--sans); color: var(--ink); }
+.s2-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 4px 0 4px; border-radius: 99px; background: var(--surface); font-size: 14px; }
+.s2-chip button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+.s2-chip button:hover { background: var(--selected); color: var(--ink); }
+.s2-role { flex: none; }
+.s2-sugg { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5; max-height: 320px; overflow-y: auto; padding: 6px 0; border-radius: 12px; background: var(--paper); box-shadow: 0 14px 40px -10px rgba(0, 0, 0, .35), 0 0 0 1px var(--hair); }
+.s2-sugg button { width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 16px; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
+.s2-sugg button.on { background: var(--surface); }
+.s2-empty { display: block; padding: 10px 16px; color: var(--muted); font-size: 14px; }
+
+/* People with access. */
+.s2-list { display: flex; flex-direction: column; }
+.s2-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; min-height: 48px; }
+.s2-face { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; overflow: hidden; }
+.s2-ini, .s2-class { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--paper)); color: var(--accent-text); font: 600 15px var(--sans); }
+.s2-class { background: var(--surface); color: var(--muted); }
+.s2-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.s2-who b { font: 500 15px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s2-who span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s2-right { flex: none; }
+.s2-fixed { color: var(--muted); font-size: 14px; padding: 0 8px; }
+.s2-sel, .s2 .nsel > .sel { min-height: 36px; height: 36px; border-color: transparent !important; background: transparent !important; font-size: 14px; }
+.s2-sel:hover, .s2 .nsel > .sel:hover { background: var(--surface) !important; }
+
+/* Sharing with the people chosen: what they can do, a message, Send. */
+.s2-send { display: flex; flex-direction: column; gap: 10px; }
+.s2-check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.s2-check input { width: 18px; height: 18px; accent-color: var(--accent-text); }
+.s2-note { width: 100%; min-height: 84px; padding: 10px 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 15px var(--sans); color: var(--ink); resize: vertical; box-sizing: border-box; }
+.s2-send-acts { display: flex; justify-content: flex-end; gap: 10px; }
+.s2-btn { height: 40px; padding: 0 22px; border-radius: 99px; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--accent-text); font: 600 14px var(--sans); cursor: pointer; }
+.s2-btn.primary { border-color: transparent; background: var(--accent-text, #3667a6); color: #fff; }
+.s2-btn:disabled { opacity: .5; cursor: default; }
+.s2-msg { margin: 0; font-size: 13.5px; color: var(--muted); }
+.s2-msg.err { color: var(--wrong, #9a5148); }
+
+/* General access. */
+.s2-gen h3 { margin-bottom: 4px; }
+.s2-gen-row { display: flex; align-items: center; gap: 14px; margin: 0 -26px; padding: 10px 26px; }
+.s2-gen-row:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.s2-gen-ic { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--ink); }
+.s2-gen-row.open .s2-gen-ic { background: color-mix(in srgb, #2e8b57 16%, var(--paper)); color: #2e7d4f; }
+.s2-gen-c { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.s2-gen-sel { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-left: -10px; }
+.s2-gen-sel .nsel > .sel { font-weight: 600; }
+.s2-gen-about { font-size: 13px; color: var(--muted); }
+.s2-more { display: flex; flex-wrap: wrap; gap: 8px; }
+.s2-link { border: 0; background: none; padding: 4px 0; color: var(--accent-text); font: 600 13.5px var(--sans); cursor: pointer; }
+.s2-link.danger { color: var(--wrong, #9a5148); }
+
+.s2-foot { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 26px 22px; }
+.s2-copy { display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 22px; border-radius: 99px; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--accent-text, #3667a6); font: 600 14.5px var(--sans); cursor: pointer; }
+.s2-copy:hover { background: color-mix(in srgb, var(--accent-text) 6%, var(--paper)); }
+.s2-done { height: 42px; padding: 0 30px; border-radius: 99px; border: 0; background: var(--accent-text, #3667a6); color: #fff; font: 600 14.5px var(--sans); cursor: pointer; }
+.s2-done:hover { filter: brightness(1.08); }
+.s2-toast { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); padding: 8px 14px; border-radius: 8px; background: var(--ink); color: var(--paper); font-size: 13px; white-space: nowrap; }
+@media (max-width: 560px) { .s2 { border-radius: 18px; } .s2-head, .s2-body, .s2-foot { padding-left: 18px; padding-right: 18px; } .s2-gen-row { margin: 0 -18px; padding: 10px 18px; } }
+.s2-body { overflow: visible; }
+.s2-list { max-height: 38vh; overflow-y: auto; }
+/* Buttons in the share window are our usual buttons: rounded rectangles, one height. */
+.s2-copy, .s2-done, .s2-btn { border-radius: 10px; height: 40px; }
+.s2-done { padding: 0 24px; }
+.s2-copy { padding: 0 16px; }

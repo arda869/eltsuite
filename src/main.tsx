@@ -99,7 +99,6 @@ const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ defa
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
-const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
@@ -259,7 +258,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/accessibility" element={<AccessibilityPage />} />
           <Route path="/signin" element={<PublicSignIn />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
           <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
@@ -300,7 +298,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/quiz-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
           <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
-          <Route path="/storyboard" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
           <Route path="/call/:code" element={<CallPage />} />

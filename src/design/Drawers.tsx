@@ -45,7 +45,7 @@ export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ct
 
 // ------------------------------------------------------------------ templates
 
-function TplThumb({ t, accent = '#c8764a' }: { t: Tpl; accent?: string }) {
+export function TplThumb({ t, accent = '#c8764a' }: { t: Tpl; accent?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
@@ -64,9 +64,7 @@ function TplThumb({ t, accent = '#c8764a' }: { t: Tpl; accent?: string }) {
 }
 
 function Templates({ cx }: { cx: Ctx }) {
-  const story = cx.mode === 'storyboard';
-  const scenes = TEMPLATES.filter((t) => t.story);
-  const plain = TEMPLATES.filter((t) => !t.story);
+  const group = (g: Tpl['group']) => TEMPLATES.filter((t) => (t.group ?? (t.story ? 'scene' : 'canvas')) === g);
   const list = (ts: Tpl[]) => (
     <div className="dz-tpls">
       {ts.map((t) => (
@@ -82,16 +80,14 @@ function Templates({ cx }: { cx: Ctx }) {
   );
   return (
     <>
-      <p className="dz-dr-note">{story ? 'Adds the scene as new panels after this one. Move people and things about, change who is in it, and add words.' : 'Adds the template’s pages after this one.'}</p>
-      {story && <h3 className="dz-dr-h">Scenes</h3>}
-      {story && list(scenes)}
-      {story && <h3 className="dz-dr-h">Other pages</h3>}
-      {list(plain)}
-      {!story && <h3 className="dz-dr-h">Scenes</h3>}
-      {!story && list(scenes)}
+      <p className="dz-dr-note">A template is added as new pages after this one. Change the words and pictures to make it yours.</p>
+      <h3 className="dz-dr-h">For your class</h3>
+      {list(group('teach'))}
+      <h3 className="dz-dr-h">Scenes</h3>
+      {list(group('scene'))}
       <h3 className="dz-dr-h">Blank pages</h3>
       <div className="dz-sizes">
-        {SIZES.filter(s=>['square','slide','story','banner'].includes(s.k)).map((s) => (
+        {SIZES.map((s) => (
           <button key={s.k} type="button" onClick={() => void cx.addPages({ k: s.k, name: s.name, about: '', pages: [{ p: { w: s.w, h: s.h, bg: '#ffffff' }, els: [] }] })} disabled={!cx.canEdit}>
             <span className="dz-size-sh" style={{ aspectRatio: `${s.w} / ${s.h}` }} />
             <span>

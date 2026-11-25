@@ -363,3 +363,17 @@ export function saveEnterSend(v: boolean) {
   }
 }
 
+
+// Quiet while recording: messages still arrive and count as unread, but make no sound, banner or
+// phone notification. The studio turns it on for the length of a recording (quietUntil, a time),
+// on this device and for the server's notifications (quiet/{uid}).
+let quietTill = 0;
+export const isQuiet = () => Date.now() < quietTill;
+export async function setQuiet(uid: string | undefined, until: number) {
+  quietTill = until;
+  if (!uid) return;
+  try {
+    const { setDoc: set, doc: d } = await import('firebase/firestore');
+    await set(d(db, 'quiet', uid), { until });
+  } catch { /* quiet on this device at least */ }
+}
