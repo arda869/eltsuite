@@ -29,7 +29,8 @@ async function beforeWrite(path: string) {
 export function onValue(r: Ref, cb: (s: { val: () => unknown; exists: () => boolean }) => void) {
   let last = '';
   const fire = () => {
-    const raw = getAt(tree(), r.path) ?? null;
+    // The stand-in is always connected.
+    const raw = r.path === '.info/connected' ? true : getAt(tree(), r.path) ?? null;
     const v = r.limit && raw && typeof raw === 'object' ? Object.fromEntries(Object.entries(raw).slice(-r.limit)) : raw;
     const j = JSON.stringify(v);
     if (j === last) return;
