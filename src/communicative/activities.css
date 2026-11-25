@@ -25,7 +25,7 @@
 .ca-paper.bar::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
 
 /* ---------- Teacher: run bar (one next step at a time) ---------- */
-.ca-run { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 8px 8px 14px; border-radius: 14px;
+.ca-run { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 4px 8px 4px 14px; border-radius: 12px;
   background: var(--paper); border: 1px solid var(--hair); box-shadow: inset 3px 0 0 var(--accent); }
 .ca-state { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; margin-right: auto; }
 .ca-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
@@ -33,6 +33,7 @@
 .ca-state small { font-weight: 400; color: var(--muted); font-size: 12px; }
 .ca-next { height: 38px; padding: 0 16px; }                      /* .btn.primary: the one obvious next step */
 .ca-run .btn.small-btn { color: var(--muted); }
+.ca-run > .btn { box-sizing: border-box; height: 32px; min-height: 32px; }
 
 /* ---------- Teacher: rooms overview ---------- */
 .ca-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -74,6 +75,8 @@
 
 /* Learner's main action: one big button at the bottom of the element */
 .ca-go { height: 48px; width: 100%; font-size: 15px; border-radius: 12px; }   /* with .btn.primary */
+.ca-kind-dominoes .ca-chain, .ca-kind-strips .ca-strips { margin-bottom: 14px; }
+.ca-kind-dominoes .ca-go + [role="status"], .ca-kind-strips .ca-go + [role="status"] { margin: 10px 0 0; }
 
 /* ---------- Private content: hidden things are charcoal, like card backs ---------- */
 .ca-private { border-radius: 16px; overflow: hidden; box-shadow: var(--ca-lift); background: var(--paper); }
@@ -228,6 +231,7 @@
 .ca-opt.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .ca-opt.on i { border: 5.5px solid var(--ink); }
 .ca-bars { display: flex; flex-direction: column; gap: 9px; }
+.ca-kind-survey .ca-opts + .ca-bars { margin-top: 18px; }
 .ca-bar { display: grid; grid-template-columns: 7.5rem 1fr 2rem; align-items: center; gap: 10px; font-size: 13px; }
 .ca-bar > span:first-child { font: 400 15px var(--serif); }
 .ca-bar .tq-bar { height: 16px; border-radius: 8px; }
@@ -531,13 +535,15 @@ button.ca-die.ready:hover { transform: translateY(-2px) rotate(-4deg); }
 /* ---------- Teacher's room overview: one slim row per room, not a tall card ---------- */
 .ca-rooms { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
 .ca-room { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "name faces btn" "meter meter meter"; align-items: center; gap: 6px 10px; padding: 8px 10px; border-radius: 12px; }
+.ca-room.help, .ca-room.done { grid-template-areas: "name faces btn" "status status status" "meter meter meter"; }
 .ca-room-top { display: contents; }
 .ca-room-top b { grid-area: name; font-size: 13px; }
 .ca-room-top .btn { grid-area: btn; }
-.ca-room .ca-faces { grid-area: faces; display: flex; min-width: 0; overflow: hidden; }
+.ca-room .ca-faces { grid-area: faces; display: flex; min-width: 0; overflow: visible; padding: 2px; }
 .ca-room .ca-faces .avatar { width: 22px; height: 22px; font-size: 9px; margin-left: -4px; box-shadow: 0 0 0 2px var(--paper); }
+.ca-room .ca-faces .avatar:first-child { margin-left: 0; }
 .ca-room > span { display: none; }   /* "Working together" said nothing the meter doesn't */
-.ca-room.help > span, .ca-room.done > span { display: block; grid-area: meter; font-size: 11px; color: var(--muted); }
+.ca-room.help > span, .ca-room.done > span { display: block; grid-area: status; font-size: 11px; line-height: 1.2; color: var(--muted); }
 .ca-room .ca-meter { grid-area: meter; height: 4px; }
 .ca-head-row { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
 .ca-head-row .ca-you { display: inline; margin: 0; padding: 0; border-radius: 0; background: none; color: var(--muted); font: 500 12px var(--sans); }

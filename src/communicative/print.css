@@ -231,6 +231,10 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-board-ladders { gap: 0; padding: 0; border: 1.6pt solid #262420; border-radius: 0; background: #fff; }
 .pa-board-ladders .pa-sq { border-radius: 0; border-right: .6pt solid #262420; border-bottom: 1.6pt solid #262420; }
 .pa-board-ladders .pa-sq.start, .pa-board-ladders .pa-sq.finish { background: #fff; color: #262420; font: 800 13pt Karla, sans-serif; justify-content: center; align-items: center; }
+/* The route artwork stays visible across squares, but each prompt and number has a clear
+   paper backing so a snake or ladder can never run through the words. */
+.pa-board-ladders .pa-sq > span { position: relative; z-index: 3; width: fit-content; max-width: 100%; padding: .7mm 1.1mm; border-radius: .8mm; background: #fff; }
+.pa-board-ladders .pa-sq > .n { z-index: 3; padding: .2mm .6mm; border-radius: .5mm; background: #fff; }
 .pa-board-art .lad-out { stroke: #262420; stroke-width: .085; stroke-linecap: round; }
 .pa-board-art .lad-in { stroke: #e0b27a; stroke-width: .05; stroke-linecap: round; }
 .pa-board-art .sn-body, .pa-board-art .sn-head { fill: #8cc79a; stroke: #262420; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
@@ -251,8 +255,7 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-tint { border-color: var(--accent); }
 .pa-tint .pa-bingo-grid { border-color: var(--accent); }
 /* Board games turn on the page: drawn landscape (246 × 176 mm), shown on a portrait page, filling it. */
-.pa-rot-page { position: relative; width: 100%; height: 246mm; overflow: hidden; break-inside: avoid; }
-.pa-rot { position: absolute; top: 50%; left: 50%; width: 246mm; height: 176mm; transform: translate(-50%, -50%) rotate(90deg); display: flex; align-items: center; justify-content: center; }
+.pa-rot-page { position: relative; width: 100%; height: 214mm; overflow: hidden; break-inside: avoid; }
+.pa-rot { position: absolute; top: 50%; left: 50%; width: 214mm; height: 170mm; transform: translate(-50%, -50%) rotate(90deg); display: flex; align-items: center; justify-content: center; }
 .pa-rot .pa-board { max-height: none; width: 100%; height: 100%; box-sizing: border-box; }
 .pa-rot .pa-board-spiral { width: max-content; height: max-content; margin: auto; }
-@media screen { .pa-rot-page { height: auto; aspect-ratio: 176 / 246; } }

@@ -197,7 +197,7 @@ function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode
   };
   const teachLook = !active && !issues.length ? (() => { try { return initialActivity(c, people); } catch { return null; } })() : null;
   return <NodeViewWrapper ref={wrap} className={`ca ca-editor-node block-node ca-editing-${c.kind} ${showCards || !gridColumns(c.kind).length ? '' : 'ca-cards-hidden'} ${active ? '' : 'ca-at-rest'}`} onMouseDown={() => !active && setActive(true)}>
-    {!active && <div className="ca-rest" contentEditable={false}>{teachLook ? <div className="ca-rest-stage" aria-hidden="true"><ActivityStage classId={classId} teacher config={c} state={teachLook} selfId="teacher" send={() => {}} /></div> : <p className="hint">{ACTIVITY_LABELS[c.kind]}: {issues[0]?.message ?? 'Click to edit.'}</p>}<span className="ca-rest-edit">Click to edit</span></div>}
+    {!active && <div className="ca-rest" contentEditable={false}>{teachLook ? <div className="ca-rest-stage" {...{ inert: '' }}><ActivityStage classId={classId} teacher config={c} state={teachLook} selfId="teacher" send={() => {}} /></div> : <p className="hint">{ACTIVITY_LABELS[c.kind]}: {issues[0]?.message ?? 'Click to edit.'}</p>}<span className="ca-rest-edit">Click to edit</span></div>}
     <div className="mcq-tools" contentEditable={false}><Grip editor={editor} getPos={getPos} /><span className="block-label">{ACTIVITY_LABELS[c.kind]}</span><button type="button" className="btn small-btn" onClick={deleteNode}>Remove</button></div>
     <div className={'ca-editor' + (onPaper ? ' on-paper' : '')} contentEditable={false}>
       <div className="ca-editor-side">

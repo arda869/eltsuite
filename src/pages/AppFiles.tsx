@@ -175,7 +175,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     <div className={embedded ? "af-embedded" : "shell af-shell"} style={{ ['--app' as string]: a.color }}>
       {!embedded && <TopBar><MainNav on="" /></TopBar>}
       <Content className="af" aria-label={a.name}>
-        <header className="af-head">
+        {app !== 'recordings' && <header className="af-head">
           
           <span className="af-title">
             {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="sr-only">{a.name}</h1>}
@@ -186,9 +186,10 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
               {/^(New|Make|Upload|Record)/.test(n.label) ? '+ ' : ''}{n.label}
             </button>
           ))}
-        </header>
+        </header>}
         {app === 'design' && <Suspense fallback={<div className="dz-row dz-row-wait" />}><StartRow busy={!!busy} onPick={(t) => void makeFrom(t)} /></Suspense>}
-        <div className="af-bar">
+        {app === 'recordings' && <h1 className="sr-only">Recordings</h1>}
+        <div className={'af-bar' + (app === 'recordings' ? ' af-bar-recordings' : '')}>
           <span className="af-tabs" role="tablist" aria-label="Which files">
             {tabs.map(([k, label]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
@@ -207,6 +208,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </svg>
             <input type="search" placeholder={`Search ${a.name}`} aria-label={`Search ${a.name}`} value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
+          {app === 'recordings' && <button type="button" className="btn primary af-record-action" onClick={() => setRecording(true)}>+ Record</button>}
         </div>
         {busy && <span className="hint" role="status">{busy}</span>}
         {loading ? (

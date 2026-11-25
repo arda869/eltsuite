@@ -83,6 +83,8 @@
 /* Snakes and ladders: one ruled grid with bold lines between rows, like the printed board. */
 .ca-board-wrap .ca-board-stage .ca-board.ca-board-ladders { gap: 0; padding: 0; border-radius: 6px; background: var(--paper); border: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); overflow: hidden; }
 .ca-board-stage .ca-board.ca-board-ladders .ca-sq { border-radius: 0; box-shadow: none; border-right: 1px solid var(--hair-strong); border-bottom: 2.5px solid color-mix(in srgb, var(--ink) 80%, var(--paper)); }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq > :is(.ca-sq-n, .ca-sq-text, .ca-pic) { position: relative; z-index: 2; }
+.ca-board-stage .ca-board.ca-board-ladders .ca-sq > :is(.ca-sq-n, .ca-sq-text) { align-self: flex-start; padding: 2px 4px; border-radius: 4px; background: color-mix(in srgb, var(--paper) 94%, transparent); box-decoration-break: clone; }
 .ca-board-stage .ca-board.ca-board-ladders .ca-sq.start, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish { background: color-mix(in srgb, var(--accent) 22%, var(--paper)); color: var(--ink); box-shadow: none; font: 800 clamp(11px, calc(var(--sq) * .16), 18px) var(--sans); }
 .ca-board-stage .ca-board.ca-board-ladders .ca-sq.start .ca-sq-text, .ca-board-stage .ca-board.ca-board-ladders .ca-sq.finish .ca-sq-text { background: none; padding: 0; }
 .ca-board-stage .ca-board.ca-board-ladders .ca-sq.here { transform: none; box-shadow: inset 0 0 0 3px var(--accent); animation: none; }
@@ -341,9 +343,10 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 .ca-live-host { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .ca-live-host > * { margin-top: 0; margin-bottom: 0; }
 .ca-live-host > :is(section.ca, .ca-rooms, .ca-ranking-comparison, .ca-room, .ca-error, .ca-paper, .ca-run, p, div:not(.lp-rooms):not(.ca-share-screen)) { flex-basis: 100%; }
-.ca-live-host > .ca-share-screen { margin: 0 0 0 auto; align-items: center; gap: 8px; }
+.ca-live-host > .ca-share-screen { --control-h: 32px; margin: 0 0 0 auto; align-items: center; gap: 8px; }
 .ca-live-host > .ca-share-screen .ca-setting { flex-direction: row; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
-.ca-live-host > .ca-share-screen .ca-setting select { height: 30px; width: auto; }
+.ca-live-host > .ca-share-screen .ca-setting select { box-sizing: border-box; height: 32px; min-height: 32px; width: auto; padding-block: 0; }
+.ca-live-host > .ca-share-screen > .btn { box-sizing: border-box; height: 32px; min-height: 32px; }
 .ca-live-host > .ca-share-screen .hint { flex-basis: auto; font-size: 11px; max-width: 260px; }
 
 /* ---------------------------------------------------------------- Item grid (editor) */

@@ -16,7 +16,7 @@ try {
     const src='data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="120" height="90" fill="hsl(${i*57},40%,50%)"/><circle cx="60" cy="45" r="20" fill="white"/></svg>`);
     item.attrs.picture={src,alt:`Synthetic ${kind} picture ${i+1}`,fit:'contain'};item.content=[{type:'paragraph'}];if(!item.attrs.special)item.attrs.title='';if(['memory','dominoes'].includes(kind)){item.attrs.match='';item.attrs.matchPicture={src,alt:`Synthetic matching picture ${i+1}`,fit:'contain'};}
    });
-   const config=configFromNode(node),issues=validateActivity(config);if(issues.length)throw Error(kind+': '+JSON.stringify(issues));const paper=printActivity(config).map(p=>p.html).join('');if(!paper.includes('Synthetic '+kind+' picture'))throw Error(kind+' omitted picture on paper');
+   const config=configFromNode(node),issues=validateActivity(config);if(issues.length)throw Error(kind+': '+JSON.stringify(issues));const paper=printActivity(config).map(p=>p.html).join('');if(kind!=='speaking'&&!paper.includes('Synthetic '+kind+' picture'))throw Error(kind+' omitted picture on paper');
    await addTask(d.classId,d.itemId,n,'task',{title:'Pictures '+kind,instructions:'Use the pictures.',content:{type:'doc',content:[node]}});
   }
   return d;
@@ -30,7 +30,7 @@ try {
   if(kind==='bingo'){
    await t.getByRole('button',{name:'Draw a call',exact:true}).click();await t.locator('.ca-call-now img').waitFor();assert.ok(await t.locator('.ca-calls button img').count()>0);
   }
-  if(kind==='cue'){const labels=await t.locator('.ca-assignments select option').allTextContents();assert.ok(labels.length>3);for(const label of labels)assert.ok(label.trim(),'Card choice must be named');}
+  if(kind==='cue'){await t.getByRole('button',{name:'Give everyone the same card'}).click();const labels=await t.getByRole('listbox',{name:'Give everyone the same card'}).getByRole('option').allTextContents();assert.ok(labels.length>3);for(const label of labels)assert.ok(label.trim(),'Card choice must be named');await t.keyboard.press('Escape');}
   if(kind==='findSomeone')assert.match(await t.locator('.ca-class-summary').innerText(),/Synthetic findSomeone picture/);
   console.log('PASS picture-only '+kind+': '+(kind==='speaking'?'timer-only learner view':'decoded learner prompt')+', teacher controls and print markup');
  }

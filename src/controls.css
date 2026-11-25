@@ -22,6 +22,7 @@
 
 /* Learner live lesson (2026-11 feedback): the "Live · teaching" box and the hand / stuck / reaction bar
    had no room above them and touched the line above. */
-.center-col > .live-who { margin-top: 12px; padding: 12px 12px 11px; }
+.center-col > .live-who { margin: 12px 6px 0; padding: 12px 12px 11px; }
+.center-col > .live-who .live-who-people { flex-direction: row; align-items: center; gap: 8px; }
 .live-float { padding-top: 8px; }
 .live-float .signal-bar { margin-top: 6px; }

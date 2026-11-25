@@ -90,6 +90,13 @@ test('standalone published lesson: secure guest join, answer, retry, end and tea
   assert.equal(lobby.currentTask, null);
   await service(db, teacher, req('advance', { runId: start.runId, taskId: 'task-1' }), 3000);
   const learner = await service(db, null, req('learnerState', seat), 3001);
+  await service(db, null, req('signal', { ...seat, kind: 'hand', value: true }), 3002);
+  await service(db, null, req('signal', { ...seat, kind: 'stuck', value: true }), 3003);
+  await service(db, null, req('signal', { ...seat, kind: 'reaction', value: 'thumbsup' }), 3004);
+  const signalled = await service(db, teacher, req('teacherState', { runId: start.runId }), 3005);
+  assert.deepEqual({ hand: signalled.participants[0].signal.hand, stuck: signalled.participants[0].signal.stuck, reaction: signalled.participants[0].signal.reaction }, { hand: true, stuck: true, reaction: 'thumbsup' });
+  await assert.rejects(service(db, null, req('signal', { ...seat, token: 'wrong', kind: 'hand', value: false }), 3006), { code: 'permission-denied' });
+  await assert.rejects(service(db, null, req('signal', { ...seat, kind: 'reaction', value: 'unlisted' }), 3006), { code: 'invalid-argument' });
   assert.deepEqual(learner.tasks, [{ id: 'task-1', title: 'Task one' }]);
   assert.equal(learner.currentTask.content.content[0].content[1].attrs.answers.length, 0);
   assert.deepEqual(learner.currentTask.identity, { id: 'aid-1', name: 'Activation', colour: '#b4442e', icon: 'activation' });
@@ -122,6 +129,7 @@ test('standalone published lesson: secure guest join, answer, retry, end and tea
   assert.equal(result.answers.find(answer => answer.pid === joined.pid).grading.q2.status, 'ungraded');
   assert.equal(result.task.title, 'Task one');
   await service(db, teacher, req('end', { runId: start.runId }), 6000);
+  await assert.rejects(service(db, null, req('signal', { ...seat, kind: 'hand', value: false }), 6001), { code: 'failed-precondition' });
   assert.equal(db.rows.has(`resourceLessonCodes/${start.code}`), false);
   await assert.rejects(service(db, null, req('submit', { ...seat, taskId: 'task-1', responses: { q1: 'London' } }), 6001), { code: 'failed-precondition' });
   await assert.rejects(service(db, null, req('join', { code: start.code, name: 'Pat' }), 6001), { code: 'not-found' });

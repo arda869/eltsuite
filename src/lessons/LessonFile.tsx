@@ -219,7 +219,14 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   const [insertAt, setInsertAt] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
-  const notesPane = usePresenterNotes();
+  const notesPane = usePresenterNotes('ll.lessonFileNotesPane', 125);
+  const [notesEditing, setNotesEditing] = useState(false);
+  useEffect(() => setNotesEditing(false), [sel]);
+  useEffect(() => {
+    if (!notesEditing) return;
+    const frame = requestAnimationFrame(() => document.querySelector<HTMLElement>('.lf-notes .ProseMirror')?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [notesEditing]);
   // Comments can be about the task being edited, and a comment opens its task again.
   const curRow = rows?.find((r) => r.id === sel);
   useEffect(() => { setCommentTask(curRow?.kind === 'task' ? { id: curRow.id, title: curRow.title } : null); }, [curRow?.id, curRow?.title, curRow?.kind]);
@@ -423,7 +430,16 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
       {cur?.kind === 'task' && !learnerPreview && (canEdit || cur.teacherNotes) && (
         <div className="lf-notes">
           <PresenterNotes pane={notesPane} hasNotes={!!cur.teacherNotes?.trim()}>
-            {canEdit ? <NotesEditor key={cur.id} className="pn-editor" doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} onChange={(docJ, text) => patch(cur.id, { teacherNotes: text, teacherNotesDoc: docJ }, 700)} placeholder="Click to add notes" /> : <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} />}
+            {canEdit && notesEditing ? (
+              <div className="pn-editing">
+                <NotesEditor key={cur.id} className="pn-editor" doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} onChange={(docJ, text) => patch(cur.id, { teacherNotes: text, teacherNotesDoc: docJ }, 700)} placeholder="Click to add notes" />
+                <button type="button" className="btn small-btn" onClick={() => setNotesEditing(false)}>Done</button>
+              </div>
+            ) : canEdit ? (
+              <div className="pn-read" role="button" tabIndex={0} onClick={() => setNotesEditing(true)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setNotesEditing(true); } }} aria-label="Edit teacher notes">
+                {cur.teacherNotes?.trim() ? <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes} /> : <span className="pn-empty">Click to add notes</span>}
+              </div>
+            ) : <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} />}
           </PresenterNotes>
         </div>
       )}

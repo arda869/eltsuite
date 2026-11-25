@@ -6,11 +6,12 @@ import { app } from '../lib/firebase';
 export type LessonLiveTask = { id: string; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; identity?: import('../lib/identity').ActivityIdentity | null };
 export type LessonTaskSummary = { got: number; max: number; answered: number; submittedAt?: number };
 export type LessonLiveRun = { runId: string; sourceKind?: 'file' | 'resource'; resourceId: string | null; fileId?: string | null; title: string; edition: number | null; status: 'lobby' | 'running' | 'ended'; currentTaskId: string | null; taskIds: string[]; taskTitles: Record<string, string>; startedAt: number; endedAt: number | null; participantCount: number; codeExpiresAt?: number; expiresAt?: number; joinOpen?: boolean; expired?: boolean };
-export type LessonLiveParticipant = { pid: string; name: string; joinedAt: number; summaries: Record<string, LessonTaskSummary> };
+export type LessonLiveSignal = { hand?: boolean; stuck?: boolean; reaction?: 'thumbsup' | 'heart' | 'laugh' | 'wow' | 'clap'; updatedAt?: number };
+export type LessonLiveParticipant = { pid: string; name: string; joinedAt: number; summaries: Record<string, LessonTaskSummary>; signal?: LessonLiveSignal };
 export type LessonLiveGrade = { got: number; max: number; answered: boolean; status: 'unanswered' | 'ungraded' | 'correct' | 'partial' | 'incorrect' };
 export type LessonLiveAnswer = { id: string; pid: string; name: string; taskId: string; responses?: Responses; grading?: Record<string, LessonLiveGrade>; got: number; max: number; answered: number; submittedAt: number };
 export type LessonTeacherState = { run: LessonLiveRun; code: string | null; participants: LessonLiveParticipant[]; answers: LessonLiveAnswer[]; currentTask?: (LessonLiveTask & { key?: unknown; versionGroup?: string; versionLabel?: string }) | null };
-export type LessonLearnerState = { run: Pick<LessonLiveRun, 'title' | 'status' | 'currentTaskId' | 'expired'>; tasks: Pick<LessonLiveTask, 'id' | 'title'>[]; currentTask: LessonLiveTask | null; responses?: Responses };
+export type LessonLearnerState = { run: Pick<LessonLiveRun, 'title' | 'status' | 'currentTaskId' | 'expired'>; tasks: Pick<LessonLiveTask, 'id' | 'title'>[]; currentTask: LessonLiveTask | null; responses?: Responses; signal?: LessonLiveSignal };
 export type LessonResult = { run: LessonLiveRun; participants: LessonLiveParticipant[]; answers: LessonLiveAnswer[]; task?: LessonLiveTask | null };
 export type LessonSeat = { runId: string; pid: string; token: string; name: string; code?: string };
 

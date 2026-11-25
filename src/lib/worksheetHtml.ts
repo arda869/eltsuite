@@ -633,7 +633,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
       </div>
       <div class="band-right">
         <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
-        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
+        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(opts.mono ? '#1d1b18' : accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
   // Every page: the class and lesson, who made it, and the note that the content is theirs and ELT Suite

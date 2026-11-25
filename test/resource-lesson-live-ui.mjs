@@ -30,12 +30,34 @@ try {
   const learner = await context.newPage();
   await learner.goto(`${base}/lesson-join/482193`);
   await learner.getByRole('heading', { name: 'Ready to learn together?' }).waitFor();
+  if (screenshots) await learner.screenshot({ path: `${screenshots}/live-lesson-learner-join.png` });
   await learner.getByLabel('Your name').fill('Mia');
   await learner.getByRole('button', { name: 'Join lesson' }).click();
   await learner.getByRole('heading', { name: 'You’re in!' }).waitFor();
+  assert.equal(await learner.getByRole('group', { name: 'Tell your teacher' }).getByRole('button').count(), 3);
+  await learner.getByRole('button', { name: 'Raise your hand' }).click();
+  await teacher.getByText('Hand raised').waitFor({ timeout: 10000 });
+  await learner.getByRole('button', { name: 'I’m stuck: tell your teacher' }).click();
+  await teacher.getByText('Needs help').waitFor({ timeout: 10000 });
+  await learner.getByRole('button', { name: 'Send a reaction' }).click();
+  await learner.getByRole('button', { name: 'Got it' }).click();
+  await teacher.getByText('Got it').waitFor({ timeout: 10000 });
+  if (screenshots) await learner.screenshot({ path: `${screenshots}/live-lesson-learner-waiting.png` });
   await teacher.getByText('Mia').waitFor({ timeout: 10000 });
   await teacher.getByRole('button', { name: 'Start first task' }).click();
   await learner.getByRole('heading', { name: 'First task' }).waitFor({ timeout: 10000 });
+  const spacing = await learner.evaluate(() => {
+    const status = document.querySelector('.rll-session-presence')?.getBoundingClientRect();
+    const frame = document.querySelector('.rll-session .task-frame')?.getBoundingClientRect();
+    const controls = document.querySelector('.rll-live-float')?.getBoundingClientRect();
+    return { gap: frame.top - status.bottom, controlsLeft: controls.left };
+  });
+  assert.ok(spacing.gap >= 6 && spacing.gap <= 14, `live status and task use one compact gap: ${JSON.stringify(spacing)}`);
+  assert.ok(spacing.controlsLeft <= 20, `learner controls stay at bottom left: ${JSON.stringify(spacing)}`);
+  await learner.getByRole('button', { name: 'Hide the task list' }).click();
+  assert.equal(await learner.locator('#rll-task-list').isVisible(), false);
+  await learner.getByRole('button', { name: 'Show the task list' }).click();
+  assert.equal(await learner.locator('#rll-task-list').isVisible(), true);
   if (screenshots) await learner.screenshot({ path: `${screenshots}/live-lesson-learner-task.png` });
   await learner.getByRole('button', { name: 'Send answer' }).click();
   await teacher.getByText('0 / 1').waitFor({ timeout: 10000 });
@@ -47,6 +69,29 @@ try {
   await teacher.getByRole('button', { name: /First task/ }).click();
   await teacher.getByText('Question 1').first().waitFor();
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-teaching-history.png` });
+  const classLesson = await teacher.evaluate(async () => {
+    const fixture = JSON.parse(localStorage.getItem('mockdemo'));
+    const { db } = await import('/src/lib/firebase.ts');
+    const { doc, setDoc } = await import('/test/mock/firestore.ts');
+    await setDoc(doc(db, 'classes', fixture.classId, 'live', 'state'), { teaching: true, itemId: fixture.itemId, taskId: fixture.taskId || '', teacherName: 'Teacher' });
+    return fixture.itemId;
+  });
+  await learner.goto(`${base}/learn/${classLesson}?as=Mia`);
+  const classSignals = learner.getByRole('group', { name: 'Tell your teacher' });
+  await classSignals.waitFor();
+  assert.equal(await classSignals.getByRole('button').count(), 3);
+  const classSpacing = await learner.evaluate(() => {
+    const status = document.querySelector('.center-col > .live-who')?.getBoundingClientRect();
+    const frame = document.querySelector('.center-col > .task-frame')?.getBoundingClientRect();
+    const controls = document.querySelector('.live-float')?.getBoundingClientRect();
+    return { gap: frame && status ? frame.top - status.bottom : null, left: controls?.left };
+  });
+  assert.ok(classSpacing.gap >= 6 && classSpacing.gap <= 14, `Class status and task have a compact gap: ${JSON.stringify(classSpacing)}`);
+  assert.ok(classSpacing.left <= 20, `Class learner controls stay at bottom left: ${JSON.stringify(classSpacing)}`);
+  if (screenshots) await learner.screenshot({ path: `${screenshots}/live-class-learner-task.png` });
+  await learner.setViewportSize({ width: 390, height: 844 });
+  assert.ok((await learner.locator('.live-float').boundingBox()).x <= 20, 'Class learner signals stay bottom left on phones');
+  await learner.setViewportSize({ width: 1280, height: 850 });
   // A personal Lesson file offers the same entry point; a Class-origin copy does not.
   await teacher.evaluate(async () => {
     const { db } = await import('/src/lib/firebase.ts');
