@@ -138,8 +138,8 @@ export function MediaArchive() {
   const [kinds, setKindsS] = useState<Kind[]>(() => stored('ll.maKinds', [] as Kind[])); // none chosen: everything
   const setKinds = (k: Kind[]) => (setKindsS(k), store('ll.maKinds', k));
   const [tag, setTag] = useState<string | null>(null);
-  const [q, setQ] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
+  const [searching, setSearching] = useState(() => new URLSearchParams(window.location.search).has('q'));
   const [sort, setSortS] = useState<Sort>(() => stored('ll.maSort', 'new' as Sort));
   const setSort = (v: Sort) => (setSortS(v), store('ll.maSort', v));
   const [group, setGroupS] = useState<Group>(() => stored('ll.maGroup', 'none' as Group));

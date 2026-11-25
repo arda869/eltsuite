@@ -52,6 +52,7 @@ export type SharedDoc = {
   uploadStatus?: 'uploading' | 'ready';
   start?: number; // a document made from a Word file: parts of the text it starts with
   createdBy?: string;
+  searchAt?: number; // when its words for search (index/text) last changed
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };

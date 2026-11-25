@@ -1,4 +1,5 @@
 import { HelpMenu } from '../help/HelpMenu';
+import { SearchLauncher } from '../search/SearchLauncher';
 import { isLearnerEmail } from '../lib/learners';
 import { OrgLogo } from './OrgLook';
 import { AppGrid, AppLogo, HOME_COLOR, appAt, setAppFavicon } from './AppGrid';
@@ -74,6 +75,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
       <OrgLogo />
       {children}
       <div className="right" ref={ref}>
+        {user && profile && <SearchLauncher />}
         <PhoneMessagesLink />
         <HelpMenu />
         <AppGrid />

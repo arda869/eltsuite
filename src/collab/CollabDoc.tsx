@@ -9,7 +9,7 @@ import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
-import { doc as fsDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc as fsDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
@@ -266,7 +266,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       const serialized = JSON.stringify(card);
       if (serialized === last) return;
       last = serialized;
-      void updateDoc(fsDoc(db, 'sharedDocs', docId), { coachIndex: card }).catch(() => { last = ''; });
+      // Every tab's words, for search everywhere (src/search).
+      const words = (n: JSONContent): string => (n.text ?? '') + (n.content ?? []).map(words).join('') + (['paragraph', 'heading', 'listItem', 'tableRow', 'tableCell'].includes(n.type ?? '') ? '\n' : '');
+      const text = words(allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent).replace(/\n{3,}/g, '\n\n').slice(0, 200_000);
+      void setDoc(fsDoc(db, 'sharedDocs', docId, 'index', 'text'), { text, at: Date.now() }).catch(() => {});
+      void updateDoc(fsDoc(db, 'sharedDocs', docId), { coachIndex: card, searchAt: Date.now() }).catch(() => { last = ''; });
     };
     const schedule = () => { window.clearTimeout(timer); timer = window.setTimeout(saveCard, 1800); };
     editor.on('update', schedule);

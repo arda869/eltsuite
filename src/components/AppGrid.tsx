@@ -70,7 +70,7 @@ const APPS: App[] = [
   { k: 'rooms', group: 'teach', name: 'Rooms', about: 'Audio and video calls, and your classes’ video rooms', to: '/rooms', teacher: true, color: '#3b7f7a', glyph: APP_MARKS.rooms, icon: I(APP_MARKS.rooms) },
 ];
 // For the sign-in page's picture of the suite.
-export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'glyph'>[] = APPS;
+export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'glyph' | 'to' | 'teacher'>[] = APPS;
 
 // An app's own logo: its symbol, white, on a square of its colour. Shown top left in the app.
 export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
