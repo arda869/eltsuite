@@ -9077,3 +9077,21 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 /* On paper: “Show it” and its menu on one line; the paper instruction in the instruction's own editor. */
 .sh-pb-f > span { white-space: nowrap; }
 .sh-pb-instr-ed { flex: 1 1 100%; }
+.fcm-new { flex-wrap: wrap; }
+.fcm-about { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+/* Standalone lessons: notes under the task as in Classes, a narrower AI tools menu, the Lesson menu. */
+.lf { position: relative; }
+.lf-notes { grid-column: 2; }
+.lf-ai-tools .lesson-support-actions { width: 290px; max-width: calc(100vw - 32px); }
+.lf-ai-tools .lesson-support-actions .btn { width: 100%; justify-content: flex-start; }
+.lf-lesson-menu { gap: 6px; }
+.lf-side .task-row { display: flex; align-items: center; gap: 4px; border-radius: 10px; }
+.lf-side .task-row.on { background: var(--selected); }
+.lf-side .task-row .task-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; text-align: left; padding: 7px 6px; cursor: pointer; color: var(--ink); font: inherit; }
+.lf-side .task-row .n { min-width: 18px; font: 700 12px var(--sans); color: var(--accent-text); }
+.lf-side .task-row.k-section .task-pick { font: 800 11px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.lf-side .drag-handle { opacity: 0; cursor: grab; color: var(--faint); font-size: 12px; padding: 0 2px; }
+.lf-side .task-row:hover .drag-handle { opacity: 1; }
+.lf-side .task-row.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.lf-side .task-row.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+.lf-header-controls .lf-lesson-menu { height: 36px; min-height: 36px; padding: 0 14px; font-size: 14px; }
