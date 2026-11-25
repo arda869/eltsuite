@@ -80,6 +80,14 @@ service cloud.firestore {
     }
     // Aggregates are visible only to the owner. The callable function writes all
     // counters and private actor/event records after validating the signed-in teacher.
+    // Search words teachers used in the Resource Hub (server writes only).
+    match /resourceHubSearches/{id} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+    match /resourceHubSearchActors/{id} {
+      allow read, write: if false;
+    }
     match /resourceHubMetrics/{id} {
       allow read: if isOwner();
       allow write: if false;

@@ -8,7 +8,7 @@ import { allTeacherClasses } from '../lib/coteach';
 import type { ClassDoc } from '../lib/classes';
 import { HUB_ACTIVITIES, HUB_COLLECTIONS, type HubActivity, type HubCollection, type HubCollectionId } from './catalog';
 import { ResourceDetail } from './ResourceDetail';
-import { flushResourceMetrics } from './usageMetrics';
+import { flushResourceMetrics, recordHubSearch } from './usageMetrics';
 import { HubShelves } from './HubShelves';
 import { PrintDesk } from './PrintDesk';
 import { useHubState } from './hub-state';
@@ -123,6 +123,7 @@ export function ResourceHubPage() {
       && (filters.prep === 'Any prep' || a.prep === filters.prep)
       && (!onlineOnly || a.mode === 'Face-to-face and online' || a.mode === 'Online only');
   }), [activities, query, filters, describing, onlineOnly]);
+  useEffect(() => { if (query.trim()) recordHubSearch(query, matches.length); }, [query, matches.length]);
   const openActivity = (id: string) => { hub.recordViewed(id); setRoute({ tab, collection: selectedCollection?.id, activity: id }); };
   const activityCards = (items: HubActivity[]) => <div className="rh-activity-grid">{items.map(a => <ActivityCard key={a.id} activity={a} saved={hub.savedIds.includes(a.id)} onOpen={() => openActivity(a.id)} onSave={() => hub.toggleSaved(a.id)} />)}</div>;
   const collectionCards = (collections: HubCollection[]) => <div className="rh-collection-grid">{collections.map(c => <CollectionCard key={c.id} collection={c} readyCount={activities.filter(a => a.collectionId === c.id && a.status === 'ready').length} onClick={() => setRoute({ tab: 'collections', collection: c.id })} followed={hub.followedIds.includes(c.id)} onFollow={() => hub.toggleFollowed(c.id)} />)}</div>;
