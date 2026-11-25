@@ -383,3 +383,11 @@ label.ca-switch input:focus-visible { outline: 2px solid var(--accent); outline-
 /* The cards themselves (for pictures and formatting) open on request. */
 .ca-cards-hidden > .ca-rich-items { display: none; }
 .ca-editor-preview, .ca-editor-side { min-width: 0; }
+
+/* Taboo: a card of a sensible size, the words to avoid plain (not struck through), one rounded frame. */
+.ca-kind-taboo .ca-private { max-width: 420px; margin-inline: auto; }
+.ca-private .ca-taboo { border-radius: 0; box-shadow: none; animation: none; }
+.ca-taboo li { text-decoration: none !important; color: var(--ink); }
+.ca-taboo ul::before { content: 'Don’t say'; font: 700 10.5px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.ca-taboo-word { font-size: 34px; }
+.ca-private { overflow: hidden; }

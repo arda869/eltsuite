@@ -24,7 +24,8 @@ function chunks<T>(items: T[], size: number): T[][] { return Array.from({ length
 export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): ActivityPrintPiece[] {
   let seed = o.seed ?? 8191;
   const random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
-  const piece = (html: string, label: string, cutout = false): ActivityPrintPiece => ({ html: section(c.instruction, html), label, cutout });
+  // No instruction inside the activity: the teacher writes any words above it, in the task.
+  const piece = (html: string, label: string, cutout = false): ActivityPrintPiece => ({ html: section('', html), label, cutout });
   const itemCards = (items: ActivityItem[], cls: string, perPage: number, cols: number, render: (item: ActivityItem, n: number) => string) => chunks(items.map((item, n) => card(render(item, n), cls)), perPage).map(cards => piece(grid(cards, cols), ACTIVITY_LABELS[c.kind], true));
   switch (c.kind) {
     case 'board': {
@@ -45,7 +46,9 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
       const pictures = c.items.some(item => item.picture?.src);
       const perCol = size === 3 ? 3 : 2;
       const perPage = size === 3 ? (pictures || longest > 18 ? 6 : 9) : size === 4 ? (pictures || longest > 22 ? 4 : 6) : (longest > 14 || pictures ? 2 : 4);
-      const pages = chunks(people.map(p => card(`<div class="pa-bingo-head"><b>Bingo</b><span>${esc(p.name)}</span></div><div class="pa-bingo-grid" style="grid-template-columns:repeat(${size},1fr)">${cards[p.id].map(id => { const item = c.items.find(i => i.id === id); return `<span>${id === '__free__' ? 'Free' : item ? picture(item, o) + esc(item.title) : ''}</span>`; }).join('')}</div>`, 'pa-bingo')), perPage).map(group => piece(grid(group, perCol), 'Bingo cards', true));
+      // With “each card in its own colour”, the cards take turns through the palette.
+      const TINTS = ['#c8764a', '#3d7fc1', '#3f8a5c', '#8a4fa3', '#c99a1e', '#5b6b7a', '#e07a5f'];
+      const pages = chunks(people.map((p, n) => card(`<div class="pa-bingo-head" ${c.settings.randomColours ? `style="--accent-ink:${TINTS[n % TINTS.length]};--accent:${TINTS[n % TINTS.length]}"` : ''}><b>Bingo</b><span>${esc(p.name)}</span></div><div class="pa-bingo-grid" style="grid-template-columns:repeat(${size},1fr)">${cards[p.id].map(id => { const item = c.items.find(i => i.id === id); return `<span>${id === '__free__' ? 'Free' : item ? picture(item, o) + esc(item.title) : ''}</span>`; }).join('')}</div>`, 'pa-bingo' + (c.settings.randomColours ? ` pa-tint pa-tint-${n % 7}` : ''))), perPage).map(group => piece(grid(group, perCol), 'Bingo cards', true));
       const calls = shuffled(c.items, random).map(item => card(`${picture(item, o)}<span>${text(item, o)}</span>${item.call?.trim() && item.call !== (plainText(item.content) || item.title) ? `<small>${esc(item.call)}</small>` : ''}`, 'pa-caller-strip'));
       return [...pages, ...chunks(calls, 24).map(group => piece(grid(group, 2), 'Caller strips', true))];
     }
@@ -63,8 +66,12 @@ export function printActivity(c: ActivityConfig, o: ActivityPrintOptions = {}): 
       return itemCards(c.items, 'pa-cue', 4, 2, item => `<span class="pa-role">${esc(item.cardType === 'secret' ? 'Secret objective' : item.cardType || 'Character')}</span><h3>${esc(item.title)}</h3>${picture(item, o)}<div>${text(item, o)}</div>${useful(item.useful || c.settings.useful)}`);
     case 'taboo':
       return itemCards(c.items, 'pa-taboo', 8, 2, item => `<h3>${esc(item.title)}</h3>${picture(item, o)}<div class="pa-taboo-words"><span class="pa-label">Do not say</span>${(item.taboo ?? []).map(word => `<span>${esc(word)}</span>`).join('')}</div>`);
-    case 'speaking':
-      return itemCards(c.items, 'pa-cue', 4, 2, item => `<span class="pa-label">${c.settings.seconds ?? 60} seconds</span><div>${picture(item, o)}${text(item, o)}</div>${useful(c.settings.useful)}<p class="pa-listener"><b>Listener:</b> ${esc(c.settings.listenerTask || 'Ask one follow-up question.')}</p>`);
+    case 'speaking': {
+      // On paper a timer is one small line: what it is and how long.
+      const t = c.settings.seconds ?? 60, m = Math.floor(t / 60), sec = t % 60;
+      const long = c.settings.timerDirection === 'up' ? 'counting up' : [m ? `${m} ${m === 1 ? 'minute' : 'minutes'}` : '', sec ? `${sec} seconds` : ''].filter(Boolean).join(' ');
+      return [piece(`<p class="pa-timer-line"><span class="pa-label">Timer</span> ${esc(long)}</p>`, 'Timer')];
+    }
     case 'findSomeone':
       return [piece(`<table class="pa-fsw" style="--pa-row-height:${c.items.length > 10 ? '9' : '15.5'}mm"><thead><tr><th>Find someone who…</th><th>Name</th>${c.settings.showFollowUp ? '<th>One extra detail</th>' : ''}</tr></thead><tbody>${c.items.map(item => `<tr><td>${picture(item, o)}${esc(item.title)}${item.question ? `<small>${esc(item.question)}</small>` : ''}</td><td><span class="pa-answer-line"></span></td>${c.settings.showFollowUp ? '<td><span class="pa-answer-line"></span></td>' : ''}</tr>`).join('')}</tbody></table><p class="pa-soft">${c.settings.nameOnce ? 'Use each name once.' : 'You may use a name more than once.'}</p>${useful(c.settings.useful)}`, 'Find someone who')];
     case 'survey':

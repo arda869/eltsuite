@@ -4,7 +4,7 @@ export const ACTIVITY_KINDS = ['board', 'bingo', 'dominoes', 'memory', 'strips',
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
 export const ACTIVITY_LABELS: Record<ActivityKind, string> = {
   board: 'Board game', bingo: 'Bingo', dominoes: 'Dominoes', memory: 'Pelmanism', strips: 'Strip story', cue: 'Cue cards',
-  survey: 'Survey', findSomeone: 'Find someone who', ranking: 'Ranking', opinion: 'Opinion line', spot: 'Spot the difference', taboo: 'Taboo cards', speaking: 'Speaking timer',
+  survey: 'Survey', findSomeone: 'Find someone who', ranking: 'Ranking', opinion: 'Opinion line', spot: 'Spot the difference', taboo: 'Taboo cards', speaking: 'Timer',
 };
 export type ActivityPicture = { src: string; alt: string; fit?: 'cover' | 'contain'; position?: string; bw?: string }; // bw: a black-and-white version for black-and-white prints
 export type ActivityItem = {
@@ -22,6 +22,7 @@ export const ACTIVITY_COLOURS: { v: ActivityColours; label: string }[] = [
   { v: 'plum', label: 'Plum' }, { v: 'sunshine', label: 'Sunshine' }, { v: 'slate', label: 'Slate' },
 ];
 export type ActivitySettings = {
+  randomColours?: boolean; // bingo: each card in its own colour
   mode: 'class' | 'groups' | 'individual'; teamScoring?: boolean; teamNames?: Record<string,string>; turnOrderIds?: string[]; boardStyle?: 'snake' | 'spiral' | 'ladders'; turnOrder?: 'fixed' | 'random';
   gridSize?: 3 | 4 | 5; freeCentre?: boolean; winRule?: 'line' | 'twoLines' | 'full'; showCalls?: boolean;
   learnerCalls?: 'none' | 'current' | 'list';
