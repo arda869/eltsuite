@@ -1372,6 +1372,11 @@ service cloud.firestore {
           allow read, write: if signedIn() && request.auth.uid in studioOf(id).members && pairId.matches('.*' + request.auth.uid + '.*');
         }
       }
+      // Each person's level while recording, so everyone sees the tracks grow.
+      match /live/{uid} {
+        allow read: if signedIn() && request.auth.uid in studioOf(id).members;
+        allow write: if signedIn() && uid == request.auth.uid && request.auth.uid in studioOf(id).members;
+      }
       match /takes/{takeId} {
         allow read: if signedIn() && request.auth.uid in studioOf(id).members;
         allow write: if signedIn() && request.auth.uid in studioOf(id).members && takeId.matches('.*_' + request.auth.uid);
