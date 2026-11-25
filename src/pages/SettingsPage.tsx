@@ -1,3 +1,4 @@
+import { setStartHidden, STEPS, useStart } from '../start/steps';
 import { TeacherPassword } from '../components/TeacherPassword';
 import { SpellingSettings } from '../spelling/SpellingSettings';
 import { CoachPreferences } from '../coach/CoachPreferences';
@@ -248,6 +249,11 @@ export function SettingsPage() {
         )}
 
         {teacher && user && <Section icon="discuss" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /><CoachProfileSettings uid={user.uid} /></Section>}
+        {teacher && user && (
+          <Section icon="home" title="Home">
+            <StartSetting uid={user.uid} />
+          </Section>
+        )}
         {teacher && (
           <Section icon="help" title="Feature tips">
             <Row title="Tips about features" hint="Short ideas based on the tools you use. Choose how often, set quiet hours or pause them.">
@@ -553,5 +559,19 @@ function ProfileAnswer({ f, value, onSave }: { f: ProfileField; value: string; o
         <input aria-label={f.kind === 'list' ? 'Separate them with commas' : ''} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={300} placeholder={f.kind === 'list' ? 'Separate them with commas' : ''} />
       )}
     </label>
+  );
+}
+
+// The Get started list on Home: hidden from Home, it can be shown again here.
+function StartSetting({ uid }: { uid: string }) {
+  const s = useStart(uid);
+  const [busy, setBusy] = useState(false);
+  const done = s ? STEPS.filter((x) => s.done[x.id]).length : 0;
+  return (
+    <Row title="Get started list" hint={s?.hidden ? `Hidden from Home. ${done} of ${STEPS.length} steps done.` : `On Home. ${done} of ${STEPS.length} steps done.`}>
+      <button type="button" className="btn small-btn" disabled={!s || busy} onClick={async () => { setBusy(true); try { await setStartHidden(!s?.hidden); } finally { setBusy(false); } }}>
+        {s?.hidden ? 'Show it on Home' : 'Hide it'}
+      </button>
+    </Row>
   );
 }

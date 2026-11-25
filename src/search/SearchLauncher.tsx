@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { UiIcon } from '../components/UiIcon';
 import './search.css';
@@ -11,6 +12,7 @@ const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 // The search button in the top bar, and Ctrl+K (⌘K) everywhere.
 export function SearchLauncher() {
   const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => { if (open !== null) markStep('search'); }, [open]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((o) => (o === null ? '' : null)); }

@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import {
   collection,
   deleteDoc,
@@ -95,6 +96,7 @@ export function makeClassCode(name: string) {
 // Creates the class and reserves a unique class code in one transaction.
 export type ClassKind = 'language' | 'training';
 export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; lessonStyle?: LessonStyle; kind?: ClassKind; org?: string; extra?: Record<string, unknown> }) {
+  markStep('class');
   const classRef = doc(collection(db, 'classes'));
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = makeClassCode(input.name);
@@ -159,6 +161,7 @@ export const deleteTopic = (classId: string, topicId: string) => deleteDoc(doc(d
 
 export async function addItem(classId: string, topicId: string | null, title: string, order: number, type: Item['type'] = 'lesson', due: number | null = null) {
   const ref = doc(collection(db, 'classes', classId, 'items'));
+  if (type === 'lesson') markStep('lesson');
   await setDoc(ref, { topicId, type, title, order, hidden: false, locked: false, ...(type === 'exam' ? { exam: { minutes: null }, examReleased: false } : {}), ...(due ? { due } : {}), createdAt: serverTimestamp() });
   return ref.id;
 }

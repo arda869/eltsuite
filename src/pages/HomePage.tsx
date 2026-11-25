@@ -19,6 +19,7 @@ import { libName, useAccount, useMyOrg, useSpaceLimit } from '../lib/admin';
 import { formatBytes } from '../lib/archive';
 import { AppLogo } from '../components/AppGrid';
 import { openSearch } from '../search/SearchLauncher';
+import { GetStarted } from '../start/GetStarted';
 import { HUB_ACTIVITIES, collectionFor } from '../resourceHub/catalog';
 import { usePublishedHubResources } from '../resourceHub/usePublishedHubResources';
 
@@ -193,6 +194,13 @@ export function HomePage() {
           </div>
         </section>
 
+        <GetStarted auto={{
+          class: (classes?.length ?? 0) > 0,
+          learners: learners > 0,
+          lesson: lessons > 0,
+          doc: (docs.mine ?? []).some((d) => d.kind === 'doc'),
+          design: (docs.mine ?? []).some((d) => d.kind === 'design'),
+        }} />
         <div className="hm-grid3">
           <div className="hm-col">
             <section className="hm-card" aria-labelledby="hm-classes">

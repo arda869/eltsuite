@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import {savePrivateActivityPicture,copyPrivateActivityPicture} from './privatePictures';
 import { NSelect } from '../components/Select';
 import { Extension, Node, mergeAttributes } from '@tiptap/core';
@@ -76,6 +77,7 @@ function ActivityPicturePicker({item, onChange}: {item: ActivityItem; onChange: 
 }
 
 function ActivityEditorView({ node, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
+  useEffect(() => { if (editor.isEditable) markStep('activity'); }, [editor]);
   const c = configFromNode(node.toJSON());
   const [preview, setPreview] = useState(false);
   const [onPaper, setOnPaper] = useState(false);

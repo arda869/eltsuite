@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
@@ -64,6 +65,7 @@ function CollectionCard({ collection, onClick, followed, onFollow, readyCount }:
 
 export function ResourceHubPage() {
   const { user } = useAuth();
+  useEffect(() => markStep('hub'), []);
   useEffect(() => {
     void flushResourceMetrics();
     window.addEventListener('online', flushResourceMetrics);
