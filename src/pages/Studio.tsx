@@ -13,8 +13,9 @@ import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor } from '../editor/InstrEditor';
 import { updateLibTask, type LibTask } from '../lib/libtasks';
 import { findUses, loadManifest, loadTeacherManifest, replaceSound, soundUrl, useArchive, type ArchiveItem, type Manifest } from '../lib/archive';
-import { decodeSound } from '../lib/sound';
+import { bufferOf, decodeSound } from '../lib/sound';
 import { SoundEditor, type SavedSound, type SoundSource } from '../media/SoundEditor';
+import { openProject, parseProject } from '../media/trackStore';
 import { ChainIcon } from './LibraryParts';
 import { setFileFavicon } from '../components/FileIcon';
 
@@ -165,6 +166,15 @@ export function SoundStudio() {
         if (!active) return;
         setManifest(m);
         if (m.kind === 'link' || m.video) return;
+        // Saved with its tracks: open each track again, not the mix.
+        const saved = parseProject(m.project);
+        if (saved) {
+          try {
+            const opened = await openProject(saved);
+            const firstId = Object.keys(opened.sources)[0];
+            if (active && firstId) { setSource({ buffer: bufferOf(opened.sources[firstId], opened.rate), name: archived?.name || m.title || 'Recording', timedScript: m.script ?? archived?.script ?? [], opened }); return; }
+          } catch { if (active) setStemWarning('Some of the separate tracks are unavailable, so the mixed recording is open instead. It can still be edited and saved.'); }
+        }
         const url = await soundUrl(classId, mediaId, m);
         const response = await fetch(url);
         if (!response.ok) throw Error('unavailable');
