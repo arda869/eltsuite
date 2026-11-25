@@ -1,6 +1,6 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { useDocumentTools } from './DocumentEditingTools';
-import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
+import { PageBreak, DocumentSection, DocumentIndent, DocTab, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
 import { useDocumentHistory } from './DocumentHistory';
 import { documentClipboard } from './documentClipboard';
 import { tell } from '../lib/ask';
@@ -231,7 +231,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         NewerGuard,
         ShowMarks,
         FontStyle,
-        PageBreak, DocumentSection, DocumentIndent,
+        PageBreak, DocumentSection, DocumentIndent, DocTab,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -291,6 +291,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const edRef = useRef(editor);
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
+  // The tab stops set on the ruler, for Tab and for the tabs in the text.
+  const tabKey = (layout.tabs ?? []).join(',');
+  useEffect(() => {
+    const st = (editor?.storage as { documentIndent?: { tabs: number[] } } | undefined)?.documentIndent;
+    if (!st) return;
+    st.tabs = layout.tabs ?? [];
+    window.dispatchEvent(new Event('doc-tabs-changed'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tabKey]);
   // The "/" menu: the lesson editor's elements, without learner tasks.
   const docCmds = useMemo(() => docCommands().filter((c) => (profileTeacher || (!c.key.startsWith('tt-')&&!c.key.startsWith('studio-'))) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
   const slash = useSlash(editor, docCmds, false, true, () => true);
@@ -839,7 +848,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
+                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onTabs={eff === 'edit' && !locked ? (t) => setLayout({ tabs: t }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
                   {heading}
                   {contents}
                 </Paper>

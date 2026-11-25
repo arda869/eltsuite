@@ -118,7 +118,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning, title = '' }: { title?: string; editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning, onTabs, title = '' }: { title?: string; editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void; onTabs?: (t: number[]) => void }) {
   const [running, setRunning] = useState<{ page: number; part: 'header' | 'footer' } | null>(null);
   // The organisation's logo (or ELT Suite's) in the header, when chosen.
   const [logo, setLogo] = useState('');
@@ -228,7 +228,7 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
       <div className={paged ? 'pg-column' : 'pg-flow-column'}>
-      {paged && ruler && <Ruler width={s.w} zoom={zoom} margins={mg} onChange={(m2) => onMargins?.(m2)} canEdit={!!onMargins} />}
+      {paged && ruler && <Ruler width={s.w} zoom={zoom} margins={mg} onChange={(m2) => onMargins?.(m2)} canEdit={!!onMargins} editor={editor} tabs={layout.tabs} onTabs={onTabs} />}
       <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h + (pages-1)*pageGap, padding: `${mg.top}px ${mg.right}px ${mg.bottom}px ${mg.left}px`, ...(layout.pageColour && appearance !== 'black' ? { ['--pg-page-colour' as string]: layout.pageColour } : {}), ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
         {paged&&Array.from({length:pages},(_,i)=><div key={'sheet-'+i} className="pg-sheet" aria-hidden="true" style={{top:i*stride,height:s.h}}/>)}
         <div ref={ref} className={paged ? 'pg-text' : undefined}>
