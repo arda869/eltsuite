@@ -340,3 +340,13 @@
   .rh-activity-pages small { font:700 10px var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--rh-muted); }
 }
 @media(min-width:900px) and (max-width:1250px) { .rh-activity-pages > span:nth-child(n+3) { display:none; } }
+
+/* What to show and how to sort. */
+.rh-kinds { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 10px; border-radius: 12px; background: var(--surface, #f1efea); }
+.rh-kinds button { height: 32px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.rh-kinds button.on { background: var(--paper, #fff); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.rh-sort { margin-left: auto; margin-right: 10px; }
+.rh-section-heading p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+.rh-search input::-webkit-search-cancel-button { display: none; }
+.rh-filter-row .rh-kinds { margin: 0 6px 0 0; height: 36px; box-sizing: border-box; align-items: center; }
+.rh-filter-row .rh-kinds button { height: 30px; }
