@@ -26,7 +26,7 @@ const taskRef = (run, id) => run.collection('privateTasks').doc(id);
 const seatRef = (run, pid) => run.collection('participants').doc(pid);
 const answerRef = (run, taskId, pid) => run.collection('answers').doc(`${taskId}_${pid}`);
 const visibleRun = (run, runId, now) => ({ runId, sourceKind: run.sourceKind, resourceId: run.resourceId ?? null, fileId: run.fileId ?? null, title: run.title, edition: run.edition ?? null, status: run.status, currentTaskId: run.currentTaskId, taskIds: run.taskIds, taskTitles: run.taskTitles, startedAt: run.startedAt, endedAt: run.endedAt ?? null, codeExpiresAt: run.codeExpiresAt, expiresAt: run.expiresAt, expired: run.expiresAt <= now, joinOpen: run.status !== 'ended' && run.codeExpiresAt > now && run.expiresAt > now, participantCount: run.participantCount ?? 0 });
-const visibleSeat = (snap) => ({ pid: snap.id, name: snap.data().name, joinedAt: snap.data().joinedAt, summaries: snap.data().summaries ?? {} });
+const visibleSeat = (snap) => ({ pid: snap.id, name: snap.data().name, joinedAt: snap.data().joinedAt, summaries: snap.data().summaries ?? {}, signal: snap.data().signal ?? {} });
 const visibleAnswer = (snap) => ({ id: snap.id, ...snap.data() });
 
 async function teacher(db, auth) {
@@ -200,10 +200,26 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
   }
 
   if (action === 'learnerState') {
-    const { ref, run, pid } = await guestSeat(db, data);
+    const { ref, run, pid, seat } = await guestSeat(db, data);
     const taskId = run.currentTaskId;
     const [task, answer] = await Promise.all([taskId ? taskRef(ref, taskId).get() : Promise.resolve(null), taskId ? answerRef(ref, taskId, pid).get() : Promise.resolve(null)]);
-    return { run: visibleRun(run, ref.id, now), tasks: run.taskIds.map(id => ({ id, title: run.taskTitles[id] })), currentTask: task?.exists ? publicTask(task.data()) : null, responses: answer?.exists ? answer.get('responses') : {} };
+    return { run: visibleRun(run, ref.id, now), tasks: run.taskIds.map(id => ({ id, title: run.taskTitles[id] })), currentTask: task?.exists ? publicTask(task.data()) : null, responses: answer?.exists ? answer.get('responses') : {}, signal: seat.signal ?? {} };
+  }
+
+  if (action === 'signal') {
+    const { ref, run, pid } = await guestSeat(db, data);
+    if (run.status === 'ended' || run.expiresAt <= now) fail('failed-precondition', 'This lesson session has ended.');
+    const kind = data.kind;
+    if (kind !== 'hand' && kind !== 'stuck' && kind !== 'reaction') fail('invalid-argument', 'Choose a lesson signal.');
+    const value = kind === 'reaction' ? data.value : data.value === true;
+    if (kind === 'reaction' && !['thumbsup', 'heart', 'laugh', 'wow', 'clap'].includes(value)) fail('invalid-argument', 'Choose a reaction.');
+    return db.runTransaction(async tx => {
+      const snap = await tx.get(seatRef(ref, pid));
+      if (!snap.exists || !safeEqual(snap.get('tokenHash'), hash(data.token))) fail('permission-denied', 'Join this lesson again.');
+      const signal = { ...(snap.get('signal') ?? {}), [kind]: value, updatedAt: now };
+      tx.update(seatRef(ref, pid), { signal });
+      return { signal };
+    });
   }
 
   if (action === 'submit') {

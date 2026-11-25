@@ -231,6 +231,10 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-board-ladders { gap: 0; padding: 0; border: 1.6pt solid #262420; border-radius: 0; background: #fff; }
 .pa-board-ladders .pa-sq { border-radius: 0; border-right: .6pt solid #262420; border-bottom: 1.6pt solid #262420; }
 .pa-board-ladders .pa-sq.start, .pa-board-ladders .pa-sq.finish { background: #fff; color: #262420; font: 800 13pt Karla, sans-serif; justify-content: center; align-items: center; }
+/* The route artwork stays visible across squares, but each prompt and number has a clear
+   paper backing so a snake or ladder can never run through the words. */
+.pa-board-ladders .pa-sq > span { position: relative; z-index: 3; width: fit-content; max-width: 100%; padding: .7mm 1.1mm; border-radius: .8mm; background: #fff; }
+.pa-board-ladders .pa-sq > .n { z-index: 3; padding: .2mm .6mm; border-radius: .5mm; background: #fff; }
 .pa-board-art .lad-out { stroke: #262420; stroke-width: .085; stroke-linecap: round; }
 .pa-board-art .lad-in { stroke: #e0b27a; stroke-width: .05; stroke-linecap: round; }
 .pa-board-art .sn-body, .pa-board-art .sn-head { fill: #8cc79a; stroke: #262420; stroke-width: .9pt; vector-effect: non-scaling-stroke; }
@@ -240,3 +244,18 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-board-snake .pa-sq.start, .pa-board-snake .pa-sq.finish { background: var(--accent); color: #fff; }
 .pa-board-snake .pa-sq.start .n, .pa-board-snake .pa-sq.finish .n { color: #fff; }
 .pa-board-snake .pa-sq:nth-child(even of .pa-sq):not(.special):not(.start):not(.finish) { background: var(--tint); }
+
+.pa-taboo-words span:not(.pa-label) { text-decoration: none !important; }
+.pa-timer-line { margin: 0; font: 9pt var(--pa-sans, Karla, sans-serif); color: #66615b; display: flex; align-items: baseline; gap: 2mm; }
+.pa-timer-line .pa-label { margin: 0; }
+
+/* Bingo cards each in their own colour. */
+.pa-tint-0 { --accent: #c8764a; --accent-ink: #a5582f; } .pa-tint-1 { --accent: #3d7fc1; --accent-ink: #285e98; } .pa-tint-2 { --accent: #3f8a5c; --accent-ink: #2d6a45; }
+.pa-tint-3 { --accent: #8a4fa3; --accent-ink: #6b3a80; } .pa-tint-4 { --accent: #c99a1e; --accent-ink: #8a6a10; } .pa-tint-5 { --accent: #5b6b7a; --accent-ink: #44525e; } .pa-tint-6 { --accent: #e07a5f; --accent-ink: #a94a33; }
+.pa-tint { border-color: var(--accent); }
+.pa-tint .pa-bingo-grid { border-color: var(--accent); }
+/* Board games turn on the page: drawn landscape (246 × 176 mm), shown on a portrait page, filling it. */
+.pa-rot-page { position: relative; width: 100%; height: 214mm; overflow: hidden; break-inside: avoid; }
+.pa-rot { position: absolute; top: 50%; left: 50%; width: 214mm; height: 170mm; transform: translate(-50%, -50%) rotate(90deg); display: flex; align-items: center; justify-content: center; }
+.pa-rot .pa-board { max-height: none; width: 100%; height: 100%; box-sizing: border-box; }
+.pa-rot .pa-board-spiral { width: max-content; height: max-content; margin: auto; }

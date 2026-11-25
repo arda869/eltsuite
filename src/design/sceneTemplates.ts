@@ -1,4 +1,4 @@
-import { PEOPLE, THINGS } from '../storyboard/art';
+import { PEOPLE, THINGS } from './art/art';
 import type { ArtView, DPage, El } from './model';
 import { bubbleFor, footOf, horizonY, realSize, standAt } from './scene';
 import type { Tpl, TplEl } from './templates';

@@ -563,3 +563,13 @@
 [data-lesson-style='young'] .task-body .word-bank { gap: 8px; margin: 2px 0 14px; padding: 10px 14px; border-radius: 18px; }
 [data-lesson-style='young'] .task-body .bank-word { min-height: 42px; min-width: 42px; padding: 2px 16px; border-radius: 13px; box-shadow: 0 3px 0 var(--yl-key); }
 [data-lesson-style='young'] .task-body .word-bank .bank-hint { flex-basis: auto; margin: 0 0 0 auto; font-size: 13px; }
+
+/* Numbered lists in a task: the numbers look like question numbers (Karla, bold, in the accent), and
+   lists carry on from one another (1–3, then 4–6), in the editor as on screen and paper
+   (src/lib/olNumbers.ts). A list the teacher started at a number keeps it. */
+.task-body ol > li::marker,
+.doc .ProseMirror ol > li::marker { font-family: Karla, var(--sans), sans-serif; font-weight: 700; font-size: .88em; color: var(--accent-text); }
+.doc .ProseMirror { counter-reset: tq; }
+.doc .ProseMirror > ol:not([start]):not([type='a']):not([type='A']):not([type='i']):not([type='I']) { list-style: none; counter-reset: none; }
+.doc .ProseMirror > ol:not([start]):not([type='a']):not([type='A']):not([type='i']):not([type='I']) > li { counter-increment: tq; position: relative; }
+.doc .ProseMirror > ol:not([start]):not([type='a']):not([type='A']):not([type='i']):not([type='I']) > li::before { content: counter(tq) '.'; position: absolute; right: calc(100% + .5em); top: 0; font-family: Karla, var(--sans), sans-serif; font-weight: 700; font-size: .88em; line-height: inherit; padding-top: .12em; color: var(--accent-text); }

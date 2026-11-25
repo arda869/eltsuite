@@ -5,7 +5,7 @@ import { TEMPLATES, type Tpl } from './templates';
 import { drawnImages } from './assets';
 
 // A new design: what to start with.
-function Thumb({ t }: { t: Tpl }) {
+export function Thumb({ t }: { t: Tpl }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;

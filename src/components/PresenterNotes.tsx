@@ -4,23 +4,23 @@ import { useEffect, useState, type ReactNode } from 'react';
 // to make it taller, or fold it away. Only the teacher sees it.
 const KEY = 'll.notesPane';
 type Pane = { open: boolean; h: number };
-const read = (): Pane => {
+const read = (key = KEY, defaultHeight = 150): Pane => {
   try {
-    return { open: true, h: 150, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
+    return { open: true, h: defaultHeight, ...JSON.parse(localStorage.getItem(key) ?? '{}') };
   } catch {
-    return { open: true, h: 150 };
+    return { open: true, h: defaultHeight };
   }
 };
 
-export function usePresenterNotes() {
-  const [pane, setPane] = useState<Pane>(read);
+export function usePresenterNotes(key = KEY, defaultHeight = 150) {
+  const [pane, setPane] = useState<Pane>(() => read(key, defaultHeight));
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(pane));
+      localStorage.setItem(key, JSON.stringify(pane));
     } catch {
       /* private window */
     }
-  }, [pane]);
+  }, [key, pane]);
   return {
     open: pane.open,
     h: pane.h,

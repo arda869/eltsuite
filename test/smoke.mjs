@@ -2,7 +2,6 @@ async function openPlanning(p){const details=p.locator('.lesson-support-tools');
 async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {documentSharing} from './document-sharing.mjs';
-import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
 import {chooseSelect} from './select.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
@@ -177,15 +176,14 @@ const J = {
     await s.p.locator('.apps-scrim').click({position:{x:4,y:4}});
     if(await s.p.locator('.apps-pop').count())throw Error('Tapping outside did not close the apps menu');
     await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('Resources');
-    await s.p.getByRole('menuitem',{name:'Resources',exact:true}).click();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('My Files');
+    await s.p.getByRole('menuitem',{name:'My Files',exact:true}).click();
     await s.p.waitForURL('**/archive');
     if(await s.p.locator('.apps-pop').count())throw Error('Apps menu stayed open after navigation');
     return s;
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
-  'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
   'Tuesday wishlist: available inline forms and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},
@@ -754,7 +752,7 @@ const J = {
   'Designer charts and maps: edit, import visual, reopen and export': async b => {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
-    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
+    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: /Make a design/ }).click()]);
     await design.getByRole('button', { name: 'Charts & maps' }).click();
     await design.getByRole('button', { name: 'Add Grouped columns' }).click();
     await design.getByRole('button', { name: 'Edit chart data and style' }).click();
@@ -932,7 +930,7 @@ const J = {
   'Designer map editing: blank map, places, route and saved adjustments': async b => {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
-    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
+    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: /Make a design/ }).click()]);
     await design.setViewportSize(process.env.MAP_PHONE_SCREENSHOT ? { width: 390, height: 844 } : { width: 1280, height: 800 });
     await design.getByRole('button', { name: 'Charts & maps' }).click();
     await design.getByRole('tab', { name: 'Maps' }).click();
@@ -1100,7 +1098,7 @@ const J = {
   'Designer keeps a failed element edit through reload and retry': async b => {
     const s = await session(b, { owner: true });
     await s.p.goto(BASE + '/design');
-    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'Create image' }).click()]);
+    const [design] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: /Make a design/ }).click()]);
     await design.getByRole('button', { name: 'Text', exact: true }).waitFor();
     const id = new URL(design.url()).pathname.split('/').at(-1);
     await design.evaluate(fileId => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'set', path: `sharedDocs/${fileId}/dels/`, count: 3, code: 'unavailable' }])), id);
@@ -1118,10 +1116,10 @@ const J = {
     s.errors.length = 0; // The injected write failure is expected.
     return s;
   },
-  'Designer: create, edit and reopen images and storyboards with optional fields blank': async (b) => {
+  'Designer: create, edit and reopen images with optional fields blank': async (b) => {
     const s=await session(b,{owner:true});await s.p.goto(`${BASE}/design`);
     await s.p.getByRole('heading',{name:'Designer',exact:true}).waitFor();
-    await s.p.getByRole('button',{name:'Open character library'}).click();
+    await s.p.getByRole('button',{name:'Characters',exact:true}).click();
     const library=s.p.getByRole('dialog',{name:'Character library'});
     await library.getByRole('button',{name:'Add character',exact:true}).click();
     await library.getByText('Give your character a name.').waitFor();
@@ -1131,7 +1129,7 @@ const J = {
     await library.getByText('Pip saved to your character library.').waitFor();
     await library.getByRole('button',{name:'Close character library'}).click();
     await s.p.reload();
-    const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create image'}).click()]);
+    const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:/Make a design/}).click()]);
     await image.getByRole('button',{name:'AI images',exact:true}).click();
     const checkDesignerViewport=async()=>{
       const size=await image.evaluate(()=>({page:document.documentElement.scrollHeight,viewport:innerHeight,canvas:!!document.querySelector('.dz-scroll')}));
@@ -1170,7 +1168,7 @@ const J = {
     await inside.getByRole('button',{name:'Save character',exact:true}).click();
     await inside.getByText('Pip the fox saved to your character library.').waitFor();
     await inside.getByRole('button',{name:'Close character library'}).click();
-    await s.p.reload();await s.p.getByRole('button',{name:'Open character library'}).click();
+    await s.p.reload();await s.p.getByRole('button',{name:'Characters',exact:true}).click();
     await s.p.getByRole('dialog',{name:'Character library'}).getByRole('button',{name:'Pip the fox Edit character'}).waitFor();
     await s.p.getByRole('button',{name:'Close character library'}).click();
     const fileId=new URL(image.url()).pathname.split('/').pop();
@@ -1221,58 +1219,15 @@ const J = {
     const uploaded=s.p.getByRole('button',{name:/Designer upload/}).first();await uploaded.waitFor();
     const [opened]=await Promise.all([s.ctx.waitForEvent('page'),uploaded.dblclick()]);
     await opened.getByRole('button',{name:'Download',exact:true}).waitFor();await opened.getByRole('img',{name:'Page 1',exact:true}).waitFor();await opened.close();
-    await s.p.goto(`${BASE}/design`);
-    const [story]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create storyboard'}).click()]);
-    // A new storyboard is panels on the Designer canvas, opening on the Scene drawer.
-    await story.getByRole('img',{name:'Panel 1',exact:true}).waitFor({timeout:90000});
-    await story.getByRole('heading',{name:'Scene',exact:true}).waitFor();
-    if(await story.getByLabel('Caption',{exact:true}).inputValue())throw Error('Optional caption should be blank');
-    const storyId=new URL(story.url()).pathname.split('/').pop();
-    const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type,panel:fs['sharedDocs/'+id+'/dpages/panel1']};},storyId);
-    if(saved.kind!=='design'||saved.type!=='storyboard'||saved.panel?.w!==1280||saved.panel?.h!==720)throw Error('Storyboard did not save as a Designer file with a 16:9 first panel');
-    // A backdrop by click; a person by dragging onto the panel, standing where dropped.
-    await story.getByRole('button',{name:'Backdrop: Café',exact:true}).click();
-    await story.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id+'/dpages/panel1']?.scene==='cafe',storyId);
-    const over=story.locator('.dz-over');const box=await over.boundingBox();
-    await story.getByRole('button',{name:'Maya',exact:true}).dragTo(over,{targetPosition:{x:box.width*0.5,y:box.height*0.9}});
-    const dropped=await story.waitForFunction(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.values(fs).find(v=>v&&v.page==='panel1'&&v.t==='art'&&v.ref==='maya')||null;},storyId).then(h=>h.jsonValue());
-    if(!dropped.ground||Math.abs((dropped.y+dropped.h*286/300)-720*0.9)>12||Math.abs(dropped.x+dropped.w/2-640)>12)throw Error('Dropped person did not stand where dropped: '+JSON.stringify(dropped));
-    // Selected on drop: a different side of the same person is a different drawing, and words go beside the head.
-    await story.getByRole('button',{name:'Left profile',exact:true}).click();
-    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.ref==='maya'&&v.view==='left'),storyId);
-    await story.getByRole('button',{name:'Add a speech bubble',exact:true}).click();
-    await story.getByRole('textbox',{name:'Text',exact:true}).fill('Two coffees, please.');await story.getByRole('textbox',{name:'Text',exact:true}).press('ControlOrMeta+Enter');
-    const bubble=await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).find(v=>v&&v.page==='panel1'&&v.shape==='speech')||null,storyId).then(h=>h.jsonValue());
-    if(bubble.y+bubble.h>dropped.y+dropped.h*0.5)throw Error('Speech bubble is not beside the head');
-    // Grouping: the person and her bubble move together.
-    await story.keyboard.press('ControlOrMeta+a');await story.keyboard.press('ControlOrMeta+g');
-    await story.waitForFunction(id=>{const els=Object.values(JSON.parse(localStorage.getItem('mockfs'))).filter(v=>v&&v.page==='panel1'&&(v.t==='art'||v.t==='shape'));return els.length===2&&els[0].group&&els[0].group===els[1].group;},storyId);
-    // A saved character stands in the scene; another side of it is drawn once with AI, with the cost shown first.
-    await story.getByRole('button',{name:'Pip the fox',exact:true}).click();
-    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).waitFor();
-    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).getByRole('button',{name:'Left profile',exact:true}).click();
-    await story.getByText('Making it uses 1 of your Designer images (7 of 10 left today).').waitFor();
-    await story.getByRole('button',{name:'Draw this view',exact:true}).click();
-    const variantRequest=await story.waitForFunction(()=>{const r=JSON.parse(localStorage.getItem('lastDesignerRequest')||'{}');return r.action==='variant'?r:null;}).then(h=>h.jsonValue());
-    if(variantRequest.variant!=='left.stand.neutral')throw Error('Variant request wrong: '+JSON.stringify(variantRequest));
-    await story.waitForFunction(id=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(v=>v&&v.page==='panel1'&&v.char&&v.variant==='left.stand.neutral'&&v.img),storyId);
-    await story.getByRole('group',{name:'Pip the fox: view, pose and expression'}).getByRole('button',{name:'Front',exact:true}).click();
-    await story.getByRole('button',{name:'Use the reference picture',exact:true}).waitFor();
-    // Ready-made scenes add panels; the thumbnails in the panel strip follow.
-    await story.getByRole('button',{name:'Templates',exact:true}).click();
-    await story.getByRole('button',{name:/A café/}).click();
-    await story.waitForFunction(id=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.startsWith('sharedDocs/'+id+'/dpages/')).length===2,storyId);
-    await story.reload();await story.getByRole('button',{name:/^Panel 2/}).waitFor();
     const d=await newFile(s,'Collab document');
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Designer',exact:true}).click();
     await d.getByLabel('Search Designer').waitFor();
-    await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
-    const pageButton=d.getByRole('button',{name:/Insert page|Insert the image|Insert the storyboard|Insert Panel/}).first();
-    await pageButton.click();
+    await d.locator('.inline-image-list button').filter({hasText:'Untitled image'}).first().click();
+    await d.getByRole('button',{name:/Insert page|Insert the image/}).first().click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
-    if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
+    if(!await d.locator('.pic-node').count())throw Error('Designer image was not inserted');
     await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test/500px-test-market.png',thumburl:'https://upload.wikimedia.org/test/500px-test-market.png',width:4000,height:3000,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
     await d.route('https://upload.wikimedia.org/test/500px-test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
@@ -1283,7 +1238,7 @@ const J = {
     await d.locator('.inline-image-list button').filter({hasText:'Market'}).click();
     await d.locator('.pic-credit').filter({hasText:'Test artist'}).waitFor();
     await d.reload();await d.locator('.pic-credit').filter({hasText:'CC BY 4.0'}).waitFor();
-    await image.close();await story.close();return s;
+    await image.close();return s;
   },
 
 
@@ -1473,7 +1428,7 @@ const J = {
     await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
     await panel.getByRole('searchbox').fill('files');
     await panel.locator('summary').filter({ hasText: 'Keep your resources together' }).click();
-    await panel.getByRole('link', { name: 'Open Resources' }).waitFor();
+    await panel.getByRole('link', { name: /Open Resources/ }).waitFor();
     await panel.getByRole('button', { name: 'Ask a question', exact: true }).click();
     await panel.getByRole('button', { name: 'Clear chat' }).click();
     await panel.getByRole('heading', { name: 'How can I help?' }).waitFor();
@@ -1667,9 +1622,9 @@ const J = {
   'Songs: separate tracks preview, mute, save and reopen': async (b) => {
     const s=await session(b);await s.ctx.tracing.start({screenshots:true,snapshots:true,sources:true});try{s.p.setDefaultTimeout(60000);
     const pendingRequests=new Set();s.p.on('request',r=>pendingRequests.add(r.url()));s.p.on('requestfinished',r=>pendingRequests.delete(r.url()));s.p.on('requestfailed',r=>pendingRequests.delete(r.url()));
-    const reopened=async()=>{await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
+    const reopened=async()=>{await s.p.getByLabel('Classroom song · Backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
     await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
-    await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Make a song for your class'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
     await d.getByLabel('Lyrics',{exact:true}).fill('Hello, hello, sing with me.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await returnDuringAi(s.p,'Classroom song');
     await d.getByText(/Preparing sing-along tracks/).waitFor();if(await d.getByRole('button',{name:'Add song to timeline'}).isEnabled())throw Error('Add should explain why tracks are not ready');
@@ -1738,12 +1693,12 @@ const J = {
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
-    const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    const d=s.p.getByRole('dialog',{name:'Make a song for your class'});
     await d.getByRole('radio',{name:'Young learners',exact:true}).check();
     if(await d.getByRole('textbox',{name:'Language',exact:true}).count())throw Error('Language should be fixed to English');
     const names=await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {className:fs['classes/'+classId].name,title:fs['classes/'+classId+'/items/'+itemId].title};},s.demo);
-    await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(names.className)}).click();
-    await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:names.title,exact:true}).click();
+    await d.getByRole('button',{name:'Class',exact:true}).click();await s.p.getByRole('option',{name:new RegExp(names.className)}).click();
+    await d.getByRole('button',{name:'Lesson',exact:true}).click();await s.p.getByRole('option',{name:names.title,exact:true}).click();
     await d.locator('.song-linked').waitFor();
     if(process.env.SONG_LESSON_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_LESSON_SCREENSHOT});
     await axe(s.p,'Song learners and linked lesson',A11Y_FOUND);
@@ -1771,10 +1726,10 @@ const J = {
     if(scriptLines.join('\n')!==words.trim())throw Error('Timeline lost the lyric lines');return s;
   },
   'Songs: failures preserve words, completed previews recover and phone layout fits': async (b) => {
-    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');await s.p.getByRole('button',{name:'Create song',exact:true}).click();let d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');await s.p.getByRole('button',{name:'Create song',exact:true}).click();let d=s.p.getByRole('dialog',{name:'Make a song for your class'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();
     const unavailable=await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));sessionStorage.setItem('mockSongLessonFailure','1');return {className:fs['classes/'+classId].name,title:fs['classes/'+classId+'/items/'+itemId].title};},s.demo);
-    await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(unavailable.className)}).click();await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:unavailable.title,exact:true}).click();await d.getByRole('alert').waitFor();
+    await d.getByRole('button',{name:'Class',exact:true}).click();await s.p.getByRole('option',{name:new RegExp(unavailable.className)}).click();await d.getByRole('button',{name:'Lesson',exact:true}).click();await s.p.getByRole('option',{name:unavailable.title,exact:true}).click();await d.getByRole('alert').waitFor();
     if(await d.getByRole('button',{name:'Next: music'}).isEnabled())throw Error('An unresolved lesson error can strand the later steps');
     await d.getByRole('button',{name:'Continue without a lesson'}).click();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Custom style',exact:true}).check();await d.getByLabel('Custom music style',{exact:true}).fill('FAIL_TEST');await d.getByRole('button',{name:'Next: lyrics'}).click();
     await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.getByRole('alert').waitFor();
@@ -1782,7 +1737,7 @@ const J = {
     await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByLabel('Custom music style',{exact:true}).fill('Jazz');await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     await s.p.waitForFunction(()=>Object.keys(sessionStorage).some(k=>k.startsWith('ll.songDraft:')&&JSON.parse(sessionStorage.getItem(k)).savedSong));
     await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByRole('radio',{name:'Folk',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
-    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Create a classroom song'});await d.getByRole('button',{name:'Recover creation'}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
+    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Make a song for your class'});await d.getByRole('button',{name:'Recover creation'}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     if(!await d.locator('.song-brief-strip').getByText('Folk',{exact:true}).count())throw Error('Recovery overwrote a newer brief');
     await d.getByRole('button',{name:'Use this song’s settings'}).click();await d.getByRole('button',{name:'Back',exact:true}).click();if(await d.getByLabel('Custom music style',{exact:true}).inputValue()!=='Jazz')throw Error('Preview settings were not restored');
     await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
@@ -1802,7 +1757,7 @@ const J = {
     await s.p.getByRole('button',{name:'Create speech',exact:true}).click();
     await s.p.getByRole('button',{name:'Preview voice for Speaker A',exact:true}).click();
     await see(s.p,'text=■ Stop','saved voice playback');
-    if(await s.p.getByLabel('Speaker 1 accent',{exact:true}).count())throw Error('Accent control should be removed');
+    await s.p.getByRole('button',{name:'Speaker 1 accent'}).waitFor();
     await s.p.getByLabel('Dialogue line 1',{exact:true}).fill('First take.');
     await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
     await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Second take.');
@@ -1890,11 +1845,11 @@ const J = {
     if (result.includes('FAIL')) throw new Error(result);
     await s.p.goto(BASE + '/archive');
     await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
-    await see(s.p, '.apps-pop a[role="menuitem"]:has-text("Resources")', 'Resources in the app launcher');
+    await see(s.p, '.apps-pop a[role="menuitem"]:has-text("My Files")', 'My Files in the app launcher');
     if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation library still appears as a separate app.');
-    if (await s.p.locator('.apps-pop a[href="/archive"]').innerText().then((text) => !text.includes('Resources'))) throw new Error('The Resources app still has its old name.');
+    if (await s.p.locator('.apps-pop a[href="/archive"]').innerText().then((text) => !text.includes('My Files'))) throw new Error('The My Files app still has its old name.');
     await s.p.keyboard.press('Escape');
-    await see(s.p, 'nav[aria-label="Resources"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
+    await see(s.p, 'nav[aria-label="My Files"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
     await s.p.getByRole('button', { name: 'Recycle bin', exact: true }).click();
     await see(s.p, 'h1:has-text("Recycle bin")', 'the recycle bin');
     await s.p.locator('.file-bin-list li').filter({ hasText: 'Restore me' }).getByRole('button', { name: 'Restore', exact: true }).click();
@@ -1911,7 +1866,7 @@ const J = {
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
     await s.p.goto(BASE + '/library?f=drive-demo');
-    await see(s.p, 'nav[aria-label="Organisation library"]', 'libraries inside Files');
+    await see(s.p, 'nav[aria-label="Harbour School Files"]', 'libraries inside My Files');
     await see(s.p, '.ma-main h1', 'the selected organisation folder');
     await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
     if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation accounts still have a separate Library app.');
@@ -3115,9 +3070,9 @@ const J = {
     await see(s.p, 'text=Level 1 lessons', 'the library folder');
     await s.p.click('button:has-text("+ New")');
     const [t] = await Promise.all([s.ctx.waitForEvent('page'), s.p.click('[role=menuitem]:has-text("Exam")')]);
-    await see(t, 'button:has-text("+ Add")', 'the new exam');
-    await t.getByRole('button', { name: '+ Add' }).click();
-    await t.getByRole('menuitem', { name: 'New task' }).click();
+    await t.locator('.task-insert summary[aria-label="Add at the end"]').waitFor();
+    await t.locator('.task-insert summary[aria-label="Add at the end"]').click();
+    await t.getByRole('button', { name: 'New task' }).click();
     await t.waitForTimeout(800);
     await t.setViewportSize({ width: 1280, height: 800 });
     const lessonWidth = await t.locator('.lf').evaluate(el => ({ width: el.getBoundingClientRect().width, viewport: innerWidth }));

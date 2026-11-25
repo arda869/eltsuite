@@ -1,6 +1,8 @@
 import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
-import { useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import type { Tpl } from '../design/templates';
+const StartRow = lazy(() => import('../design/StartRow').then((m) => ({ default: m.StartRow })));
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
@@ -20,16 +22,15 @@ import { useLibrary, type LibDoc } from './ArchiveLibrary';
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
 // kind, the ones shared with them, the ones in their organisation's library, and the starred ones.
 
-export type AppKey = 'games' | 'collab' | 'reading' | 'pdf' | 'recordings' | 'design' | 'storyboard';
+export type AppKey = 'games' | 'collab' | 'reading' | 'pdf' | 'recordings' | 'design';
 type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
   games: { name: 'Games', kinds: ['game'], color: '#1f6b62', empty: 'Make a game, then play it live, share it with a code, or put it in a lesson.' },
-  collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
+  collab: { name: 'Collab', kinds: ['doc'], color: '#2f6f9f', empty: 'Documents you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
-  storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
-  design: { name: 'Designer', kinds: ['design', 'storyboard'], color: '#6d5bd0', empty: 'Storyboards and images. Create with AI, edit pictures and tell stories.' },
+  design: { name: 'Designer', kinds: ['design'], color: '#6d5bd0', empty: 'Posters, flashcards, labelled pictures and worksheets you design.' },
   pdf: { name: 'PDF', kinds: ['pdf'], color: '#a6463a', empty: 'PDFs to write on, on your own or with others.' },
   recordings: { name: 'Recordings', kinds: [], color: '#a8473a', empty: 'Recordings you make or upload, with scripts, to use in any lesson.' },
 };
@@ -91,7 +92,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     starred: 'M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z',
   };
 
-  const make = async (k: DocKind, designerType?:'image'|'storyboard') => {
+  const make = async (k: DocKind, designerType?: 'image') => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
     try {
@@ -99,6 +100,22 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
       if(designerType) await startDesigner(id,designerType);
       if (w) w.location.href = `/doc/${id}`;
     }catch{w?.close();void tell('Could not create the file. Please check your connection and try again.');}
+  };
+  // A new design from a template, opened in a new tab.
+  const makeFrom = async (t: Tpl) => {
+    if (!uid) return;
+    const w = window.open('about:blank', '_blank');
+    setBusy('Making your design…');
+    try {
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'design', t.group === 'teach' ? t.name : 'Untitled design');
+      await startDesigner(id, 'image', t);
+      if (w) w.location.href = `/doc/${id}`;
+    } catch {
+      w?.close();
+      void tell('We couldn’t make the design just now. Check your connection and try again.');
+    } finally {
+      setBusy('');
+    }
   };
   const makePdf = async (f: File) => {
     if (!uid) return;
@@ -122,14 +139,11 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     app === 'games' ? [{ label: 'New game', run: () => void make('game') }] : app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
-          { label: 'New slides', run: () => void make('slides') },
         ]
       : app === 'reading'
         ? [{ label: 'New Reading Journal', run: () => void make('pd') }]
         : app === 'design'
-          ? [{ label: 'Create image', run: () => void make('design','image') }, { label: 'Create storyboard', run: () => void make('design','storyboard') }]
-          : app === 'storyboard'
-          ? [{ label: 'New storyboard', run: () => void make('storyboard') }]
+          ? [{ label: 'Make a design', run: () => void make('design', 'image') }, { label: 'Characters', run: () => setCharacters(true) }]
           : app === 'pdf'
           ? [{ label: 'Upload a PDF', run: () => pdfIn.current?.click() }]
           : [
@@ -161,21 +175,21 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     <div className={embedded ? "af-embedded" : "shell af-shell"} style={{ ['--app' as string]: a.color }}>
       {!embedded && <TopBar><MainNav on="" /></TopBar>}
       <Content className="af" aria-label={a.name}>
-        <header className="af-head">
+        {app !== 'recordings' && <header className="af-head">
           
           <span className="af-title">
             {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="sr-only">{a.name}</h1>}
-            <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />
           {news.map((n, i) => (
             <button key={n.label} type="button" className={'btn ' + (i ? 'ghost' : 'primary')} onClick={n.run}>
-              + {n.label}
+              {/^(New|Make|Upload|Record)/.test(n.label) ? '+ ' : ''}{n.label}
             </button>
           ))}
-        </header>
-        {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
-        <div className="af-bar">
+        </header>}
+        {app === 'design' && <Suspense fallback={<div className="dz-row dz-row-wait" />}><StartRow busy={!!busy} onPick={(t) => void makeFrom(t)} /></Suspense>}
+        {app === 'recordings' && <h1 className="sr-only">Recordings</h1>}
+        <div className={'af-bar' + (app === 'recordings' ? ' af-bar-recordings' : '')}>
           <span className="af-tabs" role="tablist" aria-label="Which files">
             {tabs.map(([k, label]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
@@ -194,6 +208,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </svg>
             <input type="search" placeholder={`Search ${a.name}`} aria-label={`Search ${a.name}`} value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
+          {app === 'recordings' && <button type="button" className="btn primary af-record-action" onClick={() => setRecording(true)}>+ Record</button>}
         </div>
         {busy && <span className="hint" role="status">{busy}</span>}
         {loading ? (

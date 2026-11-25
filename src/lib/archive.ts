@@ -125,7 +125,7 @@ async function saveClassScript(classId: string, id: string, script: ScriptLine[]
 export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
 export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
 export type StemSource = {classId:string;stems:SongStemIds};
-export type Manifest = { aiGenerated?:boolean; stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
+export type Manifest = { project?: string; aiGenerated?:boolean; stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
 
 const toBase64 = (bytes: Uint8Array) => {
   let s = '';
@@ -133,7 +133,7 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(s);
 };
 
-export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number; stems?:SongStemIds }, onProgress?: (p: number) => void) {
+export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number; stems?:SongStemIds; project?: string }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const ref = doc(mediaCol(classId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -147,7 +147,7 @@ export async function saveSound(classId: string, blob: Blob, meta: { title: stri
     }),
   );
   if (isClassSpace(classId)) await saveClassScript(classId, ref.id, meta.script ?? []);
-  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}) };
+  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}), ...(meta.project?{project:meta.project}:{}) };
   await setDoc(ref, m);
   onProgress?.(1);
   return { mediaId: ref.id, bytes: bytes.length };
@@ -380,7 +380,7 @@ export async function findUses(item: ArchiveItem): Promise<{ cls: string; lesson
 }
 
 // Put a new version of a sound in every place it is kept; the lessons that use it change too.
-export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource }, onProgress?: (p: number) => void) {
+export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource; project?: string }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
   const places = placesOf(item);
@@ -397,7 +397,7 @@ export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, m
     for (let k = parts; k < (old?.parts ?? 0); k++) await deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {});
     const {stems:_previous,script:_oldScript,...previous}=old??{};const stems=meta.stemSource?await copySoundStems(meta.stemSource,classId):undefined;
     if(isClassSpace(classId))await saveClassScript(classId,mediaId,meta.script,!!old?.aiGenerated);
-    await setDoc(mediaRef(classId, mediaId), { ...previous, ...(stems?{stems}:{}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, ...(!isClassSpace(classId)?{script:meta.script}:{}), public: true, v: Date.now() });
+    await setDoc(mediaRef(classId, mediaId), { ...previous, ...(stems?{stems}:{}), ...(meta.project?{project:meta.project}:{}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, ...(!isClassSpace(classId)?{script:meta.script}:{}), public: true, v: Date.now() });
     onProgress?.(++done / total);
   }
   if (item.id) await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });

@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/react';
+import { InstrEditor } from '../editor/InstrEditor';
 import { NSelect } from '../components/Select';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UiIcon } from '../components/UiIcon';
@@ -313,7 +314,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove,
 // How the task being edited looks on paper: its gaps, its writing space and an instruction for paper.
 export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; instrDoc?: JSONContent | null; show?: 'both' | 'paper' | 'screen'; icon?: YoungAction | 'same' | 'none' };
 export function PaperBar({ look, onChange, gaps, writing, online, young = false }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[]; young?: boolean }) {
-  const [instrOn, setInstrOn] = useState(!!look.instr);
+  const [instrOn, setInstrOn] = useState(!!look.instr || !!look.instrDoc);
   const set = (p: Partial<Paper>) => onChange({ ...look, ...p });
   return (
     <div className="sh-paperbar" aria-label="On paper">
@@ -367,12 +368,13 @@ export function PaperBar({ look, onChange, gaps, writing, online, young = false 
           checked={instrOn}
           onChange={(e) => {
             setInstrOn(e.target.checked);
-            if (!e.target.checked) set({ instr: '' });
+            if (!e.target.checked) set({ instr: '', instrDoc: null });
           }}
         />
         A different instruction on paper
       </label>
-      {instrOn && <input className="sh-pb-instr" defaultValue={look.instr ?? ''} placeholder="For example: Write the answers in the gaps." onBlur={(e) => set({ instr: e.target.value })} aria-label="Instruction on paper" />}
+      {/* The same editor, styles and placeholder as the instruction above it. */}
+      {instrOn && <div className="sh-pb-instr-ed"><InstrEditor doc={look.instrDoc ?? null} text={look.instr ?? ''} onChange={(instrDoc, instr) => set({ instrDoc, instr })} placeholder="Instruction on paper, for example: Write the answers in the gaps." /></div>}
       {online.length > 0 && <span className="sh-pb-online">Online only, not printed: {online.join(', ')}</span>}
     </div>
   );

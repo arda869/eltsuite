@@ -98,7 +98,11 @@ const functionSource = ts.transpileModule(readFileSync(new URL('../functions/ind
 for (const fails of [true, false]) {
   const updates = [];
   const token = { id: 't', get: key => ({ key: 'recipient', token: 'test-token' })[key], data: () => ({ key: 'recipient', token: 'test-token' }) };
-  const db = { collection: () => ({ where: () => ({ get: async () => ({ docs: [token] }) }), doc: () => ({ delete: async () => {} }) }) };
+  const db = {
+    collection: () => ({ where: () => ({ get: async () => ({ docs: [token] }) }), doc: () => ({ delete: async () => {} }) }),
+    doc: path => ({ id: path.split('/').at(-1) }),
+    getAll: async (...refs) => refs.map(ref => ({ id: ref.id, exists: false })),
+  };
   const fcm = { send: async () => { if (fails) throw { code: 'messaging/server-unavailable' }; return 'accepted'; } };
   const exports = {};
   vm.runInNewContext(functionSource, { exports, console: { warn() {}, log() {} }, require: name => {

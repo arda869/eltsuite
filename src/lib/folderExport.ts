@@ -1,4 +1,5 @@
 import { allTabsJSON } from '../collab/tabs';
+import { footerSlots, runningOf } from '../collab/documentLayout';
 import * as Y from 'yjs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import type { JSONContent } from '@tiptap/react';
@@ -35,7 +36,7 @@ async function yDoc(key: string) {
 
 // A collab document's text, as the editor keeps it.
 // A PDF of a document: its text laid out on A4 pages, with the brand at the top.
-export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: Layout): Promise<Uint8Array> {
+export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: Layout, title = ''): Promise<Uint8Array> {
   const [{ jsPDF }, h2c] = await Promise.all([import('jspdf'), import('html2canvas')]);
   const host = document.createElement('div');
   const metrics = layout ? pageMetrics(layout) : null;
@@ -72,6 +73,7 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
     }
     cuts.push(total);
     const pdf = new jsPDF({ unit: 'pt', format: metrics ? [pageW, pageH] : 'a4', orientation: layout?.orientation === 'landscape' ? 'landscape' : 'portrait' });
+    const pageTotal = cuts.length - 1;
     for (let i = 0; i < cuts.length - 1; i++) {
       const h = cuts[i + 1] - cuts[i];
       if (h < 2) continue;
@@ -90,9 +92,20 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
       pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', ml, mt, pageW - ml - mr, h * k);
       if (layout) {
         pdf.setFontSize(9); pdf.setTextColor(80);
-        if (layout.header) pdf.text(layout.header, pageW / 2, Math.max(14, mt / 2), { align: 'center' });
-        const footer = [layout.footer, layout.pageNumbers ? String(i + layout.pageNumberStart) : ''].filter(Boolean).join(' · ');
-        if (footer) pdf.text(footer, pageW / 2, pageH - Math.max(14, mb / 2), { align: 'center' });
+        pdf.setFont('helvetica', layout.runBold && layout.runItalic ? 'bolditalic' : layout.runBold ? 'bold' : layout.runItalic ? 'italic' : 'normal');
+        // The first page can have its own header and footer; fields filled in; each in its place.
+        const r = runningOf(layout, i, pageTotal, { title });
+        const x = (a: 'left' | 'center' | 'right') => (a === 'left' ? ml : a === 'right' ? pageW - mr : pageW / 2);
+        const hy = Math.max(14, mt / 2);
+        if (r.header) pdf.text(r.header, x(r.headerAlign), hy, { align: r.headerAlign });
+        if (layout.runLogo && brand) {
+          const lh = 16, lw = (brand.w / brand.h) * lh;
+          pdf.addImage(brand.dataUrl, 'PNG', r.headerAlign === 'right' ? ml : pageW - mr - lw, hy - lh * 0.75, lw, lh);
+        }
+        const fy = pageH - Math.max(14, mb / 2);
+        const slots = footerSlots(r);
+        for (const a of ['left', 'center', 'right'] as const) if (slots[a]) pdf.text(slots[a], x(a), fy, { align: a });
+        pdf.setFont('helvetica', 'normal');
       }
     }
     return new Uint8Array(pdf.output('arraybuffer'));
@@ -110,14 +123,8 @@ async function collabDoc(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> 
   state.destroy();
   const o = { ...EXPORT_DEFAULT, layout, style: ((d as SharedDoc & { citeStyle?: CiteStyle }).citeStyle) || EXPORT_DEFAULT.style };
   await prepareDocumentPrint(json, 'doc:' + d.id);
-  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout)]);
+  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout, d.title)]);
   return [{ name: safe(d.title) + '.docx', data: docx }, { name: safe(d.title) + '.pdf', data: pdf }];
-}
-
-async function slides(d: SharedDoc): Promise<OutFile[]> {
-  const [{ readSlides }, { pptxBlob }] = await Promise.all([import('../collab/slides/model'), import('../collab/slides/exportSlides')]);
-  const list = readSlides(await yDoc(d.docKey));
-  return [{ name: safe(d.title) + '.pptx', data: await bytes(await pptxBlob(list, d.title, '#d98f63')) }];
 }
 
 // Flashcards: one row a card, one column a field, with the brand and the set's name on top.
@@ -209,8 +216,6 @@ export async function sharedDocFiles(d: SharedDoc): Promise<OutFile[]> {
       return [];
     case 'doc':
       return collabDoc(d, brand);
-    case 'slides':
-      return slides(d);
     case 'flash':
       return flash(d, brand);
     case 'pd':

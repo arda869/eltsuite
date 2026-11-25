@@ -27,13 +27,13 @@ export function fromStack(pages: PageSize[], fx: number, fy: number) {
 }
 
 const docs = new Map<string, Promise<PDFDocumentProxy>>();
-function usePdf(src: string, classId: string) {
+function usePdf(src: string, classId: string, rev = 0) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     if (!src) return;
-    const key = classId + '|' + src;
-    if (!docs.has(key)) docs.set(key, loadPdf(src, classId).then(openPdf));
+    const key = classId + '|' + src + '#' + rev;
+    if (!docs.has(key)) docs.set(key, loadPdf(src, classId, rev).then(openPdf));
     let live = true;
     docs
       .get(key)!
@@ -45,21 +45,19 @@ function usePdf(src: string, classId: string) {
     return () => {
       live = false;
     };
-  }, [src, classId]);
+  }, [src, classId, rev]);
   return { pdf, error };
 }
 
 // The opened PDF, shared with the pages already drawn.
-export function getPdf(src: string, classId = ''): Promise<PDFDocumentProxy> {
-  const key = classId + '|' + src;
-  if (!docs.has(key)) docs.set(key, loadPdf(src, classId).then(openPdf));
+export function getPdf(src: string, classId = '', rev = 0): Promise<PDFDocumentProxy> {
+  const key = classId + '|' + src + '#' + rev;
+  if (!docs.has(key)) docs.set(key, loadPdf(src, classId, rev).then(openPdf));
   return docs.get(key)!;
 }
 // The words on a page, for reading it aloud. A scanned page has none (it is a picture of text).
-export async function pageText(src: string, classId: string, n: number): Promise<string> {
-  const key = classId + '|' + src;
-  if (!docs.has(key)) docs.set(key, loadPdf(src, classId).then(openPdf));
-  const pdf = await docs.get(key)!;
+export async function pageText(src: string, classId: string, n: number, rev = 0): Promise<string> {
+  const pdf = await getPdf(src, classId, rev);
   const pg = await pdf.getPage(n + 1);
   const tc = await pg.getTextContent();
   return (tc.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join('').replace(/[ \t]+/g, ' ').trim();
@@ -130,8 +128,8 @@ function Page({ pdf, n, size, words, src }: { pdf: PDFDocumentProxy; n: number; 
   );
 }
 
-export function PdfStack({ src, classId = '', pages, children, onDown, tool, first = 0 }: { src: string; classId?: string; pages: PageSize[]; children?: ReactNode; onDown?: (e: React.PointerEvent<HTMLDivElement>) => void; tool?: string; first?: number }) {
-  const { pdf, error } = usePdf(src, classId);
+export function PdfStack({ src, classId = '', pages, children, onDown, tool, first = 0, rev = 0 }: { src: string; classId?: string; pages: PageSize[]; children?: ReactNode; onDown?: (e: React.PointerEvent<HTMLDivElement>) => void; tool?: string; first?: number; rev?: number }) {
+  const { pdf, error } = usePdf(src, classId, rev);
   // Keep the text layer for selection and annotation, without opening a dictionary on click.
   const words = !tool || tool === 'select';
   return (
@@ -146,8 +144,8 @@ export function PdfStack({ src, classId = '', pages, children, onDown, tool, fir
 }
 
 // A small picture of one page, for the list of pages.
-export function PdfThumb({ src, classId = '', n, size }: { src: string; classId?: string; n: number; size: PageSize }) {
-  const { pdf } = usePdf(src, classId);
+export function PdfThumb({ src, classId = '', n, size, rev = 0 }: { src: string; classId?: string; n: number; size: PageSize; rev?: number }) {
+  const { pdf } = usePdf(src, classId, rev);
   const ref = useRef<HTMLCanvasElement>(null);
   const [seen, setSeen] = useState(false);
   useEffect(() => {

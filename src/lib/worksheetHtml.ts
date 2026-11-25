@@ -17,7 +17,6 @@ import { SubstSlot } from '../editor/Subst';
 import { PhonView } from '../editor/Phonemes';
 import { DictCutout } from '../editor/DictCut';
 import { timelineSvgString } from '../editor/Timeline';
-import { StoryStrip } from '../storyboard/Stage';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Icon } from '../editor/Icons';
@@ -153,6 +152,7 @@ function diagramHtml(b: Extract<Block, { kind: 'diagram' }>): string {
 }
 
 function block(b: Block): string {
+  if (b.kind === 'pagebreak') return '<div class="ws-pb"></div>';
   switch (b.kind) {
     case 'form':
       return `<div class="form">${b.title ? `<p class="form-t">${esc(b.title)}</p>` : ''}${b.peer ? '<p class="form-name">Classmate’s name <span class="line"></span></p>' : ''}${b.items.map(formItem).join('')}</div>`;
@@ -182,8 +182,6 @@ function block(b: Block): string {
       return `<p>${runs(b.runs)}</p>`;
     case 'diagram':
       return diagramHtml(b);
-    case 'storyboard':
-      return `<div class="sbw-p" style="--sb-accent: var(--accent)">${renderToStaticMarkup(createElement(StoryStrip, { snap: b.a.snap!, cols: b.a.cols ?? 2, width: 'fluid' }))}</div>`;
     case 'timeline':
       return `<figure class="tl">${b.a.title ? `<figcaption class="tl-title">${esc(b.a.title)}</figcaption>` : ''}${timelineSvgString(b.a)}${b.a.sentence ? `<p class="tl-sentence">${esc(b.a.sentence)}</p>` : ''}</figure>`;
     case 'note':
@@ -635,7 +633,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
       </div>
       <div class="band-right">
         <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
-        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
+        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(opts.mono ? '#1d1b18' : accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
   // Every page: the class and lesson, who made it, and the note that the content is theirs and ELT Suite
@@ -751,6 +749,18 @@ ${sheetCss(opts)}
     function hasOther(col, u) { for (var k = 0; k < col.children.length; k++) { var c = col.children[k]; if (c !== u && !c.classList.contains('section')) return true; } return false; }
     for (var i = 0; i < units.length; i++) {
       var u = units[i], col = cols[ci];
+      // A page break in a task: what comes before it ends the page; the rest starts a new one.
+      if (u.classList.contains('ws-force')) { cols = newPage(bandId); ci = 0; continue; }
+      var pbBody = u.querySelector('.ex-body'), pb = pbBody && pbBody.querySelector(':scope > .ws-pb');
+      if (pb) {
+        var kids = Array.prototype.slice.call(pbBody.children), at = kids.indexOf(pb);
+        var after = u.cloneNode(true), afterBody = after.querySelector('.ex-body');
+        Array.prototype.slice.call(afterBody.children).slice(0, at + 1).forEach(function (k) { afterBody.removeChild(k); });
+        var head2 = after.querySelector('.ex-head'); if (head2) head2.style.visibility = 'hidden';
+        kids.slice(at).forEach(function (k) { pbBody.removeChild(k); });
+        var force = document.createElement('div'); force.className = 'ws-force';
+        units.splice(i + 1, 0, force, after);
+      }
       if (u.classList.contains('section') && units[i + 1]) {
         // a section heading always stays with the exercise after it
         col.appendChild(u); col.appendChild(units[i + 1]);

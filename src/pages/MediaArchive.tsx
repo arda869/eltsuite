@@ -2,7 +2,7 @@ import {useResourceColumns} from '../components/ResizableColumns';
 import { isImageFile } from '../design/files';
 import { FileBin } from './FileBin';
 import { createPortal } from 'react-dom';
-import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, useAppOn, type DriveFolder } from '../lib/admin';
+import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, useAppOn, libName, type DriveFolder } from '../lib/admin';
 import { copyFile } from '../lib/copyFile';
 import { Select, NSelect } from '../components/Select';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
@@ -51,7 +51,7 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'game' | 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'game', label: 'Games' }, { k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'game', label: 'Games' }, { k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file', 'design'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -138,8 +138,8 @@ export function MediaArchive() {
   const [kinds, setKindsS] = useState<Kind[]>(() => stored('ll.maKinds', [] as Kind[])); // none chosen: everything
   const setKinds = (k: Kind[]) => (setKindsS(k), store('ll.maKinds', k));
   const [tag, setTag] = useState<string | null>(null);
-  const [q, setQ] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
+  const [searching, setSearching] = useState(() => new URLSearchParams(window.location.search).has('q'));
   const [sort, setSortS] = useState<Sort>(() => stored('ll.maSort', 'new' as Sort));
   const setSort = (v: Sort) => (setSortS(v), store('ll.maSort', v));
   const [group, setGroupS] = useState<Group>(() => stored('ll.maGroup', 'none' as Group));
@@ -448,7 +448,7 @@ export function MediaArchive() {
       }
       await downloadZip(
         every.filter((e) => e.item).map((e) => e.item!),
-        folders.length === 1 && !list.length ? leafOf(folders[0]) : folder ? leafOf(folder) : 'Resources',
+        folders.length === 1 && !list.length ? leafOf(folders[0]) : folder ? leafOf(folder) : 'My Files',
         base,
         (d, t) => setBusy(`Putting the files together… ${d} of ${t}`),
         every.filter((e) => e.task).map((e) => ({ folder: e.folder, name: e.name, text: taskMd(e.task!) })),
@@ -480,7 +480,7 @@ export function MediaArchive() {
     const changed=folders.map(from=>({from,to:to?to+'/'+leafOf(from):leafOf(from)})).filter(f=>f.from!==f.to);
     if(changed.some(f=>allFolders.some(x=>x.toLocaleLowerCase()===f.to.toLocaleLowerCase())))return void tell('A folder with that name already exists at the destination. Choose another folder.');
     const files=entries.filter(e=>cutIds.includes(e.key)&&!e.cls&&!e.hand&&!folders.some(f=>inTree(e.folder,f)));
-    if(cutIds.some(id=>!id.startsWith('f:')&&!entries.some(e=>e.key===id)))return void tell('A cut item is no longer available. Cancel the cut, refresh Resources and select the remaining items.');
+    if(cutIds.some(id=>!id.startsWith('f:')&&!entries.some(e=>e.key===id)))return void tell('A cut item is no longer available. Cancel the cut, refresh My Files and select the remaining items.');
     setPasting(true);
     try{
       for(const f of changed){await renameFolder(uid,f.from,f.to,all,allFolders);for(const t of tasks.filter(t=>inTree(t.folder,f.from)))await moveLibTasks(uid,[t.id],f.to+t.folder.slice(f.from.length));for(const d of ownDocs.filter(d=>inTree(d.path||'',f.from)))await setDocPath(d.id,f.to+(d.path||'').slice(f.from.length));}
@@ -564,7 +564,7 @@ export function MediaArchive() {
         { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
         { label: 'Cut', icon:'cut', hint:'Ctrl/⌘ X', onClick:()=>beginCut([en.key]) },
         { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
-        ...(orgFolders.length ? [{ label: 'Copy to the organisation library…', icon: 'copyall', onClick: () => setToOrg(en.doc!) } as MenuItem] : []),
+        ...(orgFolders.length ? [{ label: `Copy to ${libName(myOrg)}…`, icon: 'copyall', onClick: () => setToOrg(en.doc!) } as MenuItem] : []),
         'sep',
         { label: 'Delete', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
       ];
@@ -686,8 +686,7 @@ export function MediaArchive() {
     ...(appOn('games') ? [{ label: 'Game', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
-    ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'images and storyboards', onClick: () => void makeDoc('design') } as MenuItem] : []),
-    { label: 'Storyboard', icon: 'storyboard', hint: 'scenes with people and speech bubbles', onClick: () => void makeDoc('storyboard') },
+    ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'posters, cards and pictures', onClick: () => void makeDoc('design') } as MenuItem] : []),
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
     'sep',
@@ -875,7 +874,7 @@ export function MediaArchive() {
       >
         {over && <div className="ma-drop">Drop pictures or sounds to add them{folder ? ` to ${leafOf(folder)}` : ''}</div>}
         <aside className="ma-side">
-            <nav className="ma-nav ma-places" aria-label="Resources">
+            <nav className="ma-nav ma-places" aria-label="My Files">
               {SECTIONS.map((x) => (
                 <span key={x.k} style={{ display: 'contents' }}>
                 <button type="button" className={section === x.k && (x.k !== 'media' || (folder === '' && !recent)) ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
@@ -892,7 +891,7 @@ export function MediaArchive() {
                 </span>
               ))}
             </nav>
-            {myOrg && <nav className="ma-nav ma-tree" aria-label="Organisation library"><span className="ma-h">Organisation library</span>{libraries.map((f) => <button key={f.id} type="button" className={section === 'library' && openLibrary?.id === f.id ? 'on' : ''} aria-current={section === 'library' && openLibrary?.id === f.id ? 'page' : undefined} onClick={() => chooseLibrary(f.id)}><FolderIcon size={16} /><span className="ma-fname">{f.name}</span></button>)}{!libraries.length && <span className="hint small">No libraries available.</span>}</nav>}
+            {myOrg && <nav className="ma-nav ma-tree" aria-label={libName(myOrg)}><span className="ma-h">{libName(myOrg)}</span>{libraries.map((f) => <button key={f.id} type="button" className={section === 'library' && openLibrary?.id === f.id ? 'on' : ''} aria-current={section === 'library' && openLibrary?.id === f.id ? 'page' : undefined} onClick={() => chooseLibrary(f.id)}><FolderIcon size={16} /><span className="ma-fname">{f.name}</span></button>)}{!libraries.length && <span className="hint small">No folders here yet. Your organisation’s admins add them.</span>}</nav>}
             {section === 'media' && (
             <nav className="ma-nav ma-tree" aria-label="Folders">
               <span className="ma-h">Folders</span>
@@ -956,14 +955,13 @@ export function MediaArchive() {
             </div>}
           </aside>
 
-        {section === 'library' && uid && <main className="ma-main">{openLibrary ? <Suspense fallback={<Loader label="Opening the library" />}><FolderPane key={openLibrary.id} f={openLibrary} uid={uid} me={{ uid, name: user?.displayName || 'Teacher' }} /></Suspense> : <div className="ma-empty"><strong>No organisation library available</strong></div>}</main>}
+        {section === 'library' && uid && <main className="ma-main">{openLibrary ? <Suspense fallback={<Loader label="Opening the library" />}><FolderPane key={openLibrary.id} f={openLibrary} uid={uid} me={{ uid, name: user?.displayName || 'Teacher' }} /></Suspense> : <div className="ma-empty"><strong>Nothing in {libName(myOrg)} yet</strong><span className="hint">Your organisation’s admins add its folders. They’ll appear here.</span></div>}</main>}
         {section === 'bin' && uid && <main className="ma-main"><FileBin uid={uid} docs={allDocs || []} items={allItems || []} /></main>}
         {section === 'docs' && uid && (
           <main className="ma-main">
             <div className="ma-head">
               <div className="ma-head-text">
                 <h1 className="page-title">In my classes</h1>
-                <span className="sub">The documents and slides your classes write together, and where each is used.</span>
               </div>
             </div>
             <ArchiveDocs uid={uid} />
@@ -974,7 +972,6 @@ export function MediaArchive() {
             <div className="ma-head">
               <div className="ma-head-text">
                 <h1 className="page-title">Shared with me</h1>
-                <span className="sub">Files colleagues and others share with you, and what you share.</span>
               </div>
             </div>
             {classLessons.withMe.length > 0 && (
@@ -1378,6 +1375,7 @@ export function MediaArchive() {
           teachersOnly
           noRoles
           title={`Share “${sharingLesson.title}” with colleagues`}
+          itemName={sharingLesson.title}
           ownerName={user?.displayName || 'You'}
           members={Object.fromEntries(Object.entries(sharingLesson.editors ?? {}).map(([k, n]) => [k, { role: 'edit' as const, name: n, kind: 'teacher' as const }]))}
           chatLabel="Send them a message with the lesson"
@@ -1740,7 +1738,7 @@ function ToOrgDialog({ d, folders, me, onClose }: { d: SharedDoc; folders: Drive
     try {
       await copyFile(d, me, f as unknown as Parameters<typeof copyFile>[2]);
       onClose();
-      void tell(`${d.title} is in ${f.name} now. Your own copy stays in your Resources.`);
+      void tell(`${d.title} is in ${f.name} now. Your own copy stays in My Files.`);
     } catch (e) {
       console.error(e);
       setBusy('We couldn’t make the copy. Try again.');

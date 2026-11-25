@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FACES, PEOPLE, POSES, THINGS, type ThingGroup } from '../storyboard/art';
-import { SCENES } from '../storyboard/scenes';
+import { FACES, PEOPLE, POSES, THINGS, type ThingGroup } from './art/art';
+import { SCENES } from './art/scenes';
 import type { ArtView, El } from './model';
 
 // The library of built-in people, things and backdrops for scenes: one list to search, with the

@@ -9,7 +9,7 @@ const STORIES: Record<FeatureId, { title: string; labels: [string, string, strin
   live: { title: 'Bring everyone into the lesson.', labels: ['Prepare your lesson', 'Invite your learners', 'Start teaching live'], action: 'Open Classes' },
   timetable: { title: 'Give your next lesson a place.', labels: ['Find your week', 'Choose a time', 'Save your session'], action: 'Open Timetable' },
   collab: { title: 'Turn an idea into a resource.', labels: ['Make a document', 'Shape your activity', 'Preview and share'], action: 'Open Collab' },
-  reading: { title: 'Follow an idea worth keeping.', labels: ['Create a Reading Journal file', 'Keep your source', 'Add your first note'], action: 'Open Resources' },
+  reading: { title: 'Follow an idea worth keeping.', labels: ['Create a Reading Journal file', 'Keep your source', 'Add your first note'], action: 'Open My Files' },
 };
 
 // Native SVG illustrations stay crisp, theme-aware and aligned with the existing icon family.

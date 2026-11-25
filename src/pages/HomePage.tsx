@@ -17,6 +17,10 @@ import { useChats, unreadIn } from '../lib/chat';
 import { useHandIns } from '../lib/classFiles';
 import { libName, useAccount, useMyOrg, useSpaceLimit } from '../lib/admin';
 import { formatBytes } from '../lib/archive';
+import { AppLogo } from '../components/AppGrid';
+import { openSearch } from '../search/SearchLauncher';
+import { HUB_ACTIVITIES, collectionFor } from '../resourceHub/catalog';
+import { usePublishedHubResources } from '../resourceHub/usePublishedHubResources';
 
 // The first screen of ELT Suite: today, the classes, what is new, and a way into everything.
 
@@ -42,11 +46,17 @@ const ago = (ms: number) => {
   return d === 1 ? 'yesterday' : `${d} days ago`;
 };
 
-const CREATE: { k: DocKind; label: string; about: string }[] = [
-  { k: 'lesson', label: 'Lesson', about: 'Tasks to teach, then add to a class' },
-  { k: 'doc', label: 'Collab document', about: 'Written together, live' },
-  { k: 'flash', label: 'Flashcards', about: 'A set to study and play' },
-  { k: 'pd', label: 'Reading Journal', about: 'Sources and notes' },
+const CREATE: { k: DocKind; label: string }[] = [
+  { k: 'lesson', label: 'Lesson' },
+  { k: 'doc', label: 'Document' },
+  { k: 'flash', label: 'Flashcards' },
+  { k: 'pd', label: 'Reading Journal' },
+];
+const MAKE_APPS = [
+  { k: 'recordings', label: 'Recording', to: '/studio/sound/new' },
+  { k: 'design', label: 'Design', to: '/design' },
+  { k: 'games', label: 'Game', to: '/games' },
+  { k: 'pdf', label: 'PDF', to: '/pdf' },
 ];
 
 export function HomePage() {
@@ -64,6 +74,7 @@ export function HomePage() {
   const hand = useHandIns(uid);
   const acc = useAccount(uid);
   const space = useSpaceLimit();
+  const hub = usePublishedHubResources();
 
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const unread = (chats ?? []).filter((c) => unreadIn(c, uid));
@@ -104,180 +115,192 @@ export function HomePage() {
     else window.location.href = `/doc/${id}`;
   };
 
+  // What needs the teacher now: unread chats, work handed in, homework due soon.
+  const needs = [
+    ...unread.slice(0, 4).map((c) => ({ key: 'c' + c.id, icon: 'message', title: c.title || c.members.filter((m) => m !== uid).map((m) => c.names[m]).join(', ') || 'Chat', sub: c.last ? `${c.last.name.split(' ')[0]}: ${c.last.text}` : 'New message', at: c.lastAt, to: `/messages?c=${c.id}`, verb: 'Reply' })),
+    ...handIns.map((h) => ({ key: 'h' + h.classId + h.id, icon: 'upload', title: `${h.learner} handed in ${h.name}`, sub: h.className, at: h.at, to: `/class/${h.classId}`, verb: 'Look' })),
+    ...due.filter(({ at }) => at < Date.now() + 2 * 864e5).map(({ c, i, at }) => ({ key: 'd' + c.id + i.id, icon: 'timer', title: `${i.title} is due ${when(at).replace(/, .*$/, '').toLowerCase()}`, sub: `${c.name} · homework`, at: 0, to: `/class/${c.id}/lesson/${i.id}`, verb: 'Open' })),
+  ];
+  const next = upcoming[0];
+  const nextClass = next ? active.find((x) => x.id === next.s.classId) : undefined;
+  const hubPicks = useMemo(() => {
+    const seen = new Set<string>();
+    return [...(hub.items ?? []), ...HUB_ACTIVITIES.filter((a) => a.status === 'ready')].filter((a) => !seen.has(a.id) && seen.add(a.id)).sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0)).slice(0, 3);
+  }, [hub.items]);
+
   return (
     <div className="shell hm-shell">
       <TopBar>
         <MainNav on="home" />
       </TopBar>
-      <main className="hm">
+      <main className="hm hm2">
         <section className="hm-hero" aria-label="Today">
-          <div className="hm-hero-art" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </div>
+          <div className="hm-hero-art" aria-hidden="true"><i /><i /><i /></div>
           <div className="hm-hero-text">
             <span className="hm-date">{date}{org ? ` · ${org.name}` : ''}</span>
-            <h1>
-              {greeting()}
-              {name ? `, ${name}` : ''}
-            </h1>
+            <h1>{greeting()}{name ? `, ${name}` : ''}</h1>
             <p>
               {liveNow.length
                 ? `${liveNow.map((c) => c.name).join(' and ')} ${liveNow.length === 1 ? 'is' : 'are'} live now.`
-                : coming[0]
-                  ? `Next: ${coming[0].i.title} with ${coming[0].c.name}, ${when(coming[0].at).replace(/^Today, /, 'today at ').replace(/^Tomorrow, /, 'tomorrow at ')}.`
-                  : unread.length
-                    ? `${unread.length} unread ${unread.length === 1 ? 'conversation' : 'conversations'} waiting.`
-                    : classes === null || chats === null
-                      ? 'Loading your work…'
-                      : 'Everything is quiet. A good moment to plan.'}
+                : needs.length
+                  ? `${needs.length} ${needs.length === 1 ? 'thing needs' : 'things need'} you today.`
+                  : classes === null || chats === null
+                    ? 'One moment…'
+                    : 'Everything is quiet. A good moment to plan.'}
             </p>
+            <button type="button" className="hm-search" onClick={() => openSearch()}>
+              <UiIcon name="search" size={18} />
+              <span>Search files, messages, lessons and learners…</span>
+              <kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
+            </button>
           </div>
-          <div className="hm-stats">
-            <Stat n={classes === null ? '…' : active.length} label={active.length === 1 ? 'class' : 'classes'} to="/classes" />
-            <Stat n={classes === null ? '…' : learners} label={learners === 1 ? 'learner' : 'learners'} to="/classes" />
-            <Stat n={lessonsLoading ? '…' : lessons} label={lessons === 1 ? 'lesson' : 'lessons'} to="/archive" />
-            <Stat n={chats === null ? '…' : unread.length} label="unread" to="/messages" hot={unread.length > 0} />
+          <div className="hm-next">
+            {liveNow[0] ? (
+              <Link to={`/class/${liveNow[0].id}`} className="hm-next-card live" style={{ ['--cc' as string]: theme(liveNow[0].themeColor).accent }}>
+                <span className="hm-next-k"><span className="hm-pulse" aria-hidden="true" /> Live now</span>
+                <b>{liveNow[0].name}</b>
+                <span className="hint">Your learners are in the lesson.</span>
+                <span className="btn primary">Join</span>
+              </Link>
+            ) : next ? (
+              <div className="hm-next-card" style={{ ['--cc' as string]: next.s.kind === 'class' ? theme(nextClass?.themeColor).accent : 'var(--ink)' }}>
+                <span className="hm-next-k">{isNow(next) ? 'Now' : 'Next'}</span>
+                <b>{next.s.title}</b>
+                <span className="hint">{when(next.start)} · {next.s.kind === 'class' ? `${nextClass?.name ?? 'Class'}${next.s.online ? ' · online' : ''}` : 'Meeting'}</span>
+                {(next.s.online || next.s.kind === 'class') && <button type="button" className={'btn' + (isNow(next) ? ' primary' : '')} onClick={() => void startSession(next, nextClass, { uid, name: user?.displayName || 'Teacher' }, navigate)}>{isNow(next) ? 'Start' : 'Open'}</button>}
+              </div>
+            ) : coming[0] ? (
+              <Link to={`/class/${coming[0].c.id}/lesson/${coming[0].i.id}`} className="hm-next-card" style={{ ['--cc' as string]: theme(coming[0].c.themeColor).accent }}>
+                <span className="hm-next-k">Next</span>
+                <b>{coming[0].i.title}</b>
+                <span className="hint">{when(coming[0].at)} · {coming[0].c.name}</span>
+                <span className="btn">Open the lesson</span>
+              </Link>
+            ) : (
+              <div className="hm-next-card quiet">
+                <span className="hm-next-k">Nothing scheduled</span>
+                <b>Plan your next lesson</b>
+                <span className="hint">Set a time on a lesson, or add classes to your timetable, and the next one shows here.</span>
+                <button type="button" className="btn" onClick={() => void make('lesson')}>Make a lesson</button>
+              </div>
+            )}
+            <div className="hm-stats">
+              <Stat n={classes === null ? '…' : active.length} label={active.length === 1 ? 'class' : 'classes'} to="/classes" />
+              <Stat n={classes === null ? '…' : learners} label={learners === 1 ? 'learner' : 'learners'} to="/classes" />
+              <Stat n={lessonsLoading ? '…' : lessons} label={lessons === 1 ? 'lesson' : 'lessons'} to="/classes" />
+              <Stat n={chats === null ? '…' : unread.length} label="unread" to="/messages" hot={unread.length > 0} />
+            </div>
           </div>
         </section>
 
-        <div className="hm-grid">
+        <div className="hm-grid3">
           <div className="hm-col">
-            {liveNow.length > 0 && (
-              <section className="hm-card hm-live" aria-label="Live now">
-                {liveNow.map((c) => (
-                  <Link key={c.id} to={`/class/${c.id}`} className="hm-live-row" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
-                    <span className="hm-pulse" aria-hidden="true" />
-                    <b>{c.name}</b>
-                    <span className="hint">is live now</span>
-                    <span className="hm-go">Join</span>
-                  </Link>
-                ))}
-              </section>
-            )}
+            <section className="hm-card" aria-labelledby="hm-classes">
+              <header>
+                <h2 id="hm-classes">Your classes</h2>
+                <Link to="/classes" className="hm-more">All classes</Link>
+              </header>
+              {classesError && classes === null ? (
+                <p className="hm-empty" role="alert">{classesError} <button type="button" className="btn link" onClick={retryClasses}>Try again</button></p>
+              ) : classes === null ? (
+                <p className="hm-empty" role="status">One moment…</p>
+              ) : active.length ? (
+                <div className="hm-classes">
+                  {active.slice(0, 6).map((c) => {
+                    const n = items[c.id]?.filter((item) => item.type === 'lesson').length;
+                    return (
+                      <Link key={c.id} to={`/class/${c.id}`} className="hm-class" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
+                        <span className="hm-class-band" aria-hidden="true">{isLive(live[c.id] ?? null) && <span className="hm-live-pill">Live</span>}</span>
+                        <b>{c.name}</b>
+                        <span className="hint">{c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {n === undefined ? '…' : `${n} ${n === 1 ? 'lesson' : 'lessons'}`}</span>
+                        {classDates(c) && <span className={'hm-dates ph-' + classPhase(c)}>{classPhase(c) === 'soon' ? 'Starts soon · ' : classPhase(c) === 'done' ? 'Finished · ' : ''}{classDates(c)}</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="hm-empty">No classes yet. <Link to="/classes">Make your first class</Link> and share its code. Your learners appear as they join.</p>
+              )}
+            </section>
+
+            <section className="hm-card" aria-labelledby="hm-files">
+              <header>
+                <h2 id="hm-files">Jump back in</h2>
+                <Link to="/archive" className="hm-more">My Files</Link>
+              </header>
+              {docs.mine === null || docs.withMe === null ? <p className="hm-empty" role="status">One moment…</p> : recent.length ? (
+                <div className="hm-files">
+                  {recent.map((d) => (
+                    <a key={d.id} href={`/doc/${d.id}`} target="_blank" rel="noopener" className="hm-file">
+                      <FileIcon kind={d.kind as FileKind} sub={d.ltype} size={34} label={false} />
+                      <span>
+                        <b>{d.title}</b>
+                        <span className="hint">{KIND_LABEL[d.kind]}{d.updatedAt?.toMillis ? ` · ${ago(d.updatedAt.toMillis())}` : ''}{d.owner !== uid ? ` · ${d.ownerName}` : ''}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="hm-empty">Documents, slides, flashcards and lessons you make or open show here.</p>
+              )}
+            </section>
+          </div>
+
+          <div className="hm-col">
+            <section className="hm-card" aria-labelledby="hm-needs">
+              <header>
+                <h2 id="hm-needs">Needs you</h2>
+                {needs.length > 0 && <span className="hm-count">{needs.length}</span>}
+              </header>
+              {chats === null ? <p className="hm-empty" role="status">One moment…</p> : needs.length ? (
+                <ul className="hm-needs">
+                  {needs.map((x) => (
+                    <li key={x.key}>
+                      <Link to={x.to}>
+                        <span className="hm-needs-ic" aria-hidden="true"><UiIcon name={x.icon} size={15} /></span>
+                        <span><b>{x.title}</b><span className="hint">{x.sub}</span></span>
+                        <span className="hm-ago">{x.at ? ago(x.at) : x.verb}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="hm-empty hm-done"><UiIcon name="check" size={16} /> You’re up to date. New messages, work handed in and homework due soon show here.</p>
+              )}
+            </section>
 
             <section className="hm-card" aria-labelledby="hm-coming">
               <header>
-                <h2 id="hm-coming">Coming up</h2>
+                <h2 id="hm-coming">This week</h2>
                 <Link to="/timetable" className="hm-more">Timetable</Link>
               </header>
-              {lessonsLoading && !classesError ? <p className="hm-empty" role="status">Loading your schedule…</p> : coming.length || due.length || upcoming.length ? (
+              {lessonsLoading && !classesError ? <p className="hm-empty" role="status">One moment…</p> : upcoming.length > 1 || coming.length || due.length ? (
                 <ol className="hm-agenda">
-                  {upcoming.map((o) => {
+                  {upcoming.slice(1).map((o) => {
                     const c = active.find((x) => x.id === o.s.classId);
                     return (
                       <li key={'s' + o.s.id + o.week} style={{ ['--cc' as string]: o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--ink)' }}>
                         <span className="hm-time">{when(o.start)}</span>
-                        <span className="hm-what">
-                          <b>{o.s.title}</b>
-                          <span className="hint">{o.s.kind === 'class' ? `${c?.name ?? 'Class'}${o.s.online ? ' · online' : ''}` : 'Meeting'}</span>
-                        </span>
-                        {(o.s.online || o.s.kind === 'class') && (
-                          <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => void startSession(o, c, { uid, name: user?.displayName || 'Teacher' }, navigate)}>
-                            {isNow(o) ? 'Start' : 'Open'}
-                          </button>
-                        )}
+                        <span className="hm-what"><b>{o.s.title}</b><span className="hint">{o.s.kind === 'class' ? `${c?.name ?? 'Class'}${o.s.online ? ' · online' : ''}` : 'Meeting'}</span></span>
                       </li>
                     );
                   })}
                   {coming.map(({ c, i, at }) => (
                     <li key={c.id + i.id} style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
                       <span className="hm-time">{when(at)}</span>
-                      <span className="hm-what">
-                        <b>{i.title}</b>
-                        <span className="hint">{c.name}</span>
-                      </span>
-                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="btn small-btn">Open</Link>
+                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="hm-what"><b>{i.title}</b><span className="hint">{c.name}</span></Link>
                     </li>
                   ))}
                   {due.map(({ c, i, at }) => (
                     <li key={'d' + c.id + i.id} className="due" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
                       <span className="hm-time">Due {when(at).replace(/, .*$/, '')}</span>
-                      <span className="hm-what">
-                        <b>{i.title}</b>
-                        <span className="hint">{c.name} · homework</span>
-                      </span>
-                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="btn small-btn">Open</Link>
+                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="hm-what"><b>{i.title}</b><span className="hint">{c.name} · homework</span></Link>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="hm-empty">Nothing scheduled. Set a time on a lesson and it shows here.</p>
+                <p className="hm-empty">Nothing else this week. Set a time on a lesson and it shows here.</p>
               )}
-            </section>
-
-            <section className="hm-card" aria-labelledby="hm-classes">
-              <header>
-                <h2 id="hm-classes">Your classes</h2>
-                <Link to="/classes" className="hm-more">Manage</Link>
-              </header>
-              {classesError && classes === null ? (
-                <p className="hm-empty" role="alert">{classesError} <button type="button" className="btn link" onClick={retryClasses}>Try again</button></p>
-              ) : classes === null ? (
-                <p className="hm-empty" role="status">Loading your classes…</p>
-              ) : active.length ? (
-                <div className="hm-classes">
-                  {active.slice(0, 6).map((c) => (
-                    <Link key={c.id} to={`/class/${c.id}`} className="hm-class" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
-                      <span className="hm-class-band" aria-hidden="true" />
-                      <b>{c.name}</b>
-                      <span className="hint">
-                        {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {items[c.id] === undefined ? 'Loading lessons…' : `${items[c.id].filter((item) => item.type === 'lesson').length} ${items[c.id].filter((item) => item.type === 'lesson').length === 1 ? 'lesson' : 'lessons'}`}
-                      </span>
-                      {classDates(c) && <span className={'hm-dates ph-' + classPhase(c)}>{classPhase(c) === 'soon' ? 'Starts soon · ' : classPhase(c) === 'done' ? 'Finished · ' : ''}{classDates(c)}</span>}
-                      {isLive(live[c.id] ?? null) && <span className="hm-live-pill">Live</span>}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="hm-empty">
-                  No classes yet. <Link to="/classes">Make your first class</Link>.
-                </p>
-              )}
-            </section>
-
-            <section className="hm-card" aria-labelledby="hm-files">
-              <header>
-                <h2 id="hm-files">Recent files</h2>
-                <Link to="/archive" className="hm-more">Resources</Link>
-              </header>
-              {docs.mine === null || docs.withMe === null ? <p className="hm-empty" role="status">Loading your files…</p> : recent.length ? (
-                <div className="hm-files">
-                  {recent.map((d) => (
-                    <a key={d.id} href={`/doc/${d.id}`} target="_blank" rel="noopener" className="hm-file">
-                      <FileIcon kind={d.kind as FileKind} sub={d.ltype} size={30} label={false} />
-                      <span>
-                        <b>{d.title}</b>
-                        <span className="hint">
-                          {KIND_LABEL[d.kind]} · {d.updatedAt?.toMillis ? ago(d.updatedAt.toMillis()) : ''}
-                        </span>
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="hm-empty">Documents, flashcards and lessons you make show here.</p>
-              )}
-            </section>
-          </div>
-
-          <aside className="hm-col">
-            <section className="hm-card" aria-labelledby="hm-new">
-              <header>
-                <h2 id="hm-new">Make something</h2>
-              </header>
-              <div className="hm-make">
-                {CREATE.map((c) => (
-                  <button key={c.k} type="button" className="hm-make-it" onClick={() => void make(c.k)}>
-                    <FileIcon kind={c.k as FileKind} size={26} label={false} />
-                    <span>
-                      <b>{c.label}</b>
-                      <span className="hint">{c.about}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
             </section>
 
             <section className="hm-card" aria-labelledby="hm-msgs">
@@ -285,18 +308,15 @@ export function HomePage() {
                 <h2 id="hm-msgs">Messages</h2>
                 <Link to="/messages" className="hm-more">Open</Link>
               </header>
-              {chats === null ? <p className="hm-empty" role="status">Loading your messages…</p> : chats.length ? (
+              {chats === null ? <p className="hm-empty" role="status">One moment…</p> : chats.length ? (
                 <ul className="hm-chats">
-                  {(chats ?? []).slice(0, 4).map((c) => {
+                  {chats.slice(0, 4).map((c) => {
                     const other = c.title || c.members.filter((m) => m !== uid).map((m) => c.names[m]).join(', ') || 'Notes to self';
                     return (
                       <li key={c.id}>
                         <Link to={`/messages?c=${c.id}`} className={unreadIn(c, uid) ? 'unread' : ''}>
                           <span className="hm-av" aria-hidden="true">{other.trim().slice(0, 1).toUpperCase()}</span>
-                          <span>
-                            <b>{other}</b>
-                            <span className="hint">{c.last ? `${c.last.by === uid ? 'You' : c.last.name.split(' ')[0]}: ${c.last.text}` : 'No messages yet'}</span>
-                          </span>
+                          <span><b>{other}</b><span className="hint">{c.last ? `${c.last.by === uid ? 'You' : c.last.name.split(' ')[0]}: ${c.last.text}` : 'No messages yet'}</span></span>
                           <span className="hm-ago">{c.lastAt ? ago(c.lastAt) : ''}</span>
                         </Link>
                       </li>
@@ -304,27 +324,43 @@ export function HomePage() {
                   })}
                 </ul>
               ) : (
-                <p className="hm-empty">Chats with learners and colleagues show here.</p>
+                <p className="hm-empty">No chats yet. Chats with learners and colleagues show here.</p>
               )}
             </section>
+          </div>
 
-            {handIns.length > 0 && (
-              <section className="hm-card" aria-labelledby="hm-hand">
+          <aside className="hm-col">
+            <section className="hm-card" aria-labelledby="hm-new">
+              <header><h2 id="hm-new">Make something</h2></header>
+              <div className="hm-make">
+                {CREATE.map((c) => (
+                  <button key={c.k} type="button" className="hm-make-it" onClick={() => void make(c.k)}>
+                    <FileIcon kind={c.k as FileKind} size={30} label={false} />
+                    <b>{c.label}</b>
+                  </button>
+                ))}
+                {MAKE_APPS.map((a) => (
+                  <Link key={a.k} to={a.to} className="hm-make-it">
+                    <AppLogo k={a.k} size={30} />
+                    <b>{a.label}</b>
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            {hubPicks.length > 0 && (
+              <section className="hm-card" aria-labelledby="hm-hub">
                 <header>
-                  <h2 id="hm-hand">Handed in</h2>
-                  <Link to="/archive" className="hm-more">Files</Link>
+                  <h2 id="hm-hub">New in the Resource Hub</h2>
+                  <Link to="/resource-hub" className="hm-more">Explore</Link>
                 </header>
-                <ul className="hm-hand">
-                  {handIns.map((h) => (
-                    <li key={h.classId + h.id}>
-                      <UiIcon name="upload" size={15} />
-                      <span>
-                        <b>{h.learner}</b>
-                        <span className="hint">
-                          {h.name} · {h.className}
-                        </span>
-                      </span>
-                      <span className="hm-ago">{h.at ? ago(h.at) : ''}</span>
+                <ul className="hm-hub">
+                  {hubPicks.map((a) => (
+                    <li key={a.id}>
+                      <Link to={`/resource-hub?activity=${encodeURIComponent(a.id)}`}>
+                        <img src={collectionFor(a.collectionId)?.cover} alt="" />
+                        <span><b>{a.title}</b><span className="hint">{[a.level, `${a.minutes} min`, a.interaction].filter(Boolean).join(' · ')}</span></span>
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -332,16 +368,12 @@ export function HomePage() {
             )}
 
             <section className="hm-card hm-space" aria-labelledby="hm-space">
-              <header>
+              <div className="hm-ring" style={{ ['--p' as string]: pct }} role="img" aria-label={`${pct}% of your space used`}><span>{pct}%</span></div>
+              <span>
                 <h2 id="hm-space">Space</h2>
-                <Link to="/archive" className="hm-more">Details</Link>
-              </header>
-              <div className="hm-ring" style={{ ['--p' as string]: pct }} role="img" aria-label={`${pct}% of your space used`}>
-                <span>{pct}%</span>
-              </div>
-              <span className="hint">
-                {formatBytes(used)} of {space.gb} GB{space.org ? ` from ${space.org}` : ''}
+                <span className="hint">{formatBytes(used)} of {space.gb} GB{space.org ? ` from ${space.org}` : ''}</span>
               </span>
+              <Link to="/archive" className="hm-more">Details</Link>
             </section>
 
             {org && (

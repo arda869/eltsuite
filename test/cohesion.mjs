@@ -17,7 +17,7 @@ export async function returnDuringAi(p,title) {
 }
 export async function backgroundSongAudit(s,base,out,axe) {
   const p=s.p;await p.goto(base+'/test/speech/fixture.html?as=teacher');
-  await p.getByRole('button',{name:'Create song',exact:true}).click();const d=p.getByRole('dialog',{name:'Create a classroom song'});
+  await p.getByRole('button',{name:'Create song',exact:true}).click();const d=p.getByRole('dialog',{name:'Make a song for your class'});
   await d.getByRole('radio',{name:'Young learners',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
   await d.getByText('Help me write the lyrics',{exact:true}).click();assert.equal(await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled(),false);
   await d.getByLabel('Lyric ideas').fill('Parts of the body song');assert.equal(await d.getByLabel('Song title',{exact:true}).inputValue(),'');

@@ -528,16 +528,15 @@
     {
       "id": "design-start",
       "category": "Images and Designer",
-      "title": "Start a design or storyboard",
+      "title": "Start a design",
       "questions": [
-        "How do I make a storyboard?",
         "How do I start a new design?",
         "Can I choose a canvas size?"
       ],
-      "keywords": "start a design or storyboard how do i make a storyboard? how do i start a new design? can i choose a canvas size?",
-      "summary": "Designer supports image canvases and multi-page designs. Storyboard files use the same design tools.",
+      "keywords": "start a design how do i start a new design? can i choose a canvas size?",
+      "summary": "Designer supports image canvases and multi-page designs.",
       "steps": [
-        "Open Designer and use Create image or Create storyboard.",
+        "Open Designer and create a new design.",
         "Choose an image canvas or a blank page size. Add pictures, text or teaching elements from the side tools.",
         "Name your work and check its save status before leaving. Use Download for a picture or PDF."
       ],

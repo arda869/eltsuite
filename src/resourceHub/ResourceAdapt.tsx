@@ -8,6 +8,7 @@ import { updateItem, type ClassDoc } from '../lib/classes';
 import { createLessonFromImport } from '../lib/transfer';
 import type { HubActivity } from './catalog';
 import { adaptedResourceTasks, type AdaptedResource } from './resourceTasks';
+import { recordResourceMetric } from './usageMetrics';
 import './resourceAdapt.css';
 
 const quickChanges = [
@@ -82,6 +83,7 @@ export function ResourceAdapt({ activity, onClose, preferredClassId }: { activit
       setDraftItemId(itemId);
       await updateItem(selectedClass.id, itemId, { hidden: false });
       setSaved({ itemId, classId: selectedClass.id, title });
+      recordResourceMetric(activity.id, 'adapt');
     } catch (cause) {
       console.error('Resource Hub adaptation copy failed', cause);
       setError('We couldn’t confirm that the adapted lesson was added. Check your Class before trying again to avoid a duplicate.');

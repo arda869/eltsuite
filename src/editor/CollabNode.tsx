@@ -13,8 +13,7 @@ import { NoteEditor } from '../components/NoteEditor';
 import { UiIcon } from '../components/UiIcon';
 import type { CollabAttrs } from '../collab/CollabTask';
 import type { CollabMode } from '../collab/suggest';
-import { CollabTask, templateKeyOf } from '../collab/CollabTask';
-import { SlidesDoc } from '../collab/slides/SlidesDoc';
+import { CollabTask } from '../collab/CollabTask';
 import { useAuth } from '../lib/auth';
 
 // "Collaborate": a document the class writes together, live. The block holds the settings;
@@ -54,6 +53,12 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
       ))}
     </span>
   );
+  if (slides)
+    return (
+      <NodeViewWrapper className={'block-node co-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
+        <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>Slides are no longer part of ELT Suite, so learners don’t see this.<button type="button" className="btn small-btn" onClick={deleteNode}>Remove it</button></p>
+      </NodeViewWrapper>
+    );
   return (
     <NodeViewWrapper className={'block-node co-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
@@ -141,7 +146,6 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
               <UiIcon name="present" size={14} /> {tplOpen ? 'Close the starting slides' : 'Make the starting slides'}
             </button>
           </span>
-          {tplOpen && classId && user && <SlidesDoc docKey={templateKeyOf(a)} title={(a.title || 'Slides') + ' · starting slides'} modes={['edit']} teacher me={{ uid: user.uid, name: user.displayName || 'Teacher' }} classId={classId} display="expand" canDownload />}
         </div>
       ) : (
         <div className="co-start">
@@ -239,10 +243,9 @@ function FromFiles({ uid, onPick, onCancel }: { uid: string; onPick: (d: SharedD
     <div className="co-choose co-files">
       {!d ? (
         <>
-          <span className="hint">{mine === null ? 'Opening your files…' : mine.length ? 'Choose a document from your files.' : 'There are no documents in your files yet. Make one in the resources library, under Collaborative documents.'}</span>
+          <span className="hint">{mine === null ? 'Opening your files…' : mine.length ? 'Choose a document from your files.' : 'There are no documents in your files yet. Make one in Collab.'}</span>
           {(mine ?? []).filter((x) => x.kind === 'doc').map((x) => (
             <button key={x.id} type="button" className="ap-chip" onClick={() => setD(x)}>
-              {x.kind === 'slides' ? 'Slides: ' : ''}
               {x.title}
             </button>
           ))}

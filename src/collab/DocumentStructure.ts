@@ -8,11 +8,12 @@ export const PageBreak = Node.create({
 });
 export const DocumentSection = Node.create({
   name: 'docSection', group: 'block', content: 'block+', defining: true, isolating: true,
-  addAttributes: () => ({ columns: { default: 1, parseHTML: (el) => Number(el.getAttribute('data-columns')) || 1 }, newPage: { default: true, parseHTML: (el) => el.hasAttribute('data-new-page') } }),
+  addAttributes: () => ({ columns: { default: 1, parseHTML: (el) => Number(el.getAttribute('data-columns')) || 1 }, newPage: { default: true, parseHTML: (el) => el.hasAttribute('data-new-page') }, orientation: { default: null, parseHTML: (el) => el.getAttribute('data-orient') || null } }),
   parseHTML: () => [{ tag: 'section[data-doc-section]' }],
   renderHTML: ({ HTMLAttributes }) => {
     const columns = Math.min(3, Math.max(1, Number(HTMLAttributes.columns) || 1));
-    return ['section', { 'data-doc-section': '', 'data-columns': columns, ...(HTMLAttributes.newPage ? { 'data-new-page': '' } : {}), class: 'doc-section', style: `column-count:${columns};column-gap:24px;column-span:all` }, 0];
+    // A section can turn its pages: printed and in Word they are landscape (or portrait); on screen a label says so.
+    return ['section', { 'data-doc-section': '', 'data-columns': columns, ...(HTMLAttributes.newPage ? { 'data-new-page': '' } : {}), ...(HTMLAttributes.orientation ? { 'data-orient': HTMLAttributes.orientation } : {}), class: 'doc-section', style: `column-count:${columns};column-gap:24px;column-span:all` }, 0];
   },
 });
 
@@ -69,4 +70,19 @@ export function sectionColumns(editor: Editor, columns: number) {
     return true;
   }
   return false;
+}
+
+// The section the cursor is in: turn its pages (null: as the document).
+export function sectionOrientation(editor: Editor, orientation: 'landscape' | 'portrait' | null) {
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d > 0; d--) if ($from.node(d).type.name === 'docSection') {
+    editor.view.dispatch(editor.state.tr.setNodeMarkup($from.before(d), undefined, { ...$from.node(d).attrs, orientation }));
+    return true;
+  }
+  return false;
+}
+export function currentSectionOrientation(editor: Editor): string | null | undefined {
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d > 0; d--) if ($from.node(d).type.name === 'docSection') return ($from.node(d).attrs.orientation as string | null) ?? null;
+  return undefined; // not in a section
 }

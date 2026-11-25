@@ -93,7 +93,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
   ] : [
     { k: 'record', label: 'Record', icon: 'mic' },
     { k: 'upload', label: 'Upload', icon: 'upload' },
-    { k: 'archive', label: 'Resources library', icon: 'archive' },
+    { k: 'archive', label: 'My Files', icon: 'archive' },
     { k: 'link', label: 'YouTube or link', icon: 'link' },
   ];
   const editing = !!source || !!videoFile;

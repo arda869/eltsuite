@@ -18,7 +18,6 @@ type LType = NonNullable<SharedDoc['ltype']>;
 const NEW: { label: string; kind: DocKind; ltype?: LType; hint: string }[] = [
   ...LESSON_TYPES.map((t) => ({ label: t.label, kind: 'lesson' as DocKind, ltype: t.v, hint: t.hint })),
   { label: 'Collab document', kind: 'doc', hint: 'Written together, live' },
-  { label: 'Slides', kind: 'slides', hint: 'A deck to present' },
   { label: 'Flashcards', kind: 'flash', hint: 'A set of cards to study' },
   { label: 'Reading Journal', kind: 'pd', hint: 'Sources and notes for teachers' },
 ];
@@ -55,7 +54,7 @@ export function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { 
     setNote(`Copying ${d.title}…`);
     try {
       await copyFile(d, me, null);
-      setNote(`${d.title} is in your Resources now.`);
+      setNote(`${d.title} is in My Files now.`);
     } catch (e) {
       console.error(e);
       setNote('We couldn’t make the copy. Check how much space you have left, then try again.');

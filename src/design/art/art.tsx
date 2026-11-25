@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 // outside a Sketch the plain grey is used. The colours live in palette.ts.
 import { A, A_DARK, A_LIGHT, C, G0, G1, G2, G3, G4, G5, INK, S, type Col } from './palette';
 import { MORE_THINGS } from './things';
-import type { ArtView } from '../design/model';
+import type { ArtView } from '../model';
 export { INK } from './palette';
 
 // A pen line: slightly uneven, gone over twice, as if drawn by hand; greys as hatching.

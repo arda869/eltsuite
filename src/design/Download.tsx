@@ -16,7 +16,7 @@ const classReturn = (value: string | null) => {
   } catch { return ''; }
 };
 
-// Export image artwork or save a reusable picture in Resources.
+// Export image artwork or save a reusable picture in My Files.
 export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState('');
@@ -41,7 +41,7 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
     if (!u) return;
     const blob = await pageBlob(cx.page, cx.els, env, 1.6);
     await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`, '', cx.d.id);
-    if (notify) void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
+    if (notify) void tell('The page is in My Files as a picture. You can add it to any lesson or task from there.');
   };
   const useInClasses = async () => {
     if (!returnTo || !cx.canEdit || !await beforeReturn?.()) throw Error('Design not ready');
@@ -118,8 +118,8 @@ export function DownloadMenu({ cx, beforeReturn }: { cx: Ctx; beforeReturn?: () 
               <strong>Picture (JPG)</strong><span>A smaller file, for messages</span>
             </button>
             {!cx.learnerUser && (
-              <button type="button" role="menuitem" onClick={() => void run('Saving to Resources…', toFiles)}>
-                <strong>Save as a picture in Resources</strong><span>To use in lessons and tasks</span>
+              <button type="button" role="menuitem" onClick={() => void run('Saving to My Files…', toFiles)}>
+                <strong>Save as a picture in My Files</strong><span>To use in lessons and tasks</span>
               </button>
             )}
             <p className="dz-dl-h">All {cx.pages.length} {cx.pages.length === 1 ? 'page' : 'pages'}, to print</p>

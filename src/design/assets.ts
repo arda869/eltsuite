@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PersonArt, Sketch, THINGS } from '../storyboard/art';
-import { SCENES, sceneBox } from '../storyboard/scenes';
+import { PersonArt, Sketch, THINGS } from './art/art';
+import { SCENES, sceneBox } from './art/scenes';
 import type { DPage, El } from './model';
 import { artKey } from './render';
 

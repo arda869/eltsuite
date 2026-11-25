@@ -1,7 +1,8 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, auth } from '../lib/firebase';
 
-export type ResourceMetricKind = 'view' | 'download' | 'copy';
+export type ResourceMetricKind = 'view' | 'download' | 'copy' | 'save' | 'live' | 'adapt';
+const KINDS: ResourceMetricKind[] = ['view', 'download', 'copy', 'save', 'live', 'adapt'];
 type PendingMetric = { activityId: string; kind: ResourceMetricKind; requestId: string };
 const endpoint = httpsCallable<PendingMetric, { recorded: boolean }>(getFunctions(app, 'us-central1'), 'recordResourceHubMetric');
 const key = (uid: string) => `rh.metrics.pending.${uid}`;
@@ -13,7 +14,7 @@ const read = (uid: string): PendingMetric[] => {
     const stored = localStorage.getItem(key(uid));
     if (stored === null) return memory.get(uid) ?? [];
     const value = JSON.parse(stored);
-    return Array.isArray(value) ? value.filter(item => item && typeof item.activityId === 'string' && typeof item.requestId === 'string' && ['view', 'download', 'copy'].includes(item.kind)) : [];
+    return Array.isArray(value) ? value.filter(item => item && typeof item.activityId === 'string' && typeof item.requestId === 'string' && KINDS.includes(item.kind)) : [];
   } catch { return memory.get(uid) ?? []; }
 };
 const write = (uid: string, pending: PendingMetric[]) => {
@@ -47,4 +48,19 @@ export function recordResourceMetric(activityId: string, kind: ResourceMetricKin
   const pending = read(uid);
   if (!pending.some(item => item.requestId === requestId)) write(uid, [...pending, { activityId, kind, requestId }]);
   void flushResourceMetrics();
+}
+
+// A search, once the teacher stops typing: its words and how many activities matched.
+const searchEndpoint = httpsCallable<{ query: string; results: number }, { recorded: boolean }>(getFunctions(app, 'us-central1'), 'recordResourceHubSearch');
+let searchTimer = 0;
+let lastSearch = '';
+export function recordHubSearch(query: string, results: number) {
+  window.clearTimeout(searchTimer);
+  const q = query.trim().toLowerCase();
+  if (q.length < 3 || !auth.currentUser) return;
+  searchTimer = window.setTimeout(() => {
+    if (q === lastSearch) return;
+    lastSearch = q;
+    void searchEndpoint({ query: q, results }).catch(() => { /* a lost search figure does no harm */ });
+  }, 1800);
 }

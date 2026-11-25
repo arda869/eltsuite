@@ -52,7 +52,7 @@ const PAGES: [RegExp, string][] = [
   [/^\/timetable/, 'Timetable'],
   [/^\/rooms/, 'Rooms'],
   [/^\/call\//, 'A call'],
-  [/^\/archive/, 'Resources'],
+  [/^\/archive/, 'My Files'],
   [/^\/collab/, 'Collab'],
   [/^\/reading/, 'Reading Journal'],
   [/^\/pdf/, 'PDF'],

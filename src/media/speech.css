@@ -82,3 +82,27 @@
 .speech-window-actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
 .speech-row-actions .ai-button { gap: 0; }
 :root[data-theme='dark'] .speech-hint kbd { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hair-strong); }
+/* Second pass: one row per speaker with every control the same height, a clear way to start, and
+   the same header as the song window. */
+.speech-head { align-items: center; }
+.speech-head-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px #d6e2da; }
+.speech-head-text { flex: 1; min-width: 0; }
+.speech-head p { max-width: 640px; font-size: 13.5px; line-height: 1.5; }
+.speech-x { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; }
+.speech-window-actions { display: flex; gap: 8px; align-items: center; }
+.speech-window-actions .btn { height: 40px; min-width: 40px; }
+.speech-dialog .speech-speakers { grid-template-columns: 1fr; gap: 8px; }
+.speech-dialog .speech-speakers .speech-cast-card { grid-template-columns: 38px minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.1fr) auto auto; align-items: end; gap: 12px; padding: 12px 14px; margin: 0; border: 1px solid #d1dfd6; border-radius: 14px; background: #fff; }
+.speech-dialog .speech-cast-card .speech-avatar { grid-row: auto; align-self: end; width: 38px; height: 38px; border-radius: 12px; font-size: 16px; }
+.speech-dialog .speech-cast-card label { grid-column: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 600; color: #4f675d; min-width: 0; }
+.speech-dialog .speech-cast-card input, .speech-dialog .speech-cast-card .sel, .speech-dialog .speech-cast-card select, .speech-dialog .speech-cast-card .btn { height: 38px; min-height: 38px; box-sizing: border-box; }
+.speech-dialog .speech-cast-card .sel, .speech-dialog .speech-cast-card select { width: 100%; border: 1px solid #cfdcd3; border-radius: 10px; background: #fff; padding: 0 10px; }
+.speech-dialog .speech-cast-card .speech-voice-preview { grid-column: auto; grid-row: auto; align-self: end; }
+.speech-remove { width: 38px; padding: 0; font-size: 20px; line-height: 1; align-self: end; }
+.speech-start { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 0; }
+.speech-start-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border-radius: 14px; border: 1px solid #cfdcd3; background: #fff; text-align: left; cursor: pointer; font: inherit; color: #20352d; }
+.speech-start-card:hover:not(:disabled) { border-color: #55856a; box-shadow: 0 6px 18px -12px #1f4434; }
+.speech-start-card b { font-size: 15px; }
+.speech-start-card span { font-size: 12.5px; color: #5c7168; line-height: 1.45; }
+.speech-dialog .speech-script { min-height: 0; }
+@media (max-width: 760px) { .speech-dialog .speech-speakers .speech-cast-card { grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr); } .speech-start { grid-template-columns: 1fr; } }

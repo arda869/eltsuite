@@ -1,0 +1,48 @@
+name: Remove retired Slides and Storyboards data
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete_existing:
+        description: 'Delete existing Slides and Storyboards files and lesson elements (false previews counts only)'
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci --prefix functions --ignore-scripts
+      - name: Prepare existing Firebase deployment credentials
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SERVICE_ACCOUNT" || { echo '::error::Missing Firebase deployment credentials'; exit 1; }
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          chmod 600 "$RUNNER_TEMP/firebase-sa.json"
+      - name: Preview or remove retired app data
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+          CLEANUP_SUMMARY_ONLY: '1'
+          DELETE_EXISTING: ${{ inputs.delete_existing }}
+        run: |
+          if [ "$DELETE_EXISTING" = 'true' ]; then
+            node scripts/remove-slides-storyboards.mjs --confirm
+          else
+            node scripts/remove-slides-storyboards.mjs
+          fi
+      - name: Remove temporary credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"

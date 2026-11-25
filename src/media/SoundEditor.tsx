@@ -16,6 +16,7 @@ import { samplesOf, sfxSamples, useMySfx, type MySfx } from '../lib/sfxAudio';
 import { clipEnd, clipLen, mixdown, projectLen, renderClip, SFX, stackRows, VOICE_FX, type Clip, type Line, type Project, type Track, type VoiceFx } from '../lib/mix';
 import { encodeMp3, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
 import { cleanNoise } from '../lib/soundJobs';
+import { saveTracks, type OpenedProject, type TrackRef } from './trackStore';
 import { archiveAdd, formatBytes, resourceFolderForClass, saveSound, saveStemResources, type SongStemBlobs, type StemSource, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
@@ -32,10 +33,10 @@ import { SuggestionInput } from '../components/SuggestionInput';
 // more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
 // extra: more tracks to start with (a recording session: one per person), each at its own time.
-export type SoundSource = { songStems?:boolean;songVocalsMuted?:boolean; timedScript?: ScriptLine[]; blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
+export type SoundSource = { opened?: OpenedProject; songStems?:boolean;songVocalsMuted?:boolean; timedScript?: ScriptLine[]; blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 export type Use = { cls: string; lesson: string; task: string };
-export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource }, onProgress: (p: number) => void) => Promise<void> };
+export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource; project?: string }, onProgress: (p: number) => void) => Promise<void> };
 
 const savedQ = (): SoundQuality => {
   try {
@@ -87,6 +88,12 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   // ------------------------------------------------------------ the project, with undo
   const initial = useMemo<Project>(() => {
+    // A saved recording with its tracks: back exactly as it was.
+    if (source.opened) {
+      for (const [id, d] of Object.entries(source.opened.sources)) { sources.current[id] = d; names.current[id] = source.opened.names[id] ?? 'Track'; }
+      if (source.opened.project.tracks.some((t) => t.clips.some((c) => c.src === 'silence'))) { sources.current.silence = new Float32Array(Math.round(rate * 120)); names.current.silence = 'Silence'; }
+      return source.opened.project;
+    }
     const voice:Track = { ...(source.songStems?{songRole:'vocals' as const}:{}), ...newTrack(source.extra || source.at !== undefined ? source.name : 'Speaker 1'), mute:source.songVocalsMuted??false, clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
@@ -121,6 +128,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     return { tracks: [voice, ...extras, ...scriptTracks, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [p, setP] = useState<Project>(initial);
+  // The raw sounds already kept with the file, so saving again only uploads new ones.
+  const keptTracks = useRef(new Map<string, TrackRef>((source.opened?.refs ?? []).map((r) => [r.id, r])));
   const past = useRef<Project[]>([]);
   const future = useRef<Project[]>([]);
   const lastGroup = useRef({ g: '', t: 0 });
@@ -827,18 +836,22 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       // Keep vocal audio even if the teacher muted its track for this saved mix.
       stems={vocals:await encodeMp3(mixdown(version(true),heard.sources,rate),rate,quality),instrumental:await encodeMp3(mixdown(version(false),heard.sources,rate),rate,quality)};
     }
-    return { blob, stems, vocalsOff, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
+    setSaving({ stage: 'Keeping each track', p: 0.6 });
+    let project: string | undefined;
+    try { project = await saveTracks(classId, p, sources.current, names.current, rate, keptTracks.current, (q) => setSaving({ stage: 'Keeping each track', p: 0.6 + q * 0.15 })); }
+    catch (e) { console.warn('The separate tracks were not kept', e); }
+    return { blob, stems, vocalsOff, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.75, project };
   };
   const save = async () => {
     if (!user) return setError('Sign in again to save.');
     stop();
     setError('');
     try {
-      const { blob, stems, vocalsOff, duration, sc, name, base } = await produce();
+      const { blob, stems, vocalsOff, duration, sc, name, base, project } = await produce();
       const stemSource=stems?await saveStemResources(user.uid,classId,name,folder,stems,sc,duration,vocalsOff):undefined;
       setSaving({ stage: 'Uploading', p: base });
-      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration, ...(stemSource?{stems:stemSource.stems}:{}) }, (q) => setSaving({ stage: 'Uploading', p: base + q * (0.97 - base) }));
-      setSaving({ stage: 'Adding it to your resources library', p: 0.98 });
+      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration, ...(stemSource?{stems:stemSource.stems}:{}), ...(project?{project}:{}) }, (q) => setSaving({ stage: 'Uploading', p: base + q * (0.97 - base) }));
+      setSaving({ stage: 'Adding it to My Files', p: 0.98 });
       const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder:await resourceFolderForClass(user.uid,classId,folder), tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId, archiveId, title: name, script: sc });
@@ -858,10 +871,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     if (!replace) return;
     setAsking(null);
     try {
-      const { blob, stems, vocalsOff, duration, sc, base } = await produce();
+      const { blob, stems, vocalsOff, duration, sc, base, project } = await produce();
       const stemSource=stems&&user?await saveStemResources(user.uid,classId,title.trim()||replace.name,folder,stems,sc,duration,vocalsOff):undefined;
       setSaving({ stage: 'Replacing it everywhere', p: base });
-      await replace.run(blob, { script: sc, duration, ...(stemSource?{stemSource}:{}) }, (q) => setSaving({ stage: 'Replacing it everywhere', p: base + q * (0.99 - base) }));
+      await replace.run(blob, { script: sc, duration, ...(stemSource?{stemSource}:{}), ...(project?{project}:{}) }, (q) => setSaving({ stage: 'Replacing it everywhere', p: base + q * (0.99 - base) }));
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId: '', archiveId: '', title: replace.name, script: sc });
     } catch (e) {
