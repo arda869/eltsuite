@@ -1,5 +1,6 @@
 import { NoCorrectAnswer } from './NoCorrectAnswer';
 import { NSelect } from '../components/Select';
+import { withRest } from './AtRest';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -256,7 +257,7 @@ export const Match = Node.create({
   }),
   parseHTML: () => [{ tag: 'div[data-match]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-match': '' })],
-  addNodeView: () => ReactNodeViewRenderer(MatchView),
+  addNodeView: () => ReactNodeViewRenderer(withRest(MatchView, 'Matching')),
 });
 
 // Word order -----------------------------------------------------------------------------
@@ -283,7 +284,7 @@ export const Order = Node.create({
   addAttributes: () => ({ id: { default: null }, sentence: { default: '' }, hint: { default: '' }, feedback: { default: '' }, example: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-order]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-order': '' })],
-  addNodeView: () => ReactNodeViewRenderer(OrderView),
+  addNodeView: () => ReactNodeViewRenderer(withRest(OrderView, 'Word order')),
 });
 
 // Long answer ------------------------------------------------------------------------------
@@ -384,7 +385,7 @@ export const Writing = Node.create({
   addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 }, genre: { default: '' }, rubric: { default: 'none' }, criteria: { default: [] }, example: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-writing]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-writing': '' })],
-  addNodeView: () => ReactNodeViewRenderer(WritingView),
+  addNodeView: () => ReactNodeViewRenderer(withRest(WritingView, 'Long answer')),
 });
 
 // Column break (for two-column layouts) ------------------------------------------------------

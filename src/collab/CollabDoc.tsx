@@ -13,6 +13,7 @@ import { doc as fsDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
+import { AnswerKey } from './AnswerKey';
 import { PersonFace } from '../components/avatars';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -844,6 +845,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 </Paper>
               );
             })()}
+            {page && teacher && <AnswerKey editor={editor} />}
           </EditorClassContext.Provider>
         </div>
         {(!page || showSide) && <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>
@@ -1112,6 +1114,9 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
           </label>
           <label className="check-row">
             <input type="checkbox" checked={o.wordCount} onChange={(e) => setO({ ...o, wordCount: e.target.checked })} /> Word count at the end
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={o.answerKey !== false} onChange={(e) => setO({ ...o, answerKey: e.target.checked })} /> Answer key at the end, when there are questions
           </label>
           <button type="button" className="btn primary small-btn" onClick={go}>
             Download
