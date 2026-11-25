@@ -432,7 +432,7 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
 
 function PageProps({ cx }: { cx: Ctx }) {
   const p = cx.page;
-  const imageSizes = SIZES.filter(s=>['square','slide','story','banner'].includes(s.k));
+  const imageSizes = SIZES;
   const size = imageSizes.find((s) => s.w === p.w && s.h === p.h);
   return (
     <div className="dz-props-in">
