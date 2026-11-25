@@ -11,7 +11,7 @@ import { useDismiss } from '../lib/useDismiss';
 
 import { LAYOUT_DEFAULT, SIZES, type Layout } from './documentLayout';
 export { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout } from './documentLayout';
-import { marginBoxesCss, marginsOf, runningOf } from './documentLayout';
+import { footerSlots, marginBoxesCss, marginsOf, runningOf, RUN_FIELDS, type Align } from './documentLayout';
 import { PageSetupDialog } from './PageSetup';
 import { Ruler } from './Ruler';
 
@@ -118,8 +118,12 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning, title = '' }: { title?: string; editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void }) {
   const [running, setRunning] = useState<{ page: number; part: 'header' | 'footer' } | null>(null);
+  // The organisation's logo (or ELT Suite's) in the header, when chosen.
+  const [logo, setLogo] = useState('');
+  useEffect(() => { if (!layout.runLogo) return; let on = true; void import('../lib/brand').then((m) => m.brandMark()).then((b) => on && setLogo(b.dataUrl)).catch(() => {}); return () => { on = false; }; }, [layout.runLogo]);
+  const runFont: React.CSSProperties = { fontWeight: layout.runBold ? 700 : undefined, fontStyle: layout.runItalic ? 'italic' : undefined };
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const desk = useRef<HTMLDivElement>(null);
@@ -236,21 +240,31 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
           </span>
         ))}
         {paged && Array.from({ length: pages }, (_, i) => {
-          const r = runningOf(layout, i, pages);
+          const r = runningOf(layout, i, pages, { title });
           const first = i === 0 && !!layout.firstDifferent;
           const edit = (part: 'header' | 'footer') => onRunning && setRunning({ page: i, part });
-          const numberAt = (side: 'left' | 'center' | 'right') => (r.number && r.align === side ? r.number : '');
+          const foot = footerSlots(r);
+          const logoAt = r.headerAlign === 'right' ? 'l' : 'r';
           return (
             <div key={'running-' + i} className="pg-running">
               {/* Double-click the top or bottom margin to write the header or footer there. */}
               <span className={'pg-run-zone top' + (onRunning ? ' editable' : '')} style={{ top: i * stride, height: mg.top, left: 0, right: 0 }} onDoubleClick={() => edit('header')} title={onRunning ? 'Double-click to edit the header' : undefined} />
               <span className={'pg-run-zone bottom' + (onRunning ? ' editable' : '')} style={{ top: i * stride + s.h - mg.bottom, height: mg.bottom, left: 0, right: 0 }} onDoubleClick={() => edit('footer')} title={onRunning ? 'Double-click to edit the footer' : undefined} />
-              {r.header && <span className="pg-running-header" aria-hidden="true" style={{ top: i * stride + Math.max(12, mg.top / 2 - 9), left: mg.left, right: mg.right }}>{r.header}</span>}
+              {(r.header || (layout.runLogo && logo)) && (
+                <span className="pg-running-header pg-run-row" aria-hidden="true" style={{ ...runFont, top: i * stride + Math.max(12, mg.top / 2 - 11), left: mg.left, right: mg.right }}>
+                  {(['left', 'center', 'right'] as const).map((side) => (
+                    <span key={side} className={side[0]}>
+                      {r.headerAlign === side ? r.header : ''}
+                      {layout.runLogo && logo && side[0] === logoAt && <img className="pg-run-logo" src={logo} alt="" />}
+                    </span>
+                  ))}
+                </span>
+              )}
               {(r.footer || r.number) && (
-                <span className="pg-running-footer pg-run-row" aria-hidden="true" style={{ top: i * stride + s.h - Math.max(26, mg.bottom / 2 + 9), left: mg.left, right: mg.right }}>
-                  <span className="l">{numberAt('left')}</span>
-                  <span className="c">{[r.footer, numberAt('center')].filter(Boolean).join(' · ')}</span>
-                  <span className="r">{numberAt('right')}</span>
+                <span className="pg-running-footer pg-run-row" aria-hidden="true" style={{ ...runFont, top: i * stride + s.h - Math.max(26, mg.bottom / 2 + 9), left: mg.left, right: mg.right }}>
+                  <span className="l">{foot.left}</span>
+                  <span className="c">{foot.center}</span>
+                  <span className="r">{foot.right}</span>
                 </span>
               )}
               {running?.page === i && onRunning && (
@@ -283,19 +297,45 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
 // Writing a header or footer on the page, with its options.
 function RunningEditor({ layout, part, first, style, onChange, onClose }: { layout: Layout; part: 'header' | 'footer'; first: boolean; style: React.CSSProperties; onChange: (p: Partial<Layout>) => void; onClose: () => void }) {
   const key = (first ? (part === 'header' ? 'headerFirst' : 'footerFirst') : part) as 'header' | 'footer' | 'headerFirst' | 'footerFirst';
+  const alignKey = part === 'header' ? 'headerAlign' : 'footerAlign';
   const [text, setText] = useState(String(layout[key] ?? ''));
   const box = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as globalThis.Node) && save();
+    const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as globalThis.Node) && !(e.target as HTMLElement).closest?.('.sel-list') && save();
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
   });
   const save = () => { if (text !== String(layout[key] ?? '')) onChange({ [key]: text.slice(0, 160) }); onClose(); };
+  // A field goes in where the cursor is.
+  const addField = (f: string) => {
+    const el = input.current;
+    const at = el?.selectionStart ?? text.length, to = el?.selectionEnd ?? at;
+    const next = (text.slice(0, at) + f + text.slice(to)).slice(0, 160);
+    setText(next);
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(at + f.length, at + f.length); });
+  };
   const label = `${first ? 'First page ' : ''}${part}`;
+  const align = (layout[alignKey] ?? 'center') as Align;
+  const icon = (a: Align) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{a === 'left' ? <path d="M4 6h16M4 10h10M4 14h16M4 18h10" /> : a === 'center' ? <path d="M4 6h16M7 10h10M4 14h16M7 18h10" /> : <path d="M4 6h16M10 10h10M4 14h16M10 18h10" />}</svg>;
   return (
     <div ref={box} className="pg-run-edit" style={style} role="group" aria-label={`Edit the ${label}`} onMouseDown={(e) => e.stopPropagation()}>
-      <input autoFocus className="pg-run-input" value={text} maxLength={160} placeholder={part === 'header' ? 'Header, for example: Unit 4 · B1' : 'Footer'} aria-label={label} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose(); }} />
+      <span className="pg-run-line">
+        <input ref={input} autoFocus className="pg-run-input" value={text} maxLength={160} placeholder={part === 'header' ? 'Header, for example: {title} · Unit 4' : 'Footer, for example: {date}'} aria-label={label} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose(); }} style={{ fontWeight: layout.runBold ? 700 : undefined, fontStyle: layout.runItalic ? 'italic' : undefined }} />
+        <NSelect className="pg-run-sel" aria-label="Add a field" value="" onChange={(e) => e.target.value && addField(e.target.value)}>
+          <option value="">Add a field…</option>
+          {RUN_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.label}</option>)}
+        </NSelect>
+      </span>
       <span className="pg-run-opts">
+        <span className="pg-run-seg" role="group" aria-label={`Place the ${part}`}>
+          {(['left', 'center', 'right'] as const).map((a) => <button key={a} type="button" className={'pg-run-ic' + (align === a ? ' on' : '')} aria-pressed={align === a} aria-label={a === 'center' ? 'Centre' : a[0].toUpperCase() + a.slice(1)} data-tip={a === 'center' ? 'Centre' : a[0].toUpperCase() + a.slice(1)} onClick={() => onChange({ [alignKey]: a })}>{icon(a)}</button>)}
+        </span>
+        <span className="pg-run-seg" role="group" aria-label="Text style">
+          <button type="button" className={'pg-run-ic' + (layout.runBold ? ' on' : '')} aria-pressed={!!layout.runBold} aria-label="Bold" data-tip="Bold" onClick={() => onChange({ runBold: !layout.runBold })}><b>B</b></button>
+          <button type="button" className={'pg-run-ic' + (layout.runItalic ? ' on' : '')} aria-pressed={!!layout.runItalic} aria-label="Italic" data-tip="Italic" onClick={() => onChange({ runItalic: !layout.runItalic })}><i style={{ fontFamily: 'Georgia, serif' }}>I</i></button>
+        </span>
+        {part === 'header' && <label className="pg-run-check"><input type="checkbox" checked={!!layout.runLogo} onChange={(e) => onChange({ runLogo: e.target.checked })} />Logo</label>}
         <label className="pg-run-check"><input type="checkbox" checked={!!layout.firstDifferent} onChange={(e) => onChange({ firstDifferent: e.target.checked })} />Different first page</label>
         <NSelect className="pg-run-sel" aria-label="Page numbers" value={layout.pageNumbers ? layout.numberStyle ?? 'n' : 'off'} onChange={(e) => onChange(e.target.value === 'off' ? { pageNumbers: false } : { pageNumbers: true, numberStyle: e.target.value as 'n' | 'page' | 'of' })}>
           <option value="off">No page numbers</option>
@@ -304,11 +344,14 @@ function RunningEditor({ layout, part, first, style, onChange, onClose }: { layo
           <option value="of">3 of 8</option>
         </NSelect>
         {layout.pageNumbers && (
-          <NSelect className="pg-run-sel" aria-label="Page number position" value={layout.numberAlign ?? 'center'} onChange={(e) => onChange({ numberAlign: e.target.value as 'left' | 'center' | 'right' })}>
-            <option value="left">Left</option>
-            <option value="center">Centre</option>
-            <option value="right">Right</option>
-          </NSelect>
+          <>
+            <NSelect className="pg-run-sel" aria-label="Page number position" value={layout.numberAlign ?? 'center'} onChange={(e) => onChange({ numberAlign: e.target.value as Align })}>
+              <option value="left">Number on the left</option>
+              <option value="center">Number in the centre</option>
+              <option value="right">Number on the right</option>
+            </NSelect>
+            <label className="pg-run-check">Start at<input type="number" className="pg-run-num" min={0} max={999} value={layout.pageNumberStart || 1} onChange={(e) => onChange({ pageNumberStart: Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 0))) })} aria-label="First page number" /></label>
+          </>
         )}
         <button type="button" className="btn small-btn primary" onClick={save}>Done</button>
       </span>

@@ -358,3 +358,14 @@
 .cd-doc section[data-orient]::before { content: 'Portrait pages from here when printed'; display: block; column-span: all; width: fit-content; margin: 8px 0 10px; padding: 2px 10px; border: 1px dashed var(--hair-strong); border-radius: 999px; color: var(--muted); font: 600 11px/1.6 var(--sans); }
 .cd-doc section[data-orient="landscape"]::before { content: 'Landscape pages from here when printed'; border-color: var(--accent, #c8764a); color: color-mix(in srgb, var(--accent, #c8764a) 70%, black); }
 @media print { .cd-doc section[data-orient]::before { display: none; } }
+/* Headers and footers: places, fields, style and logo. Every control in a row is one height. */
+.pg-running-header { pointer-events: none; }
+.pg-run-logo { height: 20px; width: auto; max-width: 120px; object-fit: contain; vertical-align: middle; margin: 0 6px; }
+.pg-run-line { display: flex; gap: 8px; align-items: center; }
+.pg-run-line .pg-run-input { flex: 1; min-width: 0; }
+.pg-run-line .pg-run-sel, .pg-run-line .nsel > .sel { height: 32px; min-height: 32px; box-sizing: border-box; }
+.pg-run-seg { display: inline-flex; height: 32px; border: 1px solid var(--hair-strong); border-radius: 8px; overflow: hidden; box-sizing: border-box; }
+.pg-run-ic { width: 32px; height: 30px; display: grid; place-items: center; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; font: 600 14px var(--sans); padding: 0; }
+.pg-run-ic + .pg-run-ic { border-left: 1px solid var(--hair); }
+.pg-run-ic.on { background: var(--selected, #efefee); color: var(--accent-text, var(--ink)); }
+.pg-run-num { width: 56px; height: 32px; box-sizing: border-box; padding: 0 6px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 14px var(--sans); }

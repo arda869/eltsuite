@@ -1,5 +1,5 @@
 import { allTabsJSON } from '../collab/tabs';
-import { runningOf } from '../collab/documentLayout';
+import { footerSlots, runningOf } from '../collab/documentLayout';
 import * as Y from 'yjs';
 import { yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import type { JSONContent } from '@tiptap/react';
@@ -36,7 +36,7 @@ async function yDoc(key: string) {
 
 // A collab document's text, as the editor keeps it.
 // A PDF of a document: its text laid out on A4 pages, with the brand at the top.
-export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: Layout): Promise<Uint8Array> {
+export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: Layout, title = ''): Promise<Uint8Array> {
   const [{ jsPDF }, h2c] = await Promise.all([import('jspdf'), import('html2canvas')]);
   const host = document.createElement('div');
   const metrics = layout ? pageMetrics(layout) : null;
@@ -92,14 +92,20 @@ export async function htmlToPdf(bodyHtml: string, brand: Brand | null, layout?: 
       pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', ml, mt, pageW - ml - mr, h * k);
       if (layout) {
         pdf.setFontSize(9); pdf.setTextColor(80);
-        // The first page can have its own header and footer; the page number in its style and place.
-        const r = runningOf(layout, i, pageTotal);
-        if (r.header) pdf.text(r.header, pageW / 2, Math.max(14, mt / 2), { align: 'center' });
+        pdf.setFont('helvetica', layout.runBold && layout.runItalic ? 'bolditalic' : layout.runBold ? 'bold' : layout.runItalic ? 'italic' : 'normal');
+        // The first page can have its own header and footer; fields filled in; each in its place.
+        const r = runningOf(layout, i, pageTotal, { title });
+        const x = (a: 'left' | 'center' | 'right') => (a === 'left' ? ml : a === 'right' ? pageW - mr : pageW / 2);
+        const hy = Math.max(14, mt / 2);
+        if (r.header) pdf.text(r.header, x(r.headerAlign), hy, { align: r.headerAlign });
+        if (layout.runLogo && brand) {
+          const lh = 16, lw = (brand.w / brand.h) * lh;
+          pdf.addImage(brand.dataUrl, 'PNG', r.headerAlign === 'right' ? ml : pageW - mr - lw, hy - lh * 0.75, lw, lh);
+        }
         const fy = pageH - Math.max(14, mb / 2);
-        const centre = [r.footer, r.align === 'center' ? r.number : ''].filter(Boolean).join(' · ');
-        if (centre) pdf.text(centre, pageW / 2, fy, { align: 'center' });
-        if (r.number && r.align === 'left') pdf.text(r.number, ml, fy, { align: 'left' });
-        if (r.number && r.align === 'right') pdf.text(r.number, pageW - mr, fy, { align: 'right' });
+        const slots = footerSlots(r);
+        for (const a of ['left', 'center', 'right'] as const) if (slots[a]) pdf.text(slots[a], x(a), fy, { align: a });
+        pdf.setFont('helvetica', 'normal');
       }
     }
     return new Uint8Array(pdf.output('arraybuffer'));
@@ -117,7 +123,7 @@ async function collabDoc(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> 
   state.destroy();
   const o = { ...EXPORT_DEFAULT, layout, style: ((d as SharedDoc & { citeStyle?: CiteStyle }).citeStyle) || EXPORT_DEFAULT.style };
   await prepareDocumentPrint(json, 'doc:' + d.id);
-  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout)]);
+  const [docx, pdf] = await Promise.all([docxBlob(json, d.title, o, brand).then(bytes), htmlToPdf(docBodyHtml(json, d.title, o), brand, layout, d.title)]);
   return [{ name: safe(d.title) + '.docx', data: docx }, { name: safe(d.title) + '.pdf', data: pdf }];
 }
 

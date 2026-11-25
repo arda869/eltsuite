@@ -392,7 +392,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
       const content = allTabsJSON(session.doc, (f) => yXmlFragmentToProsemirrorJSON(f)) as JSONContent;
       await prepareDocumentPrint(content, mediaSpace || classId);
-      const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout);
+      const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout, title);
       setPdfPrev({ bytes, name: title || 'Document' });
     } catch (e) {
       setPdfError('The PDF could not be created. Please try the download again.');
@@ -837,7 +837,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
+                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
                   {heading}
                   {contents}
                 </Paper>
