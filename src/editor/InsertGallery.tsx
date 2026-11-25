@@ -661,6 +661,13 @@ const PREVIEW: Record<string, () => ReactNode> = {
       <Lines n={2} />
     </span>
   ),
+  pagebreak: () => (
+    <span className="gl-col" aria-label="The next content starts on a new page">
+      <Line w="55%" />
+      <span style={{ borderTop: '1px dashed var(--accent)', paddingTop: 5, fontSize: 11, color: 'var(--accent)' }}>Next page</span>
+      <Line w="70%" />
+    </span>
+  ),
   column: () => (
     <span className="gl-two">
       <Lines n={4} />
