@@ -109,7 +109,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
               {profile?.role === 'teacher' && (
                 <Link role="menuitem" className="menu-link" to="/archive" onClick={() => setOpen(false)}>
                   <UiIcon name="archive" size={15} />
-                  Resources
+                  My Files
                 </Link>
               )}
             </span>
@@ -151,13 +151,13 @@ function AppMark() {
     setAppFavicon(a ? { color: a.color, glyph: a.glyph } : null);
   }, [pathname]);
   // Every app shows its name under ELT Suite, in its own colour.
-  const own = pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Teacher’s Companion', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'files', name: 'Resources', color: '#3667a6' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/design') ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
+  const own = pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Teacher’s Companion', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'files', name: 'My Files', color: '#3667a6' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/design') ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
   // Any other app in the app list (Games, say) shows its own name and logo rather than "Classes".
   const listed = appAt(pathname);
   const own2 = own ?? (listed && !['classes', 'home'].includes(listed.k) && !pathname.startsWith('/class') ? { k: listed.k, name: listed.name, color: listed.color } : null);
   const app = own2 ??
     (pathname.startsWith('/archive') || pathname.startsWith('/doc') || pathname.startsWith('/library')
-      ? { name: 'Resources', color: '#3667a6' }
+      ? { name: 'My Files', color: '#3667a6' }
       : pathname.startsWith('/messages')
         ? { name: 'Messages', color: '#7a4fa3' }
         : pathname.startsWith('/colleague')

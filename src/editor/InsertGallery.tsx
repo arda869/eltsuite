@@ -48,7 +48,7 @@ const ABOUT: Record<string, string> = {
   'activity-spot': 'Give partners different private pictures. They describe what they can see and mark differences before you reveal the answer regions.',
   'activity-taboo': 'Learners describe a word while avoiding the words underneath. Use a timer and optional scoring for each turn.',
   'activity-speaking': 'Give one learner a timed speaking prompt and their partner a listening task. Swap roles for another turn.',
-  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update.',
+  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in My Files and press Update.',
   'dg-mind': 'A word or topic in the middle with ideas around it. Every box is text, so a branch can be a gap or a choice. Up to eight branches.',
   'dg-venn': 'Two circles: what belongs only to one, and what they share. Name each circle; learners can fill the parts with gaps or drag words.',
   'dg-compare': 'A T-chart: two to four columns with titles, for pros and cons, formal and informal, then and now.',

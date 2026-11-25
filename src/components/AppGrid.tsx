@@ -53,7 +53,7 @@ const APPS: App[] = [
   { k: 'games', group: 'make', name: 'Games', about: 'Make games and play them live or at learners’ own pace, in class or with a code', to: '/games', teacher: true, color: '#996525', glyph: APP_MARKS.games, icon: I(APP_MARKS.games) },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, glyph: APP_MARKS.home, icon: I(APP_MARKS.home) },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
-  { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
+  { k: 'files', group: 'share', name: 'My Files', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
   { k: 'resourcehub', group: 'share', name: 'Resource Hub', about: 'Curated teaching activities and printable resources', to: '/resource-hub', teacher: true, color: '#74762f', glyph: APP_MARKS.resourcehub, icon: I(APP_MARKS.resourcehub) },
   { k: 'collab', group: 'make', name: 'Collab', about: 'Documents and slides written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
   { k: 'development', group: 'develop', name: 'Teacher’s Companion', about: 'Reflect, plan and talk through your teaching', to: '/coach', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
@@ -89,7 +89,7 @@ const GROUPS: [App['group'], string][] = [
   ['teach', 'Teach and organise'],
   ['make', 'Create materials'],
   ['develop', 'Professional learning'],
-  ['share', 'Resources and people'],
+  ['share', 'Files and people'],
 ];
 const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'recordings', 'video', 'development', 'resourcehub', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);

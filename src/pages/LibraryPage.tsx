@@ -55,7 +55,7 @@ export function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { 
     setNote(`Copying ${d.title}…`);
     try {
       await copyFile(d, me, null);
-      setNote(`${d.title} is in your Resources now.`);
+      setNote(`${d.title} is in My Files now.`);
     } catch (e) {
       console.error(e);
       setNote('We couldn’t make the copy. Check how much space you have left, then try again.');

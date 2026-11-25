@@ -71,7 +71,7 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
   <AiField label={mode==='answers'?'Anything the AI should know':'What would you like?'} optional={mode!=='edit'} hint={mode==='answers'?'Rules for marking, spellings to accept, how long model answers should be.':result?.ideas?'Pick an option above, or describe your own.':'Describe the activity in a sentence, or ask for options.'}>
    <textarea rows={2} maxLength={2000} value={direction} disabled={busy||!!pending} onChange={e=>setDirection(e.target.value)} placeholder={examples[0]}/>
   </AiField>
-  {mode==='next'&&<label className="lesson-tool-image-choice"><input type="checkbox" checked={includeImage} disabled={busy||!!pending} onChange={e=>setIncludeImage(e.target.checked)}/><span>Add a picture for learners to use <small>AI can use a suitable picture from your Resources or prepare a new one. You’ll review it before adding the activity.</small></span></label>}
+  {mode==='next'&&<label className="lesson-tool-image-choice"><input type="checkbox" checked={includeImage} disabled={busy||!!pending} onChange={e=>setIncludeImage(e.target.checked)}/><span>Add a picture for learners to use <small>AI can use a suitable picture from My Files or prepare a new one. You’ll review it before adding the activity.</small></span></label>}
   <AiExamples examples={examples} disabled={busy||!!pending} onPick={setDirection}/>
   <AiMore summary="Options">
    {mode==='answers'&&<AiField label="Answer-key scope"><NSelect aria-label="Answer-key scope" value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></NSelect></AiField>}

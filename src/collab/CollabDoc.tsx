@@ -381,7 +381,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const sel = editor.state.selection;
   const quote = sel.empty ? '' : editor.state.doc.textBetween(sel.from, sel.to, ' ').slice(0, 160);
 
-  // The document as a PDF, opened in the viewer to save in Resources or download.
+  // The document as a PDF, opened in the viewer to save in My Files or download.
   const makePdf = async (o: ExportOpts) => {
     setPdfError('');
     try {
@@ -1064,7 +1064,7 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
             Word document (.docx)…
           </button>
           <button type="button" role="menuitem" onClick={() => setOpen('pdf')}>
-            PDF, to save in Resources…
+            PDF, to save in My Files…
           </button>
         </span>
       )}

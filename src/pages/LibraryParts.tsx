@@ -68,7 +68,7 @@ export function TaskWindow({ uid, task, onClose }: { uid: string; task: LibTask;
         <div className="lt-head">
           <FileIcon kind="task" size={26} label={false} />
           <span className="lt-where">
-            Resources library{task.folder ? ` › ${task.folder.split('/').join(' › ')}` : ''}
+            My Files{task.folder ? ` › ${task.folder.split('/').join(' › ')}` : ''}
             {task.uses.length > 0 && (
               <span className="lib-link small">
                 <ChainIcon /> In {task.uses.length} {task.uses.length === 1 ? 'lesson' : 'lessons'}: changes reach {task.uses.length === 1 ? 'it' : 'them all'}
@@ -161,7 +161,7 @@ export function TaskDetail({ task, onOpen, onDownload, onRemove, onClose }: { ta
       )}
       <dl className="ma-facts">
         <dt>Folder</dt>
-        <dd>{task.folder ? leafOf(task.folder) : 'Resources library'}</dd>
+        <dd>{task.folder ? leafOf(task.folder) : 'My Files'}</dd>
         <dt>Changed</dt>
         <dd>{when(task.updatedAt)}</dd>
         <dt>Added</dt>

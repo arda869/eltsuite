@@ -54,7 +54,7 @@ export const taskCatalogue = [
   },
   {
     "key": "storyboard",
-    "description": "Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update."
+    "description": "Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in My Files and press Update."
   },
   {
     "key": "dg-mind",

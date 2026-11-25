@@ -34,7 +34,7 @@ import { PdfCommentPins } from './PdfComments';
 import { RegionPicker, RegionToTaskDialog } from './RegionToTask';
 import { MediaBlock } from '../editor/MediaNode';
 
-// A PDF in Resources: its pages, with text boxes and highlights everyone it is shared with sees and
+// A PDF in My Files: its pages, with text boxes and highlights everyone it is shared with sees and
 // changes live. The boxes hold anything a lesson can: text, IPA, gaps, choices.
 
 const PdfDocument = Document.extend({ content: 'pdfBlock' });
@@ -468,7 +468,7 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
       {missing && !pages.length && (
         <div className="dp-msg" role="alert">
-          We couldn’t find the pages of this PDF. Its upload may not have finished. Upload the PDF again to Resources.
+          We couldn’t find the pages of this PDF. Its upload may not have finished. Upload the PDF again to My Files.
         </div>
       )}
       <OlderCopyBanner editor={editor} aw={session.provider.awareness} />

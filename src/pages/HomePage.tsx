@@ -240,7 +240,7 @@ export function HomePage() {
             <section className="hm-card" aria-labelledby="hm-files">
               <header>
                 <h2 id="hm-files">Recent files</h2>
-                <Link to="/archive" className="hm-more">Resources</Link>
+                <Link to="/archive" className="hm-more">My Files</Link>
               </header>
               {docs.mine === null || docs.withMe === null ? <p className="hm-empty" role="status">Loading your files…</p> : recent.length ? (
                 <div className="hm-files">

@@ -113,7 +113,7 @@ export function TaskStudio() {
         app="Task editor"
         where={
           <>
-            Resources library{task.folder ? ` › ${task.folder.split('/').join(' › ')}` : ''}
+            My Files{task.folder ? ` › ${task.folder.split('/').join(' › ')}` : ''}
             {task.uses.length > 0 && (
               <span className="lib-link small">
                 <ChainIcon /> In {task.uses.length} {task.uses.length === 1 ? 'lesson' : 'lessons'}: changes reach {task.uses.length === 1 ? 'it' : 'them all'}
@@ -233,7 +233,7 @@ export function SoundUploadStudio() {
   };
   const finish = () => window.opener ? window.close() : (window.location.href = '/recordings');
   if (!classId) return <div className="studio"><StudioBar app="Recordings" where="Upload" /><p className="hint studio-missing">Open this from a lesson to add a recording.</p></div>;
-  if (saved) return <div className="studio"><StudioBar app="Recordings" where="Saved" /><div className="studio-done"><strong>{videoFile ? 'Video saved' : 'Recording saved'}</strong><span className="hint">{added ? videoFile ? 'The video was added to your lesson.' : 'The recording and its script were added to your lesson.' : 'This file is in your Resources library. If the lesson tab has closed, add it from there.'}</span><button type="button" className="btn primary" onClick={finish}>Done</button></div></div>;
+  if (saved) return <div className="studio"><StudioBar app="Recordings" where="Saved" /><div className="studio-done"><strong>{videoFile ? 'Video saved' : 'Recording saved'}</strong><span className="hint">{added ? videoFile ? 'The video was added to your lesson.' : 'The recording and its script were added to your lesson.' : 'This file is in My Files. If the lesson tab has closed, add it from there.'}</span><button type="button" className="btn primary" onClick={finish}>Done</button></div></div>;
   if (videoFile) return <div className="sx-full" role="dialog" aria-label="Video editor"><Suspense fallback={<Loader label="Opening the video editor" />}><VideoEditor initialFile={videoFile} classId={classId} onBack={() => setVideoFile(null)} onSaved={result => onSaved(result, 'video')} /></Suspense></div>;
   if (source) return <div className="studio studio-dark"><main className="studio-sound"><SoundEditor source={source} classId={classId} onSaved={onSaved} onBack={() => setSource(null)} backLabel="Choose another file" /></main></div>;
   return <div className="studio"><StudioBar app="Recordings" where="Upload to lesson" /><main className="studio-upload"><h1>Upload sound or video</h1><p>Choose a file. It will open here for editing while your lesson stays open in its tab. For recordings with speech, we’ll draft an editable script.</p><label className="studio-upload-pick btn primary">Choose a file<input type="file" accept="audio/*,video/*,.mp3,.m4a,.wav,.ogg" hidden onChange={event => { void openFile(event.target.files?.[0]); event.target.value = ''; }} /></label><p className="hint">Sound: MP3, M4A, WAV or OGG, up to 20 minutes · Video: up to 100 MB</p>{busy && <p role="status">Opening the recording…</p>}{error && <p role="alert">{error}</p>}</main></div>;
