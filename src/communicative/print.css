@@ -250,3 +250,9 @@ table.pa-fsw td {height:var(--pa-row-height,15.5mm);}
 .pa-tint-3 { --accent: #8a4fa3; --accent-ink: #6b3a80; } .pa-tint-4 { --accent: #c99a1e; --accent-ink: #8a6a10; } .pa-tint-5 { --accent: #5b6b7a; --accent-ink: #44525e; } .pa-tint-6 { --accent: #e07a5f; --accent-ink: #a94a33; }
 .pa-tint { border-color: var(--accent); }
 .pa-tint .pa-bingo-grid { border-color: var(--accent); }
+/* Board games turn on the page: drawn landscape (246 × 176 mm), shown on a portrait page, filling it. */
+.pa-rot-page { position: relative; width: 100%; height: 246mm; overflow: hidden; break-inside: avoid; }
+.pa-rot { position: absolute; top: 50%; left: 50%; width: 246mm; height: 176mm; transform: translate(-50%, -50%) rotate(90deg); display: flex; align-items: center; justify-content: center; }
+.pa-rot .pa-board { max-height: none; width: 100%; height: 100%; box-sizing: border-box; }
+.pa-rot .pa-board-spiral { width: max-content; height: max-content; margin: auto; }
+@media screen { .pa-rot-page { height: auto; aspect-ratio: 176 / 246; } }
