@@ -6,22 +6,29 @@ import type { SharedDoc } from '../lib/sharedDocs';
 import { DesignFile } from './Editor';
 import { pagesCol, elsCol, metaRef, storePicture, useDesign } from './model';
 import './design.css';
+import type { Tpl } from './templates';
 
 import { isImageFile } from './files';
 export { isImageFile } from './files';
 
 // Designer files are pictures and pages. Storyboards were removed from ELT Suite; one that has
 // not been cleaned up yet says so instead of opening.
-export async function startDesigner(id: string, _type: 'image' = 'image') {
+export async function startDesigner(id: string, _type: 'image' = 'image', tpl?: Tpl) {
   void _type;
   const b = writeBatch(db);
   b.set(metaRef(id), { type: 'image' }, { merge: true });
   b.update(doc(db, 'sharedDocs', id), { designType: 'image' });
-  b.set(doc(pagesCol(id), 'canvas'), { order: 0, w: 1080, h: 1080, bg: '#ffffff' });
+  if (!tpl) b.set(doc(pagesCol(id), 'canvas'), { order: 0, w: 1080, h: 1080, bg: '#ffffff' });
+  // A template's pages and everything on them, ready to change.
+  else tpl.pages.forEach((tp, i) => {
+    const pid = i ? 'p' + i : 'canvas';
+    b.set(doc(pagesCol(id), pid), JSON.parse(JSON.stringify({ ...tp.p, order: i })));
+    tp.els.forEach((e, k) => b.set(doc(elsCol(id), `${pid}e${k}`), JSON.parse(JSON.stringify({ ...e, page: pid, z: k + 1 }))));
+  });
   await b.commit();
 }
 
-export function DesignerFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
+export function DesignerFile({ d, canEdit, toolSlot }: { d: SharedDoc; canEdit: boolean; toolSlot?: HTMLElement | null }) {
   const { pages, meta } = useDesign(d.id);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -71,7 +78,7 @@ export function DesignerFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean })
   if (story) return <div className="dp-msg">Storyboards are no longer part of ELT Suite.</div>;
   if (error) return <p role="alert" className="dp-msg">{error}</p>;
   if (pages === null || busy) return <div className="dp-msg" role="status">One moment…</div>;
-  if (pages.length) return <DesignFile d={d} canEdit={canEdit} />;
+  if (pages.length) return <DesignFile d={d} canEdit={canEdit} toolSlot={toolSlot} />;
   if (!canEdit && isImageFile(d)) return original ? <img src={original} alt={d.title} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} /> : <div className="dp-msg">One moment…</div>;
   return <div className="dp-msg">This Designer file is empty.</div>;
 }

@@ -1,6 +1,8 @@
 import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
-import { useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import type { Tpl } from '../design/templates';
+const StartRow = lazy(() => import('../design/StartRow').then((m) => ({ default: m.StartRow })));
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
@@ -99,6 +101,22 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
       if (w) w.location.href = `/doc/${id}`;
     }catch{w?.close();void tell('Could not create the file. Please check your connection and try again.');}
   };
+  // A new design from a template, opened in a new tab.
+  const makeFrom = async (t: Tpl) => {
+    if (!uid) return;
+    const w = window.open('about:blank', '_blank');
+    setBusy('Making your design…');
+    try {
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'design', t.group === 'teach' ? t.name : 'Untitled design');
+      await startDesigner(id, 'image', t);
+      if (w) w.location.href = `/doc/${id}`;
+    } catch {
+      w?.close();
+      void tell('We couldn’t make the design just now. Check your connection and try again.');
+    } finally {
+      setBusy('');
+    }
+  };
   const makePdf = async (f: File) => {
     if (!uid) return;
     if (f.size > MAX_PDF) return void tell('That PDF is over 30 MB. Make it smaller first, for example by saving it with smaller pictures.');
@@ -125,7 +143,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
       : app === 'reading'
         ? [{ label: 'New Reading Journal', run: () => void make('pd') }]
         : app === 'design'
-          ? [{ label: 'Make a design', run: () => void make('design', 'image') }]
+          ? [{ label: 'Make a design', run: () => void make('design', 'image') }, { label: 'Characters', run: () => setCharacters(true) }]
           : app === 'pdf'
           ? [{ label: 'Upload a PDF', run: () => pdfIn.current?.click() }]
           : [
@@ -165,11 +183,11 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
           <span className="af-grow" />
           {news.map((n, i) => (
             <button key={n.label} type="button" className={'btn ' + (i ? 'ghost' : 'primary')} onClick={n.run}>
-              + {n.label}
+              {/^(New|Make|Upload|Record)/.test(n.label) ? '+ ' : ''}{n.label}
             </button>
           ))}
         </header>
-        {app === 'design' && <section className="dc-home"><div><h2>Characters</h2></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
+        {app === 'design' && <Suspense fallback={<div className="dz-row dz-row-wait" />}><StartRow busy={!!busy} onPick={(t) => void makeFrom(t)} /></Suspense>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">
             {tabs.map(([k, label]) => (
