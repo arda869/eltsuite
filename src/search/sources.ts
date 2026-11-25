@@ -113,6 +113,36 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
     return () => { live = false; work('documents', false); };
   }, [active, docKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Scripts kept with a class's sound or video (mediaScripts), and the words in video projects.
+  const [scriptOf, setScriptOf] = useState<Record<string, string>>({});
+  const [videoEntries, setVideoEntries] = useState<Entry[]>([]);
+  const mediaKey = (archive ?? []).filter((a) => (a.kind === 'audio' || a.kind === 'video') && !a.script?.length && a.home && !a.home.classId.startsWith('user:')).map((a) => a.id + ':' + (a.updatedAt || a.createdAt)).join();
+  useEffect(() => {
+    if (!active || !archive || !uid) return;
+    let live = true;
+    work('scripts', true);
+    const next: Record<string, string> = {};
+    const list = archive.filter((a) => (a.kind === 'audio' || a.kind === 'video') && !a.script?.length && a.home && !a.home.classId.startsWith('user:'));
+    void each(list, 6, async (a) => {
+      const key = `s:${a.id}`, u = a.updatedAt || a.createdAt;
+      const cached = await kvGet<TextCache>(key);
+      if (cached && cached.u === u) { next[a.id] = cached.text; return; }
+      const d = await getDoc(doc(db, 'classes', a.home!.classId, 'mediaScripts', a.home!.mediaId)).catch(() => null);
+      const text = ((d?.get('script') ?? []) as { text?: string }[]).map((l) => l.text ?? '').join(' ');
+      next[a.id] = text;
+      void kvSet(key, { u, text });
+    }).then(async () => {
+      const projects = await getDocs(collection(db, 'users', uid, 'videoProjects')).catch(() => null);
+      const vids: Entry[] = (projects?.docs ?? []).map((p) => {
+        const pr = p.get('project') as { title?: string; tracks?: { clips?: { text?: string; description?: string; name?: string }[] }[] } | undefined;
+        const words = (pr?.tracks ?? []).flatMap((t) => t.clips ?? []).map((c) => [c.text, c.description, c.name].filter(Boolean).join(' ')).join('\n');
+        return { key: 'vid:' + p.id, group: 'Files', title: pr?.title || 'Video', sub: 'Video editor', text: words, to: `/studio/video/${p.id}`, at: Number(p.get('updatedAt')) || undefined, icon: 'archive' };
+      });
+      if (live) { setScriptOf(next); setVideoEntries(vids); work('scripts', false); }
+    });
+    return () => { live = false; work('scripts', false); };
+  }, [active, mediaKey, uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Classes: their lessons and learners.
   const classKey = (classes ?? []).map((c) => c.id).join();
   useEffect(() => {
@@ -151,7 +181,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
       for (const [id, t] of GUIDE) out.push({ key: 'guide:' + id, group: 'Help', title: t, sub: 'Guide', to: `/guide#${id}`, icon: 'help' });
       for (const [t, to, about] of SETTINGS) out.push({ key: 'set:' + to, group: 'Help', title: t, text: about, to, icon: 'settings' });
       for (const d of allDocs) out.push({ key: 'doc:' + d.id, group: 'Files', title: d.title || 'Untitled', sub: [KIND_LABEL[d.kind] ?? 'File', d.owner !== uid ? `from ${d.ownerName}` : '', d.path || d.folder || ''].filter(Boolean).join(' · '), text: [textOf[d.id], d.file?.name].filter(Boolean).join('\n'), to: `/doc/${d.id}`, at: ms(d.updatedAt) || ms(d.createdAt), icon: DOC_ICON[d.kind] ?? 'archive' });
-      for (const a of archive ?? []) if (!a.deletedAt) out.push({ key: 'arc:' + a.id, group: 'Files', title: a.name, sub: ['My Files', a.kind === 'audio' ? 'Recording' : a.kind, a.folder].filter(Boolean).join(' · '), text: [a.tags.join(' '), (a.script ?? []).map((l) => l.text).join(' ')].filter(Boolean).join('\n'), to: a.kind === 'audio' && a.home && !a.link ? `/studio/sound/${a.id}` : `/archive?q=${encodeURIComponent(a.name)}`, at: a.updatedAt || a.createdAt, icon: a.kind === 'audio' ? 'recordings' : 'archive' });
+      for (const a of archive ?? []) if (!a.deletedAt) out.push({ key: 'arc:' + a.id, group: 'Files', title: a.name, sub: ['My Files', a.kind === 'audio' ? 'Recording' : a.kind, a.folder].filter(Boolean).join(' · '), text: [a.tags.join(' '), (a.script ?? []).map((l) => l.text).join(' '), scriptOf[a.id]].filter(Boolean).join('\n'), to: a.kind === 'audio' && a.home && !a.link ? `/studio/sound/${a.id}` : `/archive?q=${encodeURIComponent(a.name)}`, at: a.updatedAt || a.createdAt, icon: a.kind === 'audio' ? 'recordings' : 'archive' });
       const hubList = [...HUB_ACTIVITIES.filter((a) => a.status === 'ready'), ...(hub.items ?? [])];
       const seen = new Set<string>();
       for (const a of hubList) {
@@ -159,7 +189,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
         seen.add(a.id);
         out.push({ key: 'hub:' + a.id, group: 'Resource Hub', title: a.title, sub: [a.level, `${a.minutes} min`, a.interaction].filter(Boolean).join(' · '), text: [a.summary, a.focus, a.tags.join(' '), a.worksheet.join(' ')].join('\n'), to: `/resource-hub?activity=${encodeURIComponent(a.id)}`, at: a.publishedAt, icon: 'resourcehub' });
       }
-      out.push(...classEntries);
+      out.push(...classEntries, ...videoEntries);
     }
     for (const c of chats ?? []) {
       const people = Object.entries(c.names).filter(([k]) => k !== me).map(([, v]) => v);
@@ -167,7 +197,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
     }
     out.push(...msgEntries);
     return out.map(indexed);
-  }, [teacher, allDocs, textOf, archive, hub.items, classEntries, chats, msgEntries, me, uid]);
+  }, [teacher, allDocs, textOf, archive, scriptOf, videoEntries, hub.items, classEntries, chats, msgEntries, me, uid]);
 
   const status = busy.length ? `Still looking through your ${busy.join(', ')}…` : '';
   return { entries, status };
