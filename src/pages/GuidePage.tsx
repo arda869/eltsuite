@@ -47,7 +47,7 @@ export function GuidePage() {
   const matches = TOPICS.filter(t => (t.title + ' ' + t.short).toLowerCase().includes(query.toLowerCase()));
   function choose(id: string) { setOn(id); window.history.replaceState(null, '', '#gu-' + id); }
   return <div className="shell"><TopBar /><main className="guide-hub">
-    <header className="guide-hub-hero"><span className="path-eyebrow">Your ELT Suite guide</span><h1>A little help.<br />A lot more possibility.</h1><p className="path-lede">Start with what you want to do. Try an example here, then take it into your own teaching.</p><Link to="/welcome" className="btn">Help me choose a starting point →</Link></header>
+    <header className="guide-hub-hero"><span className="path-eyebrow">Your ELT Suite guide</span><h1>A little help.<br />A lot more possibility.</h1><Link to="/welcome" className="btn">Help me choose a starting point →</Link></header>
     <section className="guide-route" aria-label="Choose your teaching goal">
       <div className="guide-route-choice">
         <span className="path-eyebrow">Make it yours</span>

@@ -963,7 +963,6 @@ export function MediaArchive() {
             <div className="ma-head">
               <div className="ma-head-text">
                 <h1 className="page-title">In my classes</h1>
-                <span className="sub">The documents and slides your classes write together, and where each is used.</span>
               </div>
             </div>
             <ArchiveDocs uid={uid} />
@@ -974,7 +973,6 @@ export function MediaArchive() {
             <div className="ma-head">
               <div className="ma-head-text">
                 <h1 className="page-title">Shared with me</h1>
-                <span className="sub">Files colleagues and others share with you, and what you share.</span>
               </div>
             </div>
             {classLessons.withMe.length > 0 && (

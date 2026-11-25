@@ -165,7 +165,6 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
           
           <span className="af-title">
             {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="sr-only">{a.name}</h1>}
-            <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />
           {news.map((n, i) => (
@@ -174,7 +173,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </button>
           ))}
         </header>
-        {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
+        {app === 'design' && <section className="dc-home"><div><h2>Characters</h2></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">
             {tabs.map(([k, label]) => (
