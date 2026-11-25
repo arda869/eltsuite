@@ -2,7 +2,7 @@ import { writeNamedFile } from './fileNames';
 import { permissionUid } from './shareIdentity';
 import { noteFeature } from '../discovery/store';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { app, db } from './firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { get } from 'firebase/database';
@@ -60,8 +60,8 @@ export type SharedDoc = {
 const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
-export type DocKind = 'game' | 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file' | 'design';
-export const KIND_LABEL: Record<DocKind, string> = { game: 'Game', doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Designer file' };
+export type DocKind = 'game' | 'doc' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'file' | 'design';
+export const KIND_LABEL: Record<DocKind, string> = { game: 'Game', doc: 'Collab document', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', file: 'File', design: 'Designer file' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '', origin?: { originClassId?: string; originItemId?: string; standaloneLesson?: boolean }) {
   const r = doc(col);
   await writeNamedFile(r, { owner: owner.uid, path }, title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
@@ -69,19 +69,17 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     owner: owner.uid,
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
-    kind:kind==='storyboard'?'design':kind,
+    kind,
     ...(kind === 'lesson' ? { standaloneLesson: origin?.standaloneLesson ?? !origin?.originClassId } : {}),
     ...(origin?.originClassId ? { originClassId: origin.originClassId } : {}),
     ...(origin?.originItemId ? { originItemId: origin.originItemId } : {}),
     ...(kind === 'file' ? { uploadStatus: 'uploading' } : {}),
-    ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     docKey: 'f' + newId() + newId(),
     members: {},
     memberIds: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, true, true);
-  if(kind==='storyboard')await setDoc(doc(db,'sharedDocs',r.id,'dmeta','main'),{type:'storyboard'});
   if (kind === 'doc') noteFeature('collab', r.id);
   if (kind === 'pd') noteFeature('reading', r.id);
   return r.id;
@@ -161,7 +159,7 @@ export const noteClass = (d: SharedDoc, classId: string, name: string, role: Doc
 // A message with the link, to each person (their own chat with you), or into one chat.
 export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], note = '') {
   const link = docLink(d.id);
-  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : d.kind === 'lesson' ? 'a lesson' : d.kind === 'storyboard' ? 'a storyboard' : d.kind === 'file' ? 'a file' : d.kind === 'design' ? 'a design' : 'a document';
+  const what = d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : d.kind === 'lesson' ? 'a lesson' : d.kind === 'file' ? 'a file' : d.kind === 'design' ? 'a design' : 'a document';
   const text = note.trim() || `I shared ${what} with you: ${d.title}.`;
   for (const p of people) {
     const chatId = await openChat(me, [p]);
@@ -225,7 +223,7 @@ export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
 }
 // A new file in a folder belongs to the folder's owner and is shared with everyone in it.
 export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind, extra: { ltype?: SharedDoc['ltype']; title?: string; standaloneLesson?: boolean; originClassId?: string; originItemId?: string } = {}) {
-  const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc' || kind === 'slides')) as SharedDoc['members'];
+  const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc')) as SharedDoc['members'];
   if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
   delete members[f.owner];
   const r = doc(col);
@@ -235,11 +233,10 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     createdBy: me.uid,
     folder: f.id,
     title: extra.title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
-    kind:kind==='storyboard'?'design':kind,
+    kind,
     ...(kind === 'lesson' ? { standaloneLesson: extra.standaloneLesson ?? !extra.originClassId } : {}),
     ...(extra.originClassId ? { originClassId: extra.originClassId } : {}),
     ...(extra.originItemId ? { originItemId: extra.originItemId } : {}),
-    ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     ...(extra.ltype ? { ltype: extra.ltype } : {}),
     docKey: 'f' + newId() + newId(),
     members,
@@ -247,7 +244,6 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, true, true);
-  if(kind==='storyboard')await setDoc(doc(db,'sharedDocs',r.id,'dmeta','main'),{type:'storyboard'});
   return r.id;
 }
 // Sharing a folder shares everything in it.
@@ -265,7 +261,7 @@ export async function shareFolder(f: SharedFolder, people: Person[], role: DocRo
     docs
       .filter((d) => d.owner === f.owner)
       .map((d) => {
-        const who = people.map((p, i) => ({ p, uid: uids[i] })).filter(({ p }) => p.role === 'teacher' || d.kind === 'doc' || d.kind === 'slides');
+        const who = people.map((p, i) => ({ p, uid: uids[i] })).filter(({ p }) => p.role === 'teacher' || d.kind === 'doc');
         if (!who.length) return null;
         const a = Object.fromEntries(who.map(({ uid }) => [uid, add[uid]]));
         const members = { ...(d.members ?? {}), ...a };

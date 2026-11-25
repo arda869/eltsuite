@@ -177,8 +177,6 @@ export function useFeatures() {
 // Whether an app is on for this teacher: their own switch, then the one for everyone.
 // Apps still early: off for everyone unless a super admin turns them on, for a teacher, an organisation
 // or everyone.
-// Designer now contains the previously available Storyboards app. Explicit account
-// and organisation switches still take precedence over this default.
 export const EARLY_APPS = new Set<string>();
 export const appDefault = (k: string) => !EARLY_APPS.has(k);
 

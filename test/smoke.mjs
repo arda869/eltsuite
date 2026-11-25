@@ -2,7 +2,6 @@ async function openPlanning(p){const details=p.locator('.lesson-support-tools');
 async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {documentSharing} from './document-sharing.mjs';
-import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
 import {chooseSelect} from './select.mjs';
 import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
@@ -185,7 +184,6 @@ const J = {
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
-  'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
   'Tuesday wishlist: available inline forms and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Document sharing: organisation links, revocation and signed-out return':async b=>{const s=await session(b,{owner:true});await documentSharing(s,BASE,axe,A11Y_FOUND);return s;},

@@ -53,7 +53,7 @@ import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
 import { RevealBox, newReveal } from './Reveal';
 import { SubTask, newSubTask } from './SubTask';
-import { StoryboardNode, newStoryboard } from '../storyboard/StoryboardNode';
+import { RemovedStoryboard } from './RemovedNode';
 import { LinkCard } from './LinkCard';
 import { MediaBlock, InlineMedia, newInlineMedia, newMedia } from './MediaNode';
 import { UploadBlock, newUpload } from './UploadNode';
@@ -185,7 +185,6 @@ export const COMMANDS: Cmd[] = [
       });
       if (at >= 0) e.chain().focus().setTextSelection(at + 2).run();
     } },
-  { key: 'storyboard', label: 'Storyboard', hint: 'Scenes with people and speech bubbles, from your files', group: 'Text', run: (e) => e.chain().focus().insertContent([newStoryboard(), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
   { key: 'speaking', label: 'AI conversation', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(e), { type: 'paragraph' }]).run() },
   { key: 'inline-video', label: 'Video in line', hint: 'Embed a video within text, tables, dialogues or any rich element', group: 'Text', run: e => e.chain().focus().insertContent(newInlineMedia()).run() },
@@ -390,7 +389,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -588,7 +587,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       ...(handles ? [TrailingLine] : []),
       RevealBox,
       SubTask,
-      StoryboardNode,
+      RemovedStoryboard,
       ...PDF_NODES,
       LinkCard,
       MediaBlock,

@@ -10,7 +10,6 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { auth } from '../lib/firebase';
 import { CollabDoc } from '../collab/CollabDoc';
-import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import type { CollabMode } from '../collab/suggest';
 import { FlashSet } from '../flash/FlashSet';
 import { PdReading } from '../pd/PdReading';
@@ -123,7 +122,7 @@ export function DocPage() {
   const classId = lesson ? qs.get('c') ?? '' : '';
   const canRename = !lesson && role === 'edit' && (teacher || !!d?.folder);
   const others = d ? Object.keys(d.members ?? {}).length : 0;
-  const inDesigner = kind === 'design' || kind === 'storyboard' || !!(d && isImageFile(d));
+  const inDesigner = kind === 'design' || !!(d && isImageFile(d));
   const props = { docKey, title, modes, teacher, me: { uid, name }, classId, mediaSpace: lesson ? classId : 'doc:' + d!.id, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (
@@ -157,7 +156,7 @@ export function DocPage() {
           {kind === 'lesson' && <span ref={setLessonSlot} className="dp-lesson-slot" />}
           <HelpMenu />
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
-          {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
+          {d && role && ['flash', 'lesson', 'pdf'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" data-shared={others > 0 || !!d.link} onClick={() => setSharing(true)}>
               <UiIcon name={others || d.link ? 'groups' : 'lock'} size={15} /> Share
@@ -172,7 +171,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'game' && d ? <QuizFile d={d} canEdit={role === 'edit'} /> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} canComment={role === 'edit' || role === 'comment' || role === 'suggest'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'game' && d ? <QuizFile d={d} canEdit={role === 'edit'} /> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} canComment={role === 'edit' || role === 'comment' || role === 'suggest'} me={{ uid, name }} /> : kind === ('slides' as string) || kind === ('storyboard' as string) ? <div className="dp-msg">{kind === ('slides' as string) ? 'Slides are' : 'Storyboards are'} no longer part of ELT Suite.</div> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
 
       {setOpen && kind==='doc' && d && <div className="scrim" onClick={()=>setSetOpen(false)} onKeyDown={e=>{if(e.key==='Escape')setSetOpen(false);}}><div className="dialog" role="dialog" aria-modal="true" aria-label="Citation style" onClick={e=>e.stopPropagation()}><h2>Citation style</h2><label className="field"><span>Citation style</span><Select label="Citation style" value={cite} disabled={role!=='edit'} search options={CITE_STYLES.map(c=>({v:c.k,label:c.label,hint:c.about}))} onChange={v=>void updateDoc(fsDoc(db,'sharedDocs',d.id),{citeStyle:v}).catch(e=>void tell(e.message))}/></label><p className="hint">Citations, the reference list and Word and PDF downloads follow this style.{role!=='edit'?' Only people who can edit can change it.':''}</p><button type="button" className="btn" onClick={()=>setSetOpen(false)}>Done</button></div></div>}
@@ -191,7 +190,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   return (
     <SharePeople
       roles={rolesFor(live.kind)}
-      teachersOnly={!['doc', 'slides', 'pdf', 'file', 'design'].includes(live.kind)}
+      teachersOnly={!['doc', 'pdf', 'file', 'design'].includes(live.kind)}
       title="Share document"
       itemName={live.title}
       ownerId={live.owner}
@@ -292,7 +291,7 @@ export function SharePeople({ title, itemName, ownerId, ownerName, members, extr
           <div className="dp-share-heading"><h2>{title}</h2>{itemName && <span className="dp-share-name" title={itemName}>{itemName}</span>}</div>
           <button type="button" className="dp-share-close" aria-label="Close sharing" onClick={onClose}>×</button>
         </header>
-        {teachersOnly && <span className="hint">You can share this with other teachers. Documents, slides, designs, PDFs and uploaded files can also be shared with learners.</span>}
+        {teachersOnly && <span className="hint">You can share this with other teachers. Documents, designs, PDFs and uploaded files can also be shared with learners.</span>}
         <div className="dp-add">
           <span className="dp-chips">
             <UiIcon name="search" size={18} />

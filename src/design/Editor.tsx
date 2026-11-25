@@ -21,7 +21,7 @@ import { eraseFrom, pagePointToImage } from './tools';
 import { DownloadMenu } from './Download';
 import { bubbleFor, settle, standAt, standsOnGround } from './scene';
 import { dragging, isOurs, type Payload } from './dnd';
-import { FACES, POSES, THINGS } from '../storyboard/art';
+import { FACES, POSES, THINGS } from './art/art';
 import { CharacterBar } from './CharacterBar';
 import './design.css';
 
@@ -383,7 +383,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   // ------------------------------------------------------------------ scenes
 
-  const mode: 'design' | 'storyboard' = meta.type === 'storyboard' ? 'storyboard' : 'design';
+  // Storyboards were removed: the Designer is always a design (the panel wording goes with the redesign).
+  const mode = 'design' as 'design' | 'storyboard';
 
   // A person or thing from the library, standing where it is put.
   const place = useCallback(

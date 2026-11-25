@@ -53,10 +53,6 @@ export const taskCatalogue = [
     "description": "Give one learner a timed speaking prompt and their partner a listening task. Swap roles for another turn."
   },
   {
-    "key": "storyboard",
-    "description": "Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in My Files and press Update."
-  },
-  {
     "key": "dg-mind",
     "description": "A word or topic in the middle with ideas around it. Every box is text, so a branch can be a gap or a choice. Up to eight branches."
   },
@@ -391,10 +387,6 @@ export const taskCatalogue = [
   {
     "key": "b-cando",
     "description": "An end-of-lesson self-assessment; answers go to you."
-  },
-  {
-    "key": "collab-slides",
-    "description": "Shared slides, made live like Google Slides: text boxes, pictures, shapes, layouts and backgrounds. The whole class, each group or each learner; learners can each make their own slides in one deck. Present full screen; download as PowerPoint or PDF."
   },
   {
     "key": "dialogue",

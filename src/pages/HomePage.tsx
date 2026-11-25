@@ -49,7 +49,6 @@ const ago = (ms: number) => {
 const CREATE: { k: DocKind; label: string }[] = [
   { k: 'lesson', label: 'Lesson' },
   { k: 'doc', label: 'Document' },
-  { k: 'slides', label: 'Slides' },
   { k: 'flash', label: 'Flashcards' },
   { k: 'pd', label: 'Reading Journal' },
 ];

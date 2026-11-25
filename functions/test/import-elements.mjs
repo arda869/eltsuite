@@ -10,7 +10,7 @@ import { importTask } from '../../test/ai/import-types-fixture.mjs';
 
 // Every element a teacher can add by hand in the task editor, and the import kind (or import
 // field) that makes it. Keep this in step with COMMANDS in src/editor/TaskEditor.tsx.
-// Not importable on purpose: a PDF, a storyboard, a column break, recordings and videos
+// Not importable on purpose: a PDF, a column break, recordings and videos
 // (an import never invents media) and items from the teacher's own question bank.
 const EDITOR_TO_IMPORT = {
   gap: 'gap', lettergap: 'lettergap', wordform: 'wordform', radio: 'radio', dropdown: 'dropdown', truefalse: 'truefalse',

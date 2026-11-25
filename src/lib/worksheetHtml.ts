@@ -17,7 +17,6 @@ import { SubstSlot } from '../editor/Subst';
 import { PhonView } from '../editor/Phonemes';
 import { DictCutout } from '../editor/DictCut';
 import { timelineSvgString } from '../editor/Timeline';
-import { StoryStrip } from '../storyboard/Stage';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Icon } from '../editor/Icons';
@@ -182,8 +181,6 @@ function block(b: Block): string {
       return `<p>${runs(b.runs)}</p>`;
     case 'diagram':
       return diagramHtml(b);
-    case 'storyboard':
-      return `<div class="sbw-p" style="--sb-accent: var(--accent)">${renderToStaticMarkup(createElement(StoryStrip, { snap: b.a.snap!, cols: b.a.cols ?? 2, width: 'fluid' }))}</div>`;
     case 'timeline':
       return `<figure class="tl">${b.a.title ? `<figcaption class="tl-title">${esc(b.a.title)}</figcaption>` : ''}${timelineSvgString(b.a)}${b.a.sentence ? `<p class="tl-sentence">${esc(b.a.sentence)}</p>` : ''}</figure>`;
     case 'note':

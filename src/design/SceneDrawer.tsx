@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { tell } from '../lib/ask';
-import { sceneBox } from '../storyboard/scenes';
+import { sceneBox } from './art/scenes';
 import { artImage, sceneImage } from './assets';
 import { assetBlob } from '../video/library';
 import type { VideoAsset } from '../video/model';

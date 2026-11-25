@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openMenuAt } from '../components/ContextMenu';
 import type { Ctx } from './Editor';
 import { FONTS, MM, SIZES, SWATCHES, VIEWS, ensureFont, type ArtView, type El, type Fx } from './model';
-import { SCENES } from '../storyboard/scenes';
+import { SCENES } from './art/scenes';
 import { isLine, textHeight } from './render';
 import { nameOf } from './Drawers';
 import { FigureProps } from './FigureProps';
@@ -386,7 +386,7 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
   const [faces, setFaces] = useState<Record<string, { name: string }> | null>(null);
   const [people, setPeople] = useState<Record<string, { name: string }> | null>(null);
   const [views, setViews] = useState<ArtView[] | null>(null);
-  useEffect(() => void import('../storyboard/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE), setViews(e.art === 'person' ? VIEWS.map((v) => v.k) : m.THINGS[e.ref ?? '']?.views ?? []))), [e.art, e.ref]);
+  useEffect(() => void import('./art/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE), setViews(e.art === 'person' ? VIEWS.map((v) => v.k) : m.THINGS[e.ref ?? '']?.views ?? []))), [e.art, e.ref]);
   return (
     <Sec title={e.art === 'person' ? 'Person' : 'Thing'}>
       {views && views.length > 1 && (

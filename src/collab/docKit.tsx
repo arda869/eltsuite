@@ -45,7 +45,7 @@ import { PackNode } from '../editor/PackNode';
 import { SurveyNode } from '../editor/SurveyNode';
 import { PickCard, RandomPick } from '../editor/RandomPick';
 import { Reflect } from '../editor/Reflect';
-import { StoryboardNode } from '../storyboard/StoryboardNode';
+import { RemovedStoryboard } from '../editor/RemovedNode';
 import { imageToData } from '../lib/flash';
 import { EXTRA_NODES } from './docExtras';
 
@@ -119,7 +119,7 @@ export const DOC_NODES = [
   Writing,
   PackNode,
   SurveyNode,
-  StoryboardNode,
+  RemovedStoryboard,
   RandomPick,
   PickCard,
   Reflect,
@@ -183,7 +183,6 @@ const DOC_ALL: (Cmd | null)[] = [
   from('textbox', 'Basic'),
   from('reveal', 'Basic', { label: 'Toggle', hint: 'Hidden until someone opens it' }),
   { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from Personal files', group: 'Media', run: (e) => pickPictures(e) },
-  from('storyboard', 'Media'),
   from('inline-video', 'Media'),
   from('linkcard', 'Media', { label: 'Video or web page', hint: 'A YouTube video, a sound file or a web page' }),
   { key: 'cite', label: 'Citation', hint: 'Cite a source from your Reading Journal', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },
@@ -234,7 +233,7 @@ let cachedSections:DocSection[]|undefined;
 export function docSections():DocSection[]{return cachedSections??=[
 {title:'Professional forms',blurb:'Editable forms kept in this document and available to Teacher’s Companion.',keys:STUDIO_FORMS.filter(f=>f.kind!=='observation').map(f=>'studio-'+f.kind)},
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
-  { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
+  { title: 'Pictures and media', blurb: 'Pictures from your device, videos and web pages.', keys: ['image', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },

@@ -1,6 +1,6 @@
-import { PEOPLE, THINGS } from '../storyboard/art';
-import { drawnOf } from '../storyboard/bounds';
-import { sceneBox, sceneHorizon } from '../storyboard/scenes';
+import { PEOPLE, THINGS } from './art/art';
+import { drawnOf } from './art/bounds';
+import { sceneBox, sceneHorizon } from './art/scenes';
 import type { DPage, El } from './model';
 
 // A scene has a floor. Where something's feet are on that floor says how far away it is: nearer the

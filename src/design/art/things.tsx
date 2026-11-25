@@ -1,4 +1,4 @@
-import type { ArtView } from '../design/model';
+import type { ArtView } from '../model';
 import { A, A_DARK, A_LIGHT, G0, G1, G2, G3, G4, G5, INK, S } from './palette';
 import type { Thing } from './art';
 

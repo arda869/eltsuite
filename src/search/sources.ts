@@ -17,7 +17,7 @@ import { indexed, type Entry, type Indexed } from './engine';
 // only what is new since last time, so the first search is quick and later ones instant.
 
 const ms = (t: unknown) => (t && typeof (t as { toMillis?: () => number }).toMillis === 'function' ? (t as { toMillis: () => number }).toMillis() : typeof t === 'number' ? t : 0);
-const DOC_ICON: Record<string, string> = { doc: 'collab', slides: 'slides', flash: 'cards', pd: 'reading', lesson: 'classes', pdf: 'pdf', design: 'design', storyboard: 'design', game: 'games', file: 'archive' };
+const DOC_ICON: Record<string, string> = { doc: 'collab', flash: 'cards', pd: 'reading', lesson: 'classes', pdf: 'pdf', design: 'design', game: 'games', file: 'archive' };
 const GUIDE: [string, string][] = [['start', 'One place for all your teaching'], ['blend', 'Teach your way: choose your blend'], ['lessons', 'Lessons and tasks'], ['questions', 'Question types'], ['notation', 'Language notation'], ['live', 'Teaching live'], ['games', 'Games and activities'], ['progress', 'Marking and progress'], ['studio', 'Studio: record and edit sound'], ['print', 'PDFs, printing and worksheets'], ['files', 'My Files and their apps'], ['week', 'Timetable and Rooms'], ['share', 'Colleagues and Messages'], ['org', 'Running an organisation']];
 const SETTINGS: [string, string, string][] = [['Settings', '/settings', 'Your name, picture, password, language, notifications and theme'], ['Notifications', '/settings#notifications', 'Emails and alerts you get'], ['Your account', '/settings#account', 'Email, password and signing in']];
 

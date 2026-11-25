@@ -127,12 +127,6 @@ async function collabDoc(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> 
   return [{ name: safe(d.title) + '.docx', data: docx }, { name: safe(d.title) + '.pdf', data: pdf }];
 }
 
-async function slides(d: SharedDoc): Promise<OutFile[]> {
-  const [{ readSlides }, { pptxBlob }] = await Promise.all([import('../collab/slides/model'), import('../collab/slides/exportSlides')]);
-  const list = readSlides(await yDoc(d.docKey));
-  return [{ name: safe(d.title) + '.pptx', data: await bytes(await pptxBlob(list, d.title, '#d98f63')) }];
-}
-
 // Flashcards: one row a card, one column a field, with the brand and the set's name on top.
 async function flash(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> {
   const ExcelJS = (await import('exceljs')).default;
@@ -222,8 +216,6 @@ export async function sharedDocFiles(d: SharedDoc): Promise<OutFile[]> {
       return [];
     case 'doc':
       return collabDoc(d, brand);
-    case 'slides':
-      return slides(d);
     case 'flash':
       return flash(d, brand);
     case 'pd':

@@ -55,10 +55,10 @@ const APPS: App[] = [
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'My Files', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
   { k: 'resourcehub', group: 'share', name: 'Resource Hub', about: 'Curated teaching activities and printable resources', to: '/resource-hub', teacher: true, color: '#74762f', glyph: APP_MARKS.resourcehub, icon: I(APP_MARKS.resourcehub) },
-  { k: 'collab', group: 'make', name: 'Collab', about: 'Documents and slides written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
+  { k: 'collab', group: 'make', name: 'Collab', about: 'Documents written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
   { k: 'development', group: 'develop', name: 'Teacher’s Companion', about: 'Reflect, plan and talk through your teaching', to: '/coach', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
   { k: 'pdf', group: 'make', name: 'PDF', about: 'PDFs to write on, alone or together', to: '/pdf', teacher: true, color: '#a6463a', glyph: APP_MARKS.pdf, icon: I(APP_MARKS.pdf) },
-  { k: 'design', group: 'make', name: 'Designer', about: 'Storyboards, AI images and image editing', to: '/design', teacher: true, color: '#6d5bd0', glyph: APP_MARKS.design, icon: I(APP_MARKS.design) },
+  { k: 'design', group: 'make', name: 'Designer', about: 'Posters, flashcards, labelled pictures and worksheets', to: '/design', teacher: true, color: '#6d5bd0', glyph: APP_MARKS.design, icon: I(APP_MARKS.design) },
   { k: 'video', group: 'make', name: 'Video editor', short: 'Video', about: 'Edit classroom videos and reuse characters', to: '/studio/video', teacher: true, color: '#487d87', glyph: APP_MARKS.video, icon: I(APP_MARKS.video) },
   { k: 'recordings', group: 'make', short: 'Recordings', name: 'Recordings', about: 'Recordings with scripts, to use in any lesson', to: '/recordings', teacher: true, color: '#a8473a', glyph: APP_MARKS.recordings, icon: I(APP_MARKS.recordings) },
   { k: 'messages', group: 'share', name: 'Messages', about: 'Chats with learners and colleagues', to: '/messages', color: '#7a4fa3', glyph: APP_MARKS.messages, icon: I(APP_MARKS.messages) },
@@ -91,7 +91,7 @@ const GROUPS: [App['group'], string][] = [
   ['develop', 'Professional learning'],
   ['share', 'Files and people'],
 ];
-const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'recordings', 'video', 'development', 'resourcehub', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'recordings', 'video', 'development', 'resourcehub', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // Fetch an app's code as the pointer reaches its tile, before navigation starts.

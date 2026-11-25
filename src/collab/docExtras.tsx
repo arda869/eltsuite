@@ -171,7 +171,7 @@ export const BUILDING_BLOCKS: { key: string; label: string; about: string; conte
     h(2, 'Lesson plan'), lab('Class'), lab('Level'), lab('Date', ''), lab('Length', '60 minutes'),
     h(3, 'Aims'), p('By the end of the lesson, learners can …'),
     h(3, 'Stages'), table(['Time', 'Stage', 'What happens', 'Interaction'], [['5 min', 'Warmer', '', 'Whole class'], ['10 min', 'Lead-in', '', 'Pairs'], ['15 min', 'Presentation', '', 'Whole class'], ['15 min', 'Practice', '', 'Pairs'], ['10 min', 'Production', '', 'Groups'], ['5 min', 'Review', '', 'Whole class']]),
-    h(3, 'Materials'), checks(['Slides', 'Worksheet', 'Recording']),
+    h(3, 'Materials'), checks(['Worksheet', 'Recording', 'Pictures']),
     h(3, 'Possible problems and solutions'), p(),
     h(3, 'After the lesson'), p('What worked, what to change, what to revisit.'),
   ] },

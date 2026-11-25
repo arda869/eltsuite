@@ -168,8 +168,6 @@ function AppMark() {
             ? { name: 'Super Admin', color: '#2f2e2d' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', color: '#5d6f80' }
-          : pathname.startsWith('/storyboard')
-            ? { name: 'Storyboards', color: '#4f7a55' }
           : pathname.startsWith('/timetable')
             ? { name: 'Timetable', color: '#8a6a4a' }
           : pathname.startsWith('/guide')

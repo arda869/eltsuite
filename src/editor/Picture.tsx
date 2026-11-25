@@ -2,7 +2,6 @@ import {insideCommunicativeActivity} from '../communicative/pictureContext';
 import {savePrivateActivityPicture,copyPrivateActivityPicture} from '../communicative/privatePictures';
 import { InlineAiImage } from '../design/InlineAiImage';
 import { DesignerImages, CommonsImages } from '../design/InlineImages';
-import { readStoryboard } from '../storyboard/StoryboardNode';
 import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
@@ -718,7 +717,7 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
               <input aria-label="Description shown below the picture" value={alt} placeholder="Describe the picture for learners" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
-        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} initialSelectedId={initialDesignId} returnTo={returnTo} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
+        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} initialSelectedId={initialDesignId} returnTo={returnTo} onPick={fromDesign}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
           <>
             <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} />
             {look}
