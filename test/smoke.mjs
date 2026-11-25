@@ -1622,7 +1622,7 @@ const J = {
   'Songs: separate tracks preview, mute, save and reopen': async (b) => {
     const s=await session(b);await s.ctx.tracing.start({screenshots:true,snapshots:true,sources:true});try{s.p.setDefaultTimeout(60000);
     const pendingRequests=new Set();s.p.on('request',r=>pendingRequests.add(r.url()));s.p.on('requestfinished',r=>pendingRequests.delete(r.url()));s.p.on('requestfailed',r=>pendingRequests.delete(r.url()));
-    const reopened=async()=>{await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
+    const reopened=async()=>{await s.p.getByLabel('Classroom song · Backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
     await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Make a song for your class'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
@@ -1757,7 +1757,7 @@ const J = {
     await s.p.getByRole('button',{name:'Create speech',exact:true}).click();
     await s.p.getByRole('button',{name:'Preview voice for Speaker A',exact:true}).click();
     await see(s.p,'text=■ Stop','saved voice playback');
-    if(await s.p.getByLabel('Speaker 1 accent',{exact:true}).count())throw Error('Accent control should be removed');
+    await s.p.getByRole('button',{name:'Speaker 1 accent'}).waitFor();
     await s.p.getByLabel('Dialogue line 1',{exact:true}).fill('First take.');
     await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
     await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Second take.');
@@ -1866,7 +1866,7 @@ const J = {
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
     await s.p.goto(BASE + '/library?f=drive-demo');
-    await see(s.p, 'nav[aria-label="Organisation library"]', 'libraries inside Files');
+    await see(s.p, 'nav[aria-label="Harbour School Files"]', 'libraries inside My Files');
     await see(s.p, '.ma-main h1', 'the selected organisation folder');
     await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
     if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation accounts still have a separate Library app.');
@@ -3070,9 +3070,9 @@ const J = {
     await see(s.p, 'text=Level 1 lessons', 'the library folder');
     await s.p.click('button:has-text("+ New")');
     const [t] = await Promise.all([s.ctx.waitForEvent('page'), s.p.click('[role=menuitem]:has-text("Exam")')]);
-    await see(t, 'button:has-text("+ Add")', 'the new exam');
-    await t.getByRole('button', { name: '+ Add' }).click();
-    await t.getByRole('menuitem', { name: 'New task' }).click();
+    await t.locator('.task-insert summary[aria-label="Add at the end"]').waitFor();
+    await t.locator('.task-insert summary[aria-label="Add at the end"]').click();
+    await t.getByRole('button', { name: 'New task' }).click();
     await t.waitForTimeout(800);
     await t.setViewportSize({ width: 1280, height: 800 });
     const lessonWidth = await t.locator('.lf').evaluate(el => ({ width: el.getBoundingClientRect().width, viewport: innerWidth }));

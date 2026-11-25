@@ -40,7 +40,7 @@ try {
   await page.reload();
   await page.getByRole('button', { name: /A new question/ }).click();
   await page.getByText('The answer is').waitFor();
-  await page.getByText('Teacher notes').waitFor();
+  await page.getByRole('region', { name: 'Teacher notes' }).getByText('Ask why blue fits.').waitFor();
   const saved = await page.evaluate(async () => {
     const { db } = await import('/src/lib/firebase.ts');
     const { doc, getDoc } = await import('/test/mock/firestore.ts');

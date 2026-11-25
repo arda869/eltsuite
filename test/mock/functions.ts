@@ -404,7 +404,8 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if (d.action === 'fileTaskAiStatus') return { data: { status: 'completed', result: job.result } };
     if (!job.applied) {
       const { mergeKey } = await import('../../src/lib/questions');
-      await setDoc(doc(db, 'sharedDocs', d.fileId, 'tasks', 'ai_' + d.requestId), { kind: 'task', order: 1, title: job.result.title, instructions: job.result.instructions, content: mergeKey(job.result.content, job.result.key), teacherNotes: job.result.notes });
+      await setDoc(doc(db, 'sharedDocs', d.fileId, 'tasks', 'ai_' + d.requestId), { kind: 'task', order: 1, title: job.result.title, instructions: job.result.instructions, content: mergeKey(job.result.content, job.result.key) });
+      await setDoc(doc(db, 'sharedDocs', d.fileId, 'taskNotes', 'ai_' + d.requestId), { text: job.result.notes });
       job.applied = true; localStorage.setItem(jobKey, JSON.stringify(job));
     }
     return { data: { applied: true, taskId: 'ai_' + d.requestId } };
