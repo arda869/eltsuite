@@ -11,7 +11,7 @@ import { AppLogo } from '../components/AppGrid';
 import { connectAudio, DEFAULT_STUDIO_MINUTES, endSession, joinSession, LIVE_RATE, loadTake, saveLive, sessionLink, setSession, uploadTake, watchLive, watchPeers, watchSession, watchStudioLimit, watchTakes, type Live, type Peer, type Session, type Take } from '../lib/studio';
 import { decodeSound } from '../lib/sound';
 import { SoundEditor, type SoundSource } from '../media/SoundEditor';
-import { openChat, sendMsg, type Chat, type Person } from '../lib/chat';
+import { openChat, sendMsg, setQuiet, type Chat, type Person } from '../lib/chat';
 import { createSession } from '../lib/studio';
 import { useDirectory } from '../lib/directory';
 
@@ -165,6 +165,13 @@ export function StudioSession() {
       setStatus(`The recording stopped at the ${limitMin}-minute limit.`);
     }
   }, [recording, elapsed > limitMs + (host ? 0 : 3000)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Quiet while recording: messages arrive without sounds or notifications on this person's devices.
+  useEffect(() => {
+    if (!me) return;
+    if (recording && s?.startAt) void setQuiet(me.uid, s.startAt - offset.current + limitMs + 15000);
+    else void setQuiet(me.uid, 0);
+  }, [recording, s?.startAt, limitMs, me]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => void setQuiet(me?.uid, 0), [me?.uid]);
   // My level, ten times a second, for everyone's live view of the tracks.
   useEffect(() => {
     if (!recording || !s?.startAt || !me || count > 0) return;
@@ -269,13 +276,13 @@ export function StudioSession() {
           {saved ? (
             <div className="studio-done">
               <strong>Saved in My Files</strong>
-              <span className="hint">Each person’s voice is on its own track, and stays that way when you open it again. Everyone in the session can open the same tracks and save their own copy.</span>
+              <span className="hint">Each person’s voice is on its own track, and stays that way when you open it again. Everyone in the session can open the same tracks and save their own copy. The session’s chat carries on in Messages.</span>
               <span className="pe-actions">
                 <button type="button" className="btn" onClick={() => (setEditing(null), setSaved(false))}>
                   Back to the studio
                 </button>
                 {host && (
-                  <button type="button" className="btn primary" onClick={() => void endSession(id).then(() => (window.location.href = '/recordings'))}>
+                  <button type="button" className="btn primary" onClick={() => void endSession(id).then(() => (window.location.href = s.chatId ? `/messages?c=${encodeURIComponent(s.chatId)}` : '/recordings'))}>
                     Finish the session
                   </button>
                 )}
@@ -396,7 +403,7 @@ export function StudioSession() {
         </main>
         {chatOpen && s.chatId && (
           <aside className="rt-chat" aria-label="Session chat">
-            <header><b>Chat</b><span>{s.members.length} people in this session</span></header>
+            <header><span><b>Chat</b><span>{recording ? 'Quiet while you record: no sounds or notifications' : `${s.members.length} people · it stays in Messages afterwards`}</span></span><a className="rt-pill ghost" href={`/messages?c=${encodeURIComponent(s.chatId)}`} target="_blank" rel="noopener">Open in Messages</a></header>
             <div className="rt-chat-body">{chat && dir ? <Suspense fallback={<Loader label="Opening the chat" />}><ChatView c={chat} me={dir.me} dir={dir} teacher onBack={() => setChatOpen(false)} /></Suspense> : <Loader label="Opening the chat" />}</div>
           </aside>
         )}

@@ -1388,6 +1388,10 @@ service cloud.firestore {
         }
       }
     }
+    // While someone records in the studio: their messages arrive without notifications.
+    match /quiet/{uid} {
+      allow read, write: if isSelf(uid);
+    }
     match /chats/{id} {
       allow read: if inChat(resource.data);
       allow create: if inChat(request.resource.data) && request.resource.data.members.size() <= 60
