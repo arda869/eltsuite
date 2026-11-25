@@ -1224,7 +1224,7 @@ const J = {
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Designer',exact:true}).click();
     await d.getByLabel('Search Designer').waitFor();
-    await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
+    await d.locator('.inline-image-list button').filter({hasText:'Untitled image'}).first().click();
     await d.getByRole('button',{name:/Insert page|Insert the image/}).first().click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
     if(!await d.locator('.pic-node').count())throw Error('Designer image was not inserted');
@@ -1697,8 +1697,8 @@ const J = {
     await d.getByRole('radio',{name:'Young learners',exact:true}).check();
     if(await d.getByRole('textbox',{name:'Language',exact:true}).count())throw Error('Language should be fixed to English');
     const names=await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {className:fs['classes/'+classId].name,title:fs['classes/'+classId+'/items/'+itemId].title};},s.demo);
-    await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(names.className)}).click();
-    await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:names.title,exact:true}).click();
+    await d.getByRole('button',{name:'Class',exact:true}).click();await s.p.getByRole('option',{name:new RegExp(names.className)}).click();
+    await d.getByRole('button',{name:'Lesson',exact:true}).click();await s.p.getByRole('option',{name:names.title,exact:true}).click();
     await d.locator('.song-linked').waitFor();
     if(process.env.SONG_LESSON_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_LESSON_SCREENSHOT});
     await axe(s.p,'Song learners and linked lesson',A11Y_FOUND);
@@ -1729,7 +1729,7 @@ const J = {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');await s.p.getByRole('button',{name:'Create song',exact:true}).click();let d=s.p.getByRole('dialog',{name:'Make a song for your class'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();
     const unavailable=await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));sessionStorage.setItem('mockSongLessonFailure','1');return {className:fs['classes/'+classId].name,title:fs['classes/'+classId+'/items/'+itemId].title};},s.demo);
-    await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(unavailable.className)}).click();await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:unavailable.title,exact:true}).click();await d.getByRole('alert').waitFor();
+    await d.getByRole('button',{name:'Class',exact:true}).click();await s.p.getByRole('option',{name:new RegExp(unavailable.className)}).click();await d.getByRole('button',{name:'Lesson',exact:true}).click();await s.p.getByRole('option',{name:unavailable.title,exact:true}).click();await d.getByRole('alert').waitFor();
     if(await d.getByRole('button',{name:'Next: music'}).isEnabled())throw Error('An unresolved lesson error can strand the later steps');
     await d.getByRole('button',{name:'Continue without a lesson'}).click();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Custom style',exact:true}).check();await d.getByLabel('Custom music style',{exact:true}).fill('FAIL_TEST');await d.getByRole('button',{name:'Next: lyrics'}).click();
     await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.getByRole('alert').waitFor();
