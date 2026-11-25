@@ -283,12 +283,14 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
       </div>
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
+        <button type="button" className="pg-zb" aria-label="Zoom out" data-tip="Zoom out" disabled={zoom <= 10} onClick={() => setZoomChoice(String(Math.max(10, Math.ceil(zoom / 10) * 10 - 10)))}>−</button>
+        <span className="pg-zslide"><input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} /></span>
+        <button type="button" className="pg-zb" aria-label="Zoom in" data-tip="Zoom in" disabled={zoom >= 200} onClick={() => setZoomChoice(String(Math.min(200, Math.floor(zoom / 10) * 10 + 10)))}>+</button>
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
           <option value="fit">Fit page</option>
           <option value="fill">Fill width</option>
           {[...new Set([50, 75, 90, 100, 125, 150, 175, 200, zoom])].sort((a, b) => a - b).map((n) => <option key={n} value={String(n)}>{n}%</option>)}
         </NSelect>
-        <input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} />
       </div>}
     </div>
   );

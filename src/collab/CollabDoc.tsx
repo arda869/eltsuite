@@ -13,6 +13,7 @@ import { doc as fsDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
+import { PersonFace } from '../components/avatars';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEditorKeys } from '../editor/editorKeys';
@@ -206,7 +207,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   }, [synced]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showRuler, setShowRulerState] = useState(() => { try { return localStorage.getItem('cd.ruler') !== '0'; } catch { return true; } });
   const setShowRuler = (v: boolean) => { setShowRulerState(v); try { localStorage.setItem('cd.ruler', v ? '1' : '0'); } catch { /* fine */ } };
-  const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1'; } catch { return false; } });
+  const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1' || window.innerWidth < 1100; } catch { return false; } });
   const setNavCollapsed = (v: boolean) => { setNavCollapsedState(v); try { localStorage.setItem('cd.navCollapsed', v ? '1' : ''); } catch { /* fine */ } };
   const paged = !!page && layout.paged;
   useEffect(() => {
@@ -1181,8 +1182,8 @@ export function PeopleHere({ people, me, max = 5, label = 'Here now' }: { people
   return (
     <span className="cd-people" aria-label={label}>
       {people.slice(0, max).map((p, i) => (
-        <button key={i} type="button" className="cd-avatar" style={{ background: p.color }} data-tip={p.uid === me ? `${p.name} (you)` : p.name} aria-label={p.name} onClick={(e) => setAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
-          {p.name.trim().slice(0, 1).toUpperCase()}
+        <button key={i} type="button" className="cd-avatar" style={{ background: p.color, ['--ring' as string]: p.color }} data-tip={p.uid === me ? `${p.name} (you)` : p.name} aria-label={p.name} onClick={(e) => setAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
+          <PersonFace id={p.uid} name={p.name} size={26} />
         </button>
       ))}
       {people.length > max && <span className="cd-more" data-tip={people.slice(max).map((p) => p.name).join(', ')}>+{people.length - max}</span>}
@@ -1223,8 +1224,8 @@ function PersonCard({ p, r, me, onClose }: { p: { name: string; color: string; u
   return createPortal(
     <div ref={ref} className="cd-person" role="dialog" aria-label={p.name} style={{ top: r.bottom + 8, left: Math.max(8, Math.min(r.left - 120, window.innerWidth - 268)) }}>
       <span className="cd-person-h">
-        <span className="cd-avatar big" style={{ background: p.color }}>
-          {p.name.trim().slice(0, 1).toUpperCase()}
+        <span className="cd-avatar big" style={{ background: p.color, ['--ring' as string]: p.color }}>
+          <PersonFace id={p.uid} name={p.name} size={42} />
         </span>
         <span>
           <b>{p.name}{self ? ' (you)' : ''}</b>
