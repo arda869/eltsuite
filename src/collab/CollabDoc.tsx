@@ -3,7 +3,7 @@ import { useDocumentTools } from './DocumentEditingTools';
 import { PageBreak, DocumentSection, DocumentIndent, DocTab, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
 import { useDocumentHistory } from './DocumentHistory';
 import { documentClipboard } from './documentClipboard';
-import { tell } from '../lib/ask';
+import { ask, tell } from '../lib/ask';
 import { OverflowToolbar } from '../components/OverflowToolbar';
 import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
@@ -14,6 +14,7 @@ import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
 import { AnswerKey } from './AnswerKey';
+import { CommentThread, MarginComment, type Thread } from './Comments';
 import { PersonFace } from '../components/avatars';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -100,7 +101,7 @@ const headingsOf = (d: { forEach: (f: (n: { type: { name: string }; attrs: Recor
   return out;
 };
 
-type Thread = { by: string; name: string; color: string; text: string; at: number; quote?: string; resolved?: boolean; r?: Record<string, { by: string; name: string; color: string; text: string; at: number }> };
+
 export type CollabProps = {
   docKey: string;
   title: string;
@@ -188,6 +189,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const [who, setWho] = useState<Record<string, { name: string; color: string }>>({});
   const [draft, setDraft] = useState<{ quote: string } | null>(null);
   const [draftText, setDraftText] = useState('');
+  const [activeComment, setActiveComment] = useState<string | null>(null);
+  const [hoverComment, setHoverComment] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
   const [, tick] = useState(0);
   const gate = useToolGate();
   const [picFor, setPicFor] = useState<Editor | null>(null);
@@ -354,6 +358,22 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
 
   const documentTools = useDocumentTools(editor, eff === 'edit' || eff === 'suggest', eff === 'edit', !!page && eff !== 'view', layout.font);
   const history = useDocumentHistory(editor, docKey, me.uid, author.name, layout, setLayout, !!page, eff === 'edit', synced);
+  // Comments: clicking highlighted words opens their thread; Ctrl+Alt+M (⌘⌥M) comments on the selection.
+  const commentNow = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const click = (e: MouseEvent) => {
+      const m = (e.target as HTMLElement).closest?.('[data-comment]');
+      if (m) { setActiveComment(m.getAttribute('data-comment')); setSide('notes'); }
+    };
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'KeyM') { e.preventDefault(); commentNow.current(); }
+    };
+    dom.addEventListener('click', click);
+    dom.addEventListener('keydown', key);
+    return () => { dom.removeEventListener('click', click); dom.removeEventListener('keydown', key); };
+  }, [editor]);
   if (!editor) return <div className="cd cd-wait" />;
   // Viewing: the document as learners see it when it is presented, without suggestions still open.
   const viewing = eff === 'view';
@@ -391,6 +411,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const sugg = listSuggestions(editor.state.doc);
   const spots = commentSpots(editor.state.doc);
   const open = Object.entries(threads).filter(([, t]) => !t.resolved);
+  const done = Object.entries(threads).filter(([, t]) => t.resolved).sort((a, b) => (b[1].resolvedAt ?? b[1].at) - (a[1].resolvedAt ?? a[1].at));
   const canResolve = !!teacher || (allowed.includes('edit') && !locked);
   const canComment = eff !== 'view';
   const sel = editor.state.selection;
@@ -416,6 +437,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setDraftText('');
     setSide('notes');
   };
+  commentNow.current = startComment;
   const postComment = () => {
     const text = draftText.trim();
     if (!text || !draft) return;
@@ -430,13 +452,24 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setDraftText('');
   };
   const reply = (id: string, text: string) => text.trim() && set(push(collabRef(docKey, `c/${id}/r`)), { by: author.by, name: author.name, color: author.color, text: text.trim(), at: Date.now() }).catch(() => {});
-  const resolve = (id: string) => {
+  const unmark = (id: string) => {
     const spot = spots.find((s) => s.id === id);
-    if (spot) {
-      const tr = editor.state.tr.removeMark(spot.from, spot.to, editor.schema.marks.comment).setMeta('collab-ok', true);
-      editor.view.dispatch(tr);
-    }
-    update(collabRef(docKey, `c/${id}`), { resolved: true }).catch(() => {});
+    if (spot) editor.view.dispatch(editor.state.tr.removeMark(spot.from, spot.to, editor.schema.marks.comment).setMeta('collab-ok', true));
+  };
+  const resolve = (id: string) => {
+    unmark(id);
+    if (activeComment === id) setActiveComment(null);
+    update(collabRef(docKey, `c/${id}`), { resolved: true, resolvedBy: author.by, resolvedAt: Date.now() }).catch(() => {});
+  };
+  const reopen = (id: string) => update(collabRef(docKey, `c/${id}`), { resolved: false }).catch(() => {});
+  const editComment = (id: string, rid: string | null, text: string) => update(collabRef(docKey, rid ? `c/${id}/r/${rid}` : `c/${id}`), { text, edited: Date.now() }).catch(() => {});
+  const deleteComment = async (id: string, rid: string | null) => {
+    if (rid) return void set(collabRef(docKey, `c/${id}/r/${rid}`), null).catch(() => {});
+    const n = Object.keys(threads[id]?.r ?? {}).length;
+    if (!(await ask(`Delete this comment? ${n ? `Its ${n === 1 ? 'reply goes' : `${n} replies go`} too. ` : ''}You can’t undo this.`, { ok: 'Delete', danger: true }))) return;
+    unmark(id);
+    setActiveComment(null);
+    set(collabRef(docKey, `c/${id}`), null).catch(() => {});
   };
   const goTo = (from: number, to: number) => {
     editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
@@ -857,6 +890,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
             {page && teacher && <AnswerKey editor={editor} />}
           </EditorClassContext.Provider>
         </div>
+        {canComment && <MarginComment editor={editor} onComment={startComment} />}
+        {(activeComment || hoverComment) && <style>{[activeComment, hoverComment].filter(Boolean).map((id) => `.cm-mark[data-comment="${String(id).replace(/[^\w-]/g, '')}"]`).join(',')}{'{ background: color-mix(in srgb, #f2b84b 52%, transparent) !important; box-shadow: 0 2px 0 #e2a32e; }'}</style>}
         {(!page || showSide) && <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>
           <span className="seg small-seg cd-tabs">
             <button type="button" className={side !== 'people' ? 'on' : ''} onClick={() => setSide('notes')}>
@@ -951,8 +986,31 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
               {open
                 .sort((a, b) => (spots.findIndex((s) => s.id === a[0]) + 1 || 1e9) - (spots.findIndex((s) => s.id === b[0]) + 1 || 1e9))
                 .map(([id, t]) => (
-                  <CommentCard key={id} t={t} onGo={() => spots.find((s) => s.id === id) && goTo(spots.find((s) => s.id === id)!.from, spots.find((s) => s.id === id)!.to)} onReply={(x) => reply(id, x)} onResolve={eff !== 'view' || teacher ? () => resolve(id) : undefined} />
+                  <CommentThread
+                    key={id} id={id} t={t} me={me.uid} active={activeComment === id}
+                    onOpen={() => { setActiveComment(id); const sp = spots.find((s) => s.id === id); if (sp) goTo(sp.from, sp.to); }}
+                    onReply={(x) => reply(id, x)}
+                    onResolve={eff !== 'view' || teacher ? () => resolve(id) : undefined}
+                    onEdit={(rid, x) => editComment(id, rid, x)}
+                    onDelete={(rid) => void deleteComment(id, rid)}
+                    onHover={(on) => setHoverComment(on ? id : null)}
+                  />
                 ))}
+              {done.length > 0 && (
+                <button type="button" className="cm-done-toggle" aria-expanded={showDone} onClick={() => setShowDone((v) => !v)}>
+                  <UiIcon name="check" size={15} /> {showDone ? 'Hide' : 'Show'} done ({done.length})
+                </button>
+              )}
+              {showDone && done.map(([id, t]) => (
+                <CommentThread
+                  key={id} id={id} t={t} me={me.uid} active={activeComment === id}
+                  onOpen={() => setActiveComment(id)}
+                  onReply={(x) => reply(id, x)}
+                  onReopen={canResolve || t.by === me.uid ? () => reopen(id) : undefined}
+                  onEdit={(rid, x) => editComment(id, rid, x)}
+                  onDelete={(rid) => void deleteComment(id, rid)}
+                />
+              ))}
               {!sugg.length && !open.length && !draft && <span className="hint cd-none">{eff === 'suggest' ? 'Type to suggest a change. Others see it in your colour.' : 'Suggestions and comments show here.'}</span>}
             </>
           )}
@@ -1014,34 +1072,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       </button>
     );
   return big ? createPortal(<div className="cd-overlay">{body}</div>, document.body) : body;
-}
-
-export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: () => void; onReply: (text: string) => void; onResolve?: () => void }) {
-  const [text, setText] = useState('');
-  const replies = Object.values(t.r ?? {}).sort((a, b) => a.at - b.at);
-  return (
-    <div className="cd-card" onClick={onGo}>
-      {t.quote && <span className="cd-quote">“{t.quote}”</span>}
-      {[t, ...replies].map((c, i) => (
-        <span key={i} className="cd-msg">
-          <span className="cd-card-who">
-            <span className="cd-dot" style={{ background: c.color }} />
-            {c.name}
-            <span className="hint">{new Date(c.at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}</span>
-          </span>
-          <span className="cd-msg-text">{c.text}</span>
-        </span>
-      ))}
-      <span className="cd-reply" onClick={(e) => e.stopPropagation()}>
-        <input value={text} placeholder="Reply" aria-label="Reply" enterKeyHint="send" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? (e.preventDefault(), text.trim() && (onReply(text.trim()), setText(''))) : e.stopPropagation())} />
-        {onResolve && (
-          <button type="button" className="btn small-btn" onClick={onResolve} data-tip="Mark as done and hide it">
-            Resolve
-          </button>
-        )}
-      </span>
-    </div>
-  );
 }
 
 function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void }) {

@@ -451,3 +451,54 @@ body .dp .cd-main.has-nav .dn { top: 160px; max-height: calc(100dvh - 220px); }
 .pg-tab::after { content: ''; position: absolute; left: -6px; right: -8px; top: -4px; bottom: -3px; }
 /* A tab in the text: an invisible space that reaches to the next stop. */
 .doc-tab { display: inline-block; white-space: pre; min-width: 4px; }
+
+/* Comments: cards with pictures, one open at a time, a button beside the selection. */
+.cm-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); cursor: pointer; font: 13.5px/1.45 var(--sans); color: var(--ink); transition: box-shadow .15s, transform .15s; }
+.cm-card:hover { box-shadow: 0 0 0 1px var(--hair-strong), 0 6px 18px -12px rgba(0, 0, 0, .3); }
+.cm-card.on { cursor: default; box-shadow: 0 0 0 1.5px var(--accent-text), 0 14px 34px -18px rgba(0, 0, 0, .4); transform: translateX(-6px); }
+.cm-card.done { background: color-mix(in srgb, var(--surface) 60%, var(--paper)); }
+.cm-head { display: flex; align-items: flex-start; gap: 8px; }
+.cm-head:empty { display: none; }
+.cm-quote { flex: 1; min-width: 0; padding-left: 8px; border-left: 3px solid #f2b84b; color: var(--muted); font: italic 12.5px/1.4 var(--serif); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cm-msg { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.cm-face { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; }
+.cm-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cm-who { display: flex; align-items: baseline; gap: 8px; min-height: 22px; }
+.cm-who b { font: 600 13.5px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-when { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.cm-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-more { position: relative; margin-left: auto; align-self: center; }
+.cm-ic { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.cm-ic:hover { background: var(--surface); color: var(--ink); }
+.cm-ic.done { margin-left: auto; color: var(--accent-text); }
+.cm-ic.done:hover { background: color-mix(in srgb, var(--accent-text) 10%, transparent); }
+.cm-card:not(.on):not(:hover) .cm-more { visibility: hidden; }
+.cm-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 170px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 34px -12px rgba(0, 0, 0, .35); }
+.cm-menu button { height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; text-align: left; font: 13.5px var(--sans); color: var(--ink); cursor: pointer; }
+.cm-menu button:hover { background: var(--surface); }
+.cm-menu button.danger { color: var(--wrong, #9a5148); }
+.cm-count { margin-left: 38px; font: 600 12.5px var(--sans); color: var(--accent-text); }
+.cm-card.done .cm-count { color: var(--muted); font-weight: 500; }
+.cm-reply, .cm-edit { display: flex; flex-direction: column; gap: 8px; }
+.cm-reply { margin-left: 38px; }
+.cm-reply textarea, .cm-edit textarea { box-sizing: border-box; width: 100%; min-height: 36px; max-height: 160px; padding: 8px 12px; border: 1px solid var(--hair-strong); border-radius: 18px; background: var(--paper); color: var(--ink); font: 13.5px/1.4 var(--sans); resize: none; field-sizing: content; }
+.cm-edit textarea { border-radius: 10px; }
+.cm-reply textarea:focus, .cm-edit textarea:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 1px var(--accent-text); }
+.cm-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.cm-btn { height: 32px; padding: 0 14px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--accent-text); font: 600 13px var(--sans); cursor: pointer; white-space: nowrap; }
+.cm-btn.primary { border-color: transparent; background: var(--accent-text); color: #fff; }
+.cm-btn:disabled { opacity: .5; cursor: default; }
+.cm-done-toggle { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.cm-done-toggle:hover { background: var(--surface); color: var(--ink); }
+.cm-margin { position: fixed; z-index: 70; width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--paper); color: var(--accent-text); box-shadow: 0 0 0 1px var(--hair), 0 6px 18px -6px rgba(0, 0, 0, .3); cursor: pointer; animation: cm-pop .14s ease-out; }
+.cm-margin:hover { background: color-mix(in srgb, var(--accent-text) 8%, var(--paper)); }
+@keyframes cm-pop { from { transform: scale(.7); opacity: 0; } }
+.cm-mark { background: color-mix(in srgb, #f2b84b 24%, transparent); border-bottom: 2px solid color-mix(in srgb, #f2b84b 70%, transparent); cursor: pointer; transition: background .12s; }
+@media print { .cm-margin { display: none; } .cm-mark { background: none; border: 0; } }
+/* Room for comment threads beside the page on wide windows. */
+@media (min-width: 1200px) {
+  body .dp .cd-main.has-nav.has-nav:not(.no-side) { grid-template-columns: 248px minmax(0, 1fr) 320px; }
+  body .dp .cd-main.has-nav.has-nav.nav-collapsed:not(.no-side) { grid-template-columns: 44px minmax(0, 1fr) 320px; }
+}
+.dp .cd-side .cd-tabs { display: flex; flex-wrap: wrap; height: auto; }
+.dp .cd-side .cd-tabs button { flex: 1 1 auto; }
