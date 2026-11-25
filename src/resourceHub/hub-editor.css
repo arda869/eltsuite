@@ -265,3 +265,53 @@
 .rhe-published-link{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:5px 10px;border:1px solid var(--rh-border);border-radius:8px;background:var(--paper);color:var(--rh-olive);font:700 11px var(--sans);text-decoration:none;white-space:nowrap}
 .rhe-published-link:hover{border-color:var(--rh-olive);background:var(--paper-soft)}
 .rhe-published-link:focus-visible{outline:3px solid var(--rh-olive);outline-offset:2px}
+
+/* The editor laid out like a lesson in Classes (HubLessonEditor.tsx). */
+.rhe-main--activity:has(.rhl-editor) { padding: 0 var(--space-4, 16px) var(--space-3, 12px); }
+.rhl-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 0; }
+.rhl-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0 12px; border-bottom: 1px solid var(--hair); margin-bottom: 12px; }
+.rhl-head-l, .rhl-head-r { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.rhl-head-r .btn, .rhl-head-r .seg { height: 36px; box-sizing: border-box; }
+.rhl-head-r .seg button { height: 100%; }
+.rhl-back { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--ink); text-decoration: none; font-size: 18px; }
+.rhl-back:hover { background: var(--surface); }
+.rhl-state { padding: 3px 10px; border-radius: 99px; background: var(--surface); font: 600 12px var(--sans); }
+.rhl-state.review { background: color-mix(in srgb, #e2a32e 22%, var(--paper)); }
+.rhl-saved, .rhl-pub { font: 13px var(--sans); color: var(--muted); }
+.rhl-pub a { color: var(--accent-text); }
+.rhl-error { margin: 0 0 10px; }
+.rhl.lesson-layout { flex: 1; min-height: 0; align-items: stretch; gap: 0; }
+.rhl > .task-list { flex: 0 0 230px; width: 230px; overflow: auto; padding-right: 12px; }
+.rhl > .task-side { flex: 0 0 280px; width: 280px; overflow: auto; }
+.rhl > .center-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; padding: 0 16px; }
+.rhl .task-frame { flex: 1; min-height: 0; overflow: auto; }
+.rhl .lesson-title { width: 100%; resize: none; border: 0; background: none; font: 600 20px/1.25 var(--serif); color: var(--ink); padding: 6px 8px; margin-bottom: 8px; border-radius: 8px; overflow: hidden; box-sizing: border-box; }
+.rhl .lesson-title:hover:not([readonly]), .rhl .lesson-title:focus { box-shadow: 0 0 0 1px var(--hair); outline: none; }
+.rhl-row-t { display: flex; flex-direction: column; min-width: 0; }
+.rhl-row-t small { font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rhl-t .task-pick { color: var(--ink-2, var(--muted)); }
+.rhl-tn { display: inline-grid !important; place-items: center; color: var(--muted); }
+.rhl-v { font-weight: 700; color: var(--accent-text); }
+.rhl-teacher-head { background: color-mix(in srgb, var(--surface) 70%, var(--paper)); }
+.rhl-for { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.rhl-version { padding: 2px 9px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 12%, transparent); color: var(--accent-text); font: 700 11.5px var(--sans); }
+.rhl-key { margin: 12px 20px 0; }
+.rhl-paper { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; min-height: 100%; }
+.rhl-paper-page { min-width: 0; overflow: auto; border-right: 1px solid var(--hair); background: var(--surface); }
+.rhl-paper-edit { min-width: 0; display: flex; flex-direction: column; }
+.rhl .task-side .seg { display: flex; width: 100%; margin-bottom: 8px; }
+.rhl .task-side .seg button { flex: 1; }
+.rhl-badge { margin-left: 8px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 99px; background: var(--wrong, #9a5148); color: #fff; font: 700 11px var(--sans); }
+.rhl-publish { display: flex; flex-direction: column; gap: 10px; }
+.rhl-checks { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }
+.rhl-checks .needs { color: var(--wrong, #9a5148); }
+.rhl-checks .okay { color: #3f8a5c; }
+.rhl-remove { align-self: flex-start; margin-top: 8px; color: var(--wrong, #9a5148); }
+.rhl-page { flex: 1; min-height: 0; overflow: auto; max-width: 920px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.rhl-backto { align-self: flex-start; }
+@media (max-width: 1100px) {
+  .rhl.lesson-layout { flex-direction: column; overflow: auto; }
+  .rhl > .task-list, .rhl > .task-side { width: 100%; flex: none; }
+  .rhl > .center-col { padding: 0; }
+  .rhl-paper { grid-template-columns: 1fr; }
+}
