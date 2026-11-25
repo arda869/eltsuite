@@ -8892,3 +8892,62 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .rtt-acts { display: flex; justify-content: flex-end; gap: 8px; }
 .rtt-acts .btn, .rtt-form > .btn { height: 36px; min-height: 36px; box-sizing: border-box; }
 @media (max-width: 700px) { .rtt-body { grid-template-columns: 1fr; } }
+
+/* Home, second edition: a wider page in three columns, the next class beside the greeting, one
+   search for everything, what needs the teacher, and tiles to make things. */
+.hm2 { max-width: 1520px; padding: 20px 28px 56px; gap: 20px; }
+.hm2 .hm-hero { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); align-items: stretch; padding: 34px 36px; }
+.hm2 .hm-hero-text { justify-content: center; }
+.hm-search { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 16px; max-width: 620px; height: 52px; padding: 0 12px 0 18px; border-radius: 16px; border: 0; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong), 0 12px 28px -22px var(--shadow); color: var(--muted); font: 500 15.5px var(--sans); text-align: left; cursor: text; }
+.hm-search:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, var(--hair-strong)), 0 12px 28px -18px var(--shadow); }
+.hm-search > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-search kbd { flex: none; }
+.hm-next { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.hm-next .hm-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.hm-next-card { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 20px 22px; border-radius: 18px; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); box-shadow: 0 0 0 1px var(--hair), inset 4px 0 0 var(--cc, var(--accent)); color: var(--ink); text-decoration: none; }
+.hm-next-card.quiet { box-shadow: 0 0 0 1px var(--hair); }
+.hm-next-card b { font: 500 22px/1.2 var(--serif); letter-spacing: -.01em; }
+.hm-next-card .btn { margin-top: auto; }
+.hm-next-card .hint { margin-bottom: 8px; }
+.hm-next-k { display: inline-flex; align-items: center; gap: 8px; font: 700 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--cc, var(--accent)) 70%, var(--ink)); }
+.hm-grid3 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(280px, .9fr); gap: 20px; align-items: start; }
+.hm2 .hm-col { gap: 20px; }
+.hm2 .hm-classes { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.hm2 .hm-class-band { position: relative; }
+.hm2 .hm-files { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; margin: -4px -8px; }
+.hm2 .hm-file { padding: 10px; }
+.hm-count { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 99px; display: grid; place-items: center; background: var(--accent); color: #fff; font: 700 12px var(--sans); box-sizing: border-box; }
+.hm-needs { list-style: none; margin: -2px -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm-needs a { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; color: var(--ink); text-decoration: none; }
+.hm-needs a:hover { background: var(--surface); }
+.hm-needs a > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.hm-needs b { font: 600 14px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-needs .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-needs-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, var(--paper)); color: var(--accent-text); }
+.hm-done { display: flex; gap: 8px; align-items: flex-start; }
+.hm-done .ui-icon { flex: none; margin-top: 2px; color: var(--right); }
+.hm2 .hm-agenda li { grid-template-columns: 112px minmax(0, 1fr); }
+.hm2 .hm-agenda a.hm-what { color: var(--ink); text-decoration: none; }
+.hm2 .hm-agenda a.hm-what:hover b { text-decoration: underline; }
+.hm2 .hm-make { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.hm2 .hm-make-it { flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 88px; padding: 12px 6px; border-radius: 14px; background: var(--surface); text-align: center; }
+.hm2 .hm-make-it:hover { background: var(--selected); transform: translateY(-1px); }
+.hm2 .hm-make-it b { font: 600 13px var(--sans); white-space: normal; }
+.hm-hub { list-style: none; margin: -4px -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm-hub a { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; border-radius: 12px; color: var(--ink); text-decoration: none; }
+.hm-hub a:hover { background: var(--surface); }
+.hm-hub img { width: 56px; height: 42px; object-fit: cover; border-radius: 8px; background: var(--surface); }
+.hm-hub a > span { display: flex; flex-direction: column; min-width: 0; }
+.hm-hub b { font: 500 15px var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm2 .hm-space { flex-direction: row; align-items: center; text-align: left; gap: 16px; padding: 16px 20px; }
+.hm2 .hm-space > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.hm2 .hm-space h2 { font-size: 17px; }
+.hm2 .hm-ring { width: 64px; height: 64px; flex: none; }
+.hm2 .hm-ring span { width: 48px; height: 48px; font-size: 15px; }
+@media (max-width: 1280px) { .hm-grid3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .hm-grid3 > aside { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; } }
+@media (max-width: 960px) { .hm2 .hm-hero { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .hm-grid3 { grid-template-columns: 1fr; } .hm-grid3 > aside { display: flex; align-items: stretch; } }
+@media (max-width: 600px) { .hm2 { padding: 14px 16px 80px; } .hm2 .hm-hero { padding: 24px 18px; } .hm2 .hm-make { grid-template-columns: repeat(3, minmax(0, 1fr)); } .hm-search { height: 48px; } .hm-search kbd { display: none; } .hm2 .hm-agenda li { grid-template-columns: 1fr; } .hm-next .hm-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.hm-grid3 { align-items: stretch; }
+.hm-grid3 > .hm-col > :last-child { flex: 1 0 auto; }
+@media (max-width: 1280px) { .hm-grid3 > aside > :last-child { flex: none; } }
