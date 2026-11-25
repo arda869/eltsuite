@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { Wordmark } from '../components/Wordmark';
+import { AppLogo } from '../components/AppGrid';
 import { connectAudio, DEFAULT_STUDIO_MINUTES, endSession, joinSession, LIVE_RATE, loadTake, saveLive, sessionLink, setSession, uploadTake, watchLive, watchPeers, watchSession, watchStudioLimit, watchTakes, type Live, type Peer, type Session, type Take } from '../lib/studio';
 import { decodeSound } from '../lib/sound';
 import { SoundEditor, type SoundSource } from '../media/SoundEditor';
@@ -288,130 +289,115 @@ export function StudioSession() {
     );
 
   const mmss = (ms: number) => { const t = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  const lcd = (ms: number) => { const t = Math.max(0, ms / 1000); return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}.${Math.floor((t % 1) * 10)}`; };
   const left = limitMs - elapsed;
   const lanes = s.members.map((u) => ({ u, l: live.find((x) => x.uid === u && x.round === round) }));
-  const laneLen = Math.max(LIVE_RATE * 30, ...lanes.map((x) => x.l?.peaks.length ?? 0), recording ? Math.ceil((elapsed / 1000) * LIVE_RATE) : 0);
+  const span = Math.max(LIVE_RATE * 30, ...lanes.map((x) => x.l?.peaks.length ?? 0), recording ? Math.ceil((elapsed / 1000) * LIVE_RATE) + LIVE_RATE * 5 : 0);
+  const ticks = Array.from({ length: Math.floor(span / LIVE_RATE / 5) + 1 }, (_, k) => k * 5);
+  const hereCount = s.members.filter((u) => u === me.uid || peers.some((p) => p.uid === u && Date.now() - p.seen < 15000)).length;
+  const myLevel = levels[me.uid] ?? 0;
   return (
-    <div className={'studio ss2' + (chatOpen && s.chatId ? ' with-chat' : '')}>
-      <header className="studio-bar">
-        <Wordmark />
-        <span className="studio-app">Recording studio</span>
-        <span className="studio-where">{s.title || 'Recording session'}</span>
-        <span style={{ flex: 1 }} />
-        {recording && !count && <span className="ss-live">● Recording {mmss(elapsed)}</span>}
-        <button type="button" className="btn small-btn" onClick={() => void copyText(sessionLink(id)).then(() => setStatus('The link is copied.'))}>
-          <UiIcon name="link" size={13} /> Copy the link
-        </button>
-        {s.chatId && (
-          <button type="button" className={'btn small-btn' + (chatOpen ? ' on' : '')} aria-pressed={chatOpen} onClick={() => setChatOpen((v) => !v)}>
-            <UiIcon name="message" size={13} /> Chat
-          </button>
-        )}
+    <div className={'rt' + (chatOpen && s.chatId ? ' with-chat' : '')}>
+      <header className="sx-bar rt-bar">
+        <span className="rt-mark"><AppLogo k="recordings" size={30} /><span><span className="rt-k">ELT Suite</span><b>Record together</b></span></span>
+        <span className="sx-sep" aria-hidden="true" />
+        <span className="rt-title">{s.title || 'Recording session'}</span>
+        {recording && !count && <span className="rt-onair" role="status"><i aria-hidden="true" /> Recording</span>}
+        <span className="sx-acts">
+          <button type="button" className={'sx-act' + (cam ? ' on' : '')} aria-pressed={!!cam} onClick={() => void toggleCam()}><UiIcon name="video" size={18} /><span>{cam ? 'Camera on' : 'Camera off'}</span></button>
+          <button type="button" className="sx-act" onClick={() => void copyText(sessionLink(id)).then(() => setStatus('The link is copied. Send it to anyone invited.'))}><UiIcon name="link" size={18} /><span>Copy link</span></button>
+          {s.chatId && <button type="button" className={'sx-act' + (chatOpen ? ' on' : '')} aria-pressed={chatOpen} onClick={() => setChatOpen((v) => !v)}><UiIcon name="message" size={18} /><span>Chat</span></button>}
+          {s.state === 'stopped' && round > 0 && <button type="button" className="sx-act primary" onClick={() => void openEditor()} disabled={!roundTakes.length}><UiIcon name="edit" size={18} /><span>{roundTakes.length < expected.length ? `Open the tracks (${roundTakes.length} of ${expected.length})` : 'Open the tracks'}</span></button>}
+        </span>
       </header>
-      <div className="ss2-body">
-        <main className="ss">
-          {!phones && (
-            <div className="ss-phones" role="note">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 15v-3a8 8 0 0 1 16 0v3" />
-                <rect x="3" y="14" width="4" height="7" rx="1.5" />
-                <rect x="17" y="14" width="4" height="7" rx="1.5" />
-              </svg>
-              <span>
-                <b>Put on headphones</b>
-                <span className="hint">Everyone records their own voice. With headphones, your microphone doesn’t pick up the others, so each track stays clean.</span>
-              </span>
-              <button type="button" className="btn primary small-btn" onClick={() => setPhones(true)}>
-                I’m wearing headphones
-              </button>
+
+      <div className="daw-transport rt-transport">
+        {host ? (
+          recording ? (
+            <button type="button" className="rt-recbtn on" onClick={() => void stopRound()} aria-label="Stop recording"><span className="rt-stop" aria-hidden="true" /></button>
+          ) : (
+            <button type="button" className="rt-recbtn" onClick={() => void startRound()} disabled={!mic} aria-label={round ? 'Record another round' : 'Start recording'}><span className="rt-dot" aria-hidden="true" /></button>
+          )
+        ) : <span className={'rt-recbtn ghost' + (recording ? ' on' : '')} aria-hidden="true"><span className={recording ? 'rt-stop' : 'rt-dot'} /></span>}
+        <span className="daw-lcd rt-lcd" aria-label="Time recorded"><b>{count > 0 ? `−0:0${count}` : lcd(elapsed)}</b><span>/ {mmss(limitMs)}</span></span>
+        <span className="rt-say">
+          {count > 0 ? <b>Starting in {count}…</b> : recording ? <b>{mmss(left)} left · round {round}</b> : s.state === 'stopped' ? <b>Round {round} is done</b> : <b>{host ? 'Press record when everyone is here' : 'The host starts the recording'}</b>}
+          <span>{status || (recording ? 'Each voice is recording on its own device, at full quality.' : s.state === 'stopped' ? 'Open the tracks to edit them. Everyone in the session can.' : `Everyone starts together after a three-second count. Up to ${limitMin} minutes.`)}</span>
+        </span>
+        <span className="rt-meter" title="Your microphone"><UiIcon name="mic" size={15} /><span className="daw-meter"><i style={{ width: `${Math.min(100, myLevel * 160)}%` }} /></span></span>
+        <span className="rt-here">{hereCount} of {s.members.length} here</span>
+      </div>
+
+      <div className="rt-body">
+        <main className="rt-main">
+          {(!phones || micError || camError) && (
+            <div className="rt-notes">
+              {!phones && <div className="rt-note"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="7" rx="1.5" /><rect x="17" y="14" width="4" height="7" rx="1.5" /></svg><span><b>Put on headphones.</b> Each of you records on your own device, so with headphones every track keeps only its own voice.</span><button type="button" className="rt-pill" onClick={() => setPhones(true)}>I’m wearing them</button></div>}
+              {micError && <div className="rt-note warn"><UiIcon name="mic" size={18} /><span>{micError}</span></div>}
+              {camError && <div className="rt-note warn"><UiIcon name="video" size={18} /><span>{camError}</span></div>}
             </div>
           )}
-          {micError && <p className="hint warn">{micError}</p>}
-          <div className="ss-people ss-tiles">
-            {s.members.map((u) => {
+
+          <section className="rt-call" aria-label="The call">
+            {s.members.map((u, i) => {
               const p = peers.find((x) => x.uid === u);
               const mine = u === me.uid;
               const on = mine || (!!p && Date.now() - p.seen < 15000);
               const st = mine ? cam : remote[u];
               const showVideo = mine ? !!cam : !!p?.video && !!st?.getVideoTracks().some((t) => t.readyState === 'live');
-              const take = roundTakes.find((t) => t.uid === u);
               const lv = levels[u] ?? 0;
               return (
-                <div key={u} className={'ss-person' + (on ? ' on' : '') + (lv > 0.06 ? ' speaking' : '') + (showVideo ? ' has-video' : '')}>
+                <div key={u} className={'rt-tile c' + (i % 4) + (on ? ' on' : '') + (lv > 0.06 ? ' speaking' : '')}>
                   {showVideo && st ? (
-                    <video className={'ss-video' + (mine ? ' mirror' : '')} autoPlay playsInline muted ref={(el) => { if (el && el.srcObject !== st) el.srcObject = st; }} />
+                    <video className={mine ? 'mirror' : ''} autoPlay playsInline muted ref={(el) => { if (el && el.srcObject !== st) el.srcObject = st; }} />
                   ) : (
-                    <span className="ss-av" style={{ boxShadow: `0 0 0 ${2 + Math.min(10, lv * 40)}px color-mix(in srgb, var(--accent) ${on ? 35 : 0}%, transparent)` }}>
-                      {(s.names[u] ?? '?').slice(0, 1).toUpperCase()}
-                    </span>
+                    <span className="rt-face" style={{ ['--lv' as string]: Math.min(1, lv * 6) }}>{(s.names[u] ?? '?').slice(0, 1).toUpperCase()}</span>
                   )}
-                  <span className="ss-name">
+                  <span className="rt-tag">
+                    <span className="rt-tag-lv" aria-hidden="true"><i style={{ height: `${20 + Math.min(80, lv * 300)}%` }} /><i style={{ height: `${20 + Math.min(80, lv * 220)}%` }} /><i style={{ height: `${20 + Math.min(80, lv * 260)}%` }} /></span>
                     <b>{s.names[u] ?? 'Colleague'}{mine ? ' (you)' : ''}</b>
-                    <span className="hint">{u === s.host ? 'Host · ' : ''}{mine ? (mic ? 'Microphone on' : 'No microphone') : on ? (remote[u] ? 'In the call' : 'Connecting…') : 'Not here yet'}</span>
+                    <span>{u === s.host ? 'Host' : ''}{u === s.host && !on ? ' · ' : ''}{!on ? 'not here yet' : !mine && !remote[u] ? (u === s.host ? ' · ' : '') + 'connecting…' : ''}</span>
                   </span>
-                  {round > 0 && <span className={'ss-take' + (take ? ' in' : '')}>{take ? `Round ${round}: track in` : s.state === 'stopped' && on ? 'Sending…' : ''}</span>}
                 </div>
               );
             })}
-          </div>
+          </section>
           {Object.entries(remote).map(([u, st]) => (
             <audio key={u} autoPlay ref={(el) => el && el.srcObject !== st && (el.srcObject = st)} />
           ))}
 
-          {round > 0 && (
-            <section className="ss-lanes" aria-label={`Round ${round}, as it records`}>
-              <header>
-                <b>Round {round}</b>
-                <span className="hint">{recording ? `${mmss(elapsed)} recorded · ${mmss(left)} left` : `${mmss((laneLen / LIVE_RATE) * 1000)}`}</span>
-              </header>
-              {lanes.map(({ u, l }) => (
-                <div key={u} className="ss-lane">
-                  <span className="ss-lane-name">{s.names[u] ?? 'Colleague'}</span>
-                  <svg viewBox={`0 0 ${laneLen} 100`} preserveAspectRatio="none" aria-hidden="true">
-                    {(l?.peaks ?? []).map((v, i) => v > 6 && <rect key={i} x={i} y={50 - (v / 255) * 48} width="0.8" height={Math.max(1, (v / 255) * 96)} />)}
-                    {recording && <line x1={(elapsed / 1000) * LIVE_RATE} x2={(elapsed / 1000) * LIVE_RATE} y1="0" y2="100" className="ss-head" vectorEffect="non-scaling-stroke" />}
-                  </svg>
+          <section className="rt-tracks" aria-label={round ? `Round ${round}, as it records` : 'Tracks'}>
+            <div className="rt-ruler"><span className="rt-hcell">Tracks{round ? ` · round ${round}` : ''}</span><span className="rt-ticks">{ticks.map((t) => <span key={t} style={{ left: `${(t * LIVE_RATE / span) * 100}%` }}>{mmss(t * 1000)}</span>)}</span></div>
+            {lanes.map(({ u, l }, i) => {
+              const take = roundTakes.find((t) => t.uid === u);
+              const peaks = l?.peaks ?? [];
+              return (
+                <div key={u} className={'rt-lane c' + (i % 4)}>
+                  <span className="rt-hcell">
+                    <b>{s.names[u] ?? 'Colleague'}</b>
+                    <span className={'rt-state' + (take ? ' in' : recording && peaks.length ? ' live' : '')}>{take ? 'Track in · full quality' : recording && peaks.length ? (u === me.uid ? 'Recording on this device' : 'Recording on their device') : recording ? 'Waiting…' : s.state === 'stopped' && round ? 'Sending…' : 'Own device · full quality'}</span>
+                  </span>
+                  <span className="rt-lane-area">
+                    {peaks.length > 0 && (
+                      <span className="rt-clip" style={{ width: `${(peaks.length / span) * 100}%` }}>
+                        <svg viewBox={`0 0 ${peaks.length} 100`} preserveAspectRatio="none" aria-hidden="true">
+                          <path d={'M0 50 ' + peaks.map((v, k) => `L${k} ${50 - (v / 255) * 46}`).join(' ') + ` L${peaks.length} 50 ` + peaks.map((_, k) => `L${peaks.length - 1 - k} ${50 + (peaks[peaks.length - 1 - k] / 255) * 46}`).join(' ') + ' Z'} />
+                        </svg>
+                        <span className="rt-clip-name">{s.names[u] ?? 'Colleague'}</span>
+                      </span>
+                    )}
+                  </span>
                 </div>
-              ))}
-            </section>
-          )}
-
-          <div className="ss-stage">
-            {count > 0 ? (
-              <span className="ss-count">{count}</span>
-            ) : recording ? (
-              <span className="ss-rec">
-                <i /> Recording · round {round} · {mmss(left)} left
-              </span>
-            ) : (
-              <span className="hint">{s.state === 'stopped' ? `Round ${round} is done. Open it to edit everyone’s tracks.` : host ? `When everyone is here, start recording. Everyone starts together after a three-second count. A recording can last up to ${limitMin} minutes.` : 'Waiting for the host to start recording.'}</span>
-            )}
-            {status && <span className="hint">{status}</span>}
-          </div>
-          <div className="ss-controls" role="toolbar" aria-label="Call and recording">
-            <button type="button" className={'ss-ctl' + (cam ? ' on' : '')} aria-pressed={!!cam} onClick={() => void toggleCam()}>
-              <UiIcon name="video" size={18} /> {cam ? 'Turn off camera' : 'Turn on camera'}
-            </button>
-            {host && (recording ? (
-              <button type="button" className="ss-ctl rec on" onClick={() => void stopRound()}>
-                <span className="ss-stop" aria-hidden="true" /> Stop recording
-              </button>
-            ) : (
-              <button type="button" className="ss-ctl rec" onClick={() => void startRound()} disabled={!mic}>
-                <span className="sx-dot" /> {round ? 'Record another round' : 'Start recording'}
-              </button>
-            ))}
-            {s.state === 'stopped' && round > 0 && (
-              <button type="button" className="ss-ctl" onClick={() => void openEditor()} disabled={!roundTakes.length}>
-                <UiIcon name="edit" size={18} /> Open the tracks{roundTakes.length < expected.length ? ` (${roundTakes.length} of ${expected.length} in)` : ''}
-              </button>
-            )}
-          </div>
-          {camError && <p className="hint warn">{camError}</p>}
+              );
+            })}
+            {recording && <span className="rt-head" style={{ left: `calc(var(--rt-hw) + (100% - var(--rt-hw)) * ${Math.min(1, (elapsed / 1000) * LIVE_RATE / span)})` }} aria-hidden="true" />}
+            {!round && <p className="rt-empty">Each person’s track appears here as you record, live, for everyone in the session.</p>}
+          </section>
         </main>
         {chatOpen && s.chatId && (
-          <aside className="ss-chat" aria-label="Session chat">
-            {chat && dir ? <Suspense fallback={<Loader label="Opening the chat" />}><ChatView c={chat} me={dir.me} dir={dir} teacher onBack={() => setChatOpen(false)} /></Suspense> : <Loader label="Opening the chat" />}
+          <aside className="rt-chat" aria-label="Session chat">
+            <header><b>Chat</b><span>{s.members.length} people in this session</span></header>
+            <div className="rt-chat-body">{chat && dir ? <Suspense fallback={<Loader label="Opening the chat" />}><ChatView c={chat} me={dir.me} dir={dir} teacher onBack={() => setChatOpen(false)} /></Suspense> : <Loader label="Opening the chat" />}</div>
           </aside>
         )}
       </div>
