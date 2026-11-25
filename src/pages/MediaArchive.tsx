@@ -1375,6 +1375,7 @@ export function MediaArchive() {
           teachersOnly
           noRoles
           title={`Share “${sharingLesson.title}” with colleagues`}
+          itemName={sharingLesson.title}
           ownerName={user?.displayName || 'You'}
           members={Object.fromEntries(Object.entries(sharingLesson.editors ?? {}).map(([k, n]) => [k, { role: 'edit' as const, name: n, kind: 'teacher' as const }]))}
           chatLabel="Send them a message with the lesson"
