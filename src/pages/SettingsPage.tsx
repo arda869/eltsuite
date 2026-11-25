@@ -1,3 +1,4 @@
+import { ShortcutSettings } from '../components/ShortcutSettings';
 import { setStartHidden, STEPS, useStart } from '../start/steps';
 import { TeacherPassword } from '../components/TeacherPassword';
 import { SpellingSettings } from '../spelling/SpellingSettings';
@@ -249,6 +250,11 @@ export function SettingsPage() {
         )}
 
         {teacher && user && <Section icon="discuss" title="Teacher’s Companion"><CoachPreferences uid={user.uid} /><CoachProfileSettings uid={user.uid} /></Section>}
+        {teacher && (
+          <Section icon="settings" title="Keyboard shortcuts">
+            <ShortcutSettings />
+          </Section>
+        )}
         {teacher && user && (
           <Section icon="home" title="Home">
             <StartSetting uid={user.uid} />

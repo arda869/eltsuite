@@ -102,6 +102,7 @@ const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ defaul
 
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const TeacherCompanionPage = lazy(() => import('./coach/TeacherCompanionPage').then(m => ({ default: m.TeacherCompanionPage })));
+const ShortcutRunner = lazy(() => import('./components/ShortcutRunner').then(m => ({ default: m.ShortcutRunner })));
 const StartGuide = lazy(() => import('./start/GetStarted').then(m => ({ default: m.StartGuide })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
@@ -327,6 +328,7 @@ createRoot(document.getElementById('root')!).render(
           <UsageWatch />
           <FeatureDiscovery />
           <StartGuide />
+          <ShortcutRunner />
           <CallHost />
           <LiveStartWatch />
         </Suspense>

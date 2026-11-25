@@ -27,6 +27,14 @@ let installed = false;
 export function installImeGuard() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
+  // In full screen (teaching, a video), the browser's own keys for tabs and windows can't close or
+  // change the page by accident, where the browser allows it (Keyboard Lock). Esc still leaves.
+  type Lockable = Navigator & { keyboard?: { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } };
+  document.addEventListener('fullscreenchange', () => {
+    const kb = (navigator as Lockable).keyboard;
+    if (document.fullscreenElement) void kb?.lock?.(['KeyW', 'KeyT', 'KeyN', 'KeyR', 'KeyL', 'KeyQ', 'Tab']).catch(() => {});
+    else kb?.unlock?.();
+  });
   window.addEventListener(
     'keydown',
     (e) => {

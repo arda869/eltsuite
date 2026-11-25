@@ -502,3 +502,19 @@ body .dp .cd-main.has-nav .dn { top: 160px; max-height: calc(100dvh - 220px); }
 }
 .dp .cd-side .cd-tabs { display: flex; flex-wrap: wrap; height: auto; }
 .dp .cd-side .cd-tabs button { flex: 1 1 auto; }
+
+/* Settings → Keyboard shortcuts */
+.ks { display: flex; flex-direction: column; gap: 14px; }
+.ks-about { margin: 0; }
+.ks-group h3 { margin: 0 0 4px; font: 700 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ks-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 14px; min-height: 44px; padding: 4px 8px; border-radius: 10px; }
+.ks-row:hover, .ks-row.on { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.ks-what { font-size: 14px; }
+.ks-keys { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.ks-keys kbd, .ks-row kbd { display: inline-flex; align-items: center; min-width: 24px; height: 26px; padding: 0 8px; justify-content: center; border-radius: 6px; background: var(--paper); box-shadow: inset 0 -1px 0 var(--hair-strong), 0 0 0 1px var(--hair-strong); font: 600 12.5px var(--sans); color: var(--ink); }
+.ks-then { margin: 0 6px 0 0; color: var(--muted); font-size: 12px; }
+.ks-wait { color: var(--accent-text); font-weight: 600; }
+.ks-mine { padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 12%, transparent); color: var(--accent-text); font: 600 11px var(--sans); }
+.ks-btns { display: inline-flex; gap: 6px; }
+.ks-msg { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--wrong, #9a5148) 10%, transparent); color: var(--wrong, #9a5148); font-size: 13px; }
+@media (max-width: 600px) { .ks-row { grid-template-columns: 1fr auto; } .ks-keys { grid-column: 1; } }

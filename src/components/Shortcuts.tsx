@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { keyLabel, typingIn } from '../lib/keys';
+import { COMMANDS, useKeys } from '../lib/shortcuts';
 
 // One "Keyboard shortcuts" panel for the whole app: ? (when not typing) or Ctrl+/ (⌘/ on a Mac)
 // anywhere. It lists what works where, with the keys of this computer, and opens on the place
@@ -101,6 +102,32 @@ const PLACES: Place[] = [
     ],
   },
   {
+    id: 'documents',
+    title: 'Collab documents',
+    rows: [
+      [['Mod+Alt+M'], 'Comment on the selected words'],
+      [['Tab'], 'Go to the next tab stop (at the start of a line: indent the paragraph)'],
+      [['Shift+Tab'], 'Back a tab stop'],
+      [['Mod+Enter'], 'Page break'],
+      [['Mod+K'], 'Link the selected words'],
+    ],
+  },
+  {
+    id: 'video',
+    title: 'Videos',
+    note: 'With the video selected. Press ? on a video for the full list.',
+    rows: [
+      [['Space', 'K'], 'Play or pause'],
+      [['J', 'L'], 'Back or on 10 seconds'],
+      [['Left', 'Right'], 'Back or on 5 seconds'],
+      [['C'], 'Captions on or off'],
+      [['H'], 'Hide or show the picture'],
+      [['M'], 'Sound on or off'],
+      [['A', 'B'], 'Mark the start and end of a loop'],
+      [['F'], 'Full screen'],
+    ],
+  },
+  {
     id: 'everywhere',
     title: 'Everywhere',
     rows: [
@@ -110,6 +137,15 @@ const PLACES: Place[] = [
   },
 ];
 
+// The shortcuts teachers can change, with their own keys.
+function changeable(keys: Record<string, string>): Place[] {
+  const rows = (g: string) => COMMANDS.filter((c) => c.group === g).map((c): Row => [[keys[c.id] || c.def], g === 'Go to' ? `Go to ${c.label}` : g === 'Make' ? `Make ${c.label.replace(/^A new/, 'a new')}` : c.label]);
+  return [
+    { id: 'go', title: 'Going places', note: 'Press the keys one after the other. Change them in Settings.', rows: [...rows('Go to'), ...rows('Everywhere')] },
+    { id: 'make', title: 'Making things', note: 'Press the keys one after the other.', rows: rows('Make') },
+  ];
+}
+
 // A page can say which place to open on: <html data-keys="teaching">.
 function hereFirst(): string {
   const set = document.documentElement.dataset.keys;
@@ -117,7 +153,8 @@ function hereFirst(): string {
   const p = window.location.pathname;
   if (p.includes('/lesson/')) return 'writing';
   if (p.startsWith('/messages')) return 'messages';
-  return 'writing';
+  if (p.startsWith('/doc/')) return 'documents';
+  return 'go';
 }
 
 let opener: ((place?: string) => void) | null = null;
@@ -127,6 +164,7 @@ export function openShortcuts(place?: string) {
 
 export function ShortcutsHost() {
   const [open, setOpen] = useState<string | null>(null);
+  const keys = useKeys();
   const back = useRef<HTMLElement | null>(null);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -181,13 +219,15 @@ export function ShortcutsHost() {
     return () => document.removeEventListener('keydown', key, true);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!open) return null;
-  const first = PLACES.find((p) => p.id === open);
-  const order = first ? [first, ...PLACES.filter((p) => p !== first)] : PLACES;
+  const all = [...changeable(keys), ...PLACES];
+  const first = all.find((p) => p.id === open);
+  const order = first ? [first, ...all.filter((p) => p !== first)] : all;
   return (
     <div className="scrim sc-scrim" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div ref={box} className="dialog sc-panel" role="dialog" aria-modal="true" aria-labelledby="sc-title">
         <div className="sc-head">
           <h2 id="sc-title">Keyboard shortcuts</h2>
+          <a className="btn link" href="/settings#set-keyboard-shortcuts" onClick={() => setOpen(null)}>Change shortcuts</a>
           <button type="button" className="btn sc-close" onClick={close}>
             Close
           </button>
@@ -204,7 +244,7 @@ export function ShortcutsHost() {
                       {keys.map((k, i) => (
                         <span key={k} className="sc-keys">
                           {i > 0 && <span className="sc-or">or</span>}
-                          <kbd>{keyLabel(k)}</kbd>
+                          {k.split(' ').map((x, j) => <span key={j}>{j > 0 && <span className="sc-or">then</span>}<kbd>{keyLabel(x)}</kbd></span>)}
                         </span>
                       ))}
                     </dt>
