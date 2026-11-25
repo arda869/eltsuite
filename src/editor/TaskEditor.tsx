@@ -1,4 +1,5 @@
 import {insideCommunicativeActivity} from '../communicative/pictureContext';
+import { dropSourceNumbers } from '../lib/olNumbers';
 import {savePrivateActivityPicture} from '../communicative/privatePictures';
 import { CommunicativeActivity, ActivityCardAttributes, COMMUNICATIVE_INSERTS } from '../communicative/ActivityEditor';
 import { GameNode } from '../quiz/LegacyGameNode';
@@ -610,7 +611,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       FreshIds,
       Placeholder.configure({ placeholder: placeholder ?? 'Write the task. Type / for a question, list or image.' }),
     ],
-    content: withPictures(content),
+    content: withPictures(dropSourceNumbers(content)),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
       attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': label, ...(enterHint ? { enterkeyhint: enterHint } : {}) },

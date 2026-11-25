@@ -43,7 +43,7 @@ export function numberingCss(style: LessonStyle | undefined) {
     .qn::before, .qn::after { content: none; }
     .ml { display: inline-block; min-width: 3.6mm; margin-right: 1mm; font: ${exam ? 400 : 600} ${exam ? '1em' : '.86em'} ${face}; color: var(--muted); }
     .li { align-items: baseline; }
-    .li.label .mk { min-width: 4.6mm; font: ${exam || teen ? 800 : 700} ${exam ? '1em' : '.88em'} ${face}; color: ${ink}; }
+    .li.number .mk, .li.label .mk { min-width: 4.6mm; font: ${exam || teen ? 800 : 700} ${exam ? '1em' : '.88em'} ${face}; color: ${ink}; }
     .stack { margin-left: 5.2mm; }
     .kw.stem { float: none; margin: 0 0 0 1.4mm; }
     .match { grid-template-columns: fit-content(56%) 1fr; column-gap: 10mm; }

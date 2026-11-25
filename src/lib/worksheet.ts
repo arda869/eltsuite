@@ -5,6 +5,7 @@ import { studioDefinition } from '../coach/studioForms';
 import { credit } from './brand';
 import type { TlAttrs } from '../editor/Timeline';
 import { listLabel } from './listLabel';
+import { dropSourceNumbers, olStarts } from './olNumbers';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType, ImageRun } from 'docx';
 import type { ExportTask } from './textformat';
@@ -102,10 +103,13 @@ const GAP: Record<string, number> = { short: 8, medium: 18, long: 36 };
 const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChart: 'Phonemic chart', phonCard: 'Sound card', lessonLink: 'Link to another task', refList: 'Reference list', stress: 'Word stress', poll: 'Poll' };
 
 export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsTask {
+  t = { ...t, content: dropSourceNumbers(t.content) };
   const blocks: Block[] = [];
   const activities: ActivityConfig[] = [];
   const activityBlocks: Record<string, Block[]> = {};
   let cur: Block[] = blocks;
+  // Numbered lists carry on through the task, so no two questions share a number.
+  const listStart = olStarts(t.content);
   const answers: { n: number; label?: string; text: string }[] = [];
   let n = 0;
   let marks = 0;
@@ -303,7 +307,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       case 'orderedList': {
         // Keep the teacher's start and style: 4, 5, 6 · d, e, f · iv, v, vi
-        const start = typeof a.start === 'number' ? a.start : 1;
+        const start = listStart.get(node) ?? (typeof a.start === 'number' ? a.start : 1);
         node.content?.forEach((li, i) => {
           const label = listLabel(start + i, String(a.listType ?? '1'));
           const firstBlock = cur.length;
