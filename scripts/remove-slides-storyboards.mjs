@@ -13,11 +13,14 @@
 // - Shares of slides between colleagues (shares whose src.docKind is slides).
 // Run it with the deploy key (GOOGLE_APPLICATION_CREDENTIALS), like the other scripts. The space
 // each teacher uses is recounted by scripts/space.mjs on its next run.
-import { initializeApp, applicationDefault } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getDatabase } from 'firebase-admin/database';
+import { createRequire } from 'node:module';
+const deps = createRequire(new URL('../functions/package.json', import.meta.url));
+const { initializeApp, applicationDefault } = deps('firebase-admin/app');
+const { getFirestore } = deps('firebase-admin/firestore');
+const { getDatabase } = deps('firebase-admin/database');
 
 const CONFIRM = process.argv.includes('--confirm');
+const SUMMARY_ONLY = process.env.CLEANUP_SUMMARY_ONLY === '1';
 initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit', databaseURL: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app' });
 const db = getFirestore();
 const rtdb = getDatabase();
@@ -45,7 +48,7 @@ const files = new Map();
 for (const q of await Promise.all(fileQueries)) for (const d of q.docs) files.set(d.id, d);
 for (const d of files.values()) {
   tally.files++;
-  console.log(`file  ${d.id}  ${d.get('kind')}${d.get('designType') ? '/' + d.get('designType') : ''}  “${d.get('title') ?? ''}”  owner ${d.get('owner')}`);
+  if (!SUMMARY_ONLY) console.log(`file  ${d.id}  ${d.get('kind')}${d.get('designType') ? '/' + d.get('designType') : ''}  “${d.get('title') ?? ''}”  owner ${d.get('owner')}`);
   await removeLive(d.get('docKey'));
   if (CONFIRM) await db.recursiveDelete(d.ref);
 }
@@ -74,7 +77,7 @@ for (const c of classes.docs) {
       if (!found.length) continue;
       tally.lessonsChanged++;
       tally.elements += found.length;
-      console.log(`lesson  classes/${c.id}/items/${it.id}/tasks/${t.id}  ${found.length} element(s)`);
+      if (!SUMMARY_ONLY) console.log(`lesson  classes/${c.id}/items/${it.id}/tasks/${t.id}  ${found.length} element(s)`);
       for (const n of found) if (n.type === 'collab') await removeLive(n.attrs?.docKey);
       if (CONFIRM) await t.ref.update({ content: next });
     }

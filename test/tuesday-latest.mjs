@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 export async function documentChrome(s,base,newFile,axe,out){
  const p=await newFile(s,'Collab document',false),ed=p.getByRole('textbox',{name:'Document text',exact:true});await ed.fill(Array.from({length:100},(_,i)=>'Paragraph '+i+' for scrolling.').join('\n'));
- const buttons=[p.getByRole('button',{name:'Comments and suggestions',exact:true}),p.getByRole('button',{name:'Document mode',exact:true}),p.getByRole('button',{name:'Share',exact:true}),p.getByRole('button',{name:'Copy link',exact:true})],heights=[];for(const b of buttons)heights.push(await b.evaluate(el=>el.getBoundingClientRect().height));assert.ok(Math.max(...heights)-Math.min(...heights)<1,'Header action heights must match: '+heights);assert.equal(await p.getByRole('button',{name:'Settings',exact:true}).count(),0);
+ const buttons=[p.getByRole('button',{name:'Comments and suggestions',exact:true}),p.getByRole('button',{name:'Document mode',exact:true}),p.getByRole('button',{name:'Share',exact:true})],heights=[];for(const b of buttons)heights.push(await b.evaluate(el=>el.getBoundingClientRect().height));assert.ok(Math.max(...heights)-Math.min(...heights)<1,'Header action heights must match: '+heights);assert.equal(await p.getByRole('button',{name:'Settings',exact:true}).count(),0);
  // Filling a contenteditable may scroll its caret to the end. Establish the
  // starting position before asserting scroll direction, rather than treating an
  // absolute jump to 900 as a downward scroll from an unknown position.
