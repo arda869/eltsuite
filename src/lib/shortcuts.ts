@@ -7,7 +7,9 @@ import { isMac, keyLabel } from './keys';
 // then a letter) and a few that work everywhere. Two-key sequences never clash with the browser.
 // Teachers change them in Settings; their keys are kept on their profile (users/{uid}.keys) and on
 // this device, and the Keyboard shortcuts list shows them. The keys a browser keeps for itself
-// (a new tab, closing the tab…) can't be used: no web page can take them.
+// (a new tab, closing the tab…) never reach a page in a normal tab. Where the browser allows it
+// (Chrome and Edge, Keyboard Lock) they do in full screen, so a teacher can give a shortcut one of
+// them and it works in full screen only. Keys the computer itself keeps (quit, F11…) can't be used.
 
 export type CmdId = 'go-home' | 'go-classes' | 'go-files' | 'go-messages' | 'go-timetable' | 'go-hub' | 'go-collab' | 'go-design' | 'go-recordings' | 'go-settings'
   | 'new-doc' | 'new-lesson' | 'new-recording' | 'new-design' | 'search';
@@ -37,6 +39,17 @@ const RESERVED = new Set([
   'Mod+R', 'Mod+Shift+R', 'Mod+H', 'Mod+M', 'Mod+J', 'Mod+Shift+Delete', 'F5', 'F11', 'F12', 'Alt+F4', 'Alt+Left', 'Alt+Right',
   ...Array.from({ length: 9 }, (_, i) => `Mod+${i + 1}`),
 ]);
+// Keys no page can take, even in full screen.
+const NEVER = new Set(['Mod+Q', 'Mod+H', 'Mod+M', 'Mod+Shift+Delete', 'F11', 'F12', 'Alt+F4']);
+const canLock = typeof navigator !== 'undefined' && !!(navigator as Navigator & { keyboard?: { lock?: unknown } }).keyboard?.lock;
+// A shortcut that starts with a browser key: it works in full screen only.
+export const fullScreenOnly = (combo: string) => RESERVED.has(combo.split(' ')[0]) && !NEVER.has(combo.split(' ')[0]);
+// The keyboard code a key is held by (Keyboard Lock): "Mod+T" is KeyT.
+function codeOf(k: string): string {
+  const last = k.split('+').pop() ?? '';
+  return /^[A-Z]$/.test(last) ? 'Key' + last : /^[0-9]$/.test(last) ? 'Digit' + last : last === 'Left' || last === 'Right' ? 'Arrow' + last : last;
+}
+export const lockCodesNow = () => COMMANDS.map((c) => (mine[c.id] || c.def).split(' ')[0]).filter((k) => fullScreenOnly(k)).map(codeOf);
 // Keys ELT Suite already uses everywhere, or in writing.
 const TAKEN: Record<string, string> = {
   'Mod+B': 'bold', 'Mod+I': 'italic', 'Mod+U': 'underline', 'Mod+Z': 'undo', 'Mod+Y': 'redo', 'Mod+Shift+Z': 'redo', 'Mod+C': 'copy', 'Mod+V': 'paste',
@@ -59,7 +72,8 @@ export const label = (combo: string) => combo.split(' ').map(keyLabel).join(' th
 export function problemWith(combo: string, id: CmdId, keys: Record<string, string>): string {
   if (!combo) return '';
   const first = combo.split(' ')[0];
-  if (RESERVED.has(first)) return `${keyLabel(first)} belongs to your browser, so no web page can use it. Try another key, or two keys one after the other, such as G then a letter.`;
+  if (NEVER.has(first)) return `${keyLabel(first)} belongs to your computer, so ELT Suite can’t use it. Try another key, or two keys one after the other, such as G then a letter.`;
+  if (RESERVED.has(first) && !canLock) return `${keyLabel(first)} belongs to your browser, and this browser keeps it even in full screen. Try another key, or two keys one after the other, such as G then a letter.`;
   if (TAKEN[combo]) return `${keyLabel(combo)} is already used for ${TAKEN[combo]}.`;
   if (combo.split(' ').length === 1 && !combo.includes('Mod') && !combo.includes('Alt') && /^[A-Z0-9?]$|^Shift\+[A-Z]$/.test(combo)) return 'A single letter would get in the way of typing. Add Ctrl (⌘) or use two keys one after the other.';
   const other = COMMANDS.find((c) => c.id !== id && (keys[c.id] ?? c.def) === combo);

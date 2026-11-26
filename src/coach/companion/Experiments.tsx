@@ -47,7 +47,7 @@ export function Experiments({ uid, list, onTalk }: { uid: string; list: Experime
           <p className="hint">{s.help}</p>
           <textarea value={String(open[s.k] ?? '')} rows={s.k === 'observations' ? 8 : 4} placeholder={s.ph} aria-label={s.title} onChange={(e) => setOpen({ ...open, [s.k]: e.target.value })} />
           {step === 3 && (
-            <label className="ex-date">Look again on <input type="date" value={open.reviewAt ? new Date(open.reviewAt).toISOString().slice(0, 10) : ''} onChange={(e) => setOpen({ ...open, reviewAt: e.target.value ? new Date(e.target.value + 'T09:00').getTime() : null })} /><span className="hint">It shows on the Companion’s front page when it’s time.</span></label>
+            <label className="ex-date">Look again on <input type="date" value={open.reviewAt ? new Date(open.reviewAt).toISOString().slice(0, 10) : ''} onChange={(e) => setOpen({ ...open, reviewAt: e.target.value ? new Date(e.target.value + 'T09:00').getTime() : null })} /><span className="hint">We’ll remind you that morning on your devices and by email. You can change this in Settings.</span></label>
           )}
         </section>
         <div className="cl-nav">

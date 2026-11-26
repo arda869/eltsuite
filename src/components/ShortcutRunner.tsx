@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { typingIn } from '../lib/keys';
-import { COMMANDS, comboOf, keysNow, loadKeys, type Cmd } from '../lib/shortcuts';
+import { lockKeysToo, typingIn } from '../lib/keys';
+import { COMMANDS, comboOf, keysNow, loadKeys, lockCodesNow, type Cmd } from '../lib/shortcuts';
 import { newSharedDoc } from '../lib/sharedDocs';
 
 // Runs the shortcuts teachers can change (lib/shortcuts.ts): G then H goes Home, N then D makes a
@@ -12,6 +12,8 @@ export function ShortcutRunner() {
   const navigate = useNavigate();
   const teacher = profile?.role === 'teacher';
   useEffect(() => { if (user && teacher) void loadKeys(user.uid); }, [user?.uid, teacher]); // eslint-disable-line react-hooks/exhaustive-deps
+  // In full screen the browser hands over its own keys a teacher has used (Ctrl+T and so on).
+  useEffect(() => { if (teacher) lockKeysToo(lockCodesNow); }, [teacher]);
   useEffect(() => {
     if (!teacher) return;
     let first = '';

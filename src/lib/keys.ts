@@ -24,6 +24,12 @@ const GUARDED = new Set(['Enter', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown']);
 // arrows that belong to the IME never reach the app's own key handlers. The browser still
 // confirms or cancels the word, as nothing is prevented, only stopped on the way down.
 let installed = false;
+// More keys to hold in full screen: a teacher's own shortcuts on keys the browser normally keeps
+// (lib/shortcuts.ts). lockAll takes every key, for pressing one in Settings.
+let lockMore: () => string[] = () => [];
+let lockAll = false;
+export const lockKeysToo = (f: () => string[]) => { lockMore = f; };
+export const lockEveryKey = (on: boolean) => { lockAll = on; };
 export function installImeGuard() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
@@ -32,7 +38,7 @@ export function installImeGuard() {
   type Lockable = Navigator & { keyboard?: { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } };
   document.addEventListener('fullscreenchange', () => {
     const kb = (navigator as Lockable).keyboard;
-    if (document.fullscreenElement) void kb?.lock?.(['KeyW', 'KeyT', 'KeyN', 'KeyR', 'KeyL', 'KeyQ', 'Tab']).catch(() => {});
+    if (document.fullscreenElement) void kb?.lock?.(lockAll ? undefined : [...new Set(['KeyW', 'KeyT', 'KeyN', 'KeyR', 'KeyL', 'KeyQ', 'Tab', ...lockMore()])]).catch(() => {});
     else kb?.unlock?.();
   });
   window.addEventListener(

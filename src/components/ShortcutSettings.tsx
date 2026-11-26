@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react';
-import { COMMANDS, comboOf, label, problemWith, resetKeys, setKey, useKeys, type CmdId } from '../lib/shortcuts';
+import { COMMANDS, comboOf, fullScreenOnly, label, problemWith, resetKeys, setKey, useKeys, type CmdId } from '../lib/shortcuts';
+import { lockEveryKey } from '../lib/keys';
 import { openShortcuts } from './Shortcuts';
 
 // Settings → Keyboard shortcuts: each shortcut teachers can change, with Change and Reset. Press the
-// keys you want (one combination, or two keys one after the other); keys the browser keeps, or that
-// are already in use, are explained instead of saved.
+// keys you want (one combination, or two keys one after the other); keys already in use are
+// explained instead of saved. A key the browser keeps (Ctrl+T) never reaches a normal tab, so
+// "Press it in full screen" holds every key for a moment; that shortcut then works in full screen.
 export function ShortcutSettings() {
   const keys = useKeys();
   const [editing, setEditing] = useState<CmdId | null>(null);
   const [got, setGot] = useState<string[]>([]);
   const [msg, setMsg] = useState('');
+  const [full, setFull] = useState(false);
+  // Full screen with every key held, only while you press the keys.
+  const pressFull = async () => {
+    lockEveryKey(true);
+    try { await document.documentElement.requestFullscreen(); setFull(true); }
+    catch { lockEveryKey(false); setMsg('Your browser didn’t open full screen. Try another key instead.'); }
+  };
+  const leaveFull = () => { lockEveryKey(false); setFull(false); if (document.fullscreenElement) void document.exitFullscreen().catch(() => {}); };
+  useEffect(() => { const f = () => { if (!document.fullscreenElement) { lockEveryKey(false); setFull(false); } }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f); }, []);
   useEffect(() => {
     if (!editing) return;
     let t = 0;
@@ -18,11 +29,12 @@ export function ShortcutSettings() {
       if (p) { setMsg(p); setGot([]); return; }
       void setKey(editing, combo);
       setEditing(null); setGot([]); setMsg('');
+      leaveFull();
     };
     const key = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (e.key === 'Escape') { setEditing(null); setGot([]); setMsg(''); return; }
+      if (e.key === 'Escape') { setEditing(null); setGot([]); setMsg(''); leaveFull(); return; }
       const c = comboOf(e);
       if (!c) return;
       window.clearTimeout(t);
@@ -42,7 +54,7 @@ export function ShortcutSettings() {
   return (
     <div className="kys">
       <p className="hint kys-about">
-        Press G then a letter to go somewhere, and N then a letter to make something. Change any of them here. Your browser keeps a few keys for itself (such as {label('Mod+T')} for a new tab and {label('Mod+W')} to close it), so no web page can use those. <button type="button" className="btn link" onClick={() => openShortcuts()}>See every shortcut</button>
+        Press G then a letter to go somewhere, and N then a letter to make something. Change any of them here. Your browser keeps a few keys for itself, such as {label('Mod+T')} for a new tab. You can still use one: press it in full screen, and the shortcut works when ELT Suite is in full screen. <button type="button" className="btn link" onClick={() => openShortcuts()}>See every shortcut</button>
       </p>
       {groups.map((g) => (
         <section key={g} className="kys-group">
@@ -56,15 +68,20 @@ export function ShortcutSettings() {
                 <span className="kys-keys" aria-live="polite">
                   {on ? (got.length ? <kbd>{label(got.join(' '))}</kbd> : <span className="kys-wait">Press the keys…</span>) : k.split(' ').map((x, i) => <span key={i}>{i > 0 && <span className="kys-then">then</span>}<kbd>{label(x)}</kbd></span>)}
                   {keys[c.id] && !on && <span className="kys-mine">Yours</span>}
+                  {!on && fullScreenOnly(k) && <span className="kys-mine">In full screen</span>}
                 </span>
                 {on ? (
-                  <button type="button" className="btn small-btn" onClick={() => { setEditing(null); setGot([]); setMsg(''); }}>Cancel</button>
+                  <span className="kys-btns">
+                    {!full && <button type="button" className="btn small-btn" onClick={() => void pressFull()}>Press it in full screen</button>}
+                    <button type="button" className="btn small-btn" onClick={() => { setEditing(null); setGot([]); setMsg(''); leaveFull(); }}>Cancel</button>
+                  </span>
                 ) : (
                   <span className="kys-btns">
                     <button type="button" className="btn small-btn" onClick={() => { setEditing(c.id); setGot([]); setMsg(''); }}>Change</button>
                     {keys[c.id] && <button type="button" className="btn small-btn link" onClick={() => void setKey(c.id, null)}>Reset</button>}
                   </span>
                 )}
+                {on && full && !msg && <p className="kys-msg">Press the keys now, such as {label('Mod+T')}. Esc goes back.</p>}
                 {on && msg && <p className="kys-msg" role="alert">{msg}</p>}
               </div>
             );

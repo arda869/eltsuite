@@ -1,6 +1,6 @@
 import { NSelect } from '../components/Select';
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { contextDefaults, contextPermissions, type ContextPermissions } from '../../functions/ai/coach-context.js';
 import './preferences.css';
@@ -52,6 +52,7 @@ export function CoachPreferences({ uid }: { uid: string }) {
         <span className="set-row-t"><b>Coaching style</b><span className="hint">How the Companion talks with you</span></span>
         <span className="set-row-c"><NSelect className="set-select" aria-label="Coaching style" value={value.mode} disabled={!ready||saving} onChange={e=>void change({mode:e.target.value as CoachPreferencesValue['mode']})}>{modes.map(mode=><option key={mode}>{mode}</option>)}</NSelect></span>
       </div>
+      <CompanionReminders uid={uid} />
       <div className="set-row">
         <span className="set-row-t"><b>Your teaching profile</b><span className="hint">Your Reading Journal and learner records are only read when you bring them into a chat. Chats are saved privately in History.</span></span>
         <span className="set-row-c"><a className="btn small-btn" href="#coach-profile-settings">Edit profile</a></span>
@@ -67,4 +68,28 @@ export async function setCoachPreference(uid: string, patch: Partial<CoachPrefer
     const ref = doc(db, 'teachingCoach', uid, 'settings', 'context'), old = await tx.get(ref), data = old.data();
     tx.set(ref, { ...contextPermissions(data), mode: modes.includes(data?.mode) ? data!.mode : modes[0], ...patch, version: (data?.version ?? 0) + 1 });
   });
+}
+
+// When an experiment's "look again" day comes: a notification on your devices and an email.
+// scripts/companion.mjs sends them; both are on unless you turn them off.
+function CompanionReminders({ uid }: { uid: string }) {
+  const [v, setV] = useState<{ push: boolean; email: boolean } | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => onSnapshot(doc(db, 'users', uid), (s) => { const r = s.data()?.companionRemind; setV({ push: r?.push !== false, email: r?.email !== false }); }, () => setV(null)), [uid]);
+  const change = async (k: 'push' | 'email', on: boolean) => {
+    setError('');
+    try { await updateDoc(doc(db, 'users', uid), { [`companionRemind.${k}`]: on }); }
+    catch { setError('We couldn’t save that setting. Check your connection and try again.'); }
+  };
+  const rows: ['push' | 'email', string, string][] = [
+    ['push', 'Remind me on my devices', 'When it’s time to look again at an experiment. Turn on notifications for this device in Appearance and this device.'],
+    ['email', 'Remind me by email', 'The same reminder, sent to your email.'],
+  ];
+  return <>
+    {rows.map(([k, label, hint]) => <label key={k} className="set-row">
+      <span className="set-row-t"><b>{label}</b><span className="hint">{hint}</span></span>
+      <span className="set-row-c"><input type="checkbox" className="switch" checked={v?.[k] ?? true} disabled={!v} onChange={(e) => void change(k, e.target.checked)} /></span>
+    </label>)}
+    {error && <p role="alert" className="error">{error}</p>}
+  </>;
 }

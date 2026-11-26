@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { keyLabel, typingIn } from '../lib/keys';
-import { COMMANDS, useKeys } from '../lib/shortcuts';
+import { COMMANDS, fullScreenOnly, useKeys } from '../lib/shortcuts';
 
 // One "Keyboard shortcuts" panel for the whole app: ? (when not typing) or Ctrl+/ (⌘/ on a Mac)
 // anywhere. It lists what works where, with the keys of this computer, and opens on the place
@@ -139,7 +139,7 @@ const PLACES: Place[] = [
 
 // The shortcuts teachers can change, with their own keys.
 function changeable(keys: Record<string, string>): Place[] {
-  const rows = (g: string) => COMMANDS.filter((c) => c.group === g).map((c): Row => [[keys[c.id] || c.def], g === 'Go to' ? `Go to ${c.label}` : g === 'Make' ? `Make ${c.label.replace(/^A new/, 'a new')}` : c.label]);
+  const rows = (g: string) => COMMANDS.filter((c) => c.group === g).map((c): Row => [[keys[c.id] || c.def], (g === 'Go to' ? `Go to ${c.label}` : g === 'Make' ? `Make ${c.label.replace(/^A new/, 'a new')}` : c.label) + (fullScreenOnly(keys[c.id] || c.def) ? ' (in full screen)' : '')]);
   return [
     { id: 'go', title: 'Going places', note: 'Press the keys one after the other. Change them in Settings.', rows: [...rows('Go to'), ...rows('Everywhere')] },
     { id: 'make', title: 'Making things', note: 'Press the keys one after the other.', rows: rows('Make') },
