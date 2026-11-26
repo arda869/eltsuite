@@ -41,6 +41,7 @@ const SuperDefaults = lazy(() => import('./admin/Super').then((m) => ({ default:
 const SuperOrgs = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperOrgs })));
 const SuperTeachers = lazy(() => import('./admin/Super').then((m) => ({ default: m.SuperTeachers })));
 const AiCosts = lazy(() => import('./admin/AiCosts').then((m) => ({ default: m.AiCosts })));
+const AiRoutingLab = lazy(() => import('./admin/AiRoutingLab').then((m) => ({ default: m.AiRoutingLab })));
 const SuperAi = lazy(() => import('./admin/SuperAi').then((m) => ({ default: m.SuperAi })));
 const SuperAdmins = lazy(() => import('./admin/SuperAdmins').then((m) => ({ default: m.SuperAdmins })));
 const InviteCodes = lazy(() => import('./admin/InviteCodes').then((m) => ({ default: m.InviteCodes })));
@@ -179,6 +180,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[] | null; tab
     { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs?.length },
     { k: 'ai-costs', label: 'AI Cost Intelligence', icon: 'poll' },
+    { k: 'ai-routing', label: 'AI routing lab', icon: 'board' },
     { k: 'ai', label: 'AI usage and access', icon: 'board' },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
@@ -186,7 +188,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[] | null; tab
     { k: 'supers', label: 'Super admins', icon: 'lock' },
     { k: 'brand', label: 'Brand kit', icon: 'picture' },
   ];
-  const groupKeys: [string,string[]][] = [['People and access',['teachers','orgs','codes','supers']],['Usage and limits',['ai','ai-costs','activity']],['Product and appearance',['apps','defaults','brand']]];
+  const groupKeys: [string,string[]][] = [['People and access',['teachers','orgs','codes','supers']],['Usage and limits',['ai','ai-costs','ai-routing','activity']],['Product and appearance',['apps','defaults','brand']]];
   const groups: [string,NavItem[]][] = groupKeys.map(([label,keys])=>[label,keys.map(k=>items.find(i=>i.k===k)!)]);
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
   return (
@@ -222,6 +224,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[] | null; tab
           {known === 'codes' && <InviteCodes orgs={orgs} />}
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
           {known === 'ai-costs' && <AiCosts />}
+          {known === 'ai-routing' && <AiRoutingLab />}
           {known === 'ai' && <SuperAi teachers={teachers ?? []} loading={teachers === null} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}
