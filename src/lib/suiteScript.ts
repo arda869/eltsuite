@@ -11,7 +11,7 @@ const KNOWN = new Set(['bold', 'italic', 'underline', 'strike', 'marked', 'break
 export type SuiteScriptTypes = Record<string, string>;
 export type SuiteScriptParse = { content: JSONContent[]; errors: string[] };
 const questionLabel = (node: JSONContent, labels: SuiteScriptTypes) =>
-  (node.type === 'gap' && (node.attrs?.letters ? labels['gap:letters'] : node.attrs?.stem ? labels['gap:stem'] : undefined))
+  (node.type === 'gap' ? (node.attrs?.letters ? labels['gap:letters'] : node.attrs?.stem ? labels['gap:stem'] : undefined) : undefined)
   ?? (node.type === 'choice' && node.attrs?.display === 'radio' && JSON.stringify(node.attrs?.options) === '["True","False","Not given"]' ? labels['choice:notgiven'] : undefined)
   ?? (node.type === 'choice' && node.attrs?.display === 'radio' && JSON.stringify(node.attrs?.options) === '["True","False"]' ? labels['choice:truefalse'] : undefined)
   ?? labels[`${node.type}:${node.attrs?.kind}`]
@@ -19,6 +19,8 @@ const questionLabel = (node: JSONContent, labels: SuiteScriptTypes) =>
   ?? labels[`${node.type}:${node.attrs?.about}`]
   ?? labels[`${node.type}:${node.attrs?.mode}`]
   ?? labels[`${node.type}:${node.attrs?.display}`]
+  ?? (node.type === 'pack' ? labels[`pq:${node.attrs?.kind}`] : undefined)
+  ?? (node.type === 'investigation' ? labels[`investigation:${node.attrs?.family}`] : undefined)
   ?? labels[node.type ?? ''];
 
 const encoded = (value: unknown) => JSON.stringify(value);
@@ -35,7 +37,7 @@ function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
       return `@marked(text: ${encoded(text)}, marks: ${encoded(marks)})`;
     }
     if (node.type === 'hardBreak') return '@break()';
-    if (node.type === 'stress' && Array.isArray(node.attrs?.syllables)) return `@stress(${node.attrs.syllables.map(encoded).join(', ')}, stressed: ${Number(node.attrs.stressed ?? 0) + 1})`;
+    if (node.type === 'stress' && Array.isArray(node.attrs?.syllables) && node.attrs.syllables.length > 0 && (node.attrs.style ?? 'box') === 'box') return `@stress(${node.attrs.syllables.map(encoded).join(', ')}, stressed: ${Number(node.attrs.stressed ?? 0) + 1})`;
     if (node.attrs?.suiteRef && ['media', 'inlineMedia', 'picture', 'pdfBlock', 'collab'].includes(node.type ?? '')) {
       const name = node.type === 'picture' ? 'image' : node.type === 'pdfBlock' ? 'pdf' : node.type === 'collab' ? 'collab' : node.attrs.kind === 'video' ? 'video' : 'audio';
       return `@${name}(${encoded(node.attrs.suiteRef)})`;
@@ -53,12 +55,20 @@ function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
 }
 
 function block(node: JSONContent, labels: SuiteScriptTypes): string {
-  if (node.type === 'paragraph') return inline(node.content ?? [], labels);
+  if (node.type === 'paragraph') {
+    const children = node.content ?? [];
+    // A lone generic @element would otherwise be read as a block, losing its
+    // paragraph wrapper (and making an inline node invalid in Tiptap).
+    if (children.length === 1 && inline(children, labels).startsWith('@element(')) return `@element(data: ${encoded(node)})`;
+    return inline(children, labels);
+  }
   if (node.type === 'heading' && node.content?.every(child => child.type === 'text' && !child.marks)) return node.attrs?.level === 1 ? command('heading', (node.content ?? []).map(child => child.text ?? '').join('')) : command('heading', { level: node.attrs?.level ?? 1, text: (node.content ?? []).map(child => child.text ?? '').join('') });
-  if ((node.type === 'bulletList' || node.type === 'orderedList') && node.content?.every(child => child.type === 'listItem' && child.content?.length === 1 && child.content[0].type === 'paragraph')) {
+  if ((node.type === 'bulletList' || node.type === 'orderedList') && !node.attrs && node.content?.every(child => child.type === 'listItem' && child.content?.length === 1 && child.content[0].type === 'paragraph')) {
     const name = node.type === 'bulletList' ? 'bullet' : 'numbered';
     return node.content.map(child => `@${name}(data: ${encoded(child)})`).join('\n');
   }
+  const label = questionLabel(node, labels);
+  if (label) return `@question(type: ${encoded(label)}, data: ${encoded(node)})`;
   if (['gap', 'choice', 'mcq', 'pack', 'communicativeActivity'].includes(node.type ?? '')) return inline([node], labels);
   return `@element(data: ${encoded(node)})`;
 }
@@ -263,6 +273,7 @@ export function parseSuiteScript(text: string, labels: SuiteScriptTypes = {}): S
           const nodes = valueOf(start, labels);
           const prompt = start.args.named.prompt;
           if (typeof prompt === 'string') content.push({ type: 'paragraph', content: [{ type: 'text', text: prompt }, ...nodes] });
+          else if (start.args.named.data && nodes.length === 1 && !['gap', 'choice', 'dropgap'].includes(nodes[0].type ?? '')) content.push(nodes[0]);
           else content.push(...nodes.map(node => ({ type: 'paragraph', content: [node] })));
           return;
         }
