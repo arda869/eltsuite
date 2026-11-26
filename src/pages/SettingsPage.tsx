@@ -1,6 +1,7 @@
 import { ShortcutSettings } from '../components/ShortcutSettings';
 import { setStartHidden, STEPS, useStart } from '../start/steps';
 import { TeacherPassword } from '../components/TeacherPassword';
+import { ChangeName } from '../components/ChangeName';
 import { SpellingSettings } from '../spelling/SpellingSettings';
 import { CoachPreferences } from '../coach/CoachPreferences';
 import { CoachProfileSettings } from '../coach/CoachProfileSettings';
@@ -248,9 +249,12 @@ export function SettingsPage() {
               <b className="set-name">{name}</b>
               <span className="hint">{learnerAcct ? 'Learner' : user?.email || (teacher ? '' : 'Learner')}</span>
             </span>
-            <button type="button" className="btn small-btn" onClick={() => setPicking(true)}>
-              Change picture
-            </button>
+            <span className="set-me-acts">
+              {teacher && <ChangeName name={name} />}
+              <button type="button" className="btn small-btn" onClick={() => setPicking(true)}>
+                Change picture
+              </button>
+            </span>
           </div>
         </Section>
 
@@ -265,7 +269,7 @@ export function SettingsPage() {
           </Row>
         </Section>
 
-        {teacher && user?.providerData?.some(p => p.providerId === 'google.com') && <Section icon="lock" title="Sign-in and security"><TeacherPassword key={user.uid} user={user} /></Section>}
+        {teacher && user?.email && !learnerAcct && <Section icon="lock" title="Sign-in and security"><TeacherPassword key={user.uid} user={user} /></Section>}
 
         {teacher && user && <OrgProfile uid={user.uid} />}
 
