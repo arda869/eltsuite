@@ -52,5 +52,9 @@
   .rhe-preview-overlay .rhe-preview-task-body { padding:20px; }
 }
 .rhe-a4-status{margin:0 0 10px;color:var(--rh-muted);font:700 11px var(--sans);text-align:center}
+.rhe-a4-tools{display:flex;align-items:center;justify-content:center;gap:7px;margin:0 0 8px;color:var(--rh-muted);font:700 11px var(--sans)}
+.rhe-a4-tools button{min-width:27px;height:27px;border:1px solid var(--rh-border,var(--hair));border-radius:7px;background:var(--paper,#fff);color:var(--ink);cursor:pointer}
+.rhe-a4-tools button:disabled{opacity:.45;cursor:not-allowed}
 .rhe-a4-pages{display:grid;gap:16px;width:100%;justify-items:center}
-.rhe-a4-page{display:block;width:min(100%,210mm);height:auto;border:1px solid #d8d5cc;background:#fff;box-shadow:0 12px 28px #302e281a}
+.rhe-a4-page{display:block;width:100%;height:auto;border:1px solid #d8d5cc;background:#fff;box-shadow:0 12px 28px #302e281a}
+.rhe-preview-scroll[hidden]{display:none}

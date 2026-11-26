@@ -26,7 +26,7 @@ type Props = {
   onIdentity: () => void;
   generatedAnswers: string[];
   paper: boolean;
-  preview: ReactNode; // the printed page, for the paper view
+  preview: ReactNode; // kept mounted while switching views so PDF position is retained
   publishing: ReactNode; // the checklist and the publishing buttons
   checks: number;
 };
@@ -170,12 +170,10 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
       </nav>
       <div className="center-col">
         <main className="task-frame rhl-main">
-          {paper ? (
-            <div className="rhl-paper">
-              <section className="rhl-paper-page" aria-label="The printed page">{preview}</section>
-              <section className="rhl-paper-edit" aria-label="Edit the task">{frame}</section>
-            </div>
-          ) : frame}
+          <div className={'rhl-paper' + (paper ? '' : ' rhl-digital')}>
+            <section className="rhl-paper-page" aria-label="The printed page" hidden={!paper}>{preview}</section>
+            <section className="rhl-paper-edit" aria-label="Edit the task">{frame}</section>
+          </div>
         </main>
       </div>
       {section && (
@@ -210,7 +208,7 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
               {editable ? <InstrEditor key={section.id + '-paper'} doc={section.printInstrDoc} text={section.printInstructions ?? ''} onChange={(printInstrDoc, printInstructions) => patchSection(section.id, { printInstrDoc, printInstructions })} placeholder="Instruction on paper, for example: Write the answers on the lines." /> : <InstrView doc={section.printInstrDoc} text={section.printInstructions ?? ''} />}
             </Fold>
           )}
-          <Fold id="publish" title="Before publishing" open={fold} setOpen={setFold} badge={checks ? <span className="rhl-badge" aria-label={`${checks} to fix`}>{checks}</span> : undefined}>
+          <Fold id="publish" title="Readiness" open={fold} setOpen={setFold} badge={checks ? <span className="rhl-badge" aria-label={`${checks} to fix`}>{checks}</span> : undefined}>
             {publishing}
           </Fold>
           {editable && sections.length > 1 && (

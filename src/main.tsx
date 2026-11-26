@@ -55,6 +55,7 @@ const AccessibilityPage=lazy(()=>import('./public/DesignPage').then(m=>({default
 const QuizPlayPage = lazy(() => import('./quiz/PlayPage').then((m) => ({ default: m.QuizPlayPage })));
 const QuizHostPage = lazy(() => import('./quiz/HostPage').then((m) => ({ default: m.HostPage })));
 const QuizResultsPage = lazy(() => import('./quiz/ResultsPage').then((m) => ({ default: m.ResultsPage })));
+const GamesRetiredPage = lazy(() => import('./quiz/GamesRetiredPage').then((m) => ({ default: m.GamesRetiredPage })));
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
 const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
@@ -288,15 +289,15 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
-          <Route path="/game" element={<QuizPlayPage />} />
+          <Route path="/game" element={<GamesRetiredPage />} />
           <Route path="/game/:code" element={<QuizPlayPage />} />
-          <Route path="/quiz" element={<QuizPlayPage />} />
+          <Route path="/quiz" element={<GamesRetiredPage />} />
           <Route path="/quiz/:code" element={<QuizPlayPage />} />
           <Route path="/game-host/:runId" element={<TeacherOnly><QuizHostPage /></TeacherOnly>} />
           <Route path="/quiz-host/:runId" element={<TeacherOnly><QuizHostPage /></TeacherOnly>} />
           <Route path="/game-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
           <Route path="/quiz-results/:runId" element={<TeacherOnly><QuizResultsPage /></TeacherOnly>} />
-          <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
+          <Route path="/games" element={<TeacherOnly><GamesRetiredPage /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />

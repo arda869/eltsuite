@@ -284,6 +284,7 @@
 .rhl > .task-list { flex: 0 0 230px; width: 230px; overflow: auto; padding-right: 12px; }
 .rhl > .task-side { flex: 0 0 280px; width: 280px; overflow: auto; }
 .rhl > .center-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; padding: 0 16px; }
+.rhl-action-issue { max-width: 250px; color: var(--wrong, #9a5148); font: 600 11px/1.3 var(--sans); }
 .rhl .task-frame { flex: 1; min-height: 0; overflow: auto; }
 .rhl .lesson-title { width: 100%; resize: none; border: 0; background: none; font: 600 20px/1.25 var(--serif); color: var(--ink); padding: 6px 8px; margin-bottom: 8px; border-radius: 8px; overflow: hidden; box-sizing: border-box; }
 .rhl .lesson-title:hover:not([readonly]), .rhl .lesson-title:focus { box-shadow: 0 0 0 1px var(--hair); outline: none; }
@@ -297,7 +298,9 @@
 .rhl-version { padding: 2px 9px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 12%, transparent); color: var(--accent-text); font: 700 11.5px var(--sans); }
 .rhl-key { margin: 12px 20px 0; }
 .rhl-paper { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; min-height: 100%; }
-.rhl-paper-page { min-width: 0; overflow: auto; border-right: 1px solid var(--hair); background: var(--surface); }
+.rhl-paper.rhl-digital { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.rhl-paper-page { min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--hair); background: var(--surface); }
+.rhl-paper-page[hidden] { display: none; }
 .rhl-paper-edit { min-width: 0; display: flex; flex-direction: column; }
 .rhl .task-side .seg { display: flex; width: 100%; margin-bottom: 8px; }
 .rhl .task-side .seg button { flex: 1; }

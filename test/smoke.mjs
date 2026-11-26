@@ -1596,15 +1596,11 @@ const J = {
     if(requests.length)throw Error('Public pages called a data or AI endpoint: '+requests.join(', '));
     if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
   },
-  'Games: anyone can join with a code, no account': async (b) => {
+  'Games: standalone entry is retired and active lesson links still open': async (b) => {
     const ctx=await b.newContext(),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
     await p.goto(BASE+'/game?site=learn');
-    await see(p,'#qz-code','game code entry');
-    await p.fill('#qz-code','12a3456');
-    if(await p.inputValue('#qz-code')!=='123456')throw Error('The code box should keep digits only');
-    await p.getByRole('button',{name:'Next'}).click();
-    await see(p,'#qz-name','nickname entry');
+    await p.getByRole('heading',{name:'Games now live in lessons'}).waitFor();
     await p.goto(BASE+'/game/654321?site=main');
     await see(p,'#qz-name','nickname entry from a shared link');
     if(errors.length)throw Error(errors.join('; '));

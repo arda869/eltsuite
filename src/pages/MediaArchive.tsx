@@ -683,7 +683,6 @@ export function MediaArchive() {
     'sep',
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Lesson', icon: 'task', hint: 'Create tasks, preview the learner view, then copy to a class', onClick: () => void makeDoc('lesson') },
-    ...(appOn('games') ? [{ label: 'Game', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
     ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'posters, cards and pictures', onClick: () => void makeDoc('design') } as MenuItem] : []),
