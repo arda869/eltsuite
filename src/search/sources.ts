@@ -8,6 +8,8 @@ import { useArchive } from '../lib/archive';
 import { msgsCol, useChats, type Chat } from '../lib/chat';
 import { SUITE_APPS } from '../components/AppGrid';
 import { HUB_ACTIVITIES } from '../resourceHub/catalog';
+import { useOrgs, useSuper, useTeachers } from '../lib/admin';
+import { useColleagues } from '../lib/sharing';
 import { usePublishedHubResources } from '../resourceHub/usePublishedHubResources';
 import { kvGet, kvSet } from './kv';
 import { indexed, type Entry, type Indexed } from './engine';
@@ -19,7 +21,30 @@ import { indexed, type Entry, type Indexed } from './engine';
 const ms = (t: unknown) => (t && typeof (t as { toMillis?: () => number }).toMillis === 'function' ? (t as { toMillis: () => number }).toMillis() : typeof t === 'number' ? t : 0);
 const DOC_ICON: Record<string, string> = { doc: 'collab', flash: 'cards', pd: 'reading', lesson: 'classes', pdf: 'pdf', design: 'design', game: 'games', file: 'archive' };
 const GUIDE: [string, string][] = [['start', 'One place for all your teaching'], ['blend', 'Teach your way: choose your blend'], ['lessons', 'Lessons and tasks'], ['questions', 'Question types'], ['notation', 'Language notation'], ['live', 'Teaching live'], ['games', 'Games and activities'], ['progress', 'Marking and progress'], ['studio', 'Studio: record and edit sound'], ['print', 'PDFs, printing and worksheets'], ['files', 'My Files and their apps'], ['week', 'Timetable and Rooms'], ['share', 'Colleagues and Messages'], ['org', 'Running an organisation']];
-const SETTINGS: [string, string, string][] = [['Settings', '/settings', 'Your name, picture, password, language, notifications and theme'], ['Notifications', '/settings#notifications', 'Emails and alerts you get'], ['Your account', '/settings#account', 'Email, password and signing in']];
+// Each setting, opening straight to its part of Settings.
+const SETTINGS: [string, string, string][] = [
+  ['Settings', '/settings', 'Your name, picture, password, appearance, notifications and more'],
+  ['Change your name', '/settings#set-profile', 'Name profile rename'],
+  ['Change your picture', '/settings#set-profile', 'Picture avatar photo profile'],
+  ['Password', '/settings#set-sign-in-and-security', 'Add a password, change password, sign in, security'],
+  ['Sign out', '/settings#set-account', 'Log out leave'],
+  ['Delete my account', '/settings#set-account', 'Remove account close'],
+  ['Appearance', '/settings#set-appearance-and-this-device', 'Light, dark, theme, device'],
+  ['App and notifications', '/settings#set-appearance-and-this-device', 'Home screen, install, push notifications'],
+  ['Keyboard shortcuts', '/settings#set-keyboard-shortcuts', 'Keys, change shortcuts, hotkeys'],
+  ['Get started list', '/settings#set-home', 'Home checklist, show or hide'],
+  ['Text toolbar', '/settings#set-text-toolbar', 'Formatting tools, toolbar order'],
+  ['Spelling', '/settings#set-spelling', 'British, American, spelling rules for answers'],
+  ['Calendar', '/settings#set-calendar', 'Timetable, calendar feed, time zone'],
+  ['Picture quality and storage', '/settings#set-pictures-and-storage', 'Pictures, space, storage, quality'],
+  ['Sound effects', '/settings#set-sound-effects', 'Your own sound effects'],
+  ['Sound recordings', '/settings#set-sound-recordings', 'Accents, phonemic chart recordings, British, American'],
+  ['Message settings', '/settings#set-messages', 'Notifications, emails, sounds, Enter to send'],
+  ['Feature tips', '/settings#set-feature-tips', 'Tips about features, quiet hours'],
+  ['Teacher’s Companion settings', '/settings#set-teacher-s-companion', 'What the Companion can read, coaching style'],
+];
+const SUPER_PAGES: [string, string, string][] = [['Overview', 'overview', 'Super Admin'], ['Teachers', 'teachers', 'All teachers'], ['Invitation codes', 'codes', 'Invite teachers'], ['Organisations', 'orgs', 'Schools'], ['AI cost intelligence', 'ai-costs', 'Costs credits'], ['AI usage and access', 'ai', 'Allowances'], ['Apps', 'apps', 'Turn apps on or off'], ['Sounds for everyone', 'defaults', 'Game music, voices, recording limit'], ['Activity', 'activity', 'What happened'], ['Super admins', 'supers', 'Who runs ELT Suite'], ['Brand kit', 'brand', 'Logo colours']];
+const ORG_PAGES: [string, string, string][] = [['Overview', 'overview', ''], ['Activity', 'activity', ''], ['Teachers', 'teachers', ''], ['Invitations', 'invites', 'Invite teachers, invitation codes'], ['Admins', 'admins', ''], ['Classes', 'classes', ''], ['Library', 'library', 'Shared files'], ['Rules', 'rules', 'Policies, levels, learner emails, document links'], ['Branding', 'brand', 'Logo, colour'], ['Plan and limits', 'space', 'Space, limits, call minutes']];
 
 type MsgRow = { id: string; at: number; text: string; name: string };
 type MsgCache = { upTo: number; rows: MsgRow[] };
@@ -71,6 +96,11 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
   const { user, profile } = useAuth();
   const teacher = profile?.role === 'teacher';
   const uid = user?.uid;
+  // Colleagues, and the admin pages and people for those who run ELT Suite or an organisation.
+  const colleagues = useColleagues(teacher ? uid : undefined);
+  const isSuper = useSuper() === true;
+  const adminOrgs = useOrgs(false, teacher ? user?.email : null);
+  const allTeachers = useTeachers(isSuper);
   const me = profile?.role === 'learner' ? profile.learnerId : teacher ? uid : undefined;
   const { classes } = useTeacherClasses(active && teacher ? uid : undefined);
   const docs = useMyDocs(active && teacher ? uid : undefined);
@@ -168,7 +198,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
       }
       for (const l of learners?.docs ?? []) {
         const x = l.data();
-        out.push({ key: `learner:${c.id}:${l.id}`, group: 'Learners', title: String(x.displayName || 'Learner'), sub: cls.name, to: `/class/${c.id}?learner=${encodeURIComponent(l.id)}`, icon: 'person' });
+        out.push({ key: `learner:${c.id}:${l.id}`, group: 'Learners', title: String(x.displayName || 'Learner'), sub: cls.name, keys: ['learner student pupil', x.email, x.realName].filter(Boolean).join(' '), to: `/class/${c.id}?learner=${encodeURIComponent(l.id)}`, icon: 'person' });
       }
     }).then(() => { if (live) { setClassEntries(out); work('classes', false); } });
     return () => { live = false; work('classes', false); };
@@ -179,7 +209,16 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
     for (const a of SUITE_APPS) if (a.to && (teacher || !a.teacher)) out.push({ key: 'app:' + a.k, group: 'Apps', title: a.name, text: a.about, to: a.to, icon: a.k });
     if (teacher) {
       for (const [id, t] of GUIDE) out.push({ key: 'guide:' + id, group: 'Help', title: t, sub: 'Guide', to: `/guide#${id}`, icon: 'help' });
-      for (const [t, to, about] of SETTINGS) out.push({ key: 'set:' + to, group: 'Help', title: t, text: about, to, icon: 'settings' });
+      for (const [t, to, about] of SETTINGS) out.push({ key: 'set:' + t, group: 'Settings', title: t, sub: t === 'Settings' ? about : 'Settings', keys: about, to, icon: 'settings' });
+      for (const c of colleagues ?? []) out.push({ key: 'col:' + c.id, group: 'Colleagues', title: c.name, sub: [c.title, c.orgName].filter(Boolean).join(' · ') || 'Colleague', keys: ['colleague teacher', c.email].filter(Boolean).join(' '), to: `/colleagues?p=${encodeURIComponent(c.id)}`, icon: 'person' });
+      if (isSuper) {
+        for (const [t, tab, about] of SUPER_PAGES) out.push({ key: 'sa:' + tab, group: 'Admin', title: t, sub: 'Super Admin', keys: about, to: `/admin?tab=${tab}`, icon: 'lock' });
+        for (const t of allTeachers ?? []) out.push({ key: 'sat:' + t.uid, group: 'Admin', title: t.name || t.email, sub: 'Teacher · Super Admin', keys: t.email, to: `/admin?tab=teachers&q=${encodeURIComponent(t.email || t.name)}`, icon: 'person' });
+      }
+      for (const o of adminOrgs ?? []) {
+        for (const [t, tab, about] of ORG_PAGES) out.push({ key: `oa:${o.id}:${tab}`, group: 'Admin', title: t, sub: `${o.name} · Organisation admin`, keys: about, to: `/org-admin?org=${encodeURIComponent(o.id)}&tab=${tab}`, icon: 'groups' });
+        for (const [tuid, t] of Object.entries(o.teachers)) out.push({ key: `oat:${o.id}:${tuid}`, group: 'Admin', title: t.name || t.email, sub: `Teacher at ${o.name}`, keys: [t.email, t.title].filter(Boolean).join(' '), to: `/org-admin?org=${encodeURIComponent(o.id)}&tab=teachers&q=${encodeURIComponent(t.email || t.name)}`, icon: 'person' });
+      }
       for (const d of allDocs) out.push({ key: 'doc:' + d.id, group: 'Files', title: d.title || 'Untitled', sub: [KIND_LABEL[d.kind] ?? 'File', d.owner !== uid ? `from ${d.ownerName}` : '', d.path || d.folder || ''].filter(Boolean).join(' · '), text: [textOf[d.id], d.file?.name].filter(Boolean).join('\n'), to: `/doc/${d.id}`, at: ms(d.updatedAt) || ms(d.createdAt), icon: DOC_ICON[d.kind] ?? 'archive' });
       for (const a of archive ?? []) if (!a.deletedAt) out.push({ key: 'arc:' + a.id, group: 'Files', title: a.name, sub: ['My Files', a.kind === 'audio' ? 'Recording' : a.kind, a.folder].filter(Boolean).join(' · '), text: [a.tags.join(' '), (a.script ?? []).map((l) => l.text).join(' '), scriptOf[a.id]].filter(Boolean).join('\n'), to: a.kind === 'audio' && a.home && !a.link ? `/studio/sound/${a.id}` : `/archive?q=${encodeURIComponent(a.name)}`, at: a.updatedAt || a.createdAt, icon: a.kind === 'audio' ? 'recordings' : 'archive' });
       const hubList = [...HUB_ACTIVITIES.filter((a) => a.status === 'ready'), ...(hub.items ?? [])];
@@ -197,7 +236,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
     }
     out.push(...msgEntries);
     return out.map(indexed);
-  }, [teacher, allDocs, textOf, archive, scriptOf, videoEntries, hub.items, classEntries, chats, msgEntries, me, uid]);
+  }, [teacher, allDocs, textOf, archive, scriptOf, videoEntries, hub.items, classEntries, chats, msgEntries, me, uid, colleagues, isSuper, adminOrgs, allTeachers]);
 
   const status = busy.length ? `Still looking through your ${busy.join(', ')}…` : '';
   return { entries, status };

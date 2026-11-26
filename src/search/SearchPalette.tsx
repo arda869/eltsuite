@@ -10,9 +10,9 @@ import './search.css';
 // Search everything: one box for files, messages, chats, classes, lessons, learners, the Resource
 // Hub, apps and help. Ctrl+K (⌘K on a Mac) opens it anywhere.
 
-const ORDER: Group[] = ['Apps', 'Files', 'Lessons', 'Classes', 'Learners', 'Chats', 'Messages', 'Resource Hub', 'Help'];
-const FILTERS: { k: Group | 'all'; label: string }[] = [{ k: 'all', label: 'Everything' }, { k: 'Files', label: 'Files' }, { k: 'Messages', label: 'Messages' }, { k: 'Lessons', label: 'Lessons' }, { k: 'Classes', label: 'Classes' }, { k: 'Learners', label: 'Learners' }, { k: 'Resource Hub', label: 'Resource Hub' }, { k: 'Help', label: 'Help' }];
-const ICON: Record<string, string> = { collab: 'edit', slides: 'present', cards: 'board', reading: 'notebook', pdf: 'annotate', games: 'quiz', recordings: 'mic', lesson: 'task', person: 'person', folder: 'folder', help: 'help', settings: 'settings', message: 'message', classes: 'classes', design: 'design', archive: 'archive' };
+const ORDER: Group[] = ['Apps', 'Files', 'Lessons', 'Classes', 'Learners', 'Colleagues', 'Chats', 'Messages', 'Resource Hub', 'Settings', 'Admin', 'Help'];
+const FILTERS: { k: Group | 'all'; label: string }[] = [{ k: 'all', label: 'Everything' }, { k: 'Files', label: 'Files' }, { k: 'Messages', label: 'Messages' }, { k: 'Lessons', label: 'Lessons' }, { k: 'Classes', label: 'Classes' }, { k: 'Learners', label: 'Learners' }, { k: 'Colleagues', label: 'Colleagues' }, { k: 'Resource Hub', label: 'Resource Hub' }, { k: 'Settings', label: 'Settings' }, { k: 'Admin', label: 'Admin' }, { k: 'Help', label: 'Help' }];
+const ICON: Record<string, string> = { collab: 'edit', slides: 'present', cards: 'board', reading: 'notebook', pdf: 'annotate', games: 'quiz', recordings: 'mic', lesson: 'task', person: 'person', folder: 'folder', help: 'help', settings: 'settings', lock: 'lock', groups: 'groups', message: 'message', classes: 'classes', design: 'design', archive: 'archive' };
 const APP_KEYS = new Set(['games', 'home', 'classes', 'files', 'resourcehub', 'collab', 'development', 'pdf', 'design', 'video', 'recordings', 'messages', 'colleagues', 'superadmin', 'orgadmin', 'timetable', 'guide', 'rooms']);
 const PER_GROUP = 5;
 const when = (t?: number) => {

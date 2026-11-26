@@ -2,14 +2,14 @@
 // word), in the name first. Names count more than text, whole names more than parts, and newer
 // things a little more. Accents and case do not matter.
 
-export type Group = 'Apps' | 'Files' | 'Messages' | 'Chats' | 'Classes' | 'Lessons' | 'Learners' | 'Resource Hub' | 'Help';
-export type Entry = { key: string; group: Group; title: string; sub?: string; text?: string; to: string; at?: number; icon: string; external?: boolean };
+export type Group = 'Apps' | 'Files' | 'Messages' | 'Chats' | 'Classes' | 'Lessons' | 'Learners' | 'Colleagues' | 'Resource Hub' | 'Settings' | 'Admin' | 'Help';
+export type Entry = { key: string; group: Group; title: string; sub?: string; text?: string; to: string; at?: number; icon: string; external?: boolean; keys?: string }; // keys: words that find it but aren’t shown
 export type Indexed = Entry & { nt: string; nx: string };
 export type Hit = { e: Indexed; score: number; snippet?: { before: string; match: string; after: string } };
 
 export const norm = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’‘`]/g, "'").replace(/[“”]/g, '"');
 // The words searched: the name, then the text, then where it is (so “pdf” or a class name finds it).
-export const indexed = (e: Entry): Indexed => ({ ...e, nt: norm(e.title), nx: norm([e.text ?? '', e.sub ?? ''].join('\n')) });
+export const indexed = (e: Entry): Indexed => ({ ...e, nt: norm(e.title), nx: norm([e.text ?? '', e.sub ?? '', e.keys ?? ''].join('\n')) });
 export const tokens = (q: string) => norm(q).split(/[^\p{L}\p{N}'@.#-]+/u).map((t) => t.replace(/^[.'-]+|[.'-]+$/g, '')).filter(Boolean);
 
 const wordStart = (hay: string, t: string) => { let i = hay.indexOf(t); while (i >= 0) { if (i === 0 || !/[\p{L}\p{N}]/u.test(hay[i - 1])) return i; i = hay.indexOf(t, i + 1); } return -1; };
