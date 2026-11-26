@@ -2892,8 +2892,14 @@ const J = {
     await see(s.p, '.ttb-col', 'the day view');
     // An hour clear of the session above, which starts at the next hour from now.
     const hr = await s.p.evaluate(() => (new Date().getHours() < 12 ? 15 : 6));
-    await s.p.locator('.ttb-scroll').evaluate((el, h) => (el.scrollTop = (h - 1) * 48), hr);
+    // The new-session reveal can still be smoothly scrolling when Day view opens.
+    // Let it settle, then place the test hour explicitly before dragging.
+    await s.p.waitForTimeout(550);
+    await s.p.locator('.ttb-scroll').evaluate((el, h) => el.scrollTo({ top: (h - 1) * 48, behavior: 'instant' }), hr);
+    await s.p.waitForTimeout(100);
     const box = await s.p.locator('.ttb-col').first().boundingBox();
+    const hit = await s.p.evaluate(({x,y}) => document.elementFromPoint(x,y)?.className, {x:box.x+60,y:box.y+hr*48+4});
+    if (typeof hit !== 'string' || !hit.includes('ttb-col')) throw Error('The target hour is obscured before dragging: '+String(hit));
     await s.p.mouse.move(box.x + 60, box.y + hr * 48 + 4);
     await s.p.mouse.down();
     await s.p.mouse.move(box.x + 60, box.y + hr * 48 + 30, { steps: 3 });
