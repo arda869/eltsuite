@@ -537,3 +537,17 @@ body .dp .cd-main.has-nav .dn { top: 160px; max-height: calc(100dvh - 220px); }
 .set-name-form input { height: 36px; min-width: 220px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 10px; font: 14px var(--sans); background: var(--paper); color: var(--ink); box-sizing: border-box; }
 .set-name-form .hint { flex-basis: 100%; text-align: right; }
 .set-name-msg { margin: 4px 0 0; flex-basis: 100%; text-align: right; }
+
+/* Fields in Settings: one comfortable height, never tall boxes. */
+.set-card :is(input[type='text'], input[type='email'], input[type='password'], input[type='search'], input[type='url'], input[type='number'], input:not([type])) { height: 36px; min-height: 36px; padding: 0 10px; box-sizing: border-box; font-size: 14px; }
+.set-card .btn.small-btn, .set-card .nsel > .sel { height: 36px; min-height: 36px; box-sizing: border-box; }
+/* The password: a button first; the fields appear only when you choose to add or change it. */
+.teacher-password-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; max-width: none; padding: 4px 0 14px; }
+.teacher-password-form label { display: flex; flex-direction: column; gap: 4px; flex: 0 1 230px; font: 600 13px var(--sans); }
+.teacher-password-form .hint, .teacher-password-form [role='alert'] { flex-basis: 100%; margin: 0; }
+.teacher-password-actions { flex-basis: 100%; }
+.teacher-password .set-row { padding-left: 0; padding-right: 0; }
+.set-me-acts .set-name-msg { order: 3; }
+.set-me-acts .set-name-form { order: 0; }
+.teacher-password-form input { height: 36px; }
+.teacher-password-actions .btn { height: 36px; min-height: 36px; box-sizing: border-box; }
