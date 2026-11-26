@@ -2585,6 +2585,9 @@ const J = {
     const editor = s.p.locator('.task-editor .ProseMirror').first();
     await see(s.p, '.task-editor .ProseMirror', 'the lesson editor');
     await axe(s.p, 'Lesson editor', A11Y_FOUND);
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+    await axe(s.p, 'Lesson editor dark', A11Y_FOUND);
+    await s.p.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
     // The demo contains editable draw-cards. Ctrl+End does not leave a card on macOS:
     // use the browser platform's document-end shortcut so this is a top-level diagram.
     const endKey = await s.p.evaluate(() => navigator.platform.startsWith('Mac') ? 'Meta+ArrowDown' : 'Control+End');
@@ -3011,6 +3014,7 @@ const J = {
     await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the home page');
     await s.p.setViewportSize({ width: 390, height: 180 });
+    await s.p.waitForTimeout(150); // The resize closes an open menu; wait for it to settle before right-clicking.
     await s.p.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 160 })));
     const menu = s.p.getByRole('menu');
     await menu.waitFor();

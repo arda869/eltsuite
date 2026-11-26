@@ -244,6 +244,9 @@ body:has(.dock-bar) .development-shell{height:calc(100dvh - var(--suite-dock-spa
   /* Keep the class mark, lesson tools and account controls inside a phone. */
   :root .classes-shell .suite-topbar { gap:4px; }
   :root .classes-shell .suite-topbar .org-logo { margin-left:0; padding-left:6px; }
+  /* The width rule applies before React has updated its phone-only controls. */
+  :root .classes-shell .suite-topbar .topbar-right .sh-view,
+  :root .classes-shell .suite-topbar .topbar-right > .btn { display:none; }
 }
 /* Keep panel handles inside the viewport when the page uses compact gutters. */
 :root .classes-shell .no-left .panel-toggle.left { left:-12px; }
