@@ -24,6 +24,7 @@ import { CoverArt } from '../components/Covers';
 import { Notebook } from '../components/Notebook';
 import { Reports } from '../components/Reports';
 import { useAuth } from '../lib/auth';
+import { JoinProjector } from '../components/JoinProjector';
 
 type Tab = 'lessons' | 'learners' | 'notebook' | 'reports' | 'discussion' | 'portfolio';
 
@@ -59,6 +60,7 @@ export function ClassPage() {
   const [settings, setSettings] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [announcing, setAnnouncing] = useState(false);
+  const [projectQr, setProjectQr] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -162,6 +164,7 @@ export function ClassPage() {
         </div>
       )}
       {c === undefined && <Loader full label="Opening the class" />}
+      {c && projectQr && <JoinProjector className={c.name} classCode={c.classCode} classId={classId} onClose={() => setProjectQr(false)} />}
       {c && !contentReady && !contentError && <Loader full label="Loading class content" />}
       {c && contentError && <div className="class-missing" role="alert"><h1 className="page-title">We couldn’t load the class content</h1><p>Check your connection and try again.</p><button type="button" className="btn" onClick={() => window.location.reload()}>Try again</button></div>}
 
@@ -185,6 +188,7 @@ export function ClassPage() {
                   <button type="button" onClick={() => void copyText(classJoinLink(c.classCode)).then(() => (setLinkCopied(true), setTimeout(() => setLinkCopied(false), 1500)))} data-tip={`Learners open ${learnOrigin().replace(/^https?:\/\//, '')} with the code filled in`}>
                     {linkCopied ? 'Copied' : 'Copy the link'}
                   </button>
+                  <button type="button" onClick={() => setProjectQr(true)}>Project QR</button>
                 </span>
                 <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />
                 {c.meeting?.url && (
