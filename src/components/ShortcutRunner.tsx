@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { lockKeysToo, typingIn } from '../lib/keys';
-import { COMMANDS, comboOf, keysNow, loadKeys, lockCodesNow, type Cmd } from '../lib/shortcuts';
+import { COMMANDS, canRunHere, comboOf, keysNow, loadKeys, lockCodesNow, type Cmd } from '../lib/shortcuts';
 import { newSharedDoc } from '../lib/sharedDocs';
 
 // Runs the shortcuts teachers can change (lib/shortcuts.ts): G then H goes Home, N then D makes a
@@ -36,7 +36,7 @@ export function ShortcutRunner() {
       if (plain && (typingIn(e.target) || document.querySelector('.scrim, [role="dialog"][aria-modal="true"]'))) { first = ''; return; }
       const seq = first ? first + ' ' + combo : combo;
       const hit = bound.find((b) => b.k === seq);
-      if (hit) {
+      if (hit && canRunHere(hit.k, !!document.fullscreenElement)) {
         e.preventDefault();
         first = '';
         window.clearTimeout(timer);

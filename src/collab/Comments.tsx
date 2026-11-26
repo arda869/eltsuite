@@ -135,6 +135,7 @@ export function MarginComment({ editor, onComment }: { editor: Editor; onComment
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
   useEffect(() => {
     let frame = 0;
+    let blurTimer = 0;
     const place = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -151,15 +152,18 @@ export function MarginComment({ editor, onComment }: { editor: Editor; onComment
         setAt({ top: Math.max(8, c.top - 4), left });
       });
     };
+    const onBlur = () => { window.clearTimeout(blurTimer); blurTimer = window.setTimeout(place, 120); };
     editor.on('selectionUpdate', place);
     editor.on('focus', place);
-    editor.on('blur', () => window.setTimeout(place, 120));
+    editor.on('blur', onBlur);
     window.addEventListener('scroll', place, true);
     window.addEventListener('resize', place);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(blurTimer);
       editor.off('selectionUpdate', place);
       editor.off('focus', place);
+      editor.off('blur', onBlur);
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };

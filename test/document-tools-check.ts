@@ -1,4 +1,4 @@
-import { docxBlob, docBodyHtml, prepareDocumentPrint, documentStats, EXPORT_DEFAULT } from '../src/collab/export';
+import { docxBlob, docBodyHtml, prepareDocumentPrint, documentStats, exportForRole, EXPORT_DEFAULT } from '../src/collab/export';
 import { LAYOUT_DEFAULT } from '../src/collab/documentLayout';
 import { unzipSync, strFromU8 } from 'fflate';
 import { htmlToPdf } from '../src/lib/folderExport';
@@ -42,6 +42,15 @@ try {
   assert(questionHtml.includes('class="blank"') && !questionHtml.includes('secret-answer'), 'Inline questions print as answer blanks without revealing the key');
   const teacherHtml = docBodyHtml(question, 'Worksheet', { ...opts, answerKey: true });
   assert(teacherHtml.includes('Answer key') && teacherHtml.includes('secret-answer'), 'Teacher export includes the answer key when requested');
+  const learnerOpts = exportForRole({ ...opts, answerKey: true }, false);
+  assert(!docBodyHtml(question, 'Worksheet', learnerOpts).includes('secret-answer'), 'Learner export suppresses the key even when a saved option requests it');
+  const anotherQuestion = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'gap', attrs: { id: 'other-gap', answers: ['different-secret'] } }] }] };
+  await Promise.all([prepareDocumentPrint(question), prepareDocumentPrint(anotherQuestion)]);
+  assert(docBodyHtml(question, 'First', opts).includes('secret-answer') && !docBodyHtml(question, 'First', opts).includes('different-secret'), 'Concurrent preparations keep the first document key with its document');
+  assert(docBodyHtml(anotherQuestion, 'Second', opts).includes('different-secret') && !docBodyHtml(anotherQuestion, 'Second', opts).includes('secret-answer'), 'Concurrent preparations keep the second document key with its document');
+  const learnerWord = await docxBlob(question, 'Worksheet', learnerOpts);
+  const learnerXml = strFromU8(unzipSync(new Uint8Array(await learnerWord.arrayBuffer()))['word/document.xml']);
+  assert(!learnerXml.includes('secret-answer'), 'Learner Word download contains no answer key');
   const pdf = await htmlToPdf(docBodyHtml(json, 'Document tools', opts), null, layout);
   const pdfText = new TextDecoder('latin1').decode(pdf);
   assert(pdfText.includes('/MediaBox [0 0 842.25 595.5]'), 'PDF uses the selected landscape page size');

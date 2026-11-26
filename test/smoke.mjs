@@ -58,7 +58,8 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
   await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
-  await p.waitForLoadState('networkidle');
+  // The seeded app can keep background listeners open; readiness is the mock seed below.
+  await p.waitForLoadState('domcontentloaded');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') {
@@ -180,6 +181,92 @@ const J = {
     await s.p.getByRole('menuitem',{name:'My Files',exact:true}).click();
     await s.p.waitForURL('**/archive');
     if(await s.p.locator('.apps-pop').count())throw Error('Apps menu stayed open after navigation');
+    return s;
+  },
+  'Reserved shortcuts and device choices stay with their teacher': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await s.p.getByRole('button', { name: 'Apps', exact: true }).waitFor();
+    const result = await s.p.evaluate(async () => {
+      const shortcuts = await import('/src/lib/shortcuts.ts');
+      const status = await import('/src/lib/status.tsx');
+      localStorage.setItem('ll.keys.teacher1', JSON.stringify({ 'go-home': 'Mod+T' }));
+      await shortcuts.loadKeys('teacher1');
+      const before = shortcuts.keysNow()['go-home'];
+      const event = new KeyboardEvent('keydown', { key: 't', code: 'KeyT', ctrlKey: true, metaKey: true, bubbles: true, cancelable: true });
+      window.dispatchEvent(event);
+      const reservedIgnored = !event.defaultPrevented && !shortcuts.canRunHere('Mod+T', false) && shortcuts.canRunHere('Mod+T', true);
+      await shortcuts.loadKeys('teacher2');
+      const next = shortcuts.keysNow()['go-home'];
+      status.setMyStatus('hidden');
+      const teacher1Choice = localStorage.getItem('ll.statusSet.teacher1');
+      const stop = status.startStatus('teacher2');
+      const teacher2Choice = status.mySet();
+      stop();
+      return { before, next, reservedIgnored, teacher1Choice, teacher2Choice };
+    });
+    if (result.before !== 'Mod+T' || result.next || !result.reservedIgnored || result.teacher1Choice !== 'hidden' || result.teacher2Choice !== 'auto') throw Error('Shortcut or status choice leaked across teachers, or reserved shortcut ran outside fullscreen: ' + JSON.stringify(result));
+    return s;
+  },
+  'Signing out clears the teacher online tab': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/settings');
+    await s.p.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem('mockrtdb') || '{}').presence?.teacher1?.c || {}).length > 0);
+    await s.p.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await s.p.waitForFunction(() => !Object.keys(JSON.parse(localStorage.getItem('mockrtdb') || '{}').presence?.teacher1?.c || {}).length);
+    return s;
+  },
+  'Resource Hub A/B task reorder stays grouped': async b => {
+    const s = await session(b);
+    const result = await s.p.evaluate(async () => {
+      const { reorderSections } = await import('/src/resourceHub/hubEditorData.ts');
+      const sections = [
+        { id: 'intro' }, { id: 'a', versionGroup: 'ab' }, { id: 'b', versionGroup: 'ab' }, { id: 'outro' },
+      ];
+      return {
+        sameGroup: reorderSections(sections, 'b', 1).map(s => s.id),
+        moved: reorderSections(sections, 'b', 4).map(s => s.id),
+      };
+    });
+    if (result.sameGroup.join(',') !== 'intro,a,b,outro' || result.moved.join(',') !== 'intro,outro,a,b') throw Error('A/B drag moved or split its own group: ' + JSON.stringify(result));
+    return s;
+  },
+  'Search removes edited, deleted and cleared message text': async b => {
+    const s = await session(b);
+    const chat = { id: 'search-audit', members: ['teacher1', 'teacher2'], names: { teacher1: 'Arda', teacher2: 'Sofia' }, roles: { teacher1: 'teacher', teacher2: 'teacher' }, kind: 'dm', createdBy: 'teacher1', at: Date.now() - 2000, lastAt: Date.now() - 500, last: { id: 'keep', text: 'fennel', name: 'Sofia', by: 'teacher2' } };
+    await s.p.evaluate(c => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['chats/' + c.id] = c;
+      fs['chats/' + c.id + '/msgs/old'] = { by: 'teacher2', name: 'Sofia', role: 'teacher', at: c.at + 100, text: 'amaranth private note' };
+      fs['chats/' + c.id + '/msgs/keep'] = { by: 'teacher2', name: 'Sofia', role: 'teacher', at: c.lastAt, text: 'fennel stays until clear' };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, chat);
+    await s.p.goto(BASE + '/');
+    await s.p.evaluate(async c => {
+      const { kvSet } = await import('/src/search/kv.ts');
+      await kvSet('m:teacher1:' + c.id, { upTo: c.lastAt, rows: [{ id: 'old', at: c.at + 100, text: 'amaranth private note', name: 'Sofia' }] });
+    }, chat);
+    await s.p.getByRole('button', { name: 'Search everything' }).click();
+    const q = s.p.getByRole('combobox', { name: 'Search everything' });
+    const message = s.p.locator('.sp-group[aria-label="Messages"] .sp-row');
+    await q.fill('amaranth');
+    await message.filter({ hasText: 'amaranth' }).waitFor();
+    await s.p.evaluate(async c => { const { editMsg } = await import('/src/lib/chat.ts'); await editMsg(c, 'old', { text: 'clove revised note' }); }, chat);
+    await message.filter({ hasText: 'amaranth' }).waitFor({ state: 'hidden' });
+    await q.fill('clove');
+    await message.filter({ hasText: 'clove' }).waitFor();
+    await s.p.evaluate(async c => { const { deleteMsg } = await import('/src/lib/chat.ts'); await deleteMsg(c, 'old'); }, chat);
+    await message.filter({ hasText: 'clove' }).waitFor({ state: 'hidden' });
+    await q.fill('fennel');
+    await message.filter({ hasText: 'fennel' }).waitFor();
+    await s.p.evaluate(async c => { const { doc, updateDoc } = await import('/test/mock/firestore.ts'); const { db } = await import('/src/lib/firebase.ts'); await updateDoc(doc(db, 'chats', c.id), { 'hidden.teacher1': Date.now() }); }, chat);
+    await message.filter({ hasText: 'fennel' }).waitFor({ state: 'hidden' });
+    await s.p.waitForTimeout(20);
+    await s.p.evaluate(async c => { const { sendMsg } = await import('/src/lib/chat.ts'); await sendMsg(c, { key: 'teacher2', name: 'Sofia', role: 'teacher' }, { text: 'oregano new note' }); }, chat);
+    await q.fill('oregano');
+    await message.filter({ hasText: 'oregano' }).waitFor();
+    await q.fill('fennel');
+    if (await message.filter({ hasText: 'fennel' }).count()) throw Error('Cleared message was exposed after a new message reopened the chat');
     return s;
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
@@ -2862,15 +2949,35 @@ const J = {
   'Settings': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/settings`);
-    await see(s.p, 'text=Profile', 'Settings');
+    await see(s.p, 'text=Profile', 'Settings').catch(async e => { throw Error(e.message + ' at ' + s.p.url() + ' · ' + (await s.p.locator('body').innerText()).slice(0, 900)); });
     await axe(s.p, 'Settings', A11Y_FOUND);
+    return s;
+  },
+  'Settings name change retries a failed profile sync before claiming success': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/settings');
+    await s.p.getByRole('button', { name: 'Change name' }).click();
+    await s.p.getByRole('textbox', { name: 'Your name' }).fill('Arda Test Name');
+    await s.p.evaluate(() => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'update', path: 'users/teacher1', count: 1, code: 'unavailable' }])));
+    await s.p.getByRole('button', { name: 'Save', exact: true }).click();
+    await see(s.p, '[role="alert"]:has-text("colleagues may still see your old name")', 'partial failure explains the name mismatch');
+    const partial = await s.p.evaluate(async () => ({ auth: (await import('/src/lib/firebase.ts')).auth.currentUser?.displayName, profile: JSON.parse(localStorage.getItem('mockfs'))['users/teacher1']?.displayName }));
+    if (partial.auth !== 'Arda Test Name' || partial.profile === 'Arda Test Name') throw Error('The injected partial update did not leave Auth and Firestore names distinct');
+    if (await s.p.getByRole('status').filter({ hasText: 'Your name is changed' }).count()) throw Error('A partial name change was announced as complete');
+    await s.p.evaluate(() => sessionStorage.removeItem('mockfs-faults'));
+    await s.p.getByRole('button', { name: 'Save', exact: true }).click();
+    await see(s.p, '[role="status"]:has-text("Your name is changed")', 'success appears only after profile sync');
+    const saved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['users/teacher1']?.displayName);
+    if (saved !== 'Arda Test Name') throw Error('Retry did not update the shared profile');
+    await s.p.reload();
+    await see(s.p, '.set-name:has-text("Arda Test Name")', 'the name persists after reload');
     return s;
   },
   'Colleagues': async (b) => {
     const s = await session(b);
     // No colleagues yet: the invitation.
     await s.p.goto(`${BASE}/colleagues`);
-    await see(s.p, 'h1:has-text("Colleagues")', 'Colleagues');
+    await see(s.p, 'h1:has-text("Colleagues")', 'Colleagues').catch(async e => { throw Error(e.message + ' at ' + s.p.url() + ' · ' + (await s.p.locator('body').innerText()).slice(0, 900)); });
     await see(s.p, 'button:has-text("Make an invitation link")', 'the invitation when there are no colleagues');
     // With an organisation and colleagues (test/mock/colleagues.ts).
     await s.p.goto(`${BASE}/dev.html?seed&colleagues&as=teacher`);

@@ -12,15 +12,24 @@ export function ChangeName({ name }: { name: string }) {
   const [value, setValue] = useState(name);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [needsProfileSync, setNeedsProfileSync] = useState(false);
   if (!user) return null;
   const clean = value.replace(/\s+/g, ' ').trim();
   const problem = !clean ? 'Write your name.' : clean.length > 60 ? 'Use 60 characters or fewer.' : '';
   const save = async () => {
-    if (busy || problem || clean === name) { if (clean === name) setOpen(false); return; }
+    if (busy || problem || (clean === name && !needsProfileSync)) { if (clean === name && !needsProfileSync) setOpen(false); return; }
     setBusy(true); setMsg('');
     try {
-      await updateProfile(auth.currentUser ?? user, { displayName: clean });
-      await updateDoc(doc(db, 'users', user.uid), { displayName: clean }).catch(() => {});
+      const account = auth.currentUser ?? user;
+      if (account.displayName !== clean) await updateProfile(account, { displayName: clean });
+      try {
+        await updateDoc(doc(db, 'users', user.uid), { displayName: clean });
+      } catch {
+        setNeedsProfileSync(true);
+        setMsg('Your sign-in name changed, but colleagues may still see your old name. Retry to finish updating your profile.');
+        return;
+      }
+      setNeedsProfileSync(false);
       setNameLocal(clean);
       setOpen(false);
       setMsg('Your name is changed. Messages you sent before keep the old name.');

@@ -44,6 +44,7 @@ const NEVER = new Set(['Mod+Q', 'Mod+H', 'Mod+M', 'Mod+Shift+Delete', 'F11', 'F1
 const canLock = typeof navigator !== 'undefined' && !!(navigator as Navigator & { keyboard?: { lock?: unknown } }).keyboard?.lock;
 // A shortcut that starts with a browser key: it works in full screen only.
 export const fullScreenOnly = (combo: string) => RESERVED.has(combo.split(' ')[0]) && !NEVER.has(combo.split(' ')[0]);
+export const canRunHere = (combo: string, fullScreen: boolean) => !fullScreenOnly(combo) || fullScreen;
 // The keyboard code a key is held by (Keyboard Lock): "Mod+T" is KeyT.
 function codeOf(k: string): string {
   const last = k.split('+').pop() ?? '';
@@ -83,10 +84,14 @@ export function problemWith(combo: string, id: CmdId, keys: Record<string, strin
   return '';
 }
 
-const LOCAL = 'll.keys';
-let mine: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem(LOCAL) || '{}'); } catch { return {}; } })();
+const localKey = (uid: string) => `ll.keys.${uid}`;
+let activeUid = '';
+let mine: Record<string, string> = {};
+const cachedKeys = (uid: string): Record<string, string> => {
+  try { return JSON.parse(localStorage.getItem(localKey(uid)) || '{}'); } catch { return {}; }
+};
 const listeners = new Set<(k: Record<string, string>) => void>();
-const publish = () => { try { localStorage.setItem(LOCAL, JSON.stringify(mine)); } catch { /* fine */ } listeners.forEach((f) => f(mine)); };
+const publish = () => { try { if (activeUid) localStorage.setItem(localKey(activeUid), JSON.stringify(mine)); } catch { /* fine */ } listeners.forEach((f) => f(mine)); };
 export const keysNow = () => mine;
 export const keyFor = (id: CmdId) => mine[id] || COMMANDS.find((c) => c.id === id)!.def;
 export function useKeys() {
@@ -96,10 +101,13 @@ export function useKeys() {
 }
 // The teacher's own keys, from their profile when they sign in.
 export async function loadKeys(uid: string) {
+  activeUid = uid;
+  mine = cachedKeys(uid);
+  publish();
   try {
     const d = await getDoc(doc(db, 'users', uid));
     const k = d.data()?.keys;
-    if (k && typeof k === 'object') { mine = { ...k }; publish(); }
+    if (activeUid === uid && k && typeof k === 'object') { mine = { ...k }; publish(); }
   } catch { /* the device's copy will do */ }
 }
 export async function setKey(id: CmdId, combo: string | null) {

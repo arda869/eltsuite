@@ -1,6 +1,6 @@
 import { quietNow } from './status';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, writeBatch, type DocumentData } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, increment, writeBatch, type DocumentData } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { JSONContent } from '@tiptap/react';
 import { app, db, rtdb } from './firebase';
@@ -27,6 +27,7 @@ export type Chat = {
   createdBy: string;
   at: number;
   lastAt: number;
+  searchRev?: number; // incremented when an older message is edited, deleted or restored
   last?: { id?: string; text: string; name: string; by: string; mentions?: string[] };
   seen?: Record<string, number>; // when each person last opened it (for unread counts; private)
   read?: Record<string, number>; // read receipts: as seen, but only from people who share them
@@ -212,8 +213,16 @@ export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'n
   batch.update(doc(col, c.id), { lastAt: at, last: { id: message.id, text: preview.slice(0, 140), name: me.name, by: me.key, mentions: m.mentions ?? [] }, [`seen.${me.key}`]: at });
   await batch.commit();
 }
-export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => updateDoc(doc(msgsCol(c.id), id), JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));
-export const deleteMsg = (c: Chat, id: string) => updateDoc(doc(msgsCol(c.id), id), { deleted: true, content: null, text: '', key: {}, share: null, blocks: 0 });
+// Keep search invalidation in the same write as the message change. Otherwise a browser can keep
+// showing a deleted message from its local search cache long after the message itself is gone.
+const changeMessage = (c: Chat, id: string, patch: DocumentData) => {
+  const batch = writeBatch(db);
+  batch.update(doc(msgsCol(c.id), id), patch);
+  batch.update(doc(col, c.id), { searchRev: increment(1) });
+  return batch.commit();
+};
+export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => changeMessage(c, id, JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));
+export const deleteMsg = (c: Chat, id: string) => changeMessage(c, id, { deleted: true, content: null, text: '', key: {}, share: null, blocks: 0 });
 // For a minute after deleting, the sender can bring the message back.
 export const UNDO_MS = 60_000;
 const undoable = new Map<string, { chat: string; data: Record<string, unknown>; until: number }>();
@@ -230,8 +239,8 @@ export const undoUntil = (id: string) => {
 export async function undoDelete(c: Chat, id: string) {
   const u = undoable.get(id);
   if (!u || u.until < Date.now()) return;
+  await changeMessage(c, id, { ...u.data, deleted: false });
   undoable.delete(id);
-  await updateDoc(doc(msgsCol(c.id), id), { ...u.data, deleted: false });
 }
 // Quick reactions: a few of the app's own emoji, and any other from the full set.
 export const QUICK_REACTS = ['thumbsup', 'love', 'laugh', 'wow', 'think', 'sad'];

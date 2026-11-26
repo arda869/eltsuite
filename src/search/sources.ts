@@ -47,22 +47,27 @@ const SUPER_PAGES: [string, string, string][] = [['Overview', 'overview', 'Super
 const ORG_PAGES: [string, string, string][] = [['Overview', 'overview', ''], ['Activity', 'activity', ''], ['Teachers', 'teachers', ''], ['Invitations', 'invites', 'Invite teachers, invitation codes'], ['Admins', 'admins', ''], ['Classes', 'classes', ''], ['Library', 'library', 'Shared files'], ['Rules', 'rules', 'Policies, levels, learner emails, document links'], ['Branding', 'brand', 'Logo, colour'], ['Plan and limits', 'space', 'Space, limits, call minutes']];
 
 type MsgRow = { id: string; at: number; text: string; name: string };
-type MsgCache = { upTo: number; rows: MsgRow[] };
+type MsgCache = { upTo: number; revision: number; hiddenBefore: number; rows: MsgRow[] };
 const PER_CHAT = 3000;
 
 async function chatMessages(me: string, c: Chat): Promise<MsgRow[]> {
   const key = `m:${me}:${c.id}`;
-  const cached = (await kvGet<MsgCache>(key)) ?? { upTo: 0, rows: [] };
+  const revision = c.searchRev ?? 0;
+  const hiddenBefore = c.hidden?.[me] ?? 0;
+  const previous = await kvGet<MsgCache>(key);
+  // An edit or deletion can change an old message without moving lastAt. A cleared chat can
+  // also reveal stale local text if its hidden marker is ignored. Refetch on either change.
+  const cached = previous?.revision === revision && previous.hiddenBefore === hiddenBefore
+    ? previous : { upTo: 0, revision, hiddenBefore, rows: [] };
   if (c.lastAt <= cached.upTo) return cached.rows;
   const since = cached.upTo;
   const snap = await getDocs(since ? query(msgsCol(c.id), where('at', '>', since), orderBy('at', 'asc'), limit(2000)) : query(msgsCol(c.id), orderBy('at', 'desc'), limit(1500)));
   const fresh = snap.docs.map((d) => { const x = d.data(); return { id: d.id, at: Number(x.at) || 0, text: x.deleted ? '' : String(x.text ?? x.share?.title ?? x.file?.title ?? ''), name: String(x.name ?? '') }; });
   const byId = new Map(cached.rows.map((r) => [r.id, r]));
   for (const r of fresh) byId.set(r.id, r);
-  const hiddenBefore = c.hidden?.[me] ?? 0;
   const rows = [...byId.values()].filter((r) => r.text && r.at > hiddenBefore).sort((a, b) => a.at - b.at).slice(-PER_CHAT);
-  const upTo = Math.max(since, ...rows.map((r) => r.at));
-  void kvSet(key, { upTo, rows });
+  const upTo = Math.max(since, ...fresh.map((r) => r.at));
+  void kvSet(key, { upTo, revision, hiddenBefore, rows });
   return rows;
 }
 
@@ -114,7 +119,7 @@ export function useSearchIndex(active: boolean): { entries: Indexed[]; status: s
   const work = (k: string, on: boolean) => setBusy((b) => (on ? [...new Set([...b, k])] : b.filter((x) => x !== k)));
 
   // Messages: every chat's words.
-  const chatKey = (chats ?? []).map((c) => c.id + ':' + c.lastAt).join();
+  const chatKey = `${me ?? ''}|` + (chats ?? []).map((c) => c.id + ':' + c.lastAt + ':' + (c.searchRev ?? 0) + ':' + (c.hidden?.[me ?? ''] ?? 0)).join();
   const lastChats = useRef('');
   useEffect(() => {
     if (!active || !me || !chats || lastChats.current === chatKey) return;

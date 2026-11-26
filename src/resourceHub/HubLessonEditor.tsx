@@ -9,7 +9,7 @@ import { DOTS } from '../editor/nodes';
 import { UiIcon } from '../components/UiIcon';
 import { Fold } from '../components/Fold';
 import { ask } from '../lib/ask';
-import { addLearnerVersion, newSection, type HubEditorSection, type HubResourceDraft } from './hubEditorData';
+import { addLearnerVersion, newSection, reorderSections, type HubEditorSection, type HubResourceDraft } from './hubEditorData';
 
 // The Resource Hub editor, laid out like a lesson in Classes: the tasks down the left (hover between
 // two to add one there, drag one to move it), the task in the middle with its activity type, title,
@@ -79,14 +79,8 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
     setActive(next.id);
   };
   const reorder = (id: string, to: number) => {
-    const from = sections.findIndex((s) => s.id === id);
-    if (from < 0 || to === from || to === from + 1) return;
-    const moving = sections[from];
-    // A task moves with its A/B versions.
-    const group = moving.versionGroup ? sections.filter((s) => s.versionGroup === moving.versionGroup) : [moving];
-    const rest = sections.filter((s) => !group.includes(s));
-    const target = sections[to] ? rest.findIndex((s) => s.id === sections[to].id) : rest.length;
-    patch({ sections: [...rest.slice(0, target < 0 ? rest.length : target), ...group, ...rest.slice(target < 0 ? rest.length : target)] });
+    const next = reorderSections(sections, id, to);
+    if (next !== sections) patch({ sections: next });
   };
   const remove = async (s: HubEditorSection) => {
     if (sections.length < 2) return;

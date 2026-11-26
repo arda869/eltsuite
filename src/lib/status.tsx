@@ -1,7 +1,7 @@
 import { useAuth } from './auth';
 import { useEffect, useState } from 'react';
 import { onDisconnect, onValue, ref, serverTimestamp, set, update } from 'firebase/database';
-import { rtdb } from './firebase';
+import { auth, rtdb } from './firebase';
 
 // Who is around: online, away (the app hidden or untouched for a while), in a class right now,
 // or on a video call. Each person's app keeps their own line up to date; others only read it.
@@ -16,10 +16,11 @@ export const STATUS_SETS: { k: StatusSet; label: string; hint: string }[] = [
   { k: 'busy', label: 'Do not disturb', hint: 'Message sounds are off' },
   { k: 'hidden', label: 'Appear offline', hint: 'Others see you as offline' },
 ];
-const SET_KEY = 'll.statusSet';
+const setKey = (uid: string) => `ll.statusSet.${uid}`;
 export const mySet = (): StatusSet => {
   try {
-    return (localStorage.getItem(SET_KEY) as StatusSet) || 'auto';
+    const uid = me || auth.currentUser?.uid;
+    return uid ? (localStorage.getItem(setKey(uid)) as StatusSet) || 'auto' : 'auto';
   } catch {
     return 'auto';
   }
@@ -27,7 +28,8 @@ export const mySet = (): StatusSet => {
 const setListeners = new Set<(s: StatusSet) => void>();
 export function setMyStatus(v: StatusSet) {
   try {
-    localStorage.setItem(SET_KEY, v);
+    const uid = me || auth.currentUser?.uid;
+    if (uid) localStorage.setItem(setKey(uid), v);
   } catch {
     /* fine */
   }
@@ -60,9 +62,23 @@ const put = (p: Partial<Status>) => {
   if (p.state !== undefined || p.cls !== undefined || p.call !== undefined) writeTab();
 };
 
+// Normal sign-out removes this tab while its authenticated write is still allowed.
+export async function clearStatusBeforeSignOut() {
+  if (!me) return;
+  const uid = me;
+  await Promise.race([
+    Promise.allSettled([
+      set(ref(rtdb, `presence/${uid}/c/${TAB}`), null),
+      set(ref(rtdb, `presence/${uid}/last`), serverTimestamp()),
+    ]),
+    new Promise((resolve) => window.setTimeout(resolve, 1500)),
+  ]);
+}
+
 export function startStatus(uid: string) {
   if (!uid || me === uid) return () => {};
   me = uid;
+  setListeners.forEach((f) => f(mySet()));
   tabState = document.hidden ? 'away' : 'online';
   // The old single line is cleared, so it can't keep someone online for ever.
   void update(ref(rtdb, `presence/${uid}`), { v: 2, set: mySet(), state: null, at: null, cls: null, call: null }).catch(() => {});
@@ -87,7 +103,8 @@ export function startStatus(uid: string) {
     awake();
   };
   const vis = () => (document.hidden ? (window.clearTimeout(idle), (idle = window.setTimeout(() => put({ state: 'away' }), 60_000))) : active());
-  const bye = () => { void set(tabRef(), null); void set(ref(rtdb, `presence/${uid}/last`), serverTimestamp()); };
+  const ownTab = ref(rtdb, `presence/${uid}/c/${TAB}`);
+  const bye = () => { void set(ownTab, null); void set(ref(rtdb, `presence/${uid}/last`), serverTimestamp()); };
   document.addEventListener('visibilitychange', vis);
   window.addEventListener('pagehide', bye);
   ['pointerdown', 'keydown', 'focus'].forEach((e) => window.addEventListener(e, active, { passive: true }));
@@ -99,7 +116,7 @@ export function startStatus(uid: string) {
     ['pointerdown', 'keydown', 'focus'].forEach((e) => window.removeEventListener(e, active));
     window.clearTimeout(idle);
     bye();
-    void onDisconnect(tabRef()).cancel();
+    // Leave the disconnect removal armed if sign-out has already invalidated this write.
     me = '';
   };
 }

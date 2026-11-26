@@ -975,7 +975,9 @@ service cloud.firestore {
     function ownChatMap(next, before) { return next.diff(before).affectedKeys().hasOnly([chatKey()]); }
     function chatMetadataOnly() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.hasOnly(['last', 'lastAt', 'seen', 'read', 'got', 'hidden', 'call', 'title'])
+      return changed.hasOnly(['last', 'lastAt', 'seen', 'read', 'got', 'hidden', 'call', 'title', 'searchRev'])
+        && (!changed.hasAny(['searchRev']) || (request.resource.data.searchRev is int
+          && request.resource.data.searchRev == resource.data.get('searchRev', 0) + 1))
         && (!changed.hasAny(['seen']) || ownChatMap(request.resource.data.get('seen', {}), resource.data.get('seen', {})))
         && (!changed.hasAny(['read']) || ownChatMap(request.resource.data.get('read', {}), resource.data.get('read', {})))
         && (!changed.hasAny(['got']) || ownChatMap(request.resource.data.get('got', {}), resource.data.get('got', {})))

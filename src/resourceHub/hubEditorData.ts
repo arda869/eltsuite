@@ -57,6 +57,17 @@ export function addLearnerVersion(sections: HubEditorSection[], sourceId: string
   next.splice(lastSibling + 1, 0, added);
   return { sections: next, id: added.id };
 }
+export function reorderSections(sections: HubEditorSection[], id: string, to: number): HubEditorSection[] {
+  const from = sections.findIndex((section) => section.id === id);
+  if (from < 0 || to === from || to === from + 1) return sections;
+  const moving = sections[from];
+  const group = moving.versionGroup ? sections.filter((section) => section.versionGroup === moving.versionGroup) : [moving];
+  if (sections[to] && group.includes(sections[to])) return sections;
+  const rest = sections.filter((section) => !group.includes(section));
+  const target = sections[to] ? rest.findIndex((section) => section.id === sections[to].id) : rest.length;
+  if (target < 0) return sections;
+  return [...rest.slice(0, target), ...group, ...rest.slice(target)];
+}
 export function validateResource(draft: HubResourceDraft): string[] {
   const errors: string[] = [];
   if (!draft.title.trim()) errors.push(`Add a ${draft.resourceType === 'lesson' ? 'lesson' : 'activity'} title.`);

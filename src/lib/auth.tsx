@@ -23,6 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [temporaryConnectionError, setTemporaryConnectionError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const retryGeneration = useRef(0);
+  const signOutNow = async () => {
+    await import('./status').then((status) => status.clearStatusBeforeSignOut()).catch(() => {});
+    await signOut(auth);
+  };
 
   useEffect(() => {
     let generation = 0;
@@ -107,9 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {temporaryConnectionError && <p role="alert">This browser could not open a temporary connection. Please try another browser while your saved work stays here.</p>}
       <button type="button" className="btn" onClick={() => setTemporaryConnectionError(!openTemporaryFirestore())}>Open with temporary connection</button>
     </>}
-    <button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button>
+    <button type="button" className="btn" onClick={() => void signOutNow()}>Sign out</button>
   </section></main>;
-  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)), setNameLocal: (name: string) => setProfile((p) => (p ? { ...p, displayName: name } : p)) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow, setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)), setNameLocal: (name: string) => setProfile((p) => (p ? { ...p, displayName: name } : p)) }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

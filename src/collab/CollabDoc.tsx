@@ -50,7 +50,7 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, wordCount, documentStats, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import { downloadDocx, wordCount, documentStats, printDoc, exportForRole, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, useCollabSaveStatus, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
@@ -419,6 +419,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
 
   // The document as a PDF, opened in the viewer to save in My Files or download.
   const makePdf = async (o: ExportOpts) => {
+    o = exportForRole(o, !!teacher);
     setPdfError('');
     try {
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
@@ -625,7 +626,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle, layout: page ? layout : undefined }) : void makePdf({ ...o, style: citeStyle, layout: page ? layout : undefined }))} />}
+        {(teacher || canDownload) && <DownloadMenu teacher={!!teacher} onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, exportForRole({ ...o, style: citeStyle, layout: page ? layout : undefined }, !!teacher)) : void makePdf({ ...o, style: citeStyle, layout: page ? layout : undefined }))} />}
         {page && writing && (
           <button type="button" className="btn small-btn cd-insert" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
             + Insert
@@ -652,10 +653,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           ...(onCitationStyle ? [{label:'Citation style…',icon:'classes',run:onCitationStyle}] : []),
           { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           { label: 'Version history…', icon: 'prev', run: history.open },
-          { label: tabs.length > 1 ? 'Download Word (all tabs)' : 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          ...(tabs.length > 1 ? [{ label: 'Download Word (this tab)', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), `${title} – ${tabs.find((t) => t.id === tabId)?.title ?? ''}`, { ...EXPORT_DEFAULT, style: citeStyle, layout }) }] : []),
+          { label: tabs.length > 1 ? 'Download Word (all tabs)' : 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(wholeDoc(), title, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher)) },
+          ...(tabs.length > 1 ? [{ label: 'Download Word (this tab)', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), `${title} – ${tabs.find((t) => t.id === tabId)?.title ?? ''}`, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher)) }] : []),
           { label: tabs.length > 1 ? 'Download PDF (all tabs)' : 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          'sep', { label: tabs.length > 1 ? 'Print (all tabs)' : 'Print', disabled: !(teacher || canDownload), run: () => printDoc(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }, editor.view.dom) },
+          'sep', { label: tabs.length > 1 ? 'Print (all tabs)' : 'Print', disabled: !(teacher || canDownload), run: () => printDoc(wholeDoc(), title, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher), editor.view.dom) },
         ] },
         { label: 'Edit', items: [
           { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
@@ -1074,7 +1075,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   return big ? createPortal(<div className="cd-overlay">{body}</div>, document.body) : body;
 }
 
-function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void }) {
+function DownloadMenu({ onExport, teacher }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void; teacher: boolean }) {
   const [open, setOpen] = useState<'' | 'menu' | 'word' | 'pdf'>('');
   const [o, setO] = useState<ExportOpts>(() => {
     try {
@@ -1154,9 +1155,9 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
           <label className="check-row">
             <input type="checkbox" checked={o.wordCount} onChange={(e) => setO({ ...o, wordCount: e.target.checked })} /> Word count at the end
           </label>
-          <label className="check-row">
+          {teacher && <label className="check-row">
             <input type="checkbox" checked={o.answerKey !== false} onChange={(e) => setO({ ...o, answerKey: e.target.checked })} /> Answer key at the end, when there are questions
-          </label>
+          </label>}
           <button type="button" className="btn primary small-btn" onClick={go}>
             Download
           </button>
