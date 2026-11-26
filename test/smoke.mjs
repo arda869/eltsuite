@@ -3574,12 +3574,14 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/coach');
-    await see(s.p, 'h1:has-text("Teacher’s Companion")', 'Companion page');
+    await see(s.p, 'nav[aria-label="Teacher’s Companion"]', 'Companion navigation');
+    await see(s.p, 'h1:has-text("Hello")', 'Companion Today page');
+    await s.p.getByRole('navigation', { name: 'Teacher’s Companion' }).getByRole('button', { name: 'Talk', exact: true }).click();
     await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat with blank optional profile');
     await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
     await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');
-    const companionSettings = s.p.getByRole('region',{name:'Teacher’s Companion chat'}).getByRole('link',{name:'Settings',exact:true});
+    const companionSettings = s.p.getByRole('navigation',{name:'Teacher’s Companion'}).getByRole('link',{name:'Settings',exact:true});
     if (await companionSettings.getAttribute('href') !== '/settings#set-teacher-s-companion') throw Error('Companion settings gear points to the old section');
     await companionSettings.click();
     await see(s.p, '#coach-profile-settings', 'profile inside Settings');
@@ -3592,11 +3594,32 @@ const J = {
     await s.p.goto(BASE+'/development?section=profile');
     await see(s.p,'#coach-profile-settings','legacy profile link redirects to Settings');
     await s.p.goto(BASE+'/development?section=research');
-    await see(s.p,'h1:has-text("Teacher’s Companion")','legacy studio link opens Companion');
+    await see(s.p,'nav[aria-label="Teacher’s Companion"]','legacy studio link opens Companion');
     await s.p.getByRole('button',{name:'Apps',exact:true}).click();
     await s.p.getByRole('menuitem',{name:'Teacher’s Companion',exact:true}).waitFor();
     if(await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).count()) throw Error('Old studio remains in Apps');
     if(await s.p.getByRole('menuitem',{name:'Reading Journal',exact:true}).count()) throw Error('Reading Journal remains a separate app');
+    return s;
+  },
+  'Teacher’s Companion saves an experiment and a goal with optional fields blank': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/coach?s=try');
+    await s.p.getByRole('button', { name: 'Start an experiment' }).click();
+    await s.p.getByRole('textbox', { name: 'Your question' }).fill('Will one minute of planning help pair talk?');
+    await s.p.getByRole('button', { name: 'Save', exact: true }).click();
+    await see(s.p, '[role="status"]:has-text("Saved")', 'experiment saved with only its required question');
+    await s.p.getByRole('button', { name: 'All experiments' }).click();
+    await see(s.p, '.ex-item:has-text("Will one minute of planning help pair talk?")', 'experiment in the list');
+    await s.p.goto(BASE + '/coach?s=growth');
+    await s.p.getByRole('button', { name: 'A new goal' }).click();
+    await s.p.getByRole('dialog', { name: 'Your goal' }).getByRole('textbox', { name: 'What do you want to get better at?' }).fill('Clearer instructions');
+    await s.p.getByRole('button', { name: 'Save goal' }).click();
+    await see(s.p, '.gr-goal:has-text("Clearer instructions")', 'goal saved with optional context and steps blank');
+    await s.p.reload();
+    await see(s.p, '.gr-goal:has-text("Clearer instructions")', 'goal persists after reload');
+    await s.p.goto(BASE + '/coach?s=try');
+    await see(s.p, '.ex-item:has-text("Will one minute of planning help pair talk?")', 'experiment persists after reload');
+    await axe(s.p, 'Companion experiments', A11Y_FOUND);
     return s;
   },
   'Observation entry points hidden while existing lessons remain usable': async (b) => {

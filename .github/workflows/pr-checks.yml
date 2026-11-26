@@ -55,6 +55,8 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-resource-hub 'node test/resource-hub-access.mjs' && node --test test/resource-hub-metrics.mjs test/resource-lesson-live.mjs
       - name: Companion reminder retry and shutdown
         run: node test/companion-reminders.mjs
+      - name: Collab tab stops and indentation
+        run: node test/doc-tabs.mjs
       - name: Standalone lesson live teaching journey (Firebase simulated)
         run: |
           npx playwright install --with-deps chromium
