@@ -87,14 +87,16 @@ export function MenuHost() {
     window.addEventListener('keydown', close);
     window.addEventListener('blur', close);
     window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('wheel', close, true);
+    window.addEventListener('touchmove', close, true);
     return () => {
       window.removeEventListener('mousedown', close, true);
       window.removeEventListener('pointerdown', close, true);
       window.removeEventListener('keydown', close);
       window.removeEventListener('blur', close);
       window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('wheel', close, true);
+      window.removeEventListener('touchmove', close, true);
     };
   }, [open]);
   if (!open) return null;
