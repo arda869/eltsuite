@@ -3681,7 +3681,7 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/coach');
-    await see(s.p, 'nav[aria-label="Teacher’s Companion"]', 'Companion navigation');
+    await see(s.p, 'nav[aria-label="Teacher’s Companion"]', 'Companion navigation').catch(async e => { throw Error(e.message + ' at ' + s.p.url() + ' · ' + (await s.p.locator('body').innerText()).slice(0, 1200) + ' · ' + s.errors.slice(0, 3).join('; ')); });
     await see(s.p, 'h1:has-text("Hello")', 'Companion Today page');
     await s.p.getByRole('navigation', { name: 'Teacher’s Companion' }).getByRole('button', { name: 'Talk', exact: true }).click();
     await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat with blank optional profile');
@@ -3758,7 +3758,7 @@ if(!LIVE_PUBLIC && ONLY !== 'Public homepage') {
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 180000 });
-  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await p.waitForLoadState('networkidle');
+  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 });
   for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
   await p.waitForTimeout(1500);
