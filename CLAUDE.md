@@ -165,7 +165,7 @@ Download PDF and Print (`src/pdf/pdfExport.ts`) keep the original pages and draw
 drawings as shapes and text boxes as pictures; answer boxes only when the answer key is showing.
 OCR (`src/pdf/ocr.ts`) runs tesseract.js in the browser from our own copy in `public/ocr`
 (`scripts/ocr-assets.mjs`, at install and build); pages are never sent to a service. Words found are
-kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer, read aloud, and
+kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer and
 invisible text in the download so it can be searched.
 
 ## Search everything

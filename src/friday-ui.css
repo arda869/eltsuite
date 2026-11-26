@@ -565,3 +565,23 @@ body .dp .cd-main.has-nav .dn { top: 160px; max-height: calc(100dvh - 220px); }
 .hq-main input.hq-in:not([type='checkbox']):not([type='radio']) { height: 36px; min-height: 36px; box-sizing: border-box; }
 .ic-form .sel, .ic-form select, .ic-form .ic-f > * { height: 36px; min-height: 36px; box-sizing: border-box; }
 .ic-form .ic-f > span:first-child, .ic-form .ic-f > b { height: auto; min-height: 0; }
+
+/* The ruler stays under the toolbar as you scroll, like the toolbar itself. The page area must not
+   be a scroll box of its own for that (a wide, zoomed page scrolls the window sideways instead). */
+.dp.k-doc .pg-desk { overflow: visible; }
+.dp.k-doc .pg-ruler { position: sticky; top: var(--cd-bar-bottom, 148px); z-index: 55; box-shadow: 0 -6px 0 var(--surface), 0 4px 0 var(--surface); }
+/* The tabs panel too, below the toolbar however many rows it wraps to. */
+body .dp .cd-main.has-nav.has-nav .dn, body .dp .cd-main.has-nav.has-nav.has-nav:not(.nav-collapsed) .dn { top: calc(var(--cd-bar-bottom, 146px) + 14px); max-height: calc(100dvh - var(--cd-bar-bottom, 146px) - 74px); }
+
+/* Zoom, refined: a slim frosted pill that rests almost out of sight and wakes on hover. A thin
+   slider with the accent fill, round icon buttons, the zoom in plain words. */
+.pg-zoom { right: 20px; bottom: 60px; height: 34px; gap: 0; padding: 0 3px; border-radius: 999px; background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent), 0 8px 24px -14px rgba(0, 0, 0, .35); opacity: .5; transition: opacity .2s, box-shadow .2s, transform .2s; }
+.pg-zoom:hover, .pg-zoom:focus-within { opacity: 1; transform: translateY(-1px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent), 0 14px 32px -14px rgba(0, 0, 0, .4); }
+.pg-zoom .pg-zb { width: 28px; height: 28px; border-radius: 50%; color: var(--muted); }
+.pg-zoom .pg-zb:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.pg-zoom .pg-zslide input { -webkit-appearance: none; appearance: none; width: 96px; height: 18px; margin: 0 6px; background: transparent; cursor: pointer; }
+.pg-zoom .pg-zslide input::-webkit-slider-runnable-track { height: 3px; border-radius: 99px; background: linear-gradient(90deg, var(--accent-text) var(--zp, 50%), color-mix(in srgb, var(--ink) 14%, transparent) var(--zp, 50%)); }
+.pg-zoom .pg-zslide input::-moz-range-track { height: 3px; border-radius: 99px; background: linear-gradient(90deg, var(--accent-text) var(--zp, 50%), color-mix(in srgb, var(--ink) 14%, transparent) var(--zp, 50%)); }
+.pg-zoom .pg-zslide input::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1.5px var(--accent-text), 0 1px 3px rgba(0, 0, 0, .25); }
+.pg-zoom .pg-zslide input::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1.5px var(--accent-text), 0 1px 3px rgba(0, 0, 0, .25); }
+.pg-zoom .nsel > .sel, .pg-zoom .sel { height: 28px; min-height: 28px; border-radius: 999px; font: 600 12px var(--sans); color: var(--ink); padding: 0 6px 0 10px; }

@@ -3,8 +3,8 @@ import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { db } from '../lib/firebase';
 
-// Reading a scanned PDF (OCR). A scan is a picture of text: no words to select, copy, search or
-// read aloud. The OCR engine and its English model are our own files (public/ocr), so the pages are
+// Reading a scanned PDF (OCR). A scan is a picture of text: no words to select, copy or search.
+// The OCR engine and its English model are our own files (public/ocr), so the pages are
 // read in the teacher's browser and never sent anywhere. The words found, with where each sits on
 // its page, are kept with the file (sharedDocs/{id}/ocr/p{n}), so everyone it is shared with gets
 // them and nobody reads the same page twice.

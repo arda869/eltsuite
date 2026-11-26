@@ -4617,7 +4617,9 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .dock-chat .chat-actions .hint { display: none; }
 .dock-chat .bub-doc.has-blocks { min-width: 0; }
 /* room at the bottom of scrolling side panels, so the messages button covers nothing */
-.task-side, .live-side, .msg-side { padding-bottom: 76px; }
+.task-side, .live-side { padding-bottom: 76px; }
+/* Messages has no floating messages button, so its list runs to the bottom of the panel. */
+.msg-side { padding-bottom: 12px; }
 .dock-btn.lift { bottom: 96px; width: 44px; height: 44px; }
 .dock-chat .chat-editor .toolbar > * { flex-shrink: 0; }
 .wordmark .i svg { transform: translateX(-50%) rotate(var(--tilt, 0deg)); transform-origin: 50% 92%; transition: transform .35s cubic-bezier(.2, .8, .3, 1.2); }
@@ -6336,17 +6338,18 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 /* PDFs with notes on their pages */
 .pdf-block { position: relative; margin: 12px 0 16px; }
 .pdf-block:has(.pdf-stack)::after {
+  /* The next page peeking out under this one: a straight edge, like a stack of paper. */
   content: '';
   position: absolute;
   z-index: 3;
-  left: 0;
-  right: 0;
-  bottom: -9px;
-  height: 14px;
+  left: 6px;
+  right: 6px;
+  bottom: -5px;
+  height: 5px;
   pointer-events: none;
-  background: linear-gradient(#fff 45%, #f5f3ef);
-  clip-path: polygon(0 0, 100% 0, 100% 45%, 97% 70%, 94% 43%, 90% 78%, 87% 52%, 84% 73%, 80% 45%, 77% 84%, 74% 57%, 70% 80%, 66% 48%, 62% 70%, 58% 44%, 54% 72%, 50% 49%, 46% 77%, 42% 55%, 39% 82%, 35% 50%, 31% 75%, 27% 43%, 23% 69%, 19% 52%, 15% 78%, 11% 48%, 7% 71%, 3% 45%, 0 64%);
-  filter: drop-shadow(0 3px 2px rgba(42, 38, 34, .18));
+  border-radius: 0 0 4px 4px;
+  background: #f7f6f3;
+  box-shadow: 0 0 0 1px rgba(42, 38, 34, .08), 0 2px 3px rgba(42, 38, 34, .1);
 }
 @media print { .pdf-block::after { display: none; } }
 .pdf-stack { position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--hair), 0 10px 30px -18px rgba(40, 30, 20, .35); background: #fff; }
@@ -7811,7 +7814,7 @@ html { touch-action: manipulation; }
 .pdff-rail { position: sticky; top: 124px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 150px); overflow-y: auto; padding: 4px; }
 .pdff-rail button { width: 38px; height: 46px; border: 1px solid var(--hair-strong); border-radius: 6px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
 .pdff-rail button.on { border-color: var(--accent); color: var(--ink); box-shadow: 0 0 0 1px var(--accent); }
-.pdff-page { flex: 1; min-width: 0; overflow-x: auto; }
+.pdff-page { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; } /* one scrollbar: the page's own */
 .pdff-page .pdf-block { width: calc(100% * var(--pdf-zoom, 1)); margin: 0 auto; }
 .pdff-zoom { display: inline-flex; align-items: center; gap: 2px; }
 .pdff-zoom .ne-btn { min-width: 30px; height: 30px; border-radius: 7px; }
@@ -9109,3 +9112,18 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .cd-avatar > .avatar-pic, .cd-avatar > .avatar-fallback, .cd-avatar > img, .cd-avatar > span { width: 100% !important; height: 100% !important; border-radius: 50%; }
 .cd-avatar > .avatar-fallback { background: transparent; color: #fff; font: 700 11px var(--sans); display: grid; place-items: center; }
 .cd-avatar.big > .avatar-fallback { font-size: 16px; }
+
+/* Home, simpler: today and the next lesson, getting started, then your classes and files beside
+   what needs you, the things you can make and what's new in the Resource Hub. */
+.hm3 .hm-hero { background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 10px 30px -26px var(--shadow); padding: 26px 28px; gap: 24px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); }
+.hm3 .hm-hero h1 { font-size: clamp(28px, 3.4vw, 38px); }
+.hm3 .hm-hero p { font-size: 16px; }
+.hm3 .hm-next-card { background: var(--surface); backdrop-filter: none; }
+.hm-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 20px; align-items: start; }
+.hm3 .hm-make { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.hm3 .hm-make-it { min-height: 84px; padding: 10px 4px; gap: 7px; }
+.hm3 .hm-make-it .app-logo { transition: transform .15s; }
+.hm3 .hm-make-it:hover .app-logo { transform: scale(1.06); }
+.hm3 .hm-make-it b { font-size: 12.5px; line-height: 1.2; }
+@media (max-width: 960px) { .hm-grid2, .hm3 .hm-hero { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .hm3 .hm-make { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

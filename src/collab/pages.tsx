@@ -226,6 +226,16 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
     document.head.appendChild(st);
     return () => st.remove();
   }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers, layout.firstDifferent, layout.headerFirst, layout.footerFirst, layout.numberStyle, layout.numberAlign, layout.headerAlign, layout.runLogo, logoDims, title]);
+  // Where the toolbar ends as you scroll: the ruler and the tabs panel stick below it. The toolbar's height changes as it wraps.
+  useEffect(() => {
+    const bar = document.querySelector<HTMLElement>('.cd-pagebar');
+    if (!bar) return;
+    const set = () => { const cs = getComputedStyle(bar); document.documentElement.style.setProperty('--cd-bar-bottom', `${(parseFloat(cs.top) || 0) + (parseFloat(cs.marginTop) || 0) + bar.offsetHeight + 6}px`); };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
       <div className={paged ? 'pg-column' : 'pg-flow-column'}>
@@ -284,9 +294,9 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
       </div>
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
-        <button type="button" className="pg-zb" aria-label="Zoom out" data-tip="Zoom out" disabled={zoom <= 10} onClick={() => setZoomChoice(String(Math.max(10, Math.ceil(zoom / 10) * 10 - 10)))}>−</button>
-        <span className="pg-zslide"><input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} /></span>
-        <button type="button" className="pg-zb" aria-label="Zoom in" data-tip="Zoom in" disabled={zoom >= 200} onClick={() => setZoomChoice(String(Math.min(200, Math.floor(zoom / 10) * 10 + 10)))}>+</button>
+        <button type="button" className="pg-zb" aria-label="Zoom out" data-tip="Zoom out" disabled={zoom <= 10} onClick={() => setZoomChoice(String(Math.max(10, Math.ceil(zoom / 10) * 10 - 10)))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 12h12" /></svg></button>
+        <span className="pg-zslide"><input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} style={{ ['--zp' as string]: `${((zoom - 10) / 190) * 100}%` }} onChange={(e) => setZoomChoice(e.target.value)} /></span>
+        <button type="button" className="pg-zb" aria-label="Zoom in" data-tip="Zoom in" disabled={zoom >= 200} onClick={() => setZoomChoice(String(Math.min(200, Math.floor(zoom / 10) * 10 + 10)))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg></button>
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
           <option value="fit">Fit page</option>
           <option value="fill">Fill width</option>
