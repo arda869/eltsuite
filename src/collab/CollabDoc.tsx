@@ -21,6 +21,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { useEditorKeys } from '../editor/editorKeys';
 import { cleanPastedHTML } from '../editor/pasteClean';
 import { keyLabel } from '../lib/keys';
+import { keyFor } from '../lib/shortcuts';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
@@ -1061,7 +1062,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
             ipa: () => editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa('RP')]).run(),
           }}
           extra={[
-            ...(teacher ? [{ label: 'Copy as SuiteScript', hint: keyLabel('Mod+Shift+C'), run: () => {
+            ...(teacher ? [{ label: 'Copy as SuiteScript', hint: keyLabel(keyFor('copy-suite-script')), run: () => {
               const nodes = editor.state.selection.empty ? editor.getJSON().content ?? [] : editor.state.selection.content().content.toJSON() as JSONContent[];
               void suiteScriptCopyNodes(nodes, me.uid, mediaSpace || classId).then(ready => navigator.clipboard.writeText(toSuiteScript(ready, SUITE_TYPES))).then(() => void tell('SuiteScript copied as plain text.'), error => void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript.'));
             } }] : []),

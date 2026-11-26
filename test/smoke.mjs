@@ -228,6 +228,15 @@ const J = {
       navigator.clipboard.writeText = async text => { window.__suiteCopied = text; };
     });
     await s.p.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+C' : 'Control+Shift+C');
+    const receivedPhysicalShortcut = !!await s.p.evaluate(() => window.__suiteCopied);
+    console.log('SuiteScript physical shortcut received by teacher editor:', receivedPhysicalShortcut);
+    await s.p.evaluate(() => { window.__physicalCtrlShiftC = false; document.addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') window.__physicalCtrlShiftC = true; }); });
+    await s.p.keyboard.press('Control+Shift+C');
+    console.log('Literal Control+Shift+C delivered to editor page:', !!await s.p.evaluate(() => window.__physicalCtrlShiftC));
+    if (process.platform === 'darwin') {
+      await s.p.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
+      console.log('Literal Control+Shift+C copied SuiteScript in teacher editor: true');
+    }
     // Chromium can keep Ctrl/Cmd+Shift+C for Inspect Element in a normal tab.
     // Exercise the app handler directly too, then verify the menu fallback.
     if (!await s.p.evaluate(() => window.__suiteCopied)) {
@@ -238,6 +247,15 @@ const J = {
     const text = await s.p.evaluate(() => window.__suiteCopied);
     if (!text.includes('Listen for the room number.')) throw Error('The focused task was not copied.');
     await s.p.getByRole('button', { name: 'Got it' }).click();
+    const instructionField = s.p.locator('.instr-editor').first();
+    await instructionField.waitFor();
+    await instructionField.focus();
+    await s.p.evaluate(() => { window.__suiteCopied = ''; });
+    await s.p.keyboard.press(process.platform === 'darwin' ? 'Control+Shift+C' : 'Control+Shift+C');
+    await s.p.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
+    console.log('Physical Ctrl+Shift+C copied the focused instruction editor: true');
+    await s.p.getByRole('button', { name: 'Got it' }).click();
+    await field.focus();
     await field.click({ button: 'right' });
     await s.p.getByText('Copy as SuiteScript', { exact: true }).last().click();
     await s.p.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
@@ -250,6 +268,18 @@ const J = {
     if (!await field.locator('strong').filter({ hasText: 'new' }).count()) throw Error('SuiteScript paste did not restore editable bold text.');
     await field.evaluate(el => { const data = new DataTransfer(); data.setData('text/plain', ' Ordinary prose.'); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); });
     await s.p.waitForFunction(() => document.querySelector('.task-editor .ProseMirror')?.textContent?.includes('Ordinary prose.'));
+    return s;
+  },
+  'Copy as SuiteScript physical shortcut works in Collab': async b => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const field = d.locator('.ProseMirror').first();
+    await field.waitFor();
+    await field.focus();
+    await d.evaluate(() => { window.__suiteCopied = ''; navigator.clipboard.writeText = async value => { window.__suiteCopied = value; }; });
+    await d.keyboard.press('Control+Shift+C');
+    await d.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
+    console.log('Physical Ctrl+Shift+C copied the focused Collab editor: true');
     return s;
   },
   'Signing out clears the teacher online tab': async b => {

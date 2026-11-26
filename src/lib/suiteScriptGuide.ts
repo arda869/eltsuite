@@ -32,11 +32,15 @@ An authorised file uses a permanent typed reference such as @audio("ELTSUITE-604
 SCOPES AND PRIVACY
 Pasting in a rich-text field changes only that field at the cursor. In a Learner A field it affects only Learner A; in Learner B only Learner B. Do not send a field paste with activity title, level, aim, duration or another learner version. Copy different learner versions separately. Teacher notes and answer keys remain teacher-only. Messages can show only content and assets that all recipients are permitted to see; never include private versions or teacherOnly answers in a message.
 
+WHOLE TASKS AND ACTIVITIES
+Use a structural draft only in the whole-task or whole-activity action, never as a field paste. Start with @task("Title", kind: "task") and end with @endtask(). Between them use @instructions(), @content(), @teacherNotes() and @paperInstructions() to separate the four bodies. A full activity wraps one or more tasks in @activity("Title", level: "A2", aim: "...", minutes: 30, summary: "...", focus: "...") and @endactivity(). The currently selected learner version is the only version changed when a task draft is applied; the script must not specify a different version. All teacher notes stay teacher-only. Whole activities applied to Classes create tasks inside the selected lesson; Resource Hub activity drafts retain their title, level, summary, focus and duration.
+
 COMPLETE EXAMPLES
 Inline: ${SUITE_SCRIPT_HEADER}\nListen for the @bold("room number").
 Question: ${SUITE_SCRIPT_HEADER}\n@question(type: "Multiple choice, as a list", prompt: "Which room is ready?", options: ["Room 14", "Room 40"], teacherOnly: { answer: "Room 40" })
 Task text: ${SUITE_SCRIPT_HEADER}\n@heading("At reception")\nListen and compare your answer.\n@numbered("Choose what matters", "Discuss both rooms", "Agree on a room")
-Activity: prepare separate SuiteScript drafts for the activity instructions, each learner version and each task; place them into the matching fields. Do not include metadata in a field draft.
+Whole task: ${SUITE_SCRIPT_HEADER}\n@task("Welcome exchange", kind: "task")\n@instructions()\nAsk your partner.\n@content()\nWhere do you live?\n@teacherNotes()\nModel one question first.\n@paperInstructions()\nWrite your partner's answer.\n@endtask()
+Whole activity: ${SUITE_SCRIPT_HEADER}\n@activity("Meeting people", level: "A2", aim: "Ask where people live", minutes: 30, summary: "A pair exchange", focus: "Questions")\n@task("Interview", kind: "task")\n@content()\nAsk your partner where they live.\n@endtask()\n@endactivity()
 
 COMMON ERRORS
 If a command has a missing quote, closing parenthesis, unknown question type or invalid stressed index, correct that line before pasting. If an ID is missing, inaccessible or has a wrong checksum, reselect the exact item from My Files. Plain text without the ${SUITE_SCRIPT_HEADER} header pastes normally.

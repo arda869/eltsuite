@@ -22,6 +22,11 @@ const keyUrl = new URL('./.suite-script-key-test-bundle.mjs', import.meta.url);
 await writeFile(keyUrl, keyBuilt.outputFiles[0].text);
 const { splitKey } = await import(keyUrl.href);
 await unlink(keyUrl);
+const hubBuilt = await build({ entryPoints: ['src/resourceHub/suiteScriptHubApply.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
+const hubUrl = new URL('./.suite-script-hub-test-bundle.mjs', import.meta.url);
+await writeFile(hubUrl, hubBuilt.outputFiles[0].text);
+const { applySuiteScriptBundleToHubDraft } = await import(hubUrl.href);
+await unlink(hubUrl);
 
 const labels = { gap: 'Gap fill', 'choice:radio': 'Multiple choice, as a list', 'choice:dropdown': 'Multiple choice in line' };
 const fixture = `SuiteScript v1
@@ -60,7 +65,6 @@ test('Friday fixture parses prose, marks, native question, private answer and on
   assert.equal(parsed.content.at(-1).type, 'orderedList');
   assert.equal(parsed.content.at(-1).content.length, 3);
 });
-
 test('plain-text intermediary round-trips rich marks, answers and Unicode; ordinary notation remains literal', () => {
   const original = [
     { type: 'paragraph', content: [
@@ -145,6 +149,12 @@ test('explicit whole-task and whole-activity drafts preserve instructions, priva
     layout: 'two',
     afterCheck: 'retry',
     showScore: true,
+    hidden: false,
+    locked: true,
+    colScroll: 'together',
+    paper: { gap: 'medium', lines: 3, show: 'both', icon: 'none' },
+    anchor: 'welcome',
+    identity: { id: 'opening', name: 'Activation', colour: '#a74d37', icon: 'spark' },
     instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask your partner.' }] }],
     content: parseSuiteScript(fixture, labels).content,
     teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Lead in with real names.' }] }],
@@ -159,4 +169,30 @@ test('explicit whole-task and whole-activity drafts preserve instructions, priva
   assert.deepEqual(parsed.bundle, { kind: 'activity', activity });
   assert.equal(parseSuiteScriptBundle('SuiteScript v1\n@task("A", learnerVersion: "B")\n@endtask()', labels).bundle, null);
   assert.match(parseSuiteScriptBundle('SuiteScript v1\n@task("A")\n@content()\nHello', labels).errors[0], /Missing @endtask/);
+});
+
+test('whole Hub activity carries metadata and teacher notes; selected A edit preserves B and version metadata', () => {
+  const task = { title: 'A', kind: 'task', instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask.' }] }], content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A answer' }] }], teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Private lead in' }] }], paperInstructions: [] };
+  const draft = { title: 'Old', level: 'B1', summary: 'Old summary', focus: 'Old focus', minutes: 20, sections: [
+    { id: 'a', title: 'Old A', audience: 'learner', kind: 'task', versionGroup: 'pair', versionLabel: 'Learner A', content: { type: 'doc', content: [{ type: 'paragraph' }] } },
+    { id: 'b', title: 'B', audience: 'learner', kind: 'task', versionGroup: 'pair', versionLabel: 'Learner B', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B remains' }] }] } },
+  ] };
+  const changed = applySuiteScriptBundleToHubDraft(draft, { kind: 'task', task }, 'a');
+  assert.equal(changed.sections[0].versionGroup, 'pair');
+  assert.equal(changed.sections[0].versionLabel, 'Learner A');
+  assert.deepEqual(changed.sections.at(-1), draft.sections[1]);
+  assert.equal(changed.sections[1].audience, 'teacher');
+  assert.equal(changed.sections[1].content.content[0].content[0].text, 'Private lead in');
+  assert.equal(draft.sections.length, 2);
+  const activity = { title: 'Meeting people', level: 'A2', aim: 'Talk', minutes: 30, summary: 'Welcome', focus: 'Countries', tasks: [task] };
+  const whole = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity });
+  assert.equal(whole.title, activity.title);
+  assert.equal(whole.level, activity.level);
+  assert.equal(whole.summary, activity.summary);
+  assert.equal(whole.focus, activity.focus);
+  assert.equal(whole.aim, activity.aim);
+  assert.equal(whole.minutes, activity.minutes);
+  assert.equal(whole.sections.length, 2);
+  assert.deepEqual(draft.sections[1], changed.sections.at(-1));
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'task', task: { ...task, kind: 'section' } }, 'a'), /no section-heading/);
 });

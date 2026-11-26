@@ -1,4 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
+import type { PaperLook } from './tasks';
+import type { ActivityIdentity } from './identity';
 import { isSuiteScript, parseSuiteScript, readSuiteScriptDirective, toSuiteScript, type SuiteScriptTypes, SUITE_SCRIPT_MAX_CHARS } from './suiteScript';
 
 // Whole-task/activity drafts are an explicit, structural workflow. Rich-text
@@ -10,6 +12,12 @@ export type SuiteScriptTaskDraft = {
   layout?: 'single' | 'two' | 'two-wide' | 'media';
   afterCheck?: 'reveal' | 'retry';
   showScore?: boolean;
+  hidden?: boolean;
+  locked?: boolean;
+  colScroll?: 'separate' | 'together';
+  paper?: Pick<PaperLook, 'gap' | 'lines' | 'show' | 'icon'>;
+  anchor?: string;
+  identity?: ActivityIdentity;
   instructions: JSONContent[];
   content: JSONContent[];
   teacherNotes: JSONContent[];
@@ -29,7 +37,7 @@ export type BundleResult = { bundle: SuiteScriptBundle | null; errors: string[] 
 type Directive = NonNullable<ReturnType<typeof readSuiteScriptDirective>>;
 const SECTION = new Set(['instructions', 'content', 'teacherNotes', 'paperInstructions']);
 const ACTIVITY_FIELDS = new Set(['title', 'level', 'aim', 'minutes', 'summary', 'focus']);
-const TASK_FIELDS = new Set(['title', 'kind', 'layout', 'afterCheck', 'showScore']);
+const TASK_FIELDS = new Set(['title', 'kind', 'layout', 'afterCheck', 'showScore', 'hidden', 'locked', 'colScroll', 'paper', 'anchor', 'identity']);
 
 function asString(value: unknown, field: string, required = false): string {
   if (value === undefined && !required) return '';
@@ -94,6 +102,24 @@ export function parseSuiteScriptBundle(source: string, labels: SuiteScriptTypes 
       if (afterCheck !== undefined && !['reveal', 'retry'].includes(String(afterCheck))) throw new Error(`Line ${at + 1}: Unsupported answer-check mode.`);
       const showScore = marker.named.showScore;
       if (showScore !== undefined && typeof showScore !== 'boolean') throw new Error(`Line ${at + 1}: showScore must be true or false.`);
+      const hidden = marker.named.hidden, locked = marker.named.locked;
+      if (hidden !== undefined && typeof hidden !== 'boolean') throw new Error(`Line ${at + 1}: hidden must be true or false.`);
+      if (locked !== undefined && typeof locked !== 'boolean') throw new Error(`Line ${at + 1}: locked must be true or false.`);
+      const colScroll = marker.named.colScroll;
+      if (colScroll !== undefined && colScroll !== 'separate' && colScroll !== 'together') throw new Error(`Line ${at + 1}: Unsupported column scrolling.`);
+      const paper = marker.named.paper;
+      if (paper !== undefined && (typeof paper !== 'object' || paper === null || Array.isArray(paper) || Object.keys(paper).some(key => !['gap', 'lines', 'show', 'icon'].includes(key)))) throw new Error(`Line ${at + 1}: Unsupported paper settings.`);
+      if (paper !== undefined) {
+        const value = paper as Record<string, unknown>;
+        if ((value.gap !== undefined && !['fit', 'short', 'medium', 'long'].includes(String(value.gap)))
+          || (value.lines !== undefined && value.lines !== null && (!Number.isInteger(value.lines) || Number(value.lines) < 0 || Number(value.lines) > 50))
+          || (value.show !== undefined && !['both', 'paper', 'screen'].includes(String(value.show)))
+          || (value.icon !== undefined && (typeof value.icon !== 'string' || value.icon.length > 80))) throw new Error(`Line ${at + 1}: Invalid paper settings.`);
+      }
+      const anchor = marker.named.anchor;
+      if (anchor !== undefined && (typeof anchor !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(anchor))) throw new Error(`Line ${at + 1}: Invalid activity anchor.`);
+      const identity = marker.named.identity;
+      if (identity !== undefined && (typeof identity !== 'object' || identity === null || Array.isArray(identity) || !['id', 'name', 'colour', 'icon'].every(key => typeof (identity as Record<string, unknown>)[key] === 'string') || Object.keys(identity).some(key => !['id', 'name', 'colour', 'icon'].includes(key)))) throw new Error(`Line ${at + 1}: Invalid activity identity.`);
       at++;
       const parts: Record<string, { lines: string[]; start: number }> = {};
       const seen = new Set<string>();
@@ -118,7 +144,7 @@ export function parseSuiteScriptBundle(source: string, labels: SuiteScriptTypes 
       }
       if (!ended) throw new Error(`Line ${at + 1}: Missing @endtask().`);
       const parsed = Object.fromEntries([...SECTION].map(name => [name, parseSection(parts[name]?.lines ?? [], parts[name]?.start ?? at + 1, labels)])) as Record<string, JSONContent[]>;
-      tasks.push({ title, kind, ...(layout === undefined ? {} : { layout: layout as SuiteScriptTaskDraft['layout'] }), ...(afterCheck === undefined ? {} : { afterCheck: afterCheck as SuiteScriptTaskDraft['afterCheck'] }), ...(showScore === undefined ? {} : { showScore }), instructions: parsed.instructions, content: parsed.content, teacherNotes: parsed.teacherNotes, paperInstructions: parsed.paperInstructions });
+      tasks.push({ title, kind, ...(layout === undefined ? {} : { layout: layout as SuiteScriptTaskDraft['layout'] }), ...(afterCheck === undefined ? {} : { afterCheck: afterCheck as SuiteScriptTaskDraft['afterCheck'] }), ...(showScore === undefined ? {} : { showScore }), ...(hidden === undefined ? {} : { hidden }), ...(locked === undefined ? {} : { locked }), ...(colScroll === undefined ? {} : { colScroll: colScroll as SuiteScriptTaskDraft['colScroll'] }), ...(paper === undefined ? {} : { paper: paper as SuiteScriptTaskDraft['paper'] }), ...(anchor === undefined ? {} : { anchor: anchor as string }), ...(identity === undefined ? {} : { identity: identity as ActivityIdentity }), instructions: parsed.instructions, content: parsed.content, teacherNotes: parsed.teacherNotes, paperInstructions: parsed.paperInstructions });
       if (!activity && lines.slice(at).every(rest => !rest.trim())) return { bundle: { kind: 'task', task: tasks[0] }, errors: [] };
       if (!activity) throw new Error(`Line ${at + 1}: A single-task draft cannot include another task.`);
     }
@@ -130,7 +156,7 @@ export function parseSuiteScriptBundle(source: string, labels: SuiteScriptTypes 
 
 const body = (nodes: JSONContent[], labels: SuiteScriptTypes) => toSuiteScript(nodes, labels).split('\n').slice(1).join('\n');
 function taskSource(task: SuiteScriptTaskDraft, labels: SuiteScriptTypes): string {
-  const fields = [`kind: ${JSON.stringify(task.kind)}`, ...(['layout', 'afterCheck', 'showScore'] as const).filter(key => task[key] !== undefined).map(key => `${key}: ${JSON.stringify(task[key])}`)];
+  const fields = [`kind: ${JSON.stringify(task.kind)}`, ...(['layout', 'afterCheck', 'showScore', 'hidden', 'locked', 'colScroll', 'paper', 'anchor', 'identity'] as const).filter(key => task[key] !== undefined).map(key => `${key}: ${JSON.stringify(task[key])}`)];
   const lines = [`@task(${JSON.stringify(task.title)}, ${fields.join(', ')})`];
   for (const [name, nodes] of [['instructions', task.instructions], ['content', task.content], ['teacherNotes', task.teacherNotes], ['paperInstructions', task.paperInstructions]] as const) {
     if (!nodes.length && name !== 'content') continue;

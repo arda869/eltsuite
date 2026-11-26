@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
 import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
 import { keyLabel } from '../lib/keys';
+import { keyFor } from '../lib/shortcuts';
 import { newTimeline, TimelineNode } from './Timeline';
 import { DG, DG_KINDS, DiagramCell, DiagramNode, newDiagram } from './Diagram';
 import { TableHandles } from './TableHandles';
@@ -1079,7 +1080,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           onDefinition={() => setDefOpen(true)}
           onLink={() => setLinkOpen(true)}
           extra={teacherRef.current ? [
-            { label: 'Copy as SuiteScript', hint: keyLabel('Mod+Shift+C'), run: () => void copySuiteScript() },
+            { label: 'Copy as SuiteScript', hint: keyLabel(keyFor('copy-suite-script')), run: () => void copySuiteScript() },
             { label: 'Copy SuiteScript AI instructions', run: () => void copySuiteScript(true) },
           ] : []}
           actions={{

@@ -32,7 +32,7 @@ export function ShortcutRunner() {
       if (!combo) return;
       const keys = keysNow();
       const bound = COMMANDS.filter((c) => c.id !== 'search').map((c) => ({ c, k: keys[c.id] || c.def }));
-      const plain = !combo.includes('Mod') && !combo.includes('Alt');
+      const plain = !combo.includes('Mod') && !combo.includes('Ctrl') && !combo.includes('Alt');
       // Plain keys and sequences never while typing or in a window on top.
       if (plain && (typingIn(e.target) || document.querySelector('.scrim, [role="dialog"][aria-modal="true"]'))) { first = ''; return; }
       const seq = first ? first + ' ' + combo : combo;

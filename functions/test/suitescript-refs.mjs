@@ -24,7 +24,7 @@ function snapshot(data) { return { exists: !!data, data: () => data, get: key =>
 test('stable IDs survive rename/move, and source and destination permissions are checked', async () => {
   const { db, records } = memoryDb({
     'users/teacher/archive/audio1': { kind: 'audio', home: { classId: 'class1', mediaId: 'm1' }, title: 'Original' },
-    'sharedDocs/doc1': { kind: 'doc', owner: 'teacher', memberIds: ['learner'], classes: { class1: true }, docKey: 'doc-key' },
+    'sharedDocs/doc1': { kind: 'doc', owner: 'teacher', memberIds: ['learner'], classes: { class1: { role: 'view', name: 'Example class' } }, docKey: 'doc-key' },
     'classes/class1': { teacherId: 'teacher' },
     'classes/foreign': { teacherId: 'other' },
   });
@@ -34,7 +34,9 @@ test('stable IDs survive rename/move, and source and destination permissions are
   records.set('users/teacher/archive/audio1', { ...records.get('users/teacher/archive/audio1'), title: 'Moved and renamed', folderId: 'new' });
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' })).id, audio.id);
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'class', classId: 'class1' } })).sourceId, 'audio1');
-  assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'class', classId: 'class1' } })).docKey, 'doc-key');
+  const sharedInClass = await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'class', classId: 'class1' } });
+  assert.equal(sharedInClass.docKey, 'doc-key');
+  assert.equal(sharedInClass.classRole, 'view');
   await assert.rejects(suiteScriptReferenceService(db, 'other', { action: 'resolve', id: audio.id, destination: { mode: 'private' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'class', classId: 'foreign' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'message', recipientIds: ['learner'] } }), e => e.code === 'permission-denied');

@@ -29,7 +29,8 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
         const ref = await resolveSuiteScriptReference(id, destination);
         if (node.type === 'collab') {
           if (ref.kind !== 'sharedDoc' || ref.itemType !== 'doc' || !ref.docKey) throw new Error('wrong type');
-          return { type: 'collab', attrs: { id: crypto.randomUUID(), docKey: ref.docKey, kind: 'doc', scope: 'class', modes: ['edit', 'suggest', 'comment'], fileDoc: ref.sourceId } };
+          const modes = ref.classRole === 'edit' ? ['edit', 'suggest', 'comment'] : ref.classRole === 'suggest' ? ['suggest', 'comment'] : ref.classRole === 'comment' ? ['comment'] : ['view'];
+          return { type: 'collab', attrs: { id: crypto.randomUUID(), docKey: ref.docKey, kind: 'doc', scope: 'class', modes, fileDoc: ref.sourceId } };
         }
         if (node.type === 'pdfBlock') {
           if (ref.kind !== 'sharedDoc' || !(ref.itemType === 'pdf' || ref.mime === 'application/pdf')) throw new Error('wrong type');

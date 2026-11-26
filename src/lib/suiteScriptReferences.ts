@@ -3,7 +3,7 @@ import { app } from './firebase';
 
 export type SuiteScriptReferenceKind = 'archive' | 'sharedDoc';
 export type SuiteScriptDestination = { mode: 'private' } | { mode: 'resourceHub' } | { mode: 'class'; classId: string } | { mode: 'message'; recipientIds: string[] };
-export type ResolvedSuiteScriptReference = { id: string; kind: SuiteScriptReferenceKind; sourceId: string; owner: string; itemType: string; home?: { classId: string; mediaId: string } | null; copies?: Record<string, string>; docKey?: string; mime?: string };
+export type ResolvedSuiteScriptReference = { id: string; kind: SuiteScriptReferenceKind; sourceId: string; owner: string; itemType: string; home?: { classId: string; mediaId: string } | null; copies?: Record<string, string>; docKey?: string; mime?: string; classRole?: 'edit' | 'suggest' | 'comment' | 'view' | null };
 
 const callable = httpsCallable<Record<string, unknown>, Record<string, unknown>>(getFunctions(app, 'us-central1'), 'suiteScriptReference');
 

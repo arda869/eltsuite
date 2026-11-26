@@ -28,7 +28,7 @@ async function checkAudience(db, uid, kind, item, destination) {
     // An archive upload must be copied into the class media collection by the
     // existing media flow. A reusable shared document must already be shared
     // with the class; an ID itself never grants class access.
-    if (kind === 'sharedDoc' && !item.classes?.[id]) throw denied();
+    if (kind === 'sharedDoc' && !['edit', 'suggest', 'comment', 'view'].includes(item.classes?.[id]?.role)) throw denied();
     return;
   }
   if (mode === 'message') {
@@ -81,7 +81,7 @@ export async function suiteScriptReferenceService(db, uid, request) {
     const item = snap.data();
     if (record.kind === 'archive' ? record.owner !== uid : !canRead(uid, record.kind, item)) throw denied();
     await checkAudience(db, uid, record.kind, item, request.destination);
-    return { id, kind: record.kind, sourceId: record.sourceId, owner: record.owner, itemType: item.kind ?? 'file', ...(record.kind === 'archive' ? { home: item.home ?? null, copies: item.copies ?? {} } : { docKey: item.docKey ?? '', mime: item.file?.type ?? '' }) };
+    return { id, kind: record.kind, sourceId: record.sourceId, owner: record.owner, itemType: item.kind ?? 'file', ...(record.kind === 'archive' ? { home: item.home ?? null, copies: item.copies ?? {} } : { docKey: item.docKey ?? '', mime: item.file?.type ?? '', classRole: request.destination?.mode === 'class' ? item.classes?.[request.destination.classId]?.role ?? null : null }) };
   }
   throw new HttpsError('invalid-argument', 'Choose a reference action.');
 }
