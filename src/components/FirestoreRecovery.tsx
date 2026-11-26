@@ -7,6 +7,14 @@ export function FirestoreRecovery() {
   const [storageError, setStorageError] = useState(false);
   const first = useRef<HTMLButtonElement>(null);
   useEffect(() => onFirestoreCacheFailure(() => setFailed(true)), []);
+  useEffect(() => {
+    if (!failed) return;
+    const backdrop = first.current?.closest('.firestore-recovery-backdrop');
+    const siblings = [...(backdrop?.parentElement?.children ?? [])].filter((node): node is HTMLElement => node instanceof HTMLElement && node !== backdrop);
+    const previous = siblings.map((node) => [node, node.inert] as const);
+    siblings.forEach((node) => { node.inert = true; });
+    return () => { previous.forEach(([node, inert]) => { node.inert = inert; }); };
+  }, [failed]);
   useEffect(() => { if (failed) first.current?.focus(); }, [failed]);
 
   if (failed) return (

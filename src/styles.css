@@ -8919,7 +8919,7 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .hm-next-card b { font: 500 22px/1.2 var(--serif); letter-spacing: -.01em; }
 .hm-next-card .btn { margin-top: auto; }
 .hm-next-card .hint { margin-bottom: 8px; }
-.hm-next-k { display: inline-flex; align-items: center; gap: 8px; font: 700 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--cc, var(--accent)) 70%, var(--ink)); }
+.hm-next-k { display: inline-flex; align-items: center; gap: 8px; font: 700 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
 .hm-grid3 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(280px, .9fr); gap: 20px; align-items: start; }
 .hm2 .hm-col { gap: 20px; }
 .hm2 .hm-classes { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
