@@ -271,6 +271,7 @@ const J = {
     await gallery.getByRole('button',{name:/^Image/}).first().click();
     const pictures=s.p.getByRole('dialog',{name:'Add pictures',exact:true});
     await pictures.getByRole('textbox',{name:'Description shown below the picture'}).fill('The shapes are');
+    await pictures.getByRole('tab',{name:'Upload',exact:true}).click();
     await pictures.locator('input[type=file]').setInputFiles('test/fixtures/import-shapes.jpg');
     await pictures.waitFor({state:'detached'});
     const caption=s.p.locator('.task-editor .pic-node .pic-caption').last();
