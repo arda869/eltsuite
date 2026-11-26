@@ -215,10 +215,28 @@ jobs:
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:requestAccountEmail,functions:deliverAccountEmail,functions:retryAccountEmails,functions:cleanAccountEmailJobs,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:communicativeActivity,functions:recordResourceHubMetric,functions:resourceLessonLive,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:manageCoachConversation,functions:sendUnreadMessageSummaries,functions:sendPendingInvitations,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:deleteAccount,functions:finishAccountDeletion,functions:retryAccountDeletions,functions:deleteLearnerIdentity,functions:deleteConversation,functions:resolveLearnerSignIn,functions:requestInvitation,functions:requestAccountEmail,functions:deliverAccountEmail,functions:retryAccountEmails,functions:cleanAccountEmailJobs,functions:startCallRoom,functions:endCallRoom,functions:quizShow,functions:communicativeActivity,functions:recordResourceHubMetric,functions:resourceLessonLive,functions:classroomGameDraft,functions:classroomObservation,functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:checkSubTask,functions:assessTask,functions:manageExam,functions:submitAnonymousSurvey,functions:resubmitCorrection,functions:claimLiveClass,functions:classTeachingAccessChanged,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:adminAiCosts,functions:adminAiRoutingLab,functions:recoverAiCosts,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:manageCoachConversation,functions:sendUnreadMessageSummaries,functions:sendPendingInvitations,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
           node functions/games/check-connection.mjs
+
+      - name: Prepare empty AI routing lab key slots
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node scripts/setup-ai-routing-lab.mjs
+
+      - name: Check AI routing lab rejects signed-out requests
+        run: |
+          node --input-type=module - <<'JS'
+          const response = await fetch('https://us-central1-lesson-lit.cloudfunctions.net/adminAiRoutingLab', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ data: { action: 'status' } }), signal: AbortSignal.timeout(30000),
+          });
+          const body = await response.json();
+          if (response.status !== 401 || body.error?.status !== 'UNAUTHENTICATED')
+            throw Error('The AI routing lab accepted a signed-out request.');
+          console.log('AI routing lab is deployed and rejects signed-out requests. No provider call was made.');
+          JS
 
       - name: Verify deployed video secret binding and API authentication
         env:

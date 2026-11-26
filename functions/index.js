@@ -38,6 +38,7 @@ export { helpAssistant } from './help/index.js';
 export { teachingDefinition } from './definitions/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';
 export { lessonAssistant } from './ai/assistant.js';
+export { adminAiRoutingLab } from './ai/routing-lab.js';
 export { recordingDialogue } from './speech/dialogue.js';
 export { recordResourceHubMetric, recordResourceHubSearch } from './resource-hub/metrics.js';
 export { resourceLessonLive } from './resource-hub/live.js';

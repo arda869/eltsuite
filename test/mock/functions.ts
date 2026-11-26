@@ -7,6 +7,18 @@ import { db, rtdb } from '../../src/lib/firebase';
 export const getFunctions = () => ({});
 const mediaScriptSessions = new Map<string,number>();
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'adminAiRoutingLab') {
+    if (d.action !== 'status') throw Error('Connect a provider before running a trial.');
+    return { data: {
+      jobs: {
+        tasks: { live: 'openai:gpt-6.1-sol', candidates: ['deepseek:deepseek-v4-pro', 'deepseek:deepseek-flash'] },
+        narration: { live: 'openai:gpt-realtime-2.1-mini', candidates: ['elevenlabs:eleven_v4', 'elevenlabs:eleven_v4_turbo'] },
+        transcription: { live: 'openai:gpt-4o-transcribe-diarize', candidates: ['elevenlabs:scribe_v3'] },
+        music: { live: 'google:lyria-3.5', candidates: ['elevenlabs:music'] },
+        images: { live: 'openai:gpt-image-2.5-flare', candidates: ['google:gemini-3.1-flash-image'] },
+      }, draft: {}, credentials: {},
+    } };
+  }
   // Small browser-only fixture for the standalone Resource Hub live journey.
   if (name === 'resourceLessonLive' && localStorage.getItem('rll.fixture')) {
     const state = JSON.parse(localStorage.getItem('rll.fixture')!) as any;

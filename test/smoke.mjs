@@ -3184,6 +3184,37 @@ const J = {
     await see(s.p, '.hq-nav-i:has-text("Super admins")', 'Super Admin, for a super admin');
     return s;
   },
+  'Super Admin AI routing lab shows blank key fields and clear trial limits': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['superAdmins/teacher@example.com'] = { name: 'Arda', by: 'x', byName: 'The owner', at: Date.now() };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/admin`);
+    await s.p.locator('.hq-nav-i:has-text("AI routing lab")').click();
+    await see(s.p, 'h1:has-text("AI routing lab")', 'the AI routing lab');
+    await see(s.p, 'text=Connect DeepSeek below to enable this comparison', 'the reason trials are unavailable');
+    if (await s.p.locator('input[type="password"]').count() !== 2) throw Error('Both provider key fields must be visible');
+    for (const input of await s.p.locator('input[type="password"]').all()) if (await input.inputValue()) throw Error('A provider key field was prefilled');
+    mkdirSync('outputs/ai-routing-lab', { recursive: true });
+    await s.p.locator('.routing-lab').screenshot({ path: 'outputs/ai-routing-lab/task-creation.png' });
+    await s.p.getByRole('button', { name: 'Narration' }).click();
+    await see(s.p, 'text=OpenAI · Realtime 2.1 mini', 'the current narration route');
+    const overflow = await s.p.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth,
+      outside: [...document.querySelectorAll('body *')].map(el => ({ name: el.tagName + '.' + el.className, right: el.getBoundingClientRect().right })).filter(item => item.right > innerWidth + 2).slice(0, 8) }));
+    if (overflow.width > overflow.viewport + 2) throw Error('Routing lab overflows horizontally: ' + JSON.stringify(overflow));
+    await axe(s.p, 'AI routing lab', A11Y_FOUND);
+    await s.p.locator('.routing-lab').screenshot({ path: 'outputs/ai-routing-lab/narration.png' });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.getByRole('button', { name: 'Open it anyway' }).click();
+    const mobile = await s.p.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
+    if (mobile.width > mobile.viewport + 2) throw Error('Routing lab overflows a phone screen: ' + JSON.stringify(mobile));
+    await see(s.p, 'input#routing-key-deepseek', 'the DeepSeek key field on a phone');
+    await axe(s.p, 'AI routing lab on phone', A11Y_FOUND);
+    await s.p.locator('.routing-lab').screenshot({ path: 'outputs/ai-routing-lab/phone.png' });
+    return s;
+  },
   'Guide: open it from the apps and answer a question': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/classes`);
