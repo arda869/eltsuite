@@ -3206,6 +3206,13 @@ const J = {
     if (overflow.width > overflow.viewport + 2) throw Error('Routing lab overflows horizontally: ' + JSON.stringify(overflow));
     await axe(s.p, 'AI routing lab', A11Y_FOUND);
     await s.p.locator('.routing-lab').screenshot({ path: 'outputs/ai-routing-lab/narration.png' });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.getByRole('button', { name: 'Open it anyway' }).click();
+    const mobile = await s.p.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
+    if (mobile.width > mobile.viewport + 2) throw Error('Routing lab overflows a phone screen: ' + JSON.stringify(mobile));
+    await see(s.p, 'input#routing-key-deepseek', 'the DeepSeek key field on a phone');
+    await axe(s.p, 'AI routing lab on phone', A11Y_FOUND);
+    await s.p.locator('.routing-lab').screenshot({ path: 'outputs/ai-routing-lab/phone.png' });
     return s;
   },
   'Guide: open it from the apps and answer a question': async (b) => {
