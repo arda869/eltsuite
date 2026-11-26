@@ -145,8 +145,8 @@ export function OrgOverview({ d, go }: { d: OrgData; go: Go }) {
       <Figures
         items={[
           { n: teachers.length, label: 'Teachers', sub: [plural(org.adminEmails.length, 'admin'), org.allow?.trainers ? plural(trainers, 'trainer') : ''].filter(Boolean).join(', '), go: () => go({ tab: 'teachers' }) },
-          { n: d.loading ? '…' : active.length, label: 'Classes', sub: active.length ? `${(learners / active.length).toFixed(1)} learners a class` : 'None yet', go: () => go({ tab: 'classes' }) },
-          { n: d.loading ? '…' : learners, label: 'Learners', sub: teachers.length ? `${(learners / teachers.length).toFixed(1)} a teacher` : undefined },
+          { n: d.loading ? '…' : active.length, label: 'Classes', sub: !active.length ? 'None yet' : !learners ? 'No learners yet' : `About ${Math.round(learners / active.length)} learners a class`, go: () => go({ tab: 'classes' }) },
+          { n: d.loading ? '…' : learners, label: 'Learners', sub: teachers.length && learners ? `About ${Math.round(learners / teachers.length)} for each teacher` : learners ? undefined : 'Share a class code to start' },
           { n: fmtBytes(used), label: 'Space used', sub: `${fmtGb(given)} given out of ${fmtGb(org.limitGb)}`, go: () => go({ tab: 'space' }) },
           { n: waiting, label: 'Invitations waiting', sub: waiting ? (old ? `${old} for more than a week` : 'All sent this week') : 'Nobody is waiting', go: () => go({ tab: 'invites' }) },
         ]}
