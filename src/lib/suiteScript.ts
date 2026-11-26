@@ -7,7 +7,7 @@ export const SUITE_SCRIPT_MAX_CHARS = 200_000;
 const MAX_BLOCKS = 2_000;
 const MAX_COMMAND_CHARS = 20_000;
 const MAX_NESTING = 32;
-const KNOWN = new Set(['bold', 'italic', 'underline', 'strike', 'marked', 'break', 'stress', 'element', 'heading', 'numbered', 'bullet', 'question', 'audio', 'video', 'image', 'pdf', 'collab']);
+const KNOWN = new Set(['bold', 'italic', 'underline', 'strike', 'marked', 'break', 'stress', 'element', 'heading', 'numbered', 'bullet', 'question', 'audio', 'video', 'image', 'pdf', 'collab', 'activity', 'endactivity', 'task', 'instructions', 'content', 'teacherNotes', 'paperInstructions', 'endtask']);
 export type SuiteScriptTypes = Record<string, string>;
 export type SuiteScriptParse = { content: JSONContent[]; errors: string[] };
 const questionLabel = (node: JSONContent, labels: SuiteScriptTypes) =>
@@ -131,6 +131,13 @@ function readCommand(source: string, at: number): { name: string; args: ReturnTy
     if (c !== ')' && c !== '(') continue;
   }
   throw new Error(`Unclosed @${name} command.`);
+}
+
+// Structural SuiteScript commands are parsed only by the explicit whole-task
+// workflow. The ordinary rich-text paste path never routes them to metadata.
+export function readSuiteScriptDirective(line: string) {
+  const parsed = readCommand(line, 0);
+  return parsed && parsed.end === line.length ? { name: parsed.name, ...parsed.args } : null;
 }
 
 function asNode(value: unknown): JSONContent {

@@ -12,6 +12,16 @@ const testBundle = new URL('./.suite-script-draft-test-bundle.mjs', import.meta.
 await writeFile(testBundle, bundled.outputFiles[0].text);
 const { createSuiteScriptDraft } = await import(testBundle.href);
 await unlink(testBundle);
+const bundleBuilt = await build({ entryPoints: ['src/lib/suiteScriptBundle.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
+const bundleUrl = new URL('./.suite-script-bundle-test-bundle.mjs', import.meta.url);
+await writeFile(bundleUrl, bundleBuilt.outputFiles[0].text);
+const { parseSuiteScriptBundle, toSuiteScriptBundle } = await import(bundleUrl.href);
+await unlink(bundleUrl);
+const keyBuilt = await build({ entryPoints: ['src/lib/questions.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
+const keyUrl = new URL('./.suite-script-key-test-bundle.mjs', import.meta.url);
+await writeFile(keyUrl, keyBuilt.outputFiles[0].text);
+const { splitKey } = await import(keyUrl.href);
+await unlink(keyUrl);
 
 const labels = { gap: 'Gap fill', 'choice:radio': 'Multiple choice, as a list', 'choice:dropdown': 'Multiple choice in line' };
 const fixture = `SuiteScript v1
@@ -96,6 +106,14 @@ test('learner-visible message projection removes private keys and opaque content
   assert.doesNotMatch(JSON.stringify(opaque), /PRIVATE ANSWER/);
 });
 
+test('SuiteScript question answer is stored in the private key, not learner task content', () => {
+  const parsed = parseSuiteScript(fixture, labels);
+  const stored = splitKey({ type: 'doc', content: parsed.content });
+  assert.equal(stored.key['suiteScript-1'].correct, 1);
+  assert.equal(JSON.stringify(stored.content).includes('"correct":1'), false);
+  assert.equal(JSON.stringify(stored.content).includes('"teacherOnly"'), false);
+});
+
 test('12 digit checksum detects single digit and adjacent swaps, preserving leading zeroes', () => {
   const id = suiteScriptId('000100020003');
   assert.equal(id, `ELTSUITE-0001-0002-0003-${suiteScriptChecksum('000100020003')}`);
@@ -118,4 +136,27 @@ test('scoped SuiteScript draft validates preview and applies atomically only to 
   assert.equal(state.doc.textContent, 'New text');
   assert.equal(draft.apply('SuiteScript v1\nOverwritten').applied, false);
   assert.equal(state.doc.textContent, 'New text');
+});
+
+test('explicit whole-task and whole-activity drafts preserve instructions, private notes and question keys', () => {
+  const task = {
+    title: 'Welcome exchange',
+    kind: 'task',
+    layout: 'two',
+    afterCheck: 'retry',
+    showScore: true,
+    instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask your partner.' }] }],
+    content: parseSuiteScript(fixture, labels).content,
+    teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Lead in with real names.' }] }],
+    paperInstructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Write the answer.' }] }],
+  };
+  const single = parseSuiteScriptBundle(toSuiteScriptBundle({ kind: 'task', task }, labels), labels);
+  assert.deepEqual(single.errors, []);
+  assert.deepEqual(single.bundle, { kind: 'task', task });
+  const activity = { title: 'Meeting people', level: 'A2', aim: 'Ask about places', minutes: 30, summary: 'A pair exchange', focus: 'Questions', tasks: [task, { ...task, title: 'Follow-up' }] };
+  const parsed = parseSuiteScriptBundle(toSuiteScriptBundle({ kind: 'activity', activity }, labels), labels);
+  assert.deepEqual(parsed.errors, []);
+  assert.deepEqual(parsed.bundle, { kind: 'activity', activity });
+  assert.equal(parseSuiteScriptBundle('SuiteScript v1\n@task("A", learnerVersion: "B")\n@endtask()', labels).bundle, null);
+  assert.match(parseSuiteScriptBundle('SuiteScript v1\n@task("A")\n@content()\nHello', labels).errors[0], /Missing @endtask/);
 });

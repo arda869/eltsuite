@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { suiteScriptReferenceService } from '../suitescript/references.js';
+import { suiteScriptId } from '../suitescript/id.js';
 
 function memoryDb(seed) {
   const records = new Map(Object.entries(seed));
@@ -44,4 +45,11 @@ test('stable IDs survive rename/move, and source and destination permissions are
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: swapped, destination: { mode: 'private' } }), e => e.code === 'invalid-argument');
   records.delete('users/teacher/archive/audio1');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'private' } }), e => e.code === 'not-found');
+});
+
+test('ensure rejects a forged or orphaned existing reference', async () => {
+  const { db, records } = memoryDb({ 'users/teacher/archive/audio1': { kind: 'audio', suiteScriptRef: 'ELTSUITE-0001-0002-0003-0000' } });
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' }), e => e.code === 'failed-precondition');
+  records.set('users/teacher/archive/audio1', { kind: 'audio', suiteScriptRef: suiteScriptId('000100020003') });
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' }), e => e.code === 'failed-precondition');
 });

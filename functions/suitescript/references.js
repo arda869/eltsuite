@@ -53,7 +53,13 @@ export async function suiteScriptReferenceService(db, uid, request) {
         if (!snap.exists || snap.get('deletedAt') || snap.get('purgeRequestedAt')) throw missing();
         const item = snap.data();
         if (!canRead(uid, kind, item)) throw denied();
-        if (item.suiteScriptRef) return { id: item.suiteScriptRef, collision: false };
+        if (item.suiteScriptRef) {
+          if (!validSuiteScriptId(item.suiteScriptRef)) throw new HttpsError('failed-precondition', 'This item has an invalid SuiteScript reference. Contact support.');
+          const existing = await tx.get(db.doc(`suiteScriptRefs/${item.suiteScriptRef}`));
+          const record = existing.data();
+          if (!existing.exists || record.kind !== kind || record.sourceId !== id || record.owner !== (kind === 'archive' ? uid : item.owner)) throw new HttpsError('failed-precondition', 'This item’s SuiteScript reference is inconsistent. Contact support.');
+          return { id: item.suiteScriptRef, collision: false };
+        }
         if (reserved.exists) return { collision: true };
         tx.create(registry, { kind, sourceId: id, owner: kind === 'archive' ? uid : item.owner, createdAt: FieldValue.serverTimestamp() });
         tx.update(ref, { suiteScriptRef: candidate });
