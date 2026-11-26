@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { splitKey, questionIds, scoreTask, type AnswerKey, type Responses } from '../src/lib/questions';
 import { TaskRenderer } from '../src/components/TaskRenderer';
-import { TaskEditor, COMMANDS } from '../src/editor/TaskEditor';
+import { TaskEditor, COMMANDS, SUITE_TYPES } from '../src/editor/TaskEditor';
+import { parseSuiteScript, toSuiteScript } from '../src/lib/suiteScript';
 import { fixture, exportFixture } from './lesson-style-fixture';
 import { flattenTask } from '../src/lib/worksheet';
 import { worksheetHtml } from '../src/lib/worksheetHtml';
@@ -21,7 +22,7 @@ function Check() {
   const [content, setContent] = useState(fixture);
   const [isTeacher, setTestTeacher] = useState(true);
   const [checkedKey, setCheckedKey] = useState<AnswerKey | null>(null);
-  Object.assign(window, { setFixture: setContent, setTestTeacher, setTestResponses: setResponses, setCheckedKey, fixture, COMMANDS, splitKey, questionIds, scoreTask, exportFixture, flattenTask, worksheetHtml, worksheetPdf, responses, soundFixture: async () => ({'style-recording': {url:'https://example.org/visit',svg: await QRCode.toString('https://example.org/visit',{type:'svg'}),png:'',title:'Listen to the visit plan',video:false,script:['We will go on Monday.']}}) });
+  Object.assign(window, { setFixture: setContent, setTestTeacher, setTestResponses: setResponses, setCheckedKey, fixture, COMMANDS, SUITE_TYPES, parseSuiteScript, toSuiteScript, splitKey, questionIds, scoreTask, exportFixture, flattenTask, worksheetHtml, worksheetPdf, responses, soundFixture: async () => ({'style-recording': {url:'https://example.org/visit',svg: await QRCode.toString('https://example.org/visit',{type:'svg'}),png:'',title:'Listen to the visit plan',video:false,script:['We will go on Monday.']}}) });
   return <div style={{ padding: 24, ['--accent' as string]: '#338399', ['--accent-text' as string]: '#216073' }}>
     <aside id="outside">Outside lesson</aside>
     <label>Fixture style <select value={style} onChange={e => setStyle(e.target.value)}><option value="adult">Adult</option><option value="young">Young learner</option><option value="exam">Exam Prep</option><option value="teen">Teenagers</option></select></label>
