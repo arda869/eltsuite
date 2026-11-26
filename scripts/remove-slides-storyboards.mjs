@@ -15,17 +15,19 @@
 // each teacher uses is recounted by scripts/space.mjs on its next run.
 import { createRequire } from 'node:module';
 const deps = createRequire(new URL('../functions/package.json', import.meta.url));
-const { initializeApp, applicationDefault } = deps('firebase-admin/app');
+const { initializeApp, applicationDefault, deleteApp } = deps('firebase-admin/app');
 const { getFirestore } = deps('firebase-admin/firestore');
 const { getDatabase } = deps('firebase-admin/database');
 
 const CONFIRM = process.argv.includes('--confirm');
 const SUMMARY_ONLY = process.env.CLEANUP_SUMMARY_ONLY === '1';
-initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit', databaseURL: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app' });
+const app = initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit', databaseURL: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app' });
 const db = getFirestore();
 const rtdb = getDatabase();
 const safeKey = (k) => String(k).replace(/[.#$[\]]/g, '_');
 const tally = { files: 0, lessonsChanged: 0, elements: 0, classDecks: 0, liveTexts: 0, shares: 0 };
+
+try {
 
 // Every live text for a document key: the key itself and its versions per group, learner,
 // preview and template (key~g…, key~l…, key~p…, key~t).
@@ -99,3 +101,10 @@ for (const s of shares.docs) {
 
 console.log(`\n${CONFIRM ? 'Deleted' : 'Would delete'}: ${tally.files} files, ${tally.elements} elements in ${tally.lessonsChanged} tasks, ${tally.classDecks} class decks, ${tally.liveTexts} live texts, ${tally.shares} shares.`);
 if (!CONFIRM) console.log('Nothing was changed. Run again with --confirm to delete. This can’t be undone.');
+} finally {
+  try {
+    await db.terminate();
+  } finally {
+    await deleteApp(app);
+  }
+}
