@@ -1256,7 +1256,7 @@ const J = {
     await axe(s.p,'Task-level AI entry',A11Y_FOUND);
     return s;
   },
-  'New teacher signup, all starting points and save retry': async b => {
+  'New teacher signup, Get started and profile retry': async b => {
     const s = await session(b);
     await s.p.evaluate(() => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
@@ -1273,66 +1273,29 @@ const J = {
     await s.p.locator('input[type="password"]').fill('test-password-123');
     await s.p.getByRole('button', { name: 'Make my account', exact: true }).click();
     if (await s.p.locator('.welcome,.hm').count()) throw Error('Teacher UI opened before account setup completed');
-    await s.p.waitForURL('**/welcome');
-    console.log('Signup: profile confirmed and welcome opened');
+    await see(s.p, '.hm', 'signup opens the teacher home after setup');
+    await see(s.p, '.gs', 'new teacher can see Get started');
+    console.log('Signup: profile confirmed and teacher home opened');
     const uid = await s.p.evaluate(() => sessionStorage.getItem('mockuid'));
     const profile = await s.p.evaluate(id => JSON.parse(localStorage.getItem('mockfs'))['users/' + id], uid);
     if (profile.role !== 'teacher' || profile.displayName !== 'New Teacher') throw Error('New teacher profile was not confirmed');
-    await s.p.getByRole('button', { name: 'Prepare my next lesson' }).click();
-    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
-    await s.p.getByRole('button', { name: 'Change my choice' }).click();
-    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
-    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
-    await s.p.evaluate(id => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'update', path: 'users/' + id, count: 1, code: 'unavailable' }])), uid);
-    await s.p.getByRole('button', { name: 'Show me how first' }).click();
-    await see(s.p, '[role="alert"]:has-text("Your choice is kept")', 'a failed connection retains the selection');
-    await s.p.getByRole('button', { name: 'Show me how first' }).click();
-    await s.p.waitForURL('**/guide?goal=audio');
-    console.log('Signup: connection retry saved the goal');
-    await s.p.waitForTimeout(4200); // a late sign-in display-name update must not reset onboarding
-    await s.p.reload();
-    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved choice after reloading');
-    const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
-    if (saved.code.uses !== 1 || saved.user.onboarding !== 'done' || saved.user.teacherGoal !== 'audio') throw Error('Setup was repeated or the goal was lost');
-    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/archive'], ['Work with other teachers', '/colleagues']]) {
-      await s.p.goto(BASE + '/welcome');
-      await s.p.getByRole('button', { name: title, exact: false }).click();
-      await s.p.getByRole('button', { name: 'Show my starting point' }).click();
-      await s.p.locator('.path-plan .btn.primary').click();
-      await s.p.waitForURL(url => url.pathname + url.search === target);
-      console.log('Signup: starting point opened ' + target);
-      if (await s.p.locator('[role="alert"]:has-text("save your choice")').count()) throw Error('Onboarding save failed for ' + title);
-    }
+    await s.p.getByRole('button', { name: /Write a Collab document/ }).click();
+    await s.p.waitForURL('**/collab');
+    await see(s.p, 'aside[aria-label="Guide: Write a Collab document"]', 'step guide opens beside Collab');
     await s.p.goto(BASE + '/welcome');
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
-    await see(s.p, '.hm', 'skip opens teacher home');
+    await see(s.p, '.hm', 'retired welcome route returns to teacher home');
+    const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
+    if (saved.code.uses !== 1 || saved.user.role !== 'teacher') throw Error('Signup was repeated or its teacher profile was lost');
     await s.p.reload();
     await see(s.p, '.hm', 'completed signup stays complete');
     await s.p.evaluate(id => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/' + id, count: 1, code: 'unavailable' }])), uid);
     await s.p.reload();
     await see(s.p, 'button:has-text("Retry loading account")', 'profile loading can recover without a fabricated account');
     await see(s.p, '[role="alert"]:has-text("load your account profile")', 'profile load error explains what failed');
-    if (await s.p.locator('.hm,.welcome').count()) throw Error('Teacher content opened with an unconfirmed profile');
+    if (await s.p.locator('.hm').count()) throw Error('Teacher content opened with an unconfirmed profile');
     await axe(s.p, 'Teacher account setup recovery', A11Y_FOUND);
     await s.p.getByRole('button', { name: 'Retry loading account' }).click();
     await see(s.p, '.hm', 'retry reloads the real teacher profile');
-    // The optional blank goal uses the same profile loader. Its first read can
-    // time out while the shared request remains pending; the next click must
-    // start a fresh read and still save the blank choice.
-    await s.p.goto(BASE + '/welcome');
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).waitFor();
-    await s.p.evaluate(async id => {
-      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/' + id, count: 1, delay: 20000 }]));
-      const [{ ensureProfile }, { auth }] = await Promise.all([import('/src/lib/teacherProfile.ts'), import('/src/lib/firebase.ts')]);
-      void ensureProfile(auth.currentUser).catch(() => {});
-    }, uid);
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
-    await see(s.p, '[role="alert"]:has-text("Your choice is kept")', 'blank choice remains available after profile read timeout', 25000);
-    if (await s.p.locator('.hm').count()) throw Error('Timed-out blank goal opened home before its profile was confirmed');
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
-    await see(s.p, '.hm', 'blank goal retry starts a fresh profile read', 15000);
-    const blankGoal = await s.p.evaluate(id => JSON.parse(localStorage.getItem('mockfs'))['users/' + id]?.teacherGoal, uid);
-    if (blankGoal !== '') throw Error('Retry lost the optional blank teacher goal');
     return s;
   },
   'Feature discovery is optional, private and based on completed workflows': async (b) => {
@@ -2110,7 +2073,7 @@ const J = {
     const text = d.getByRole('textbox', { name: 'Document text', exact: true });
     await text.fill('Original notes');
     await text.press('Tab');
-    await see(d, '.ProseMirror p[data-indent="1"]', 'Tab indentation');
+    await see(d, '.ProseMirror .doc-tab', 'an inline tab stop');
     await text.press('ControlOrMeta+Enter');
     await see(d, '[data-doc-page-break]', 'a page break');
     await text.press('Enter');
@@ -2408,12 +2371,14 @@ const J = {
     await d.getByRole('button', { name: 'Document mode', exact: true }).click();
     await d.getByRole('option', { name: 'Editing', exact: true }).click();
     await d.setViewportSize({ width: 760, height: 850 });
-    // ResizeObserver moves whole groups into More on the next rendering frame.
-    // Wait for that layout update before asserting the same no-overflow invariant.
+    // Whole groups stay visible and wrap to a second row on narrower screens.
     await d.waitForFunction(() => {
       const el = document.querySelector('[role="toolbar"][aria-label="Formatting"]');
-      return el && el.scrollWidth <= el.clientWidth && getComputedStyle(el).flexWrap === 'nowrap';
-    }, null, { timeout: 5000 });
+      return el && el.scrollWidth <= el.clientWidth && [...el.querySelectorAll('.overflow-group')].every(group => getComputedStyle(group).visibility !== 'hidden') && el.getBoundingClientRect().height <= 100;
+    }, null, { timeout: 5000 }).catch(async e => {
+      const detail = await d.locator('[role="toolbar"][aria-label="Formatting"]').evaluate(el => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, wrap: getComputedStyle(el).flexWrap, html: el.outerHTML.slice(0, 600) })).catch(() => null);
+      throw Error(e.message + ' · Formatting toolbar: ' + JSON.stringify(detail));
+    });
     for (const [label, expected] of [['white', 'rgb(255, 255, 255)'], ['black', 'rgb(25, 24, 22)']]) {
       await d.getByRole('menuitem', { name: 'View', exact: true }).click();
       await d.getByRole('menuitemradio', { name: 'Page colour: ' + label, exact: true }).click();
@@ -2962,7 +2927,7 @@ const J = {
     await s.p.fill('.hq-sheet input', 'Test School');
     await s.p.click('.hq-sheet button:has-text("Make the organisation")');
     await see(s.p, 'h1:has-text("Admins")', 'the new organisation, at its admins');
-    for (const t of ['Activity', 'Teachers', 'Invitations', 'Invitation codes', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and limits', 'Overview']) {
+    for (const t of ['Activity', 'Teachers', 'Invitations', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and limits', 'Overview']) {
       await s.p.click(`.hq-nav-i:has-text("${t}")`);
       await see(s.p, `h1:has-text("${t === 'Overview' ? 'Test School' : t}")`, `the ${t} page`);
     }
@@ -3500,10 +3465,8 @@ const J = {
     await s.p.locator('input[type="password"]').fill('test-password-123');
     await s.p.getByRole('button', { name: 'Make my account', exact: true }).click();
     await see(s.p, 'button:has-text("Retry loading account")', 'slow setup recovery', 25000);
-    if (await s.p.locator('.hm,.welcome').count()) throw Error('A slow setup opened teacher content before its profile existed');
+    if (await s.p.locator('.hm').count()) throw Error('A slow setup opened teacher content before its profile existed');
     await s.p.getByRole('button', { name: 'Retry loading account' }).click();
-    await s.p.waitForURL('**/welcome');
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
     await see(s.p, '.hm', 'slow setup completed',60000).catch(async e=>{throw Error(e.message+' · '+(await s.p.locator('body').innerText()).slice(0,1200)+' · '+s.errors.slice(0,3).join('; '));});
     const uses = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['inviteCodes/SLOW-AB23'].uses);
     if (uses !== 1) throw Error('Retry spent the invitation more than once');
@@ -3587,57 +3550,24 @@ const J = {
     if (state.key !== '1' || state.work !== 'saved on device') throw Error('Profile recovery discarded saved device work');
     return s;
   },
-  'Teacher onboarding and goal-based guide': async (b) => {
+  'Get started guides teachers and retired welcome redirects home': async (b) => {
     const s = await session(b);
-    await s.p.evaluate(() => {
-      const f = JSON.parse(localStorage.getItem('mockfs'));
-      f['users/teacher1'].onboarding = 'new';
-      localStorage.setItem('mockfs', JSON.stringify(f));
-    });
-    await s.p.goto(BASE);
-    await s.p.waitForURL('**/welcome');
-    if (await s.p.getByRole('button', { name: 'Show my starting point' }).isEnabled()) throw new Error('Continue should need a choice');
-    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
-    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
-    await see(s.p, 'text=A recording you can reuse in your lessons.', 'the selected plan');
-    await s.p.getByRole('button', { name: 'Show me how first' }).click();
-    await s.p.waitForURL('**/guide?goal=audio');
-    await see(s.p, '#guide-topic-title:has-text("Studio")', 'relevant guide topic');
-    await s.p.goto(BASE);
-    await see(s.p, '.hm', 'home after completing onboarding');
-    await s.p.goto(BASE + '/guide');
-    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved preference after reload');
-    const picker = s.p.getByRole('button', { name: 'What would you like to do?', exact: true });
-    await picker.click();
-    await picker.press('End');
-    await picker.press('Enter');
-    await see(s.p, '.guide-next h2:has-text("A connection")', 'custom dropdown updates the goal');
-    if (await s.p.locator('.gu-nav-i .ui-icon').count() !== 14) throw new Error('Guide topic icons missing');
-    await s.p.getByRole('searchbox').fill('no such topic');
-    await see(s.p, 'text=No matching topics', 'search empty state');
-    await s.p.setViewportSize({ width: 390, height: 844 });
-    for (const route of ['/welcome', '/guide']) {
-      await s.p.goto(BASE + route);
-      await see(s.p, 'h1', 'mobile heading');
-      if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
-      await axe(s.p, 'Teacher start ' + route, A11Y_FOUND);
-    }
-    for (const width of [320, 390, 768, 1280]) {
-      await s.p.setViewportSize({ width, height: 900 });
-      await s.p.goto(BASE + '/guide');
-      for (const topic of ['Colleagues', 'Your blend', 'Questions']) {
-        await s.p.getByRole('button', { name: topic, exact: true }).click();
-        if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Guide overflow at ' + width + ': ' + topic);
-      }
-      await picker.click();
-      const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
-      if (!fits) throw new Error('Goal dropdown overflows at ' + width);
-      await picker.press('Escape');
-
-    }
     await s.p.goto(BASE + '/welcome');
-    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
-    await see(s.p, '.hm', 'skip opens home');
+    await see(s.p, '.hm', 'welcome route redirects to Home');
+    await see(s.p, '.gs', 'Get started list appears on Home');
+    await s.p.getByRole('button', { name: /Write a Collab document/ }).click();
+    await s.p.waitForURL('**/collab');
+    await see(s.p, 'aside[aria-label="Guide: Write a Collab document"]', 'Collab step guide');
+    await s.p.getByRole('button', { name: 'Make the guide smaller' }).click();
+    await see(s.p, 'aside.gs-guide.small', 'guide can be made smaller');
+    await s.p.getByRole('button', { name: 'Close the guide' }).click();
+    await s.p.goto(BASE);
+    await s.p.getByRole('button', { name: 'Hide', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Hide the list' }).click();
+    await s.p.locator('.gs').waitFor({ state: 'hidden' });
+    await s.p.reload();
+    if (await s.p.locator('.gs').count()) throw Error('Hidden Get started list returned after reload');
+    await axe(s.p, 'Get started teacher home', A11Y_FOUND);
     return s;
   },
   'Teacher’s Companion replaces the old studio and its profile lives in Settings': async b => {

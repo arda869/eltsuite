@@ -32,14 +32,16 @@ try {
   assert(xml.includes('w:start="4"'), 'Word preserves starting page number');
   const editor = new Editor({ extensions: [StarterKit, PageBreak, DocumentSection, DocumentIndent, FontStyle], content: '<p>First paragraph</p><p>Second paragraph</p>' });
   editor.commands.setTextSelection(4);
-  assert(changeIndent(editor, 1) && editor.getJSON().content?.[0].attrs?.indent === 1, 'Indent command updates the selected paragraph');
+  assert(changeIndent(editor, 1) && editor.getJSON().content?.[0].attrs?.indentPx === 48, 'Indent command moves the selected paragraph to the next stop');
   assert(insertDocumentSection(editor, 2) && editor.getJSON().content?.some((n) => n.type === 'docSection'), 'Section break preserves text in a new section');
   assert(editor.getText().replace(/\s/g, '').includes('FirstparagraphSecondparagraph'), 'Section insertion keeps all surrounding text');
   editor.destroy();
   const question = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'I ' }, { type: 'gap', attrs: { id: 'export-gap', answers: ['secret-answer'] } }, { type: 'text', text: ' English.' }] }] };
   await prepareDocumentPrint(question);
-  const questionHtml = docBodyHtml(question, 'Worksheet', opts);
+  const questionHtml = docBodyHtml(question, 'Worksheet', { ...opts, answerKey: false });
   assert(questionHtml.includes('class="blank"') && !questionHtml.includes('secret-answer'), 'Inline questions print as answer blanks without revealing the key');
+  const teacherHtml = docBodyHtml(question, 'Worksheet', { ...opts, answerKey: true });
+  assert(teacherHtml.includes('Answer key') && teacherHtml.includes('secret-answer'), 'Teacher export includes the answer key when requested');
   const pdf = await htmlToPdf(docBodyHtml(json, 'Document tools', opts), null, layout);
   const pdfText = new TextDecoder('latin1').decode(pdf);
   assert(pdfText.includes('/MediaBox [0 0 842.25 595.5]'), 'PDF uses the selected landscape page size');

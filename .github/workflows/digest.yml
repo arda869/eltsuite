@@ -41,9 +41,11 @@ jobs:
           node video.mjs || echo "Video rooms could not be made this time."
           push_status=0
           node push.mjs || push_status=$?
-          node companion.mjs || echo "Companion reminders could not all be sent this time; they stay due."
+          companion_status=0
+          node companion.mjs || companion_status=$?
+          if [ "$companion_status" -ne 0 ]; then echo "Companion reminders could not all be sent this time; they stay due."; fi
           mail_status=0
           if [ -n "$SMTP_URL" ]; then node mail.mjs || mail_status=$?; else echo "No SMTP_URL secret yet: no class emails."; fi
           if [ "$mail_status" -ne 0 ]; then echo "Class emails could not be sent this time."; fi
           rm -f "$RUNNER_TEMP/sa.json"
-          if [ "$space_status" -ne 0 ] || [ "$push_status" -ne 0 ] || [ "$mail_status" -ne 0 ]; then exit 1; fi
+          if [ "$space_status" -ne 0 ] || [ "$push_status" -ne 0 ] || [ "$companion_status" -ne 0 ] || [ "$mail_status" -ne 0 ]; then exit 1; fi

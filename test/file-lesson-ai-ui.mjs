@@ -16,7 +16,12 @@ const browser = await chromium.launch({ headless: true, ...(process.platform ===
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 850 } });
   await page.goto(`${base}/dev.html?seed&as=teacher`);
-  await page.waitForFunction(() => !!localStorage.getItem('mockdemo'));
+  await page.waitForFunction(async () => {
+    if (!window.__mockReady) return false;
+    await window.__mockReady;
+    return !!localStorage.getItem('mockdemo');
+  });
+  await page.waitForLoadState('networkidle');
   await page.evaluate(async () => {
     const { db } = await import('/src/lib/firebase.ts');
     const { doc, setDoc } = await import('/test/mock/firestore.ts');
