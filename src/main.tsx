@@ -96,13 +96,14 @@ const ResourceLessonHistory = lazy(() => import('./resourceHub/ResourceLessonLiv
 const ResourceLessonLiveLearner = lazy(() => import('./resourceHub/ResourceLessonLiveLearner').then(m => ({ default: m.ResourceLessonLiveLearner })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
-const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const TeacherCompanionPage = lazy(() => import('./coach/TeacherCompanionPage').then(m => ({ default: m.TeacherCompanionPage })));
+const ShortcutRunner = lazy(() => import('./components/ShortcutRunner').then(m => ({ default: m.ShortcutRunner })));
+const StartGuide = lazy(() => import('./start/GetStarted').then(m => ({ default: m.StartGuide })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
 function ClassAssistantRedirect() {
@@ -152,7 +153,6 @@ function Home() {
   }
   // Back to a shared link opened before signing in.
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
-  if (profile?.onboarding === 'new') return <Navigate to="/welcome" replace />;
   return <HomePage />;
 }
 
@@ -258,7 +258,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/accessibility" element={<AccessibilityPage />} />
           <Route path="/signin" element={<PublicSignIn />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
+          <Route path="/welcome" element={<Navigate to="/" replace />} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
@@ -327,6 +327,8 @@ createRoot(document.getElementById('root')!).render(
           <CoachPanel />
           <UsageWatch />
           <FeatureDiscovery />
+          <StartGuide />
+          <ShortcutRunner />
           <CallHost />
           <LiveStartWatch />
         </Suspense>

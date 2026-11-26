@@ -64,7 +64,7 @@ jobs:
       - name: Live classroom security boundaries
         run: |
           node test/collab-access.mjs
-          npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security "node test/security-phase2-rtdb.mjs"
+          npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security "node test/security-phase2-rtdb.mjs && node test/collab-comment-rules.mjs"
       - name: Per-user AI allowance transactions and security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs && node test/ai/costs-integration.mjs"
       - name: Help assistant checks

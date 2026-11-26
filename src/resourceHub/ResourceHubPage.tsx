@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
@@ -54,7 +55,7 @@ function ActivityCard({ activity, saved, onOpen, onSave }: { activity: HubActivi
       {/* Shown when the card is a wide feature: every page in the activity, so the width shows something useful. */}
       {ready && activity.pages.length > 1 && <span className="rh-activity-pages" aria-hidden="true">{activity.pages.map(page => <span key={page.id}><img src={page.image} alt="" /><small>{page.audience === 'teacher' ? 'Teacher' : 'Learner'}</small></span>)}</span>}
     </button>
-    <div className="rh-card-footer"><span className={ready ? 'rh-ready' : 'rh-outline'}>{ready ? activity.kind === 'lesson' ? 'Editable lesson' : 'Printable activity' : 'Coming soon'}</span>{activity.publishedAt && <time className="rh-published-date" dateTime={new Date(activity.publishedAt).toISOString()}>Published {new Date(activity.publishedAt).toLocaleDateString()}</time>}<button type="button" className={saved ? 'rh-icon-button selected' : 'rh-icon-button'} onClick={onSave} aria-label={saved ? `Remove ${activity.title} from shelf` : `Save ${activity.title} to shelf`} title={saved ? 'Remove from shelf' : 'Save to shelf'}><Icon name="bookmark" size={17} /></button></div>
+    <div className="rh-card-footer"><span className={ready ? 'rh-ready' : 'rh-outline'}>{ready ? activity.kind === 'lesson' ? 'Editable lesson' : 'Printable activity' : 'Coming soon'}</span>{activity.publishedAt && <time className="rh-published-date" dateTime={new Date(activity.publishedAt).toISOString()}>Published {new Date(activity.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</time>}<button type="button" className={saved ? 'rh-icon-button selected' : 'rh-icon-button'} onClick={onSave} aria-label={saved ? `Remove ${activity.title} from shelf` : `Save ${activity.title} to shelf`} title={saved ? 'Remove from shelf' : 'Save to shelf'}><Icon name="bookmark" size={17} /></button></div>
   </article>;
 }
 
@@ -64,6 +65,7 @@ function CollectionCard({ collection, onClick, followed, onFollow, readyCount }:
 
 export function ResourceHubPage() {
   const { user } = useAuth();
+  useEffect(() => markStep('hub'), []);
   useEffect(() => {
     void flushResourceMetrics();
     window.addEventListener('online', flushResourceMetrics);
@@ -97,11 +99,35 @@ export function ResourceHubPage() {
   const tab: Tab = requestedTab && requestedTab in TAB_LABELS ? requestedTab as Tab : 'discover';
   const selectedActivity = activities.find(a => a.id === params.get('activity'));
   const selectedCollection = collections.find(c => c.id === params.get('collection'));
+  // Opened from a link, too: it goes into “Pick up where you left off”.
+  const selId = selectedActivity?.id;
+  useEffect(() => { if (selId) hub.recordViewed(selId); }, [selId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [query, setQuery] = useState('');
   const [describing, setDescribing] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const hub = useHubState(user?.uid);
+  const [kind, setKind] = useState<'all' | 'lesson' | 'activity'>('all');
+  const [sort, setSort] = useState<'new' | 'short' | 'level'>('new');
+  // The levels of the teacher's classes, for “For your classes”.
+  const [levels, setLevels] = useState<string[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    let on = true;
+    allTeacherClasses(user.uid).then(rows => { if (on) setLevels([...new Set(rows.filter(r => r.status === 'active').map(r => (r.level || '').toUpperCase().match(/[ABC][12]/)?.[0] || '').filter(Boolean))]); }, () => {});
+    return () => { on = false; };
+  }, [user]);
+  // “/” goes to the search box, as on other sites.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+      const box = document.querySelector<HTMLElement>('.rh-search input, .rh-search textarea');
+      if (box) { e.preventDefault(); box.focus(); }
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
   const [showPrintDesk, setShowPrintDesk] = useState(false);
   const setRoute = (next: { tab?: Tab; collection?: HubCollectionId; activity?: string }) => {
     setShowPrintDesk(false);
@@ -121,8 +147,9 @@ export function ResourceHubPage() {
       && (filters.interaction === 'Any interaction' || a.interaction.toLowerCase().includes(filters.interaction.toLowerCase()))
       && (filters.time === 'Any length' || a.minutes <= Number.parseInt(filters.time, 10))
       && (filters.prep === 'Any prep' || a.prep === filters.prep)
-      && (!onlineOnly || a.mode === 'Face-to-face and online' || a.mode === 'Online only');
-  }), [activities, query, filters, describing, onlineOnly]);
+      && (!onlineOnly || a.mode === 'Face-to-face and online' || a.mode === 'Online only')
+      && (kind === 'all' || (kind === 'lesson') === (a.kind === 'lesson'));
+  }).sort((a, b) => sort === 'short' ? a.minutes - b.minutes : sort === 'level' ? a.level.localeCompare(b.level) : (b.publishedAt ?? 0) - (a.publishedAt ?? 0)), [activities, query, filters, describing, onlineOnly, kind, sort]);
   useEffect(() => { if (query.trim()) recordHubSearch(query, matches.length); }, [query, matches.length]);
   const openActivity = (id: string) => { hub.recordViewed(id); setRoute({ tab, collection: selectedCollection?.id, activity: id }); };
   const activityCards = (items: HubActivity[]) => <div className="rh-activity-grid">{items.map(a => <ActivityCard key={a.id} activity={a} saved={hub.savedIds.includes(a.id)} onOpen={() => openActivity(a.id)} onSave={() => hub.toggleSaved(a.id)} />)}</div>;
@@ -141,9 +168,11 @@ export function ResourceHubPage() {
           <section className="rh-collection-hero" style={{ '--rh-collection-accent': selectedCollection.accent } as CSSProperties}><img src={selectedCollection.cover} alt="" /><div><span className="rh-kicker">COLLECTION · BY ELT SUITE</span><h1>{selectedCollection.title}</h1><p>{selectedCollection.promise}</p><div className="rh-hero-facts"><span>{selectedCollection.level}</span><span>{activities.filter(a => a.collectionId === selectedCollection.id && a.status === 'ready').length ? `${activities.filter(a => a.collectionId === selectedCollection.id && a.status === 'ready').length} printable ${activities.filter(a => a.collectionId === selectedCollection.id && a.status === 'ready').length === 1 ? 'activity' : 'activities'}` : 'Coming soon'}</span></div><button type="button" className="rh-collection-hero-follow" aria-pressed={hub.followedIds.includes(selectedCollection.id)} onClick={() => hub.toggleFollowed(selectedCollection.id)}>{hub.followedIds.includes(selectedCollection.id) ? '✓ Following collection' : '+ Follow collection'}</button></div></section>
           {activities.some(a => a.collectionId === selectedCollection.id && a.status === 'ready') ? <><div className="rh-section-heading"><div><span className="rh-kicker">ACTIVITIES</span><h2>Explore {selectedCollection.title}</h2></div></div>{activityCards(activities.filter(a => a.collectionId === selectedCollection.id))}</> : <section className="rh-empty"><h2>In the making</h2><p>This collection is being prepared. Explore Off the Page while we add the complete activities.</p><button type="button" className="rh-primary" onClick={() => setRoute({ tab: 'collections', collection: 'otp' })}>Explore Off the Page <Icon name="arrow" /></button></section>}
         </> : tab === 'discover' ? <>
-          <section className="rh-discover-hero"><div className="rh-search" role="search"><Icon name="search" size={20} />{describing ? <textarea value={query} onChange={e => setQuery(e.target.value)} rows={2} placeholder="Tell us your topic, level or language goal…" aria-label="Describe the activity you need" /> : <input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Find an activity, topic or language point…" aria-label="Search activities" />}{query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={16} /></button>}<button type="button" className="rh-describe" aria-pressed={describing} onClick={() => { setDescribing(!describing); setQuery(''); }}>{describing ? 'Simple search' : 'Describe what you need'}</button></div>{describing && <p className="rh-search-hint">We match words in activity titles and descriptions. Complete activities are marked “Printable activity”.</p>}<div className="rh-filter-row">{(Object.keys(FILTER_CHOICES) as (keyof Filters)[]).map(k => <FilterMenu key={k} name={k} value={filters[k]} options={FILTER_CHOICES[k]} onChange={value => setFilters(prev => ({ ...prev, [k]: value }))} />)}<button type="button" className="rh-quick-chip" onClick={() => setRoute({ tab: 'collections', collection: 'nop' })}>No prep</button><button type="button" className="rh-quick-chip" onClick={() => setRoute({ tab: 'collections', collection: 'wfc' })}>Under 10 minutes</button><button type="button" className="rh-quick-chip" onClick={() => setQuery('speaking')}>Speaking</button><button type="button" className="rh-quick-chip" onClick={() => setQuery('pairs')}>Pair work</button><button type="button" className={onlineOnly ? 'rh-quick-chip on' : 'rh-quick-chip'} aria-pressed={onlineOnly} onClick={() => setOnlineOnly(value => !value)}>Works online</button></div></section>
-          {query || onlineOnly || Object.values(filters).some((value, i) => value !== Object.values(DEFAULT_FILTERS)[i]) ? <section className="rh-section"><div className="rh-section-heading"><div><span className="rh-kicker">SEARCH RESULTS</span><h2>{matches.length} matching activities</h2></div><button type="button" className="rh-text-button" onClick={() => { setQuery(''); setFilters(DEFAULT_FILTERS); setOnlineOnly(false); }}>Clear filters</button></div>{matches.length ? activityCards(matches) : <div className="rh-empty"><h2>Nothing matched this search</h2><p>Try a language point such as “past simple” or choose fewer filters.</p></div>}</section> : <>
-            <section className="rh-section"><div className="rh-section-heading"><div><h2>For your next lesson</h2></div><button type="button" className="rh-text-button" onClick={() => setRoute({ tab: 'collections', collection: 'otp' })}>See Off the Page <Icon name="arrow" size={15} /></button></div>{activityCards(activities.filter(a => a.status === 'ready').slice(0, 3))}</section>
+          <section className="rh-discover-hero"><div className="rh-search" role="search"><Icon name="search" size={20} />{describing ? <textarea value={query} onChange={e => setQuery(e.target.value)} rows={2} placeholder="Tell us your topic, level or language goal…" aria-label="Describe the activity you need" /> : <input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a lesson, activity, topic or language point…  (press /)" aria-label="Search activities" />}{query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={16} /></button>}<button type="button" className="rh-describe" aria-pressed={describing} onClick={() => { setDescribing(!describing); setQuery(''); }}>{describing ? 'Simple search' : 'Describe what you need'}</button></div>{describing && <p className="rh-search-hint">We match words in activity titles and descriptions. Complete activities are marked “Printable activity”.</p>}<div className="rh-filter-row"><div className="rh-kinds" role="radiogroup" aria-label="What to show">{([['all', 'Everything'], ['lesson', 'Lessons'], ['activity', 'Activities']] as const).map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>{l}</button>)}</div>{(Object.keys(FILTER_CHOICES) as (keyof Filters)[]).map(k => <FilterMenu key={k} name={k} value={filters[k]} options={FILTER_CHOICES[k]} onChange={value => setFilters(prev => ({ ...prev, [k]: value }))} />)}<button type="button" className="rh-quick-chip" onClick={() => setRoute({ tab: 'collections', collection: 'nop' })}>No prep</button><button type="button" className="rh-quick-chip" onClick={() => setRoute({ tab: 'collections', collection: 'wfc' })}>Under 10 minutes</button><button type="button" className="rh-quick-chip" onClick={() => setQuery('speaking')}>Speaking</button><button type="button" className="rh-quick-chip" onClick={() => setQuery('pairs')}>Pair work</button><button type="button" className={onlineOnly ? 'rh-quick-chip on' : 'rh-quick-chip'} aria-pressed={onlineOnly} onClick={() => setOnlineOnly(value => !value)}>Works online</button></div></section>
+          {query || onlineOnly || kind !== 'all' || Object.values(filters).some((value, i) => value !== Object.values(DEFAULT_FILTERS)[i]) ? <section className="rh-section"><div className="rh-section-heading"><div><span className="rh-kicker">SEARCH RESULTS</span><h2>{matches.length === 1 ? '1 match' : `${matches.length} matches`}</h2></div><span className="rh-sort"><Select value={sort} options={[{ v: 'new', label: 'Newest first' }, { v: 'short', label: 'Shortest first' }, { v: 'level', label: 'By level' }]} onChange={v => setSort(v as 'new' | 'short' | 'level')} label="Sort" search={false} /></span><button type="button" className="rh-text-button" onClick={() => { setQuery(''); setFilters(DEFAULT_FILTERS); setOnlineOnly(false); setKind('all'); }}>Clear filters</button></div>{matches.length ? activityCards(matches) : <div className="rh-empty"><h2>Nothing matched this search</h2><p>Try a language point such as “past simple” or choose fewer filters.</p></div>}</section> : <>
+            {(() => { const recent = hub.recentIds.map(id => activities.find(a => a.id === id)).filter((a): a is HubActivity => !!a && a.status === 'ready').slice(0, 3); return recent.length ? <section className="rh-section"><div className="rh-section-heading"><div><h2>Pick up where you left off</h2><p>What you opened recently</p></div></div>{activityCards(recent)}</section> : null; })()}
+            {(() => { if (!levels.length) return null; const fit = activities.filter(a => a.status === 'ready' && levels.some(l => a.level.toUpperCase().includes(l)) && !hub.recentIds.slice(0, 3).includes(a.id)).slice(0, 3); return fit.length ? <section className="rh-section"><div className="rh-section-heading"><div><h2>For your classes</h2><p>At {levels.join(', ')}, the levels you teach</p></div></div>{activityCards(fit)}</section> : null; })()}
+            <section className="rh-section"><div className="rh-section-heading"><div><h2>New in the Hub</h2></div><button type="button" className="rh-text-button" onClick={() => setRoute({ tab: 'collections', collection: 'otp' })}>See Off the Page <Icon name="arrow" size={15} /></button></div>{(() => { const ready = [...activities].filter(a => a.status === 'ready').sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0)); const above = new Set([...hub.recentIds.slice(0, 3), ...ready.filter(a => levels.some(l => a.level.toUpperCase().includes(l))).slice(0, 3).map(a => a.id)]); const fresh = ready.filter(a => !above.has(a.id)); return activityCards((fresh.length ? fresh : ready).slice(0, 3)); })()}</section>
             <section className="rh-section"><div className="rh-section-heading"><div><h2>Collections</h2><p>Photocopiable books by ELT Suite</p></div><button type="button" className="rh-text-button" onClick={() => setRoute({ tab: 'collections' })}>All collections <Icon name="arrow" size={15} /></button></div>{collectionCards(collections)}</section>
           </>}
         </> : tab === 'collections' ? <section className="rh-section"><button type="button" className="rh-back" onClick={() => setRoute({ tab: 'discover' })}>← Discover</button><div className="rh-section-heading"><div><h1>Collections</h1><p>Photocopiable books by ELT Suite</p></div></div>{collectionCards(collections)}</section> : <HubShelves activities={activities} collections={collections} syncStatus={hub.syncStatus} savedIds={hub.savedIds} followedIds={hub.followedIds} recentIds={hub.recentIds} namedShelves={hub.namedShelves} onCreateShelf={hub.createShelf} onRemoveShelf={hub.removeShelf} onToggleShelfActivity={hub.toggleShelfActivity} onOpen={openActivity} onRemove={hub.toggleSaved} onFollow={hub.toggleFollowed} onCollection={id => setRoute({ tab: 'collections', collection: id as HubCollectionId })} onDiscover={() => setRoute({ tab: 'discover' })} />}

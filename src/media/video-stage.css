@@ -1,0 +1,85 @@
+/* The video stage (VideoStage.tsx): controls on the picture, fading while it plays. */
+.vs { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 80vh; overflow: hidden; border-radius: 14px; background: #0d0c0b; color: #fff; font-family: var(--sans); outline: none; isolation: isolate; user-select: none; }
+.vs:focus-visible { box-shadow: 0 0 0 3px var(--accent-text); }
+.vs.inline { display: inline-block; vertical-align: top; }
+.vs.full { border-radius: 0; max-height: none; height: 100%; aspect-ratio: auto; }
+.vs-screen { position: absolute; inset: 0; display: grid; place-items: center; }
+.vs-screen video, .vs-screen iframe, .vs-screen > div { width: 100% !important; height: 100% !important; border: 0; object-fit: contain; background: #000; display: block; }
+.vs.hidden-pic .vs-screen { visibility: hidden; }
+.vs-cover { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: radial-gradient(circle at 50% 40%, #2c2925, #121110); color: #e9e4dc; text-align: center; padding: 20px; }
+.vs-cover b { font-size: 17px; font-weight: 600; } .vs-cover span { font-size: 13.5px; color: #b9b2a8; }
+.vs-hit { position: absolute; inset: 0; z-index: 2; cursor: pointer; }
+.vs:not(.awake) .vs-hit { cursor: none; }
+.vs-big { position: absolute; z-index: 4; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; display: grid; place-items: center; padding-left: 5px; border: 0; border-radius: 50%; background: rgba(20, 19, 17, .62); color: #fff; backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); cursor: pointer; transition: transform .15s, background .15s; }
+.vs-big:hover { transform: scale(1.06); background: var(--accent-text, #3667a6); }
+.vs-wait { position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 13px; color: #cfc9c0; }
+.vs-flash { position: absolute; z-index: 6; left: 50%; top: 22%; transform: translateX(-50%); padding: 8px 14px; border-radius: 10px; background: rgba(20, 19, 17, .72); font: 600 14px var(--sans); white-space: nowrap; pointer-events: none; animation: vs-in .15s ease-out; }
+@keyframes vs-in { from { opacity: 0; transform: translate(-50%, 4px); } }
+.vs-cap { position: absolute; z-index: 3; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: min(86%, 900px); padding: 6px 14px; border-radius: 8px; background: rgba(12, 11, 10, .74); font: 500 clamp(14px, 2.2vw, 22px)/1.4 var(--sans); text-align: center; pointer-events: none; transition: bottom .2s; }
+.vs.full .vs-cap { font-size: clamp(18px, 2.6vw, 34px); }
+.vs-cap.up { bottom: 92px; }
+.vs-cap b { color: #f5c97a; font-weight: 600; }
+.vs-top { position: absolute; z-index: 4; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px; padding: 12px 16px 28px; background: linear-gradient(rgba(0, 0, 0, .55), transparent); pointer-events: none; transition: opacity .25s; }
+.vs-title { flex: 1; min-width: 0; font: 600 14.5px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.vs-pill { flex: none; padding: 3px 9px; border-radius: 99px; background: rgba(255, 255, 255, .18); font: 600 12px var(--sans); backdrop-filter: blur(6px); }
+.vs-ctrl { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 26px 12px 8px; background: linear-gradient(transparent, rgba(0, 0, 0, .72)); transition: opacity .25s; }
+.vs:not(.awake) :is(.vs-ctrl, .vs-top) { opacity: 0; pointer-events: none; }
+.vs-bar { position: relative; height: 18px; margin: 0 6px; cursor: pointer; touch-action: none; }
+.vs-track, .vs-done, .vs-loop { position: absolute; left: 0; top: 7px; height: 4px; border-radius: 2px; transition: height .12s, top .12s; }
+.vs-track { right: 0; background: rgba(255, 255, 255, .28); }
+.vs-done { background: var(--accent, #d98f63); }
+.vs-loop { top: 3px; height: 12px; border-radius: 3px; background: rgba(245, 201, 122, .38); box-shadow: inset 0 0 0 1.5px #f5c97a; }
+.vs-bar:hover :is(.vs-track, .vs-done), .vs-bar.drag :is(.vs-track, .vs-done) { top: 6px; height: 6px; }
+.vs-mark { position: absolute; top: 6px; width: 2px; height: 6px; margin-left: -1px; background: rgba(255, 255, 255, .7); border-radius: 1px; pointer-events: none; }
+.vs-knob { position: absolute; top: 3px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); transform: scale(0); transition: transform .12s; }
+.vs-bar:hover .vs-knob, .vs-bar.drag .vs-knob, .vs:focus-within .vs-knob { transform: scale(1); }
+.vs-tip { position: absolute; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 260px; padding: 6px 10px; border-radius: 8px; background: rgba(20, 19, 17, .9); pointer-events: none; white-space: nowrap; }
+.vs-tip i { font: italic 12px/1.3 var(--sans); color: #ddd6cc; white-space: normal; text-align: center; max-width: 240px; }
+.vs-tip b { font: 600 12.5px var(--sans); }
+.vs-row { display: flex; align-items: center; gap: 2px; min-height: 42px; }
+.vs-b { width: 38px; height: 38px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none; color: #fff; cursor: pointer; transition: background .12s; }
+.vs-b:hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.vs-b.on { color: #f5c97a; }
+.vs-b:disabled { opacity: .4; cursor: default; }
+.vs-b:focus-visible, .vs-time:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.vs-skip { position: relative; display: grid; place-items: center; }
+.vs-skip small { position: absolute; bottom: -9px; font: 700 8.5px var(--sans); }
+.vs-vol { display: inline-flex; align-items: center; }
+.vs-vol input { width: 0; opacity: 0; accent-color: #fff; transition: width .18s, opacity .18s; }
+.vs-vol:hover input, .vs-vol:focus-within input { width: 80px; opacity: 1; margin-right: 6px; }
+.vs-time { height: 38px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: #fff; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
+.vs-time span { color: rgba(255, 255, 255, .65); font-weight: 500; }
+.vs-gap { flex: 1; }
+.vs-rate { width: auto; min-width: 38px; padding: 0 8px; font: 700 13px var(--sans); }
+.vs-menu-wrap { position: relative; }
+.vs-menu { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 8; min-width: 130px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: rgba(28, 26, 24, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .45); backdrop-filter: blur(10px); }
+.vs-menu.wide { min-width: 260px; }
+.vs-menu-h { padding: 6px 10px 4px; font: 700 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .55); }
+.vs-menu button { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: #fff; font: 13.5px var(--sans); text-align: left; cursor: pointer; white-space: nowrap; }
+.vs-menu button:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+.vs-menu button.on { color: #f5c97a; font-weight: 600; }
+.vs-menu button:disabled { opacity: .45; cursor: default; }
+.vs-menu kbd { margin-left: auto; padding: 1px 6px; border-radius: 5px; background: rgba(255, 255, 255, .14); font: 600 11px var(--sans); }
+.vs-keys { position: absolute; z-index: 9; inset: 10% 12%; display: flex; flex-direction: column; padding: 16px 20px; border-radius: 14px; background: rgba(22, 21, 19, .95); overflow-y: auto; }
+.vs-keys header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 15px; }
+.vs-keys dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 20px; }
+.vs-keys dl > div { display: flex; gap: 12px; font-size: 13px; }
+.vs-keys dt { min-width: 92px; font-weight: 700; color: #f5c97a; }
+.vs-keys dd { margin: 0; color: #e7e1d8; }
+.vs-error { position: absolute; z-index: 6; left: 16px; right: 16px; bottom: 70px; margin: 0; padding: 8px 12px; border-radius: 8px; background: rgba(120, 40, 30, .85); font-size: 13.5px; }
+@media (max-width: 640px) {
+  .vs-row .vs-b:nth-of-type(2), .vs-row .vs-b:nth-of-type(3) { display: none; }
+  .vs-vol input { display: none; }
+  .vs-b { width: 34px; height: 34px; }
+}
+@media (hover: none) { .vs-knob { transform: scale(1); } }
+/* Inside the player card: the stage leads, its own title replaces the card's. */
+.mp.vs-host { padding-top: 0; display: flex; flex-direction: column; gap: 8px; }
+.mp-inline.vs-host { display: flex; flex-direction: column; gap: 6px; }
+.vs-speakers { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Small inline videos keep only what fits. */
+.inline-media.im-s .vs-row > :is(.vs-time, .vs-b[aria-label^="Loop"], .vs-b[aria-label^="Pause after"], .vs-b[aria-label*="picture"]) { display: none; }
+.inline-media.im-s .vs-title { font-size: 12.5px; }
+.vs-cap b { display: inline; }
+.vs-cap { left: 0; right: 0; width: fit-content; margin: 0 auto; transform: none; }
+.vs .vs-cap { display: block !important; } .vs .vs-cap b { display: inline !important; }

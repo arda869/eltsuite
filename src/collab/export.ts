@@ -1,4 +1,5 @@
 import { fillFields, marginBoxesCss, stylesCss } from './documentLayout';
+import { indentCss, indentsOf } from './DocumentStructure';
 import type { WsItem, WsTask } from '../lib/worksheet';
 import {studioDefinition} from '../coach/studioForms';
 import { credit } from '../lib/brand';
@@ -13,8 +14,8 @@ import { inText, orderFor, piecesText, reference, refsTitle, type CiteStyle, typ
 // are shown as if accepted; comments are left out. Citations and the reference list are written
 // in the document's citation style, so an assignment can go straight to a tutor.
 
-export type ExportOpts = { style: CiteStyle; font: string; size: number; spacing: number; title: boolean; pageNumbers: boolean; wordCount: boolean; layout?: Layout };
-export const EXPORT_DEFAULT: ExportOpts = { style: 'apa', font: 'Arial', size: 12, spacing: 1.5, title: true, pageNumbers: true, wordCount: false };
+export type ExportOpts = { style: CiteStyle; font: string; size: number; spacing: number; title: boolean; pageNumbers: boolean; wordCount: boolean; answerKey?: boolean; layout?: Layout };
+export const EXPORT_DEFAULT: ExportOpts = { style: 'apa', font: 'Arial', size: 12, spacing: 1.5, title: true, pageNumbers: true, wordCount: false, answerKey: true };
 export const FONTS = ['Arial', 'Calibri', 'Times New Roman', 'Georgia', 'Verdana'];
 
 // A date chip as written text: Tue, 24 November 2026.
@@ -23,8 +24,13 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const cssString = (s: string) => JSON.stringify(s).replace(/</g, '\\3c ');
 const layoutOptions = (o: ExportOpts): ExportOpts => o.layout ? { ...o, font: o.layout.font, size: o.layout.pt, spacing: o.layout.lineSpacing, pageNumbers: o.layout.pageNumbers } : o;
 const worksheetNodes = new WeakMap<JSONContent, string>();
-export async function prepareDocumentPrint(json: JSONContent, mediaSpace = '') {
-  const [{ flattenTask }, { inlineWorksheetHtml }] = await Promise.all([import('../lib/worksheet'), import('../lib/worksheetHtml')]);
+const answerKeyRows = new WeakMap<JSONContent, { n: string; text: string }[]>();
+// A shared document can allow learner downloads without exposing its answer key.
+export const exportForRole = (options: ExportOpts, teacher: boolean): ExportOpts => teacher ? options : { ...options, answerKey: false };
+// The pieces of a document the print engine draws (questions, tables for tasks, timelines…), each as
+// a task of its own, in order.
+export async function printableTasks(json: JSONContent): Promise<[JSONContent, WsTask][]> {
+  const { flattenTask } = await import('../lib/worksheet');
   const paperBlocks = new Set(['tt','dialogue','timeline','storyboard','diagram','pdfBlock','board','drawBoard','textBox','reveal','revealBox','randomPick','classroomGame','speakingPractice','investigation','bankLink','collab','upload','media','dictCut','linkCard','subTask','reflect','survey','wordbank','writing','match','order','pq','mcq']);
   const nativeInline = (n: JSONContent): boolean => ['gap','choice','dropgap','picture','inlineMedia','subst','phonChart','phonCard','icon','plink','mention','lessonLink'].includes(n.type || '') || !!n.content?.some(nativeInline);
   const printable: [JSONContent, WsTask][] = [];
@@ -36,11 +42,45 @@ export async function prepareDocumentPrint(json: JSONContent, mediaSpace = '') {
     } else n.content?.forEach(walk);
   };
   walk(json);
+  return printable;
+}
+export async function prepareDocumentPrint(json: JSONContent, mediaSpace = '') {
+  const [printable, { inlineWorksheetHtml }] = await Promise.all([printableTasks(json), import('../lib/worksheetHtml')]);
   const items: WsItem[] = printable.map(([,task]) => ({kind:'task',task}));
   const {sheetPictures,sheetSounds} = await import('../lib/sheetMedia');
   const [pictures,sounds] = mediaSpace ? await Promise.all([sheetPictures(mediaSpace,items),sheetSounds(mediaSpace,items,'#975f40')]) : [{},{}];
   for(const [node,task] of printable) worksheetNodes.set(node,inlineWorksheetHtml(task,pictures,sounds));
+  answerKeyRows.set(json, answerRows(printable.map(([, t]) => t)));
 }
+
+// The answer key: made from the questions in the document, numbered in the order they appear, and
+// printed on its own page at the end (unless it is switched off when downloading).
+export function answerRows(tasks: WsTask[]) {
+  const rows: { n: string; text: string }[] = [];
+  let g = 0;
+  for (const t of tasks) {
+    for (const a of t.answers ?? []) {
+      if (!a.text?.trim()) continue;
+      const span = a.label?.match(/^(\d+)[–-](\d+)$/);
+      if (span) {
+        const count = Number(span[2]) - Number(span[1]) + 1;
+        const first = g + 1;
+        g += count;
+        // “1 b, 2 a” in a matching task, renumbered to run on through the document.
+        const text = a.text.replace(/(^|,\s*)(\d+)(?=\s)/g, (_m, sep, n) => sep + String(Number(n) - Number(span[1]) + first));
+        rows.push({ n: `${first}–${g}`, text });
+      } else rows.push({ n: String(++g), text: a.text });
+    }
+  }
+  return rows;
+}
+// Tabs on paper reach to the same stops as on screen: measured in the print window before printing.
+const tabScript = (tabs: number[]) => `(function(){var T=${JSON.stringify([...tabs].sort((p, q) => p - q))},S=48;function next(x){for(var i=0;i<T.length;i++)if(T[i]>x+1)return T[i];return (Math.floor(x/S)+1)*S;}var o=document.body.getBoundingClientRect().left,sp=[].slice.call(document.querySelectorAll('.doc-tab'));sp.forEach(function(s){s.style.display='inline-block';s.style.width='0px';});sp.forEach(function(s){var x=s.getBoundingClientRect().left-o;s.style.width=Math.max(4,next(x)-x)+'px';});})();`;
+const keyRowsFor = (json: JSONContent) => answerKeyRows.get(json) ?? [];
+const showKey = (json: JSONContent, o: ExportOpts) => o.answerKey !== false && keyRowsFor(json).length > 0;
+const keyHtml = (json: JSONContent, o: ExportOpts) => showKey(json, o)
+  ? `<section class="doc-key" style="break-before: page; page-break-before: always;"><h2>Answer key</h2><ol class="doc-key-list" style="list-style: none; padding: 0; margin: 0;">${keyRowsFor(json).map((r) => `<li style="display: flex; gap: 10pt; margin: 0 0 2.5mm; break-inside: avoid;"><b style="min-width: 3.2em; color: #66615b;">${esc(r.n)}</b><span>${esc(r.text)}</span></li>`).join('')}</ol></section>`
+  : '';
 const hex = (c?: string) => {
   const v = textColor(c) ?? '';
   return v.startsWith('#') ? v : c === 'accent' ? '#b8744e' : '';
@@ -103,6 +143,7 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
   if (n.type === 'mention') return '@'+esc(String(n.attrs?.label || n.attrs?.name || 'colleague'));
   if (n.type === 'lessonLink') return esc(String(n.attrs?.title || n.attrs?.label || 'Linked activity'));
   if (n.type === 'hardBreak') return '<br>';
+  if (n.type === 'docTab') return '<span class="doc-tab" style="white-space:pre">\t</span>';
   if (n.type === 'dateChip') return esc(chipDate(String(n.attrs?.date ?? '')));
   if (n.type === 'personChip') return '@' + esc(String(n.attrs?.name ?? ''));
   if (n.type === 'bookmark') return '';
@@ -117,12 +158,12 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
   return (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
 }
 const align = (n: JSONContent) => {
-  const styles = [n.attrs?.textAlign && ['left', 'right', 'center', 'justify'].includes(n.attrs.textAlign) ? `text-align:${n.attrs.textAlign}` : '', n.attrs?.indent ? `margin-inline-start:${Math.max(0, Math.min(8, Number(n.attrs.indent))) * 12.7}mm` : ''].filter(Boolean).join(';');
+  const styles = [n.attrs?.textAlign && ['left', 'right', 'center', 'justify'].includes(n.attrs.textAlign) ? `text-align:${n.attrs.textAlign}` : '', indentCss(n.attrs)].filter(Boolean).join(';');
   return styles ? ` style="${styles}"` : '';
 };
 // What the plain exporter writes itself; anything else (text boxes, timelines, sound cards,
 // pronunciation marks) is printed as it looks on screen.
-const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym', 'docPageBreak', 'docSection', 'dateChip', 'personChip', 'bookmark']);
+const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym', 'docPageBreak', 'docTab', 'docSection', 'dateChip', 'personChip', 'bookmark']);
 const PLAIN_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'textColor', 'highlight', 'definition', 'suggestIns', 'suggestDel', 'comment', 'link']);
 export function plainOnly(n: JSONContent): boolean {
   if (!PLAIN_BLOCKS.has(n.type ?? '')) return false;
@@ -206,12 +247,14 @@ export async function printDoc(json: JSONContent, title: string, o: ExportOpts =
   const metrics = o.layout ? pageMetrics(o.layout) : null;
   const footer = [o.layout?.footer ? cssString(o.layout.footer) : '', o.pageNumbers ? 'counter(page)' : ''].filter(Boolean).join(' " · " ');
   const words = wordCount(json);
+  // The organisation's logo (or ELT Suite's) in the header, when the document asks for it.
+  const runLogo = o.layout?.runLogo ? await import('../lib/brand').then((m) => m.brandMark()).then((b) => ({ url: b.dataUrl, w: b.w, h: b.h })).catch(() => null) : null;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>${needsApp ? `<base href="${location.origin}/">${appStyles()}` : ''}
 <style>
 html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layout.pageColour) ? o.layout.pageColour : '#fff'} !important; min-height: 0 !important; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
 @page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; ${o.layout ? '' : `@top-center { content: none; } @bottom-center { content: ${footer || 'none'}; }`} }
-${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }, { title }) : ''}
+${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }, { title, logo: runLogo }) : ''}
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
 ${metrics ? `@page landscape { size: ${metrics.css} landscape; } @page portrait { size: ${metrics.css} portrait; } section[data-orient="landscape"] { page: landscape; break-before: page; } section[data-orient="portrait"] { page: portrait; break-before: page; }` : ''}
 ${stylesCss(o.layout?.styles, 'body', (c) => textColor(c) ?? c)}
@@ -224,8 +267,8 @@ table { border-collapse: collapse; width: 100%; margin: 3mm 0; } td, th { border
 td p, th p { margin: 0; } img { max-width: 100%; }
 .ref { padding-left: 12.7mm; text-indent: -12.7mm; } .ipa { font-family: 'Lucida Sans Unicode', 'Segoe UI', sans-serif; }
 .defn { color: #666; } .wc { color: #555; font-size: ${o.size - 1}pt; margin-top: 8mm; }
-</style></head><body>${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json, live)}${o.wordCount ? `<p class="wc">Word count: ${words} (without the reference list)</p>` : ''}
-<script>setTimeout(() => print(), ${needsApp ? 900 : 300});</script></body></html>`);
+</style></head><body>${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json, live)}${keyHtml(json, o)}${o.wordCount ? `<p class="wc">Word count: ${words} (without the reference list)</p>` : ''}
+<script>${tabScript(o.layout?.tabs ?? [])}setTimeout(() => print(), ${needsApp ? 900 : 300});</script></body></html>`);
   w.document.close();
 }
 
@@ -253,6 +296,7 @@ function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []
     else if (n.type === 'stress') (n.attrs?.syllables ?? []).forEach((s: string, i: number) => out.push(i === Number(n.attrs?.stressed ?? 0) ? { text: s, bold: true, underline: {} } : { text: s }));
     else if (n.type === 'sym') out.push({ text: ` ${n.attrs?.text ?? ''} `, bold: true });
     else if (n.type === 'hardBreak') out.push({ text: '\n' });
+    else if (n.type === 'docTab') out.push({ text: '\t' });
     else if (n.type === 'dateChip') out.push({ text: chipDate(String(n.attrs?.date ?? '')) });
     else if (n.type === 'personChip') out.push({ text: '@' + String(n.attrs?.name ?? ''), bold: true });
     else if (n.type === 'bookmark') { /* not printed */ }
@@ -281,8 +325,12 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   const sz = o.size * 2;
   const line = Math.round(o.spacing * 240);
   const al = (n: JSONContent) => ({ center: AlignmentType.CENTER, right: AlignmentType.RIGHT, justify: AlignmentType.JUSTIFIED }[n.attrs?.textAlign as string] ?? undefined);
-  const run = (r: Run, extra: Record<string, unknown> = {}) => new TextRun({ ...r, font: r.font ?? o.font, size: r.size ?? sz, ...extra } as never);
-  const para = (runs: Run[], opts: Record<string, unknown> = {}) => new Paragraph({ spacing: { after: 160, line }, ...opts, children: runs.map((r) => run(r)) });
+  const run = (r: Run, extra: Record<string, unknown> = {}) => (r.text === '\t' ? new TextRun({ children: [new D.Tab()], font: r.font ?? o.font, size: r.size ?? sz } as never) : new TextRun({ ...r, font: r.font ?? o.font, size: r.size ?? sz, ...extra } as never));
+  // The tab stops set on the ruler, in twentieths of a point.
+  const tabStops = (o.layout?.tabs ?? []).map((t) => ({ type: D.TabStopType.LEFT, position: Math.round(t * 15) }));
+  const para = (runs: Run[], opts: Record<string, unknown> = {}) => new Paragraph({ spacing: { after: 160, line }, ...(tabStops.length ? { tabStops } : {}), ...opts, children: runs.map((r) => run(r)) });
+  // A paragraph's indents (px) in twips: the left edge, the first line or a hanging indent, the right edge.
+  const indentOf = (n: JSONContent) => { const i = indentsOf(n.attrs); return i.left || i.first || i.right ? { indent: { left: Math.round(i.left * 15), right: Math.round(i.right * 15), ...(i.first < 0 ? { hanging: Math.round(-i.first * 15) } : i.first > 0 ? { firstLine: Math.round(i.first * 15) } : {}) } } : {}; };
   type Block = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
   let out: Block[] = [];
   const sectionParts: { children: Block[]; columns: number; newPage: boolean; orient?: string | null }[] = [];
@@ -306,6 +354,15 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   const cellParas = (c: JSONContent, head: boolean) => (c.content ?? []).map((p) => new Paragraph({ spacing: { after: 0, line: 260 }, children: runsOf(p.content, o).map((r) => run(head ? { ...r, bold: true } : r, { size: sz - 2 })) }));
   const walk = async (n: JSONContent, list?: { kind: 'bullet' | 'number'; i: number }) => {
     if (worksheetNodes.has(n)) {
+      // Its printed look as a picture, so nothing is lost in Word; the words alone if that fails.
+      const { paperPng } = await import('./paperImage');
+      const m = o.layout ? pageMetrics(o.layout) : null;
+      const width = m ? Math.round(Math.min(m.w, m.h) - m.m.left - m.m.right) : 600;
+      const pic = await paperPng(worksheetNodes.get(n)!, o.font, Math.max(240, width)).catch(() => null);
+      if (pic) {
+        out.push(new Paragraph({ spacing: { after: 160 }, children: [new ImageRun({ type: 'png', data: pic.png, transformation: { width: Math.round(pic.w), height: Math.round(pic.h) } } as never)] }));
+        return;
+      }
       const html = new DOMParser().parseFromString(worksheetNodes.get(n)!, 'text/html');
       html.querySelectorAll('.blank').forEach((el) => { el.textContent = ' __________ '; });
       const text = (html.body.textContent ?? '').trim();
@@ -317,7 +374,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
         for (const c of n.content ?? []) await walk(c);
         return;
       case 'paragraph':
-        out.push(para(list?.kind === 'number' ? [{ text: `${list.i}. ` }, ...runsOf(n.content, o)] : runsOf(n.content, o), { alignment: al(n), ...(n.attrs?.indent ? { indent: { left: Math.min(8, Number(n.attrs.indent)) * 720 } } : {}), ...(list?.kind === 'bullet' ? { bullet: { level: 0 } } : {}) }));
+        out.push(para(list?.kind === 'number' ? [{ text: `${list.i}. ` }, ...runsOf(n.content, o)] : runsOf(n.content, o), { alignment: al(n), ...indentOf(n), ...(list?.kind === 'bullet' ? { bullet: { level: 0 } } : {}) }));
         return;
       case 'studioForm': {const a=n.attrs||{},f=studioDefinition(a.kind);out.push(para([{text:String(a.title||f?.name||'Studio form'),bold:true}]));if(a.kind==='reading'){out.push(para([{text:'Reference',bold:true}]));out.push(para([{text:String(a.reference?.title?piecesText(reference(a.reference as Source,o.style)):a.fields?.source||'')}]));}for(const [key,label] of f?.fields||[]){out.push(para([{text:label,bold:true}]));out.push(para([{text:String(a.fields?.[key]||'')}]));}for(const e of a.examples||[])out.push(para([{text:[e.text,e.source,e.location,e.licence].filter(Boolean).join(' · ')}]));return;}
       case 'docPageBreak':
@@ -377,6 +434,10 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
     }
   };
   await walk(json);
+  if (showKey(json, o)) {
+    out.push(new Paragraph({ heading: HeadingLevel.HEADING_2, pageBreakBefore: true, spacing: { after: 200 }, children: [new TextRun({ text: 'Answer key', bold: true, font: o.font, size: sz + 3, color: '000000' })] }));
+    for (const r of keyRowsFor(json)) out.push(new Paragraph({ spacing: { after: 100, line }, indent: { left: 900, hanging: 900 }, children: [new TextRun({ text: r.n + '\t', bold: true, font: o.font, size: sz, color: '66615B' }), new TextRun({ text: r.text, font: o.font, size: sz })] }));
+  }
   if (o.wordCount) out.push(new Paragraph({ spacing: { before: 360 }, children: [new TextRun({ text: `Word count: ${wordCount(json)} (without the reference list)`, font: o.font, size: sz - 2, color: '555555' })] }));
   const mark = (t: string) => new TextRun({ text: t, font: o.font, size: sz - 4, color: '8A847D', bold: !!o.layout?.runBold, italics: !!o.layout?.runItalic });
   // A header or footer's text with its fields: the title and date written in, page numbers as Word fields.
@@ -421,5 +482,5 @@ export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EX
   o = layoutOptions(o);
   numberAll(json, o.style);
   const style = `font-family:${cssString(o.font)};font-size:${o.size}pt;line-height:${o.spacing};column-count:${o.layout?.columns ?? 1};column-gap:18pt`;
-  return `<style>${stylesCss(o.layout?.styles, '.doc-export', (c) => textColor(c) ?? c)}.doc-worksheet .blank{display:inline-block;border-bottom:1px solid #333;min-width:3em;height:1em}.doc-worksheet .qn{margin-right:.5em}.doc-worksheet .stack{display:flex;gap:1em;flex-wrap:wrap}.doc-worksheet .line{display:block;height:1.5em;border-bottom:1px solid #777}.doc-page-break{height:0!important;min-height:0}.doc-page-break span{display:none}</style><div class="doc-export" style="${style.replace(/"/g, '&quot;')}">${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}</div>`;
+  return `<style>${stylesCss(o.layout?.styles, '.doc-export', (c) => textColor(c) ?? c)}.doc-worksheet .blank{display:inline-block;border-bottom:1px solid #333;min-width:3em;height:1em}.doc-worksheet .qn{margin-right:.5em}.doc-worksheet .stack{display:flex;gap:1em;flex-wrap:wrap}.doc-worksheet .line{display:block;height:1.5em;border-bottom:1px solid #777}.doc-page-break{height:0!important;min-height:0}.doc-page-break span{display:none}</style><div class="doc-export" style="${style.replace(/"/g, '&quot;')}">${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}${keyHtml(json, o)}</div>`;
 };

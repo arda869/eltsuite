@@ -7,9 +7,9 @@ import { openTemporaryFirestore, usingTemporaryFirestore } from './firestoreReco
 export type { Profile, TextSize, Reading } from './teacherProfile';
 export { inviteFields } from './teacherProfile';
 
-type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setOnboardingLocal: (goal: string) => void; setAvatarLocal: (k: string) => void };
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setOnboardingLocal: (goal: string) => void; setAvatarLocal: (k: string) => void; setNameLocal: (name: string) => void };
 
-const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setOnboardingLocal: () => {}, setAvatarLocal: () => {} });
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setOnboardingLocal: () => {}, setAvatarLocal: () => {}, setNameLocal: () => {} });
 export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -23,6 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [temporaryConnectionError, setTemporaryConnectionError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const retryGeneration = useRef(0);
+  const signOutNow = async () => {
+    await import('./status').then((status) => status.clearStatusBeforeSignOut()).catch(() => {});
+    await signOut(auth);
+  };
 
   useEffect(() => {
     let generation = 0;
@@ -107,9 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {temporaryConnectionError && <p role="alert">This browser could not open a temporary connection. Please try another browser while your saved work stays here.</p>}
       <button type="button" className="btn" onClick={() => setTemporaryConnectionError(!openTemporaryFirestore())}>Open with temporary connection</button>
     </>}
-    <button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button>
+    <button type="button" className="btn" onClick={() => void signOutNow()}>Sign out</button>
   </section></main>;
-  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow, setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)), setNameLocal: (name: string) => setProfile((p) => (p ? { ...p, displayName: name } : p)) }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

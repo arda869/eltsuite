@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import {
   collection,
   deleteDoc,
@@ -132,7 +133,10 @@ export async function createClass(teacherId: string, input: { name: string; leve
       tx.set(codeRef, { classId: classRef.id, teacherId, className: input.name, roster: [], ...(input.org ? { org: input.org } : {}), createdAt: serverTimestamp() });
       return true;
     });
-    if (ok) return classRef.id;
+    if (ok) {
+      markStep('class');
+      return classRef.id;
+    }
   }
   throw new Error('We couldn’t find a free class code. Try again.');
 }
@@ -160,6 +164,7 @@ export const deleteTopic = (classId: string, topicId: string) => deleteDoc(doc(d
 export async function addItem(classId: string, topicId: string | null, title: string, order: number, type: Item['type'] = 'lesson', due: number | null = null) {
   const ref = doc(collection(db, 'classes', classId, 'items'));
   await setDoc(ref, { topicId, type, title, order, hidden: false, locked: false, ...(type === 'exam' ? { exam: { minutes: null }, examReleased: false } : {}), ...(due ? { due } : {}), createdAt: serverTimestamp() });
+  if (type === 'lesson') markStep('lesson');
   return ref.id;
 }
 

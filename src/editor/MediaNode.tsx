@@ -72,9 +72,9 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
         <div className="md-start">
           {(
             [
-              ['record', 'mic', 'Record'],
+              ['archive', 'folder', 'My Files'],
               ['upload', 'upload', 'Upload sound or video'],
-              ['archive', 'archive', 'My Files'],
+              ['record', 'mic', 'Record'],
               ['link', 'link', 'YouTube or link'],
             ] as const
           ).map(([k, icon, l]) => (

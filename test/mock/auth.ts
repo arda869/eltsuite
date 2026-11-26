@@ -72,7 +72,11 @@ export async function sendPasswordResetEmail() { throw new Error('Use the brande
 export async function updateProfile(u: User, p: { displayName?: string }) {
   const delay = Number(sessionStorage.getItem('mockauth-profile-delay') || 0);
   if (delay) await new Promise((r) => setTimeout(r, delay));
-  if (p.displayName) u.displayName = p.displayName;
+  if (p.displayName) {
+    u.displayName = p.displayName;
+    const all = users();
+    if (all[u.uid]) { all[u.uid].displayName = p.displayName; persist('mockauth', all); }
+  }
 }
 export async function sendEmailVerification() {}
 export async function reauthenticateWithPopup() {}

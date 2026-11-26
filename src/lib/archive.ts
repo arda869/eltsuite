@@ -1,3 +1,4 @@
+import { markStep } from '../start/steps';
 import { writeNamedFile } from './fileNames';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
@@ -57,6 +58,7 @@ export async function archiveAdd(uid: string, item: Omit<ArchiveItem, 'id' | 'cr
   const clean = Object.fromEntries(Object.entries(item).filter(([, v]) => v !== undefined));
   const r = doc(col(uid));
   await writeNamedFile(r, { owner: uid, path: item.folder }, item.name, { ...clean, createdAt: Date.now() }, true, true);
+  markStep(item.kind === 'audio' || item.kind === 'video' ? 'record' : 'files');
   return r.id;
 }
 

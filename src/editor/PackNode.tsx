@@ -144,7 +144,7 @@ export function PictureField({ value, onChange, label = 'Picture', size, onSize,
           {busy === 'Uploading…' ? busy : 'Upload'}
         </button>
         <button type="button" className={'btn small-btn' + (library ? ' on' : '')} disabled={!!busy || !classId || !user} aria-expanded={library} onClick={() => setLibrary((v) => !v)}>
-          {busy === 'Adding…' ? busy : 'From my resources'}
+          {busy === 'Adding…' ? busy : 'From My Files'}
         </button>
         {value && (
           <button type="button" className="icon-btn" aria-label="Remove picture" onClick={() => onChange('')}>

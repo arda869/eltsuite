@@ -1,0 +1,40 @@
+/* Get started on Home, and its guide in the corner (GetStarted.tsx). */
+.gs { display: flex; flex-direction: column; gap: 12px; }
+.gs-head { display: flex; align-items: center; gap: 12px; }
+.gs-ring { position: relative; width: 40px; height: 40px; flex: none; display: grid; place-items: center; }
+.gs-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.gs-ring circle { fill: none; stroke-width: 4; }
+.gs-ring-bg { stroke: var(--surface); }
+.gs-ring-fg { stroke: var(--accent-text); stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+.gs-ring b { position: relative; font: 700 14px var(--sans); color: var(--ink); }
+.gs-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.gs-titles h2 { margin: 0; font: 600 17px var(--sans); }
+.gs-titles span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gs-hide { height: 34px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.gs-hide:hover { color: var(--ink); }
+.gs-hide.primary { border-color: transparent; background: var(--accent-text); color: #fff; }
+.gs-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.gs-step { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); color: var(--ink); text-align: left; font-family: var(--sans); cursor: pointer; transition: border-color .12s, background .12s; }
+.gs-step:hover { border-color: var(--hair-strong); background: color-mix(in srgb, var(--surface) 45%, var(--paper)); }
+.gs-step.next { border-color: color-mix(in srgb, var(--accent-text) 45%, var(--hair)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-text) 25%, transparent); }
+.gs-tick { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--hair-strong); color: var(--muted); font: 700 12px var(--sans); }
+.gs-step.done .gs-tick { border-color: transparent; background: #3f8a5c; color: #fff; }
+.gs-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.gs-text b { font: 600 14px var(--sans); }
+.gs-step.done .gs-text b { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 50%, transparent); }
+.gs-text span { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gs-go { color: var(--muted); font-size: 18px; }
+
+.gs-guide { position: fixed; left: 16px; bottom: 16px; z-index: 900; width: min(320px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 12px; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -16px rgba(0, 0, 0, .35); font-family: var(--sans); animation: gs-in .2s ease-out; }
+@keyframes gs-in { from { opacity: 0; transform: translateY(8px); } }
+.gs-guide header { display: flex; align-items: center; gap: 4px; }
+.gs-k { flex: 1; font: 700 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
+.gs-guide.ok .gs-k { color: #3f8a5c; }
+.gs-x { width: 26px; height: 26px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.gs-x:hover { background: var(--surface); color: var(--ink); }
+.gs-gt { font: 600 14.5px/1.35 var(--sans); }
+.gs-guide ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.gs-guide footer { display: flex; justify-content: flex-end; }
+.gs-link { border: 0; background: none; padding: 2px 0; color: var(--accent-text); font: 600 13px var(--sans); cursor: pointer; }
+.gs-guide.small { width: auto; max-width: min(320px, calc(100vw - 32px)); }
+@media print { .gs-guide { display: none; } }

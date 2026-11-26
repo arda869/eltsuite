@@ -165,7 +165,7 @@ Download PDF and Print (`src/pdf/pdfExport.ts`) keep the original pages and draw
 drawings as shapes and text boxes as pictures; answer boxes only when the answer key is showing.
 OCR (`src/pdf/ocr.ts`) runs tesseract.js in the browser from our own copy in `public/ocr`
 (`scripts/ocr-assets.mjs`, at install and build); pages are never sent to a service. Words found are
-kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer, read aloud, and
+kept in `sharedDocs/{id}/ocr/p{n}` and give scanned pages a selectable text layer and
 invisible text in the download so it can be searched.
 
 ## Search everything
@@ -174,7 +174,9 @@ Ctrl+K (⌘K) or Search in the top bar (`src/search/`). `sources.ts` gathers wha
 files and the words in Collab documents (`sharedDocs/{id}/index/text`, written as the document is
 edited, with `searchAt` on the file) and scanned PDFs (`ocr`), recordings' and videos' scripts (also
 `mediaScripts` kept with a class, and the captions in video projects), chats and their
-messages, classes, topics, lessons, learners, the Resource Hub, apps, the Guide and settings. Message
+messages, classes, topics, lessons, learners (also by email or “student”), colleagues, the Resource Hub, apps, the Guide, each setting (opening
+its part of Settings) and, for those who run them, Super Admin and Organisation admin pages and their teachers. Words in an
+entry's `keys` find it without being shown. Message
 and document words are cached in the browser (IndexedDB, `kv.ts`) and topped up with only what is new.
 `engine.ts` ranks: every word must match, names above text, accents and case ignored.
 

@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { decodeSound } from '../lib/sound';
 import { ArchivePicker } from '../editor/Picture';
 import { UiIcon } from '../components/UiIcon';
+import { AddWindow } from '../components/AddWindow';
 import { SoundEditor, type SoundSource } from './SoundEditor';
 import { isVideoUrl } from './Player';
 
@@ -87,16 +88,15 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     }
   };
 
-  const TABS: { k: MediaTab; label: string; icon: string }[] = onPictures ? [
-    { k: 'upload', label: 'Upload', icon: 'upload' },
-    { k: 'record', label: 'Record', icon: 'mic' },
+  const TABS: { k: MediaTab; label: string; icon: string; about: string }[] = onPictures ? [
+    { k: 'upload', label: 'Upload', icon: 'upload', about: 'Pictures, sounds or videos from your computer or phone.' },
+    { k: 'record', label: 'Record', icon: 'mic', about: 'Record your voice here and tidy it up.' },
   ] : [
-    { k: 'record', label: 'Record', icon: 'mic' },
-    { k: 'upload', label: 'Upload', icon: 'upload' },
-    { k: 'archive', label: 'My Files', icon: 'archive' },
-    { k: 'link', label: 'YouTube or link', icon: 'link' },
+    { k: 'archive', label: 'My Files', icon: 'folder', about: 'Recordings and videos you have used before. Opens where you were last time.' },
+    { k: 'upload', label: 'Upload', icon: 'upload', about: `A sound file (MP3, M4A, WAV, up to ${MAX_MIN} minutes) or a video.` },
+    { k: 'record', label: 'Record', icon: 'mic', about: 'Record your voice here and tidy it up.' },
+    { k: 'link', label: 'YouTube or link', icon: 'link', about: 'Nothing is uploaded, so links take no space.' },
   ];
-  const editing = !!source || !!videoFile;
   if (videoFile) return createPortal(<div className="sx-full" role="dialog" aria-label="Video editor"><Suspense fallback={<div role="status">Opening the video editor…</div>}><VideoEditor initialFile={videoFile} classId={classId} onBack={onClose} onSaved={s => onPick({ ...s, kind: 'video' })} /></Suspense></div>, document.body);
   if (source)
     return createPortal(
@@ -112,73 +112,64 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
       </div>,
       document.body,
     );
-  return createPortal(
-    <div className="scrim" onClick={editing ? undefined : onClose}>
-      <div className="dialog md-dialog" role="dialog" aria-label="Add a sound or video" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        <div className="pic-dialog-head">
-          <h2 style={{ margin: 0 }}>{editing ? 'Edit the recording' : onPictures ? 'Add media' : 'Add a recording or video'}</h2>
-          {editing && (
-            <button type="button" className="btn link" onClick={onClose}>
-              Cancel
+  const sources = TABS.filter((t) => !(noArchive && t.k === 'archive'));
+  return (
+    <AddWindow
+      title={onPictures ? 'Add media' : 'Add a recording or video'}
+      sources={sources}
+      source={tab}
+      onSource={(k) => (k === 'record' ? setSource(blank()) : (setTab(k), setBusy('')))}
+      onClose={onClose}
+      status={busy}
+      onDropFiles={(f) => take2(f)}
+      wide={tab === 'archive'}
+    >
+      {tab === 'upload' || tab === 'record' ? (
+        <>
+          <div
+            className={'pic-drop' + (over ? ' over' : '')}
+            onDragOver={(e) => (e.preventDefault(), setOver(true))}
+            onDragLeave={() => setOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOver(false);
+              if (e.dataTransfer.files.length) take2(e.dataTransfer.files);
+            }}
+            onClick={() => file.current?.click()}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), file.current?.click())}
+            role="button"
+            tabIndex={0}
+          >
+            <UiIcon name="upload" size={26} />
+            <strong>{onPictures ? 'Choose pictures, sound or video' : 'Choose a sound or video file'}</strong>
+            <span className="hint">{onPictures ? `Pictures (JPG, PNG) go straight in. Sounds (MP3, M4A, WAV, up to ${MAX_MIN} minutes) open in the editor to trim and clean up.` : 'You can trim it, clean it up and make it smaller next.'}</span>
+            <input ref={file} type="file" accept={onPictures ? 'image/*,audio/*,video/*' : 'audio/*,video/*'} multiple={!!onPictures} hidden onChange={(e) => (e.target.files && take2(e.target.files), (e.target.value = ''))} />
+          </div>
+          <span className="hint">Videos open in the Video editor with their pictures and sound. Save the finished video to add it here. Videos can be up to 100 MB; use a link for larger files.</span>
+        </>
+      ) : tab === 'archive' ? (
+        <ArchivePicker uid={user?.uid} kind="sound" onPick={fromArchive} busy={!!busy} onUpload={() => setTab('upload')} />
+      ) : (
+        <>
+          <label className="field">
+            <span>Address</span>
+            <input value={url} autoFocus placeholder="https://www.youtube.com/watch?v=…  or a link to an MP3 or MP4 file" onChange={(e) => setUrl(e.target.value)} />
+          </label>
+          {youTubeId(url) && <img className="md-yt" src={`https://img.youtube.com/vi/${youTubeId(url)}/mqdefault.jpg`} alt="" />}
+          <label className="field">
+            <span>Name</span>
+            <input value={title} placeholder="For example: Unit 4 video" onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <span className="hint">You can add a karaoke script after adding it.</span>
+          <span className="pe-actions">
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn primary" disabled={!/^https:\/\/\S+$/.test(url.trim()) || !!busy} onClick={addLink}>
+              Add
             </button>
-          )}
-        </div>
-        {!editing && (
-          <span className="md-tabs" role="tablist">
-            {TABS.filter((t) => !(noArchive && t.k === 'archive')).map((t) => (
-              <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} className={tab === t.k ? 'on' : ''} onClick={() => (t.k === 'record' ? setSource(blank()) : (setTab(t.k), setBusy('')))}>
-                <UiIcon name={t.icon} size={16} />
-                {t.label}
-              </button>
-            ))}
           </span>
-        )}
-        {tab === 'upload' || tab === 'record' ? (
-          <>
-            <div
-              className={'pic-drop' + (over ? ' over' : '')}
-              onDragOver={(e) => (e.preventDefault(), setOver(true))}
-              onDragLeave={() => setOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setOver(false);
-                if (e.dataTransfer.files.length) take2(e.dataTransfer.files);
-              }}
-              onClick={() => file.current?.click()}
-              role="button"
-              tabIndex={0}
-            >
-              <strong>{onPictures ? 'Choose pictures, sound or video' : 'Choose a sound or video file'}</strong>
-              <span className="hint">{onPictures ? `Pictures (JPG, PNG) go straight in. Sounds (MP3, M4A, WAV, up to ${MAX_MIN} minutes) open in the editor to trim and clean up. Or drop files here.` : `MP3, M4A, WAV or OGG, up to ${MAX_MIN} minutes. You can trim it, clean it up and make it smaller next.`}</span>
-              <input ref={file} type="file" accept={onPictures ? 'image/*,audio/*,video/*' : 'audio/*,video/*'} multiple={!!onPictures} hidden onChange={(e) => (e.target.files && take2(e.target.files), (e.target.value = ''))} />
-            </div>
-            <span className="hint">Video files open in the Video editor with their pictures and sound. Save the finished video to embed it here. Videos can be up to 100 MB; use a link for larger files.</span>
-          </>
-        ) : tab === 'archive' ? (
-          <ArchivePicker uid={user?.uid} kind="sound" onPick={fromArchive} busy={!!busy} />
-        ) : (
-          <>
-            <label className="field">
-              <span>Address</span>
-              <input value={url} autoFocus placeholder="https://www.youtube.com/watch?v=…  or a link to an MP3 or MP4 file" onChange={(e) => setUrl(e.target.value)} />
-            </label>
-            {youTubeId(url) && <img className="md-yt" src={`https://img.youtube.com/vi/${youTubeId(url)}/mqdefault.jpg`} alt="" />}
-            <label className="field">
-              <span>Name</span>
-              <input value={title} placeholder="For example: Unit 4 video" onChange={(e) => setTitle(e.target.value)} />
-            </label>
-            <span className="hint">You can add a karaoke script after adding it. Nothing is uploaded, so links take no space.</span>
-            <span className="pe-actions">
-              <span style={{ flex: 1 }} />
-              <button type="button" className="btn primary" disabled={!/^https:\/\/\S+$/.test(url.trim()) || !!busy} onClick={addLink}>
-                Add
-              </button>
-            </span>
-          </>
-        )}
-        {busy && !source && <span className="hint">{busy}</span>}
-      </div>
-    </div>,
-    document.body,
+        </>
+      )}
+    </AddWindow>
   );
 }

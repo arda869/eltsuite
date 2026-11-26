@@ -267,7 +267,6 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
       [
         { k: 'teachers', label: 'Teachers', icon: 'person', n: Object.keys(org.teachers).length },
         { k: 'invites', label: 'Invitations', icon: 'message', n: waiting.length, badge: old },
-        { k: 'codes', label: 'Invitation codes', icon: 'plus' },
         { k: 'admins', label: 'Admins', icon: 'lock', n: org.adminEmails.length },
       ],
     ],
@@ -288,7 +287,8 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
       ],
     ],
   ];
-  const known = groups.some(([, l]) => l.some((i) => i.k === tab)) ? tab : 'overview';
+  // Invitation codes are part of Invitations now; old links still open them.
+  const known = tab === 'codes' ? 'invites' : groups.some(([, l]) => l.some((i) => i.k === tab)) ? tab : 'overview';
   const color = org.brand?.color && /^#[0-9a-f]{6}$/i.test(org.brand.color) ? org.brand.color : '';
   const style = color ? ({ '--accent': color, '--accent-text': `color-mix(in srgb, ${color} 66%, #000)`, '--hq-on-accent': readableTextOn(color) } as React.CSSProperties) : undefined;
   return (
@@ -326,8 +326,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
           {known === 'overview' && <OrgOverview d={d} go={go} />}
           {known === 'activity' && <OrgActivity d={d} params={params} go={go} />}
           {known === 'teachers' && <OrgTeachers d={d} params={params} go={go} />}
-          {known === 'invites' && <OrgInvites d={d} params={params} go={go} />}
-          {known === 'codes' && <InviteCodes org={org} />}
+          {known === 'invites' && <><OrgInvites d={d} params={params} go={go} /><section className="hq-codes-in" id="codes"><InviteCodes org={org} /></section></>}
           {known === 'admins' && <OrgAdmins d={d} />}
           {known === 'classes' && <OrgClasses d={d} params={params} go={go} />}
           {known === 'library' && <OrgDrives d={d} />}

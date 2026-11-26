@@ -1,4 +1,5 @@
 import { NSelect } from '../components/Select';
+import { VideoStage } from './VideoStage';
 import {getFunctions,httpsCallable} from 'firebase/functions';
 import {app} from '../lib/firebase';
 import { tr } from '../lib/terms';
@@ -58,6 +59,10 @@ export type Engine = { vocalsOn?:boolean;setVocalsOn?:(on:boolean)=>void;
   seek: (t: number) => void;
   rate: number;
   setRate: (r: number) => void;
+  // Sound off for now, without changing the volume setting; the video element itself (not YouTube).
+  muted?: boolean;
+  setMuted?: (m: boolean) => void;
+  media?: () => HTMLMediaElement | null;
 };
 
 export function useEngine(classId: string, mediaId: string, given?: Manifest | null): Engine {
@@ -150,7 +155,8 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       if (cancelled) return;
       yt.current = new YT.Player(box, {
         videoId: ytId,
-        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+        // Our own controls sit on the picture, so YouTube's are hidden.
+        playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: 0, disablekb: 1, iv_load_policy: 3, fs: 0 },
         events: {
           onReady: (e: any) => {
             setReady(true);
@@ -218,8 +224,9 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     } catch {
       /* fine */
     }
-    if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
-    else if (el.current) el.current.volume = v;
+    const out = mutedRef.current || duckedRef.current ? 0 : v;
+    if (yt.current) yt.current.setVolume?.(Math.round(out * 100));
+    else if (el.current) el.current.volume = out;
   }, []);
   useEffect(() => {
     if (el.current) el.current.volume = volume;
@@ -228,13 +235,25 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
   // Silent for a moment without changing the volume setting (a speaker who is switched off).
   const volRef = useRef(volume);
   volRef.current = volume;
+  const [muted, setMutedState] = useState(false);
+  const mutedRef = useRef(false);
+  const duckedRef = useRef(false);
   const duck = useCallback((quiet: boolean) => {
-    const v = quiet ? 0 : volRef.current;
+    duckedRef.current = quiet;
+    const v = quiet || mutedRef.current ? 0 : volRef.current;
     if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
     else if (el.current && el.current.volume !== v) el.current.volume = v;
   }, []);
+  const setMuted = useCallback((on: boolean) => {
+    mutedRef.current = on;
+    setMutedState(on);
+    const v = on || duckedRef.current ? 0 : volRef.current;
+    if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
+    else if (el.current) el.current.volume = v;
+  }, []);
+  const media = useCallback(() => el.current, []);
   const host = useCallback((h: HTMLElement | null) => setHostEl(h), []);
-  return { vocalsOn,setVocalsOn:chooseVocals,m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck };
+  return { vocalsOn,setVocalsOn:chooseVocals,m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck, muted, setMuted, media };
 }
 
 // ------------------------------------------------------------------ the sound wave
@@ -711,7 +730,7 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
     window.addEventListener('ll:live-play', h);
     return () => window.removeEventListener('ll:live-play', h);
   }, [mediaId, teacher]);
-  const showScript = lines.length > 0 && (scriptMode === 'karaoke' ? e.playing : editing || ((teaching||scriptMode==='button'?open:null) ?? (scriptMode === 'after' && e.ends > 0)));
+  const showScript = lines.length > 0 && (scriptMode === 'karaoke' ? e.playing && !e.video : editing || ((teaching||scriptMode==='button'?open:null) ?? (scriptMode === 'after' && e.ends > 0)));
   const canToggleScript=!editing&&lines.length>0&&((teaching&&scriptMode!=='karaoke')||scriptMode==='button');
   const scriptMissing=!lines.length&&(editing||scriptMode==='karaoke'||scriptMode==='button'||open||(scriptMode==='after'&&e.ends>0));
   const scriptStatus=scriptMissing?<span className="mp-note" role="status">{scriptRecovery||(teacher?'No script is attached to this recording. Add or transcribe it in Recordings.':'No transcript has been added to this recording.')}{teacher&&scriptRecovery&&!scriptRecovery.startsWith('Restoring')&&<button type="button" className="btn small-btn" onClick={()=>setScriptRetry(n=>n+1)}>Retry script recovery</button>}</span>:null;
@@ -719,8 +738,13 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
   if (e.m === null) return inline ? <span className="mp mp-missing">This sound or video is no longer in this class.</span> : <div className="mp mp-missing">This sound or video is no longer in this class.</div>;
   const name = title || e.m.title || (e.video ? 'Video' : 'Listening');
   // Only phrasing elements here, so a video remains valid inside a paragraph or dialogue line.
+  if (inline && e.video) return <span className="mp mp-inline is-video vs-host">
+    <VideoStage e={e} lines={lines} title={name} locked={used || waiting} inline lineStop={lineStop} onLineStop={setLineStop} />
+    {waiting && <span className="mp-note">Your teacher plays this for the class.</span>}
+    {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
+    {scriptStatus}
+  </span>;
   if (inline) return <span className={'mp mp-inline' + (e.video ? ' is-video' : '')}>
-    {e.video && <span className="mp-screen" ref={e.host} />}
     <span className="mp-title">{name}</span>
     {waiting && <span className="mp-note">Your teacher plays this for the class.</span>}
     <span className="im-transport">
@@ -737,18 +761,26 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
   </span>;
 
   return (
-    <div className={'mp' + (e.video ? ' is-video' : '')}>
-      {e.video && <div className="mp-screen" ref={e.host} />}
-      <div className="mp-head" hidden={bare && !plays && !extra}>
+    <div className={'mp' + (e.video ? ' is-video vs-host' : '')}>
+      {e.video && <VideoStage e={e} lines={lines} title={name} locked={used || waiting} lineStop={lineStop} onLineStop={setLineStop} />}
+      {!(e.video && !plays && !extra) && <div className="mp-head" hidden={bare && !plays && !extra}>
         <span className="mp-kind" aria-hidden="true">
           <UiIcon name={e.video ? 'video' : 'music'} size={16} />
         </span>
         <span className="mp-title">{name}</span>
         {plays > 0 && <span className="mp-plays">{teacher ? tr(`Learners can play it ${plays === 1 ? 'once' : plays + ' times'}`) : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
         {extra}
-      </div>
+      </div>}
       {waiting && <span className="mp-note mp-live-note">{la.mode === 'together' ? tr('Your teacher plays this. It plays here when they press play.') : tr('Your teacher plays this for the class.')}</span>}
-      <Transport
+      {e.video ? (teacher && cast.length > 1 && (
+        <span className="mp-speakers vs-speakers" role="group" aria-label="Speakers heard">
+          <span className="hint">Heard:</span>
+          {cast.map((w) => {
+            const on = !muted.includes(w);
+            return <button key={w} type="button" className={'mp-spk' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMuted(on ? [...muted, w] : muted.filter((x) => x !== w))}>{w}</button>;
+          })}
+        </span>
+      )) : <Transport
         e={e}
         locked={used || waiting}
         tools={
@@ -787,8 +819,8 @@ export function MediaPlayer({ classId, mediaId, itemId, taskId, qrGrant, title, 
         }
       >
         <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used || waiting} range={teacher ? range : null} onRange={teacher ? setRange : undefined} />
-      </Transport>
-      {e.error && <p className="mp-error">{e.error}</p>}
+      </Transport>}
+      {e.error && !e.video && <p className="mp-error">{e.error}</p>}
       {showScript && (
         <>
           {editing && scriptMode !== 'karaoke' && <span className="mp-note">{scriptMode === 'none' ? 'Script: only you see it' : scriptMode === 'after' ? tr('Script: learners see it after listening') : tr('Script: learners open it with a button')}</span>}

@@ -6,18 +6,20 @@ import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
 import { createPortal } from 'react-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditorClass } from './context';
 import { PIC_QUALITY, preparePicture, uploadPicture, useImageSrc, type PicQuality } from './PackNode';
 import { usePopPos } from './usePopPos';
 import { listLabel } from '../lib/listLabel';
 import { cropStyles, filterCss, PicCover, PictureEditor, type CoverMode, type CoverProps } from './PicEdit';
 import { useAuth } from '../lib/auth';
-import { formatBytes, mediaIn, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
+import { mediaIn, type ArchiveItem } from '../lib/archive';
 import { newId } from '../lib/tasks';
 import { imageToData } from '../lib/flash';
 import { audioUrl as mediaUrl } from '../lib/media';
 import { UiIcon } from '../components/UiIcon';
+import { AddWindow } from '../components/AddWindow';
+import { FileBrowser } from '../components/FileBrowser';
 
 // A picture in a task: uploaded from the computer (or pasted), or from a web address. Pictures sit in
 // the line, so several in a row line up side by side. Each can carry a label
@@ -569,7 +571,7 @@ const savedQuality = (): PicQuality => {
 
 export function PictureDialog({ editor, classId, onClose, initialDesignId = '', returnTo = '' }: { editor: Editor; classId: string; onClose: () => void; initialDesignId?: string; returnTo?: string }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>(initialDesignId ? 'designer' : 'new');
+  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>(initialDesignId ? 'designer' : 'archive');
   const [alt, setAlt] = useState('');
   const [size, setSize] = useState<PicSize>('m');
   const [quality, setQualityState] = useState<PicQuality>(savedQuality);
@@ -650,156 +652,71 @@ export function PictureDialog({ editor, classId, onClose, initialDesignId = '', 
   }, []);
   const look = (
     <>
-      <div className="field" style={{ gap: 6 }}>
+      <div className="field">
         <span>Size</span>
         {segOf(PIC_SIZES, size, setSize, 'Size')}
-        <span className="hint">You can change this later or drag a picture corner to set its width.</span>
       </div>
-      <div className="field" style={{ gap: 6 }}>
-        <span>Label in the corner</span>
-        {segOf(PIC_MARKS, mark, setMark, 'Label')}
-        <span className="hint">Pictures with a label count on: a, b, c… Click a picture later to crop it, change its colour or cover it.</span>
+      <div className="field">
+        <span>Label</span>
+        {segOf(PIC_MARKS, mark, setMark, 'Label in the corner')}
       </div>
+      <label className="field aw-desc">
+        <span>Description</span>
+        <input aria-label="Description shown below the picture" value={alt} placeholder="Optional, shown under the picture" onChange={(e) => setAlt(e.target.value)} />
+      </label>
     </>
   );
+  const SOURCES = [
+    { k: 'archive' as const, label: 'My Files', icon: 'folder', about: 'Pictures you have used before, in your folders. Opens where you were last time.' },
+    { k: 'new' as const, label: 'Upload', icon: 'upload', about: 'From your computer or phone. Each picture is kept in My Files too.' },
+    { k: 'ai' as const, label: 'Create with AI', icon: 'ai', about: 'Describe the picture you need.' },
+    { k: 'designer' as const, label: 'Designer', icon: 'design', about: 'Posters, flashcards and pictures you made in Designer.' },
+    { k: 'commons' as const, label: 'Wikimedia Commons', icon: 'search', about: 'Free photos and drawings, with a credit line added for you.' },
+  ];
   return (
-    <div className="scrim" onClick={onClose}>
-      <div
-        className="dialog pic-dialog"
-        role="dialog"
-        aria-label="Add pictures"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="pic-dialog-head">
-          <h2 style={{ margin: 0 }}>Add pictures</h2>
-          <span className="seg" role="tablist" aria-label="Where from">
-            <button type="button" role="tab" aria-selected={tab === 'new'} className={tab === 'new' ? 'on' : ''} onClick={() => setTab('new')}>
-              Upload
-            </button>
-            <button type="button" role="tab" aria-selected={tab === 'archive'} className={tab === 'archive' ? 'on' : ''} onClick={() => setTab('archive')}>
-              My files
-            </button>
-            {(['ai','designer','commons'] as const).map(k=><button type="button" role="tab" key={k} aria-selected={tab===k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{k==='ai'?'Create with AI':k==='designer'?'Designer':'Wikimedia Commons'}</button>)}
-          </span>
-        </div>
-        {tab === 'new' ? (
-          <>
-            <div
-              className={'pic-drop' + (over ? ' over' : '')}
-              onDragOver={(e) => (e.preventDefault(), setOver(true))}
-              onDragLeave={() => setOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setOver(false);
-                upload(e.dataTransfer.files);
-              }}
-              onClick={() => file.current?.click()}
-              role="button"
-              tabIndex={0}
-            >
-              <strong>Choose pictures from your computer</strong>
-              <span className="hint">or drop them here, or paste one you copied. You can choose several at once; they sit side by side. Each one is kept in My files.</span>
-              <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
-            </div>
-            <div className="field" style={{ gap: 6 }}>
-              <span>Quality</span>
-              {segOf(
-                PIC_QUALITY.map((q) => ({ k: q.k, label: q.label })),
-                quality,
-                setQuality,
-                'Quality',
-              )}
-              <span className="hint">{PIC_QUALITY.find((q) => q.k === quality)?.about}. Smaller pictures leave more space for the rest of your media.</span>
-            </div>
-            {look}
-            <label className="field">
-              <span>Description (optional)</span>
-              <input aria-label="Description shown below the picture" value={alt} placeholder="Describe the picture for learners" onChange={(e) => setAlt(e.target.value)} />
-            </label>
-          </>
-        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} initialSelectedId={initialDesignId} returnTo={returnTo} onPick={fromDesign}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
-          <>
-            <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} />
-            {look}
-          </>
-        )}
-        {busy && <span className="hint">{busy}</span>}
-        <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-        </span>
-      </div>
-    </div>
+    <AddWindow title="Add pictures" sources={SOURCES} source={tab} onSource={(k) => { setTab(k); setBusy(''); }} onClose={onClose} options={look} status={busy} onDropFiles={(f) => void upload(f)} wide={tab === 'archive'}>
+      {tab === 'new' ? (
+        <>
+          <div
+            className={'pic-drop' + (over ? ' over' : '')}
+            onDragOver={(e) => (e.preventDefault(), setOver(true))}
+            onDragLeave={() => setOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOver(false);
+              upload(e.dataTransfer.files);
+            }}
+            onClick={() => file.current?.click()}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), file.current?.click())}
+            role="button"
+            tabIndex={0}
+          >
+            <UiIcon name="upload" size={26} />
+            <strong>Choose pictures</strong>
+            <span className="hint">or drop them here, or paste one you copied. Choose several and they sit side by side.</span>
+            <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
+          </div>
+          <div className="field" style={{ gap: 6 }}>
+            <span>Quality</span>
+            {segOf(
+              PIC_QUALITY.map((q) => ({ k: q.k, label: q.label })),
+              quality,
+              setQuality,
+              'Quality',
+            )}
+            <span className="hint">{PIC_QUALITY.find((q) => q.k === quality)?.about}. Smaller pictures leave more space for the rest of your media.</span>
+          </div>
+        </>
+      ) : tab === 'ai' ? <InlineAiImage onPick={fromDesign} />
+        : tab === 'designer' ? <DesignerImages uid={user?.uid} initialSelectedId={initialDesignId} returnTo={returnTo} onPick={fromDesign} />
+        : tab === 'commons' ? <CommonsImages onPick={fromDesign} />
+        : <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} onUpload={() => setTab('new')} />}
+    </AddWindow>
   );
 }
 
-// Choose from the resources library: search, folders and tags, one or several at once.
-export function ArchivePicker({ uid, kind, multiple, onPick, busy }: { uid?: string; kind: ArchiveItem['kind'] | 'sound'; multiple?: boolean; onPick: (items: ArchiveItem[]) => void; busy?: boolean }) {
-  const all = useArchive(uid);
-  const folders = useFolders(uid);
-  const [q, setQ] = useState('');
-  const [folder, setFolder] = useState<string | null>(null);
-  const [picked, setPicked] = useState<string[]>([]);
-  const items = useMemo(
-    () =>
-      (all ?? [])
-        .filter((i) => (kind === 'sound' ? i.kind === 'audio' || i.kind === 'video' : i.kind === kind))
-        .filter((i) => folder === null || i.folder === folder)
-        .filter((i) => !q.trim() || (i.name + ' ' + i.tags.join(' ')).toLowerCase().includes(q.trim().toLowerCase())),
-    [all, kind, folder, q],
-  );
-  const used = [...new Set([...(all ?? []).map((i) => i.folder).filter(Boolean), ...folders])].sort();
-  if (!uid) return <p className="hint">Sign in to use your files.</p>;
-  if (all === null) return <p className="hint">Opening your files…</p>;
-  const toggle = (it: ArchiveItem) => (multiple ? setPicked((p) => (p.includes(it.id) ? p.filter((x) => x !== it.id) : [...p, it.id])) : onPick([it]));
-  return (
-    <div className="ap">
-      <div className="ap-bar">
-        <input type="search" aria-label="Search by name or tag" enterKeyHint="search" value={q} placeholder="Search by name or tag" onChange={(e) => setQ(e.target.value)} />
-      </div>
-      {used.length > 0 && (
-        <div className="ap-folders">
-          <button type="button" className={'ap-chip' + (folder === null ? ' on' : '')} onClick={() => setFolder(null)}>
-            All
-          </button>
-          {used.map((f) => (
-            <button key={f} type="button" className={'ap-chip' + (folder === f ? ' on' : '')} onClick={() => setFolder(f)}>
-              {f}
-            </button>
-          ))}
-        </div>
-      )}
-      {items.length === 0 ? (
-        <p className="hint ap-empty">{(all ?? []).length ? 'Nothing matches.' : kind === 'image' ? 'Pictures you upload are kept here, ready to use again.' : 'Sounds and videos you add are kept here, ready to use again.'}</p>
-      ) : (
-        <div className={'ap-grid' + (kind === 'image' ? ' pics' : ' list')}>
-          {items.map((it) => (
-            <button key={it.id} type="button" className={'ap-item' + (picked.includes(it.id) ? ' on' : '')} onClick={() => toggle(it)} title={it.name}>
-              {kind === 'image' ? (
-                <span className="ap-thumb">{it.thumb ? <img src={it.thumb} alt="" /> : it.link ? <img src={it.link} alt="" /> : null}</span>
-              ) : (
-                <span className="ap-kind">
-                  <UiIcon name={it.kind === 'video' ? 'video' : 'music'} size={16} />
-                </span>
-              )}
-              <span className="ap-name">{it.name}</span>
-              <span className="ap-meta">
-                {it.size ? formatBytes(it.size) : it.link ? 'Link' : ''}
-                {it.tags.length > 0 && ' · ' + it.tags.join(', ')}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      {multiple && (
-        <span className="ap-foot">
-          <span className="hint">{picked.length ? `${picked.length} chosen` : 'Click to choose'}</span>
-          <button type="button" className="btn primary" disabled={!picked.length || busy} onClick={() => onPick((all ?? []).filter((i) => picked.includes(i.id)))}>
-            Add {picked.length > 1 ? `${picked.length} pictures` : 'picture'}
-          </button>
-        </span>
-      )}
-    </div>
-  );
+// Choose from My Files: folders, search, one or several at once (see FileBrowser).
+export function ArchivePicker({ uid, kind, multiple, onPick, busy, onUpload }: { uid?: string; kind: ArchiveItem['kind'] | 'sound'; multiple?: boolean; onPick: (items: ArchiveItem[]) => void; busy?: boolean; onUpload?: () => void }) {
+  return <FileBrowser uid={uid} kind={kind} multiple={multiple} onPick={onPick} busy={busy} onUpload={onUpload} addLabel={(n) => (kind === 'image' ? (n > 1 ? `Add ${n} pictures` : 'Add picture') : 'Add')} />;
 }

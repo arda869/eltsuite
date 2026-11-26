@@ -83,7 +83,33 @@
         },
         "c": {
           "$id": {
-            ".write": "auth != null && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true))"
+            ".write": "auth != null && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && ((!data.exists() && newData.exists() && newData.child('by').val() === auth.uid && newData.child('text').isString() && !newData.child('r').exists() && !newData.child('resolved').exists() && !newData.child('resolvedBy').exists() && !newData.child('resolvedAt').exists()) || (data.exists() && !newData.exists() && data.child('by').val() === auth.uid))",
+            "text": {
+              ".write": "auth != null && data.parent().child('by').val() === auth.uid && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isString()"
+            },
+            "edited": {
+              ".write": "auth != null && data.parent().child('by').val() === auth.uid && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isNumber()"
+            },
+            "resolved": {
+              ".write": "auth != null && data.parent().exists() && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isBoolean()"
+            },
+            "resolvedBy": {
+              ".write": "auth != null && data.parent().exists() && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.val() === auth.uid"
+            },
+            "resolvedAt": {
+              ".write": "auth != null && data.parent().exists() && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isNumber()"
+            },
+            "r": {
+              "$rid": {
+                ".write": "auth != null && data.parent().parent().exists() && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && ((!data.exists() && newData.exists() && newData.child('by').val() === auth.uid && newData.child('text').isString()) || (data.exists() && !newData.exists() && data.child('by').val() === auth.uid))",
+                "text": {
+                  ".write": "auth != null && data.parent().child('by').val() === auth.uid && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isString()"
+                },
+                "edited": {
+                  ".write": "auth != null && data.parent().child('by').val() === auth.uid && (root.child('collabAccess').child($doc).child('comment').child(auth.uid).val() === true || (root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true && root.child('collab').child($doc).child('flags').child('shared').val() === true)) && newData.isNumber()"
+                }
+              }
+            }
           }
         },
         "flags": {
@@ -92,7 +118,6 @@
             ".read": "auth != null && (root.child('collabAccess').child($doc).child('read').child(auth.uid).val() === true || root.child('collabAccess').child($doc).child('peer').child(auth.uid).val() === true)"
           }
         },
-        ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true && newData.hasChildren(['snap'])",
         "versions": {
           "$version": {
             ".write": "auth != null && root.child('collabAccess').child($doc).child('edit').child(auth.uid).val() === true && !data.exists() && newData.child('by').val() === auth.uid",

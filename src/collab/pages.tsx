@@ -118,11 +118,12 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning, title = '' }: { title?: string; editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor, ruler = false, onMargins, onRunning, onTabs, title = '' }: { title?: string; editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean; ruler?: boolean; onMargins?: (m: import('./documentLayout').PageMargins) => void; onRunning?: (p: Partial<Layout>) => void; onTabs?: (t: number[]) => void }) {
   const [running, setRunning] = useState<{ page: number; part: 'header' | 'footer' } | null>(null);
   // The organisation's logo (or ELT Suite's) in the header, when chosen.
   const [logo, setLogo] = useState('');
-  useEffect(() => { if (!layout.runLogo) return; let on = true; void import('../lib/brand').then((m) => m.brandMark()).then((b) => on && setLogo(b.dataUrl)).catch(() => {}); return () => { on = false; }; }, [layout.runLogo]);
+  const [logoDims, setLogoDims] = useState<{ url: string; w: number; h: number } | null>(null);
+  useEffect(() => { if (!layout.runLogo) return; let on = true; void import('../lib/brand').then((m) => m.brandMark()).then((b) => { if (on) { setLogo(b.dataUrl); setLogoDims({ url: b.dataUrl, w: b.w, h: b.h }); } }).catch(() => {}); return () => { on = false; }; }, [layout.runLogo]);
   const runFont: React.CSSProperties = { fontWeight: layout.runBold ? 700 : undefined, fontStyle: layout.runItalic ? 'italic' : undefined };
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
@@ -221,14 +222,24 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   useEffect(() => {
     if (!paged) return;
     const st = document.createElement('style');
-    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${mg.top / 96}in ${mg.right / 96}in ${mg.bottom / 96}in ${mg.left / 96}in; } ${marginBoxesCss(layout)}`;
+    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${mg.top / 96}in ${mg.right / 96}in ${mg.bottom / 96}in ${mg.left / 96}in; } ${marginBoxesCss(layout, { title, logo: logoDims })}`;
     document.head.appendChild(st);
     return () => st.remove();
-  }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers, layout.firstDifferent, layout.headerFirst, layout.footerFirst, layout.numberStyle, layout.numberAlign]);
+  }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers, layout.firstDifferent, layout.headerFirst, layout.footerFirst, layout.numberStyle, layout.numberAlign, layout.headerAlign, layout.runLogo, logoDims, title]);
+  // Where the toolbar ends as you scroll: the ruler and the tabs panel stick below it. The toolbar's height changes as it wraps.
+  useEffect(() => {
+    const bar = document.querySelector<HTMLElement>('.cd-pagebar');
+    if (!bar) return;
+    const set = () => { const cs = getComputedStyle(bar); document.documentElement.style.setProperty('--cd-bar-bottom', `${(parseFloat(cs.top) || 0) + (parseFloat(cs.marginTop) || 0) + bar.offsetHeight + 6}px`); };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
       <div className={paged ? 'pg-column' : 'pg-flow-column'}>
-      {paged && ruler && <Ruler width={s.w} zoom={zoom} margins={mg} onChange={(m2) => onMargins?.(m2)} canEdit={!!onMargins} />}
+      {paged && ruler && <Ruler width={s.w} zoom={zoom} margins={mg} onChange={(m2) => onMargins?.(m2)} canEdit={!!onMargins} editor={editor} tabs={layout.tabs} onTabs={onTabs} />}
       <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h + (pages-1)*pageGap, padding: `${mg.top}px ${mg.right}px ${mg.bottom}px ${mg.left}px`, ...(layout.pageColour && appearance !== 'black' ? { ['--pg-page-colour' as string]: layout.pageColour } : {}), ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
         {paged&&Array.from({length:pages},(_,i)=><div key={'sheet-'+i} className="pg-sheet" aria-hidden="true" style={{top:i*stride,height:s.h}}/>)}
         <div ref={ref} className={paged ? 'pg-text' : undefined}>
@@ -283,12 +294,14 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
       </div>
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
+        <button type="button" className="pg-zb" aria-label="Zoom out" data-tip="Zoom out" disabled={zoom <= 10} onClick={() => setZoomChoice(String(Math.max(10, Math.ceil(zoom / 10) * 10 - 10)))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 12h12" /></svg></button>
+        <span className="pg-zslide"><input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} style={{ ['--zp' as string]: `${((zoom - 10) / 190) * 100}%` }} onChange={(e) => setZoomChoice(e.target.value)} /></span>
+        <button type="button" className="pg-zb" aria-label="Zoom in" data-tip="Zoom in" disabled={zoom >= 200} onClick={() => setZoomChoice(String(Math.min(200, Math.floor(zoom / 10) * 10 + 10)))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg></button>
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
           <option value="fit">Fit page</option>
           <option value="fill">Fill width</option>
           {[...new Set([50, 75, 90, 100, 125, 150, 175, 200, zoom])].sort((a, b) => a - b).map((n) => <option key={n} value={String(n)}>{n}%</option>)}
         </NSelect>
-        <input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} />
       </div>}
     </div>
   );

@@ -39,7 +39,7 @@ const isAdmin = (d: OrgData, email: string) => d.org.adminEmails.includes(email.
 // ------------------------------------------------------------------ teachers
 export function OrgTeachers({ d, params, go }: { d: OrgData; params: URLSearchParams; go: Go }) {
   const { org, classes, accounts, pics, owner } = d;
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(params.get('q') || '');
   const [toast, say] = useNote();
   const [sheet, setSheet] = useState<'' | 'space' | 'add'>('');
   const f = params.get('f') || 'all';

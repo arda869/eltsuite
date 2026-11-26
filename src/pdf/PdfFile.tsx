@@ -25,8 +25,8 @@ import { keyLabel } from '../lib/keys';
 import { PDF_NODES, ToolButtons, ToolOptions, pdfStore, setPdfTool, toolHint, usePdfTool, TOOLS } from './PdfNodes';
 import type { Editor } from '@tiptap/core';
 import { filePdfInfo, type PageSize } from './pdfData';
-import { PdfThumb, getPdf, pageText } from './PdfStack';
-import { ocrText, pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
+import { PdfThumb, getPdf } from './PdfStack';
+import { pageHasText, readScannedPages, stopOcr, useOcr } from './ocr';
 import { findHits, forgetTexts, markHits, pageTexts, type Hit } from './pdfSearch';
 import { changePages, pagesToNewFile, parsePages, type PageOp } from './pageTools';
 import { openMenuAt } from '../components/ContextMenu';
@@ -91,7 +91,6 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
     return () => window.removeEventListener('wheel', wheel);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [cur, setCur] = useState(0);
-  const [reading, setReading] = useState(false);
   // The page in view: the last one whose top has passed the upper part of the screen.
   useEffect(() => {
     const f = () => {
@@ -103,7 +102,6 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
     window.addEventListener('scroll', f, true);
     return () => window.removeEventListener('scroll', f, true);
   }, []);
-  useEffect(() => () => speechSynthesis.cancel(), []);
   const editor = useEditor(
     {
       extensions: [
@@ -293,21 +291,6 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
     // Then bring the lit words into view, once the page is drawn.
     window.setTimeout(() => document.querySelector('.pdff .pdf-hit-on')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 700);
   };
-  const readAloud = async () => {
-    if (reading) return (speechSynthesis.cancel(), setReading(false));
-    const own = await pageText(String(block?.attrs.src ?? ''), '', cur, revNow).catch(() => '');
-    // A scanned page: the words OCR found.
-    const text = own.trim().length > 20 ? own : ocrText(String(block?.attrs.src ?? ''), cur) || own;
-    if (!text) return void tell('This page is a picture of text (a scan), so there are no words to read yet. Reading scanned pages is on the way.');
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-GB';
-    u.rate = 0.95;
-    u.onend = () => setReading(false);
-    u.onerror = () => setReading(false);
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-    setReading(true);
-  };
   const B = (label: React.ReactNode, on: boolean, run: () => void, tip: string, disabled = false) => (
     <button type="button" className={'ne-btn' + (on ? ' on' : '')} data-tip={tip} aria-label={tip} aria-pressed={on} disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={run}>
       {label}
@@ -392,10 +375,6 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
             <Svg d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" />
             <span className="pdff-act-l">Search</span>
           </button>
-          <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-label={reading ? 'Stop reading' : 'Read aloud'} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
-            <UiIcon name="music" size={15} />
-            <span className="pdff-act-l">{reading ? 'Stop' : 'Read aloud'}</span>
-          </button>
           {teacher && hasKey && (
             <button type="button" className={'pdff-act' + (showKey ? ' on' : '')} aria-pressed={showKey} onClick={() => setShowKey((v) => !v)} data-tip={showKey ? 'Hide the answer key: see the pages as learners do, or print without it' : 'Show the answer key: the boxes only teachers see'}>
               <Svg d="M15 7a4 4 0 1 1-3.9 4.8L4 19v-3h2v-2h2l3.1-3.1A4 4 0 0 1 15 7z" />
@@ -456,7 +435,7 @@ function Inner({ d, canEdit, canComment, me, session }: { d: SharedDoc; canEdit:
             </>
           ) : toRead.length > 0 ? (
             <>
-              <span>{toRead.length === (scanned?.length ?? 0) ? 'This PDF is a scan, so its words can’t be selected, copied or read aloud yet.' : `${toRead.length} ${toRead.length === 1 ? 'page is' : 'pages are'} scanned and not read yet.`}</span>
+              <span>{toRead.length === (scanned?.length ?? 0) ? 'This PDF is a scan, so its words can’t be selected, copied or searched yet.' : `${toRead.length} ${toRead.length === 1 ? 'page is' : 'pages are'} scanned and not read yet.`}</span>
               <button type="button" className="btn small-btn primary" onClick={() => void runOcr()}>Read the text</button>
             </>
           ) : (

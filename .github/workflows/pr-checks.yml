@@ -53,6 +53,10 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-material-import 'node test/ai/materials-integration.mjs'
       - name: Resource Hub draft, edition and shelf access
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-resource-hub 'node test/resource-hub-access.mjs' && node --test test/resource-hub-metrics.mjs test/resource-lesson-live.mjs
+      - name: Companion reminder retry and shutdown
+        run: node test/companion-reminders.mjs
+      - name: Collab tab stops and indentation
+        run: node test/doc-tabs.mjs
       - name: Standalone lesson live teaching journey (Firebase simulated)
         run: |
           npx playwright install --with-deps chromium
@@ -78,7 +82,7 @@ jobs:
       - name: Live classroom security boundaries
         run: |
           node test/collab-access.mjs
-          npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security 'node test/security-phase2-rtdb.mjs'
+          npx --yes firebase-tools@14 emulators:exec --only database --project demo-phase2-security 'node test/security-phase2-rtdb.mjs && node test/collab-comment-rules.mjs'
       - name: Per-user AI allowances and admin security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
       - name: Private coaching history and durable replies

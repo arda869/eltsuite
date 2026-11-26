@@ -1,4 +1,5 @@
 import { NoCorrectAnswer } from './NoCorrectAnswer';
+import { withRest } from './AtRest';
 import { BlockMenu } from './BlockMenu';
 import { useEditorClass } from './context';
 import { ExampleToggle } from './ExampleToggle';
@@ -341,7 +342,7 @@ export const Mcq = Node.create({
     return ['div', mergeAttributes(HTMLAttributes, { 'data-mcq': '' })];
   },
   addNodeView() {
-    return ReactNodeViewRenderer(McqView);
+    return ReactNodeViewRenderer(withRest(McqView, 'Multiple choice'));
   },
 });
 

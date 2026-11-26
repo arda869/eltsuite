@@ -15,10 +15,10 @@ import { isLive } from '../lib/live';
 import { useMyDocs, newSharedDoc, KIND_LABEL, type DocKind } from '../lib/sharedDocs';
 import { useChats, unreadIn } from '../lib/chat';
 import { useHandIns } from '../lib/classFiles';
-import { libName, useAccount, useMyOrg, useSpaceLimit } from '../lib/admin';
-import { formatBytes } from '../lib/archive';
-import { AppLogo } from '../components/AppGrid';
-import { openSearch } from '../search/SearchLauncher';
+import { useMyOrg } from '../lib/admin';
+import { APP_MARKS, AppGlyph } from '../components/AppGrid';
+import { FILE_MARKS } from '../components/FileMarks';
+import { GetStarted } from '../start/GetStarted';
 import { HUB_ACTIVITIES, collectionFor } from '../resourceHub/catalog';
 import { usePublishedHubResources } from '../resourceHub/usePublishedHubResources';
 
@@ -46,17 +46,16 @@ const ago = (ms: number) => {
   return d === 1 ? 'yesterday' : `${d} days ago`;
 };
 
-const CREATE: { k: DocKind; label: string }[] = [
-  { k: 'lesson', label: 'Lesson' },
-  { k: 'doc', label: 'Document' },
-  { k: 'flash', label: 'Flashcards' },
-  { k: 'pd', label: 'Reading Journal' },
-];
-const MAKE_APPS = [
-  { k: 'recordings', label: 'Recording', to: '/studio/sound/new' },
-  { k: 'design', label: 'Design', to: '/design' },
-  { k: 'games', label: 'Game', to: '/games' },
-  { k: 'pdf', label: 'PDF', to: '/pdf' },
+// One look for everything you can make: the colour and symbol it has across ELT Suite.
+const MAKE: { label: string; colour: string; glyph: string; make?: DocKind; to?: string }[] = [
+  { label: 'Lesson', colour: '#c8764a', glyph: FILE_MARKS.lesson, make: 'lesson' },
+  { label: 'Document', colour: '#2f6f9f', glyph: APP_MARKS.collab, make: 'doc' },
+  { label: 'Flashcards', colour: '#8a4f9e', glyph: FILE_MARKS.flash, make: 'flash' },
+  { label: 'Reading Journal', colour: '#3c7c8c', glyph: APP_MARKS.reading, make: 'pd' },
+  { label: 'Recording', colour: '#a8473a', glyph: APP_MARKS.recordings, to: '/studio/sound/new' },
+  { label: 'Design', colour: '#6d5bd0', glyph: APP_MARKS.design, to: '/design' },
+  { label: 'Game', colour: '#996525', glyph: APP_MARKS.games, to: '/games' },
+  { label: 'PDF', colour: '#a6463a', glyph: APP_MARKS.pdf, to: '/pdf' },
 ];
 
 export function HomePage() {
@@ -72,14 +71,11 @@ export function HomePage() {
   const docs = useMyDocs(uid);
   const chats = useChats(uid);
   const hand = useHandIns(uid);
-  const acc = useAccount(uid);
-  const space = useSpaceLimit();
   const hub = usePublishedHubResources();
 
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const unread = (chats ?? []).filter((c) => unreadIn(c, uid));
   const lessons = Object.values(items).reduce((n, list) => n + list.filter((item) => item.type === 'lesson').length, 0);
-  const lessonsLoading = classes === null || active.some((c) => items[c.id] === undefined);
   const sessions = useTeacherSessions(uid, active.map((c) => c.id));
   const coming = useMemo(
     () =>
@@ -103,8 +99,6 @@ export function HomePage() {
   const recent = useMemo(() => [...(docs.mine ?? []), ...(docs.withMe ?? [])].sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0)).slice(0, 6), [docs.mine, docs.withMe]);
   const handIns = useMemo(() => [...(hand ?? [])].sort((a, b) => b.at - a.at).slice(0, 4), [hand]);
   const liveNow = active.filter((c) => isLive(live[c.id] ?? null));
-  const used = acc?.usedBytes ?? 0;
-  const pct = space.bytes ? Math.min(100, used > 0 ? Math.max(1, Math.round((used / space.bytes) * 100)) : 0) : 0;
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const make = async (k: DocKind) => {
@@ -133,9 +127,8 @@ export function HomePage() {
       <TopBar>
         <MainNav on="home" />
       </TopBar>
-      <main className="hm hm2">
+      <main className="hm hm2 hm3">
         <section className="hm-hero" aria-label="Today">
-          <div className="hm-hero-art" aria-hidden="true"><i /><i /><i /></div>
           <div className="hm-hero-text">
             <span className="hm-date">{date}{org ? ` · ${org.name}` : ''}</span>
             <h1>{greeting()}{name ? `, ${name}` : ''}</h1>
@@ -148,11 +141,6 @@ export function HomePage() {
                     ? 'One moment…'
                     : 'Everything is quiet. A good moment to plan.'}
             </p>
-            <button type="button" className="hm-search" onClick={() => openSearch()}>
-              <UiIcon name="search" size={18} />
-              <span>Search files, messages, lessons and learners…</span>
-              <kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd>
-            </button>
           </div>
           <div className="hm-next">
             {liveNow[0] ? (
@@ -184,16 +172,17 @@ export function HomePage() {
                 <button type="button" className="btn" onClick={() => void make('lesson')}>Make a lesson</button>
               </div>
             )}
-            <div className="hm-stats">
-              <Stat n={classes === null ? '…' : active.length} label={active.length === 1 ? 'class' : 'classes'} to="/classes" />
-              <Stat n={classes === null ? '…' : learners} label={learners === 1 ? 'learner' : 'learners'} to="/classes" />
-              <Stat n={lessonsLoading ? '…' : lessons} label={lessons === 1 ? 'lesson' : 'lessons'} to="/classes" />
-              <Stat n={chats === null ? '…' : unread.length} label="unread" to="/messages" hot={unread.length > 0} />
-            </div>
           </div>
         </section>
 
-        <div className="hm-grid3">
+        <GetStarted auto={{
+          class: (classes?.length ?? 0) > 0,
+          learners: learners > 0,
+          lesson: lessons > 0,
+          doc: (docs.mine ?? []).some((d) => d.kind === 'doc'),
+          design: (docs.mine ?? []).some((d) => d.kind === 'design'),
+        }} />
+        <div className="hm-grid2">
           <div className="hm-col">
             <section className="hm-card" aria-labelledby="hm-classes">
               <header>
@@ -246,7 +235,7 @@ export function HomePage() {
             </section>
           </div>
 
-          <div className="hm-col">
+          <aside className="hm-col">
             <section className="hm-card" aria-labelledby="hm-needs">
               <header>
                 <h2 id="hm-needs">Needs you</h2>
@@ -269,82 +258,13 @@ export function HomePage() {
               )}
             </section>
 
-            <section className="hm-card" aria-labelledby="hm-coming">
-              <header>
-                <h2 id="hm-coming">This week</h2>
-                <Link to="/timetable" className="hm-more">Timetable</Link>
-              </header>
-              {lessonsLoading && !classesError ? <p className="hm-empty" role="status">One moment…</p> : upcoming.length > 1 || coming.length || due.length ? (
-                <ol className="hm-agenda">
-                  {upcoming.slice(1).map((o) => {
-                    const c = active.find((x) => x.id === o.s.classId);
-                    return (
-                      <li key={'s' + o.s.id + o.week} style={{ ['--cc' as string]: o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--ink)' }}>
-                        <span className="hm-time">{when(o.start)}</span>
-                        <span className="hm-what"><b>{o.s.title}</b><span className="hint">{o.s.kind === 'class' ? `${c?.name ?? 'Class'}${o.s.online ? ' · online' : ''}` : 'Meeting'}</span></span>
-                      </li>
-                    );
-                  })}
-                  {coming.map(({ c, i, at }) => (
-                    <li key={c.id + i.id} style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
-                      <span className="hm-time">{when(at)}</span>
-                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="hm-what"><b>{i.title}</b><span className="hint">{c.name}</span></Link>
-                    </li>
-                  ))}
-                  {due.map(({ c, i, at }) => (
-                    <li key={'d' + c.id + i.id} className="due" style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
-                      <span className="hm-time">Due {when(at).replace(/, .*$/, '')}</span>
-                      <Link to={`/class/${c.id}/lesson/${i.id}`} className="hm-what"><b>{i.title}</b><span className="hint">{c.name} · homework</span></Link>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="hm-empty">Nothing else this week. Set a time on a lesson and it shows here.</p>
-              )}
-            </section>
-
-            <section className="hm-card" aria-labelledby="hm-msgs">
-              <header>
-                <h2 id="hm-msgs">Messages</h2>
-                <Link to="/messages" className="hm-more">Open</Link>
-              </header>
-              {chats === null ? <p className="hm-empty" role="status">One moment…</p> : chats.length ? (
-                <ul className="hm-chats">
-                  {chats.slice(0, 4).map((c) => {
-                    const other = c.title || c.members.filter((m) => m !== uid).map((m) => c.names[m]).join(', ') || 'Notes to self';
-                    return (
-                      <li key={c.id}>
-                        <Link to={`/messages?c=${c.id}`} className={unreadIn(c, uid) ? 'unread' : ''}>
-                          <span className="hm-av" aria-hidden="true">{other.trim().slice(0, 1).toUpperCase()}</span>
-                          <span><b>{other}</b><span className="hint">{c.last ? `${c.last.by === uid ? 'You' : c.last.name.split(' ')[0]}: ${c.last.text}` : 'No messages yet'}</span></span>
-                          <span className="hm-ago">{c.lastAt ? ago(c.lastAt) : ''}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="hm-empty">No chats yet. Chats with learners and colleagues show here.</p>
-              )}
-            </section>
-          </div>
-
-          <aside className="hm-col">
             <section className="hm-card" aria-labelledby="hm-new">
               <header><h2 id="hm-new">Make something</h2></header>
               <div className="hm-make">
-                {CREATE.map((c) => (
-                  <button key={c.k} type="button" className="hm-make-it" onClick={() => void make(c.k)}>
-                    <FileIcon kind={c.k as FileKind} size={30} label={false} />
-                    <b>{c.label}</b>
-                  </button>
-                ))}
-                {MAKE_APPS.map((a) => (
-                  <Link key={a.k} to={a.to} className="hm-make-it">
-                    <AppLogo k={a.k} size={30} />
-                    <b>{a.label}</b>
-                  </Link>
-                ))}
+                {MAKE.map((m) => {
+                  const inner = <><span className="app-logo" style={{ width: 34, height: 34, ['--app' as string]: m.colour }} aria-hidden="true"><AppGlyph glyph={m.glyph} size={17} strokeWidth={2} /></span><b>{m.label}</b></>;
+                  return m.make ? <button key={m.label} type="button" className="hm-make-it" onClick={() => void make(m.make!)}>{inner}</button> : <Link key={m.label} to={m.to!} className="hm-make-it">{inner}</Link>;
+                })}
               </div>
             </section>
 
@@ -366,37 +286,9 @@ export function HomePage() {
                 </ul>
               </section>
             )}
-
-            <section className="hm-card hm-space" aria-labelledby="hm-space">
-              <div className="hm-ring" style={{ ['--p' as string]: pct }} role="img" aria-label={`${pct}% of your space used`}><span>{pct}%</span></div>
-              <span>
-                <h2 id="hm-space">Space</h2>
-                <span className="hint">{formatBytes(used)} of {space.gb} GB{space.org ? ` from ${space.org}` : ''}</span>
-              </span>
-              <Link to="/archive" className="hm-more">Details</Link>
-            </section>
-
-            {org && (
-              <Link to="/archive?library=" className="hm-card hm-lib">
-                <UiIcon name="archive" size={18} />
-                <span>
-                  <b>{libName(org)}</b>
-                  <span className="hint">{org.name}’s lessons and materials, ready to copy into your classes</span>
-                </span>
-              </Link>
-            )}
           </aside>
         </div>
       </main>
     </div>
-  );
-}
-
-function Stat({ n, label, to, hot }: { n: number | string; label: string; to: string; hot?: boolean }) {
-  return (
-    <Link to={to} className={'hm-stat' + (hot ? ' hot' : '')}>
-      <b>{n}</b>
-      <span>{label}</span>
-    </Link>
   );
 }

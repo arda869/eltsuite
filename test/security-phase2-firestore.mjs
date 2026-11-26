@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate, increment, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, doc, setDoc, updateDoc, getDoc, getDocs, query, where, terminate, increment, serverTimestamp, runTransaction, writeBatch } from 'firebase/firestore';
 import { assessTaskForLearner, runExamForLearner } from '../functions/learning/assessment.js';
 import { checkSubTaskForLearner } from '../functions/learning/check-subtask.js';
 import { syncClassAccess } from '../functions/learning/class-access.js';
@@ -163,6 +163,13 @@ try {
   await updateDoc(doc(learner, 'users/learner'), { displayName: 'One Updated' });
   const chat = { members: ['teacher', 'one'], names: { teacher: 'Teacher', one: 'One' }, roles: { teacher: 'teacher', one: 'learner' }, kind: 'group', title: 'Class', classId: 'c1', createdBy: 'teacher', at: 1, lastAt: 1 };
   await setDoc(doc(teacher, 'chats/group'), chat);
+  await setDoc(doc(teacher, 'chats/group/msgs/owned'), { by: 'teacher', text: 'Initial private text', at: 1 });
+  const edited = writeBatch(teacher);
+  edited.update(doc(teacher, 'chats/group/msgs/owned'), { text: 'Edited private text' });
+  edited.update(doc(teacher, 'chats/group'), { searchRev: increment(1) });
+  await edited.commit();
+  assert.equal((await getDoc(doc(teacher, 'chats/group'))).data().searchRev, 1, 'message edit and search invalidation commit together');
+  await denied('a chat member cannot skip or reset the search revision', () => updateDoc(doc(learner, 'chats/group'), { searchRev: 50 }));
   await admin.doc('callRooms/r-test').set({ state: 'free', url: 'https://example.test/r-test' });
   await admin.doc('callRooms/r-second').set({ state: 'free', url: 'https://example.test/r-second' });
   await admin.doc('callRooms/r-third').set({ state: 'free', url: 'https://example.test/r-third' });

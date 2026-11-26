@@ -1,9 +1,9 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { useDocumentTools } from './DocumentEditingTools';
-import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
+import { PageBreak, DocumentSection, DocumentIndent, DocTab, changeIndent, insertDocumentSection, sectionColumns, sectionOrientation, currentSectionOrientation } from './DocumentStructure';
 import { useDocumentHistory } from './DocumentHistory';
 import { documentClipboard } from './documentClipboard';
-import { tell } from '../lib/ask';
+import { ask, tell } from '../lib/ask';
 import { OverflowToolbar } from '../components/OverflowToolbar';
 import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
@@ -13,6 +13,9 @@ import { doc as fsDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
+import { AnswerKey } from './AnswerKey';
+import { CommentThread, MarginComment, type Thread } from './Comments';
+import { PersonFace } from '../components/avatars';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEditorKeys } from '../editor/editorKeys';
@@ -47,7 +50,7 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, wordCount, documentStats, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import { downloadDocx, wordCount, documentStats, printDoc, exportForRole, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, useCollabSaveStatus, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
@@ -98,7 +101,7 @@ const headingsOf = (d: { forEach: (f: (n: { type: { name: string }; attrs: Recor
   return out;
 };
 
-type Thread = { by: string; name: string; color: string; text: string; at: number; quote?: string; resolved?: boolean; r?: Record<string, { by: string; name: string; color: string; text: string; at: number }> };
+
 export type CollabProps = {
   docKey: string;
   title: string;
@@ -186,6 +189,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const [who, setWho] = useState<Record<string, { name: string; color: string }>>({});
   const [draft, setDraft] = useState<{ quote: string } | null>(null);
   const [draftText, setDraftText] = useState('');
+  const [activeComment, setActiveComment] = useState<string | null>(null);
+  const [hoverComment, setHoverComment] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
   const [, tick] = useState(0);
   const gate = useToolGate();
   const [picFor, setPicFor] = useState<Editor | null>(null);
@@ -206,7 +212,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   }, [synced]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showRuler, setShowRulerState] = useState(() => { try { return localStorage.getItem('cd.ruler') !== '0'; } catch { return true; } });
   const setShowRuler = (v: boolean) => { setShowRulerState(v); try { localStorage.setItem('cd.ruler', v ? '1' : '0'); } catch { /* fine */ } };
-  const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1'; } catch { return false; } });
+  const [navCollapsed, setNavCollapsedState] = useState(() => { try { return localStorage.getItem('cd.navCollapsed') === '1' || window.innerWidth < 1100; } catch { return false; } });
   const setNavCollapsed = (v: boolean) => { setNavCollapsedState(v); try { localStorage.setItem('cd.navCollapsed', v ? '1' : ''); } catch { /* fine */ } };
   const paged = !!page && layout.paged;
   useEffect(() => {
@@ -229,7 +235,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         NewerGuard,
         ShowMarks,
         FontStyle,
-        PageBreak, DocumentSection, DocumentIndent,
+        PageBreak, DocumentSection, DocumentIndent, DocTab,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -289,6 +295,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const edRef = useRef(editor);
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
+  // The tab stops set on the ruler, for Tab and for the tabs in the text.
+  const tabKey = (layout.tabs ?? []).join(',');
+  useEffect(() => {
+    const st = (editor?.storage as { documentIndent?: { tabs: number[] } } | undefined)?.documentIndent;
+    if (!st) return;
+    st.tabs = layout.tabs ?? [];
+    window.dispatchEvent(new Event('doc-tabs-changed'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tabKey]);
   // The "/" menu: the lesson editor's elements, without learner tasks.
   const docCmds = useMemo(() => docCommands().filter((c) => (profileTeacher || (!c.key.startsWith('tt-')&&!c.key.startsWith('studio-'))) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
   const slash = useSlash(editor, docCmds, false, true, () => true);
@@ -343,6 +358,22 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
 
   const documentTools = useDocumentTools(editor, eff === 'edit' || eff === 'suggest', eff === 'edit', !!page && eff !== 'view', layout.font);
   const history = useDocumentHistory(editor, docKey, me.uid, author.name, layout, setLayout, !!page, eff === 'edit', synced);
+  // Comments: clicking highlighted words opens their thread; Ctrl+Alt+M (⌘⌥M) comments on the selection.
+  const commentNow = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const click = (e: MouseEvent) => {
+      const m = (e.target as HTMLElement).closest?.('[data-comment]');
+      if (m) { setActiveComment(m.getAttribute('data-comment')); setSide('notes'); }
+    };
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'KeyM') { e.preventDefault(); commentNow.current(); }
+    };
+    dom.addEventListener('click', click);
+    dom.addEventListener('keydown', key);
+    return () => { dom.removeEventListener('click', click); dom.removeEventListener('keydown', key); };
+  }, [editor]);
   if (!editor) return <div className="cd cd-wait" />;
   // Viewing: the document as learners see it when it is presented, without suggestions still open.
   const viewing = eff === 'view';
@@ -380,6 +411,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   const sugg = listSuggestions(editor.state.doc);
   const spots = commentSpots(editor.state.doc);
   const open = Object.entries(threads).filter(([, t]) => !t.resolved);
+  const done = Object.entries(threads).filter(([, t]) => t.resolved).sort((a, b) => (b[1].resolvedAt ?? b[1].at) - (a[1].resolvedAt ?? a[1].at));
   const canResolve = !!teacher || (allowed.includes('edit') && !locked);
   const canComment = eff !== 'view';
   const sel = editor.state.selection;
@@ -387,6 +419,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
 
   // The document as a PDF, opened in the viewer to save in My Files or download.
   const makePdf = async (o: ExportOpts) => {
+    o = exportForRole(o, !!teacher);
     setPdfError('');
     try {
       const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
@@ -405,6 +438,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setDraftText('');
     setSide('notes');
   };
+  commentNow.current = startComment;
   const postComment = () => {
     const text = draftText.trim();
     if (!text || !draft) return;
@@ -419,13 +453,24 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     setDraftText('');
   };
   const reply = (id: string, text: string) => text.trim() && set(push(collabRef(docKey, `c/${id}/r`)), { by: author.by, name: author.name, color: author.color, text: text.trim(), at: Date.now() }).catch(() => {});
-  const resolve = (id: string) => {
+  const unmark = (id: string) => {
     const spot = spots.find((s) => s.id === id);
-    if (spot) {
-      const tr = editor.state.tr.removeMark(spot.from, spot.to, editor.schema.marks.comment).setMeta('collab-ok', true);
-      editor.view.dispatch(tr);
-    }
-    update(collabRef(docKey, `c/${id}`), { resolved: true }).catch(() => {});
+    if (spot) editor.view.dispatch(editor.state.tr.removeMark(spot.from, spot.to, editor.schema.marks.comment).setMeta('collab-ok', true));
+  };
+  const resolve = (id: string) => {
+    unmark(id);
+    if (activeComment === id) setActiveComment(null);
+    update(collabRef(docKey, `c/${id}`), { resolved: true, resolvedBy: author.by, resolvedAt: Date.now() }).catch(() => {});
+  };
+  const reopen = (id: string) => update(collabRef(docKey, `c/${id}`), { resolved: false }).catch(() => {});
+  const editComment = (id: string, rid: string | null, text: string) => update(collabRef(docKey, rid ? `c/${id}/r/${rid}` : `c/${id}`), { text, edited: Date.now() }).catch(() => {});
+  const deleteComment = async (id: string, rid: string | null) => {
+    if (rid) return void set(collabRef(docKey, `c/${id}/r/${rid}`), null).catch(() => {});
+    const n = Object.keys(threads[id]?.r ?? {}).length;
+    if (!(await ask(`Delete this comment? ${n ? `Its ${n === 1 ? 'reply goes' : `${n} replies go`} too. ` : ''}You can’t undo this.`, { ok: 'Delete', danger: true }))) return;
+    unmark(id);
+    setActiveComment(null);
+    set(collabRef(docKey, `c/${id}`), null).catch(() => {});
   };
   const goTo = (from: number, to: number) => {
     editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
@@ -581,7 +626,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle, layout: page ? layout : undefined }) : void makePdf({ ...o, style: citeStyle, layout: page ? layout : undefined }))} />}
+        {(teacher || canDownload) && <DownloadMenu teacher={!!teacher} onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, exportForRole({ ...o, style: citeStyle, layout: page ? layout : undefined }, !!teacher)) : void makePdf({ ...o, style: citeStyle, layout: page ? layout : undefined }))} />}
         {page && writing && (
           <button type="button" className="btn small-btn cd-insert" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
             + Insert
@@ -608,10 +653,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           ...(onCitationStyle ? [{label:'Citation style…',icon:'classes',run:onCitationStyle}] : []),
           { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           { label: 'Version history…', icon: 'prev', run: history.open },
-          { label: tabs.length > 1 ? 'Download Word (all tabs)' : 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          ...(tabs.length > 1 ? [{ label: 'Download Word (this tab)', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), `${title} – ${tabs.find((t) => t.id === tabId)?.title ?? ''}`, { ...EXPORT_DEFAULT, style: citeStyle, layout }) }] : []),
+          { label: tabs.length > 1 ? 'Download Word (all tabs)' : 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(wholeDoc(), title, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher)) },
+          ...(tabs.length > 1 ? [{ label: 'Download Word (this tab)', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), `${title} – ${tabs.find((t) => t.id === tabId)?.title ?? ''}`, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher)) }] : []),
           { label: tabs.length > 1 ? 'Download PDF (all tabs)' : 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle, layout }) },
-          'sep', { label: tabs.length > 1 ? 'Print (all tabs)' : 'Print', disabled: !(teacher || canDownload), run: () => printDoc(wholeDoc(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }, editor.view.dom) },
+          'sep', { label: tabs.length > 1 ? 'Print (all tabs)' : 'Print', disabled: !(teacher || canDownload), run: () => printDoc(wholeDoc(), title, exportForRole({ ...EXPORT_DEFAULT, style: citeStyle, layout }, !!teacher), editor.view.dom) },
         ] },
         { label: 'Edit', items: [
           { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
@@ -837,14 +882,17 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
+                <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onTabs={eff === 'edit' && !locked ? (t) => setLayout({ tabs: t }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
                   {heading}
                   {contents}
                 </Paper>
               );
             })()}
+            {page && teacher && <AnswerKey editor={editor} />}
           </EditorClassContext.Provider>
         </div>
+        {canComment && <MarginComment editor={editor} onComment={startComment} />}
+        {(activeComment || hoverComment) && <style>{[activeComment, hoverComment].filter(Boolean).map((id) => `.cm-mark[data-comment="${String(id).replace(/[^\w-]/g, '')}"]`).join(',')}{'{ background: color-mix(in srgb, #f2b84b 52%, transparent) !important; box-shadow: 0 2px 0 #e2a32e; }'}</style>}
         {(!page || showSide) && <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>
           <span className="seg small-seg cd-tabs">
             <button type="button" className={side !== 'people' ? 'on' : ''} onClick={() => setSide('notes')}>
@@ -939,8 +987,31 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
               {open
                 .sort((a, b) => (spots.findIndex((s) => s.id === a[0]) + 1 || 1e9) - (spots.findIndex((s) => s.id === b[0]) + 1 || 1e9))
                 .map(([id, t]) => (
-                  <CommentCard key={id} t={t} onGo={() => spots.find((s) => s.id === id) && goTo(spots.find((s) => s.id === id)!.from, spots.find((s) => s.id === id)!.to)} onReply={(x) => reply(id, x)} onResolve={eff !== 'view' || teacher ? () => resolve(id) : undefined} />
+                  <CommentThread
+                    key={id} id={id} t={t} me={me.uid} active={activeComment === id}
+                    onOpen={() => { setActiveComment(id); const sp = spots.find((s) => s.id === id); if (sp) goTo(sp.from, sp.to); }}
+                    onReply={(x) => reply(id, x)}
+                    onResolve={eff !== 'view' || teacher ? () => resolve(id) : undefined}
+                    onEdit={(rid, x) => editComment(id, rid, x)}
+                    onDelete={(rid) => void deleteComment(id, rid)}
+                    onHover={(on) => setHoverComment(on ? id : null)}
+                  />
                 ))}
+              {done.length > 0 && (
+                <button type="button" className="cm-done-toggle" aria-expanded={showDone} onClick={() => setShowDone((v) => !v)}>
+                  <UiIcon name="check" size={15} /> {showDone ? 'Hide' : 'Show'} done ({done.length})
+                </button>
+              )}
+              {showDone && done.map(([id, t]) => (
+                <CommentThread
+                  key={id} id={id} t={t} me={me.uid} active={activeComment === id}
+                  onOpen={() => setActiveComment(id)}
+                  onReply={(x) => reply(id, x)}
+                  onReopen={canResolve || t.by === me.uid ? () => reopen(id) : undefined}
+                  onEdit={(rid, x) => editComment(id, rid, x)}
+                  onDelete={(rid) => void deleteComment(id, rid)}
+                />
+              ))}
               {!sugg.length && !open.length && !draft && <span className="hint cd-none">{eff === 'suggest' ? 'Type to suggest a change. Others see it in your colour.' : 'Suggestions and comments show here.'}</span>}
             </>
           )}
@@ -1004,35 +1075,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   return big ? createPortal(<div className="cd-overlay">{body}</div>, document.body) : body;
 }
 
-export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: () => void; onReply: (text: string) => void; onResolve?: () => void }) {
-  const [text, setText] = useState('');
-  const replies = Object.values(t.r ?? {}).sort((a, b) => a.at - b.at);
-  return (
-    <div className="cd-card" onClick={onGo}>
-      {t.quote && <span className="cd-quote">“{t.quote}”</span>}
-      {[t, ...replies].map((c, i) => (
-        <span key={i} className="cd-msg">
-          <span className="cd-card-who">
-            <span className="cd-dot" style={{ background: c.color }} />
-            {c.name}
-            <span className="hint">{new Date(c.at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}</span>
-          </span>
-          <span className="cd-msg-text">{c.text}</span>
-        </span>
-      ))}
-      <span className="cd-reply" onClick={(e) => e.stopPropagation()}>
-        <input value={text} placeholder="Reply" aria-label="Reply" enterKeyHint="send" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? (e.preventDefault(), text.trim() && (onReply(text.trim()), setText(''))) : e.stopPropagation())} />
-        {onResolve && (
-          <button type="button" className="btn small-btn" onClick={onResolve} data-tip="Mark as done and hide it">
-            Resolve
-          </button>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void }) {
+function DownloadMenu({ onExport, teacher }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void; teacher: boolean }) {
   const [open, setOpen] = useState<'' | 'menu' | 'word' | 'pdf'>('');
   const [o, setO] = useState<ExportOpts>(() => {
     try {
@@ -1112,6 +1155,9 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
           <label className="check-row">
             <input type="checkbox" checked={o.wordCount} onChange={(e) => setO({ ...o, wordCount: e.target.checked })} /> Word count at the end
           </label>
+          {teacher && <label className="check-row">
+            <input type="checkbox" checked={o.answerKey !== false} onChange={(e) => setO({ ...o, answerKey: e.target.checked })} /> Answer key at the end, when there are questions
+          </label>}
           <button type="button" className="btn primary small-btn" onClick={go}>
             Download
           </button>
@@ -1181,8 +1227,8 @@ export function PeopleHere({ people, me, max = 5, label = 'Here now' }: { people
   return (
     <span className="cd-people" aria-label={label}>
       {people.slice(0, max).map((p, i) => (
-        <button key={i} type="button" className="cd-avatar" style={{ background: p.color }} data-tip={p.uid === me ? `${p.name} (you)` : p.name} aria-label={p.name} onClick={(e) => setAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
-          {p.name.trim().slice(0, 1).toUpperCase()}
+        <button key={i} type="button" className="cd-avatar" style={{ background: p.color, ['--ring' as string]: p.color }} data-tip={p.uid === me ? `${p.name} (you)` : p.name} aria-label={p.name} onClick={(e) => setAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
+          <PersonFace id={p.uid} name={p.name} size={26} />
         </button>
       ))}
       {people.length > max && <span className="cd-more" data-tip={people.slice(max).map((p) => p.name).join(', ')}>+{people.length - max}</span>}
@@ -1223,8 +1269,8 @@ function PersonCard({ p, r, me, onClose }: { p: { name: string; color: string; u
   return createPortal(
     <div ref={ref} className="cd-person" role="dialog" aria-label={p.name} style={{ top: r.bottom + 8, left: Math.max(8, Math.min(r.left - 120, window.innerWidth - 268)) }}>
       <span className="cd-person-h">
-        <span className="cd-avatar big" style={{ background: p.color }}>
-          {p.name.trim().slice(0, 1).toUpperCase()}
+        <span className="cd-avatar big" style={{ background: p.color, ['--ring' as string]: p.color }}>
+          <PersonFace id={p.uid} name={p.name} size={42} />
         </span>
         <span>
           <b>{p.name}{self ? ' (you)' : ''}</b>

@@ -5,7 +5,7 @@ export type TextStyle = { family?: string | null; pt?: number | null; color?: st
 export type DocStyles = Partial<Record<'p' | 'h1' | 'h2' | 'h3', TextStyle>>;
 export type NumberStyle = 'n' | 'page' | 'of';
 export type Align = 'left' | 'center' | 'right';
-export type Layout = { headerAlign?: Align; footerAlign?: Align; runBold?: boolean; runItalic?: boolean; runLogo?: boolean; firstDifferent?: boolean; headerFirst?: string; footerFirst?: string; numberStyle?: NumberStyle; numberAlign?: 'left' | 'center' | 'right'; styles?: DocStyles; paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
+export type Layout = { headerAlign?: Align; footerAlign?: Align; runBold?: boolean; runItalic?: boolean; runLogo?: boolean; firstDifferent?: boolean; headerFirst?: string; footerFirst?: string; numberStyle?: NumberStyle; numberAlign?: 'left' | 'center' | 'right'; styles?: DocStyles; paged: boolean; size: PageSize; margins: Margins; margin?: PageMargins | null; pageColour?: string; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number; tabs?: number[] };
 export const LAYOUT_DEFAULT: Layout = { paged: false, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5, columns: 1, header: '', footer: '', pageNumbers: false, pageNumberStart: 1 };
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
   a4: { label: 'A4 (21 × 29.7 cm)', w: 794, h: 1123, css: 'A4' },
@@ -50,7 +50,7 @@ export function stylesCss(styles: DocStyles | undefined, scope: string, colour: 
 
 // Fields a header or footer can hold: filled in on every page.
 export const RUN_FIELDS = [{ k: '{title}', label: 'Title' }, { k: '{date}', label: 'Date' }, { k: '{page}', label: 'Page number' }, { k: '{pages}', label: 'Number of pages' }] as const;
-export type RunCtx = { title?: string; date?: string };
+export type RunCtx = { title?: string; date?: string; logo?: { url: string; w: number; h: number } | null };
 const today = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 export const fillFields = (t: string, ctx: RunCtx, n: number | string, total: number | string) =>
   t.replace(/\{title\}/g, ctx.title ?? '').replace(/\{date\}/g, ctx.date ?? today()).replace(/\{pages\}/g, String(total)).replace(/\{page\}/g, String(n));
@@ -83,10 +83,19 @@ function cssContent(t: string, ctx: RunCtx): string {
   const parts = t.replace(/\{title\}/g, ctx.title ?? '').replace(/\{date\}/g, ctx.date ?? today()).split(/(\{page\}|\{pages\})/).filter(Boolean);
   return parts.map((p) => (p === '{page}' ? 'counter(page)' : p === '{pages}' ? 'counter(pages)' : cssStr(p))).join(' ');
 }
+export function logoFrame(l: { url: string; w: number; h: number }) {
+  const h = 28, w = Math.max(1, Math.round((l.w / Math.max(1, l.h)) * h));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><image width="${w}" height="${h}" href="${l.url}" xlink:href="${l.url}" preserveAspectRatio="xMidYMid meet"/></svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
 export function marginBoxesCss(layout: Layout, ctx: RunCtx = {}): string {
   const font = `font: ${layout.runItalic ? 'italic ' : ''}${layout.runBold ? '700' : '400'} 9pt ${cssStr(layout.font || 'Georgia')}; color: #66615b;`;
   const box = (header: string, footer: string) => {
-    const top = (where: Align) => `@top-${where} { content: ${header && (layout.headerAlign ?? 'center') === where ? cssContent(header, ctx) : 'none'}; ${font} }`;
+    // The logo sits on the side away from the header text, as on screen. A page's margin can hold a
+    // picture only as content: url(), at the picture's own size, so it is framed at 28px high first.
+    const logoSide: Align = (layout.headerAlign ?? 'center') === 'right' ? 'left' : 'right';
+    const logo = layout.runLogo && ctx.logo ? `url("${logoFrame(ctx.logo)}")` : '';
+    const top = (where: Align) => `@top-${where} { content: ${header && (layout.headerAlign ?? 'center') === where ? cssContent(header, ctx) : logo && where === logoSide ? logo : 'none'}; ${font} }`;
     const side = (where: Align) => {
       const parts = [footer && (layout.footerAlign ?? 'center') === where ? cssContent(footer, ctx) : '', layout.pageNumbers && (layout.numberAlign ?? 'center') === where ? numberCss(layout) : ''].filter(Boolean);
       return `@bottom-${where} { content: ${parts.length ? parts.join(' " · " ') : 'none'}; ${font} }`;
