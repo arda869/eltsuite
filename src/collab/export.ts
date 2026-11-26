@@ -244,12 +244,14 @@ export async function printDoc(json: JSONContent, title: string, o: ExportOpts =
   const metrics = o.layout ? pageMetrics(o.layout) : null;
   const footer = [o.layout?.footer ? cssString(o.layout.footer) : '', o.pageNumbers ? 'counter(page)' : ''].filter(Boolean).join(' " · " ');
   const words = wordCount(json);
+  // The organisation's logo (or ELT Suite's) in the header, when the document asks for it.
+  const runLogo = o.layout?.runLogo ? await import('../lib/brand').then((m) => m.brandMark()).then((b) => ({ url: b.dataUrl, w: b.w, h: b.h })).catch(() => null) : null;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>${needsApp ? `<base href="${location.origin}/">${appStyles()}` : ''}
 <style>
 html, body { background: ${o.layout?.pageColour && /^#[0-9a-f]{6}$/i.test(o.layout.pageColour) ? o.layout.pageColour : '#fff'} !important; min-height: 0 !important; display: block !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
 @page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.m.top / 96}in ${metrics.m.right / 96}in ${metrics.m.bottom / 96}in ${metrics.m.left / 96}in` : '25mm'}; ${o.layout ? '' : `@top-center { content: none; } @bottom-center { content: ${footer || 'none'}; }`} }
-${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }, { title }) : ''}
+${o.layout ? marginBoxesCss({ ...o.layout, pageNumbers: o.pageNumbers }, { title, logo: runLogo }) : ''}
 ${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
 ${metrics ? `@page landscape { size: ${metrics.css} landscape; } @page portrait { size: ${metrics.css} portrait; } section[data-orient="landscape"] { page: landscape; break-before: page; } section[data-orient="portrait"] { page: portrait; break-before: page; }` : ''}
 ${stylesCss(o.layout?.styles, 'body', (c) => textColor(c) ?? c)}
