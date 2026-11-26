@@ -45,12 +45,28 @@ const slug = (t: string) => 'set-' + t.toLowerCase().replace(/[^a-z]+/g, '-');
 const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
 // One part of settings. On a phone each part folds, so the page is a short list.
 const SearchCtx = createContext('');
+// Settings in five groups, one shown at a time; searching looks through all of them.
+const GROUPS: { k: string; label: string; icon: string; about: string }[] = [
+  { k: 'you', label: 'You', icon: 'person', about: 'Your picture, your profile and your account.' },
+  { k: 'look', label: 'Look and feel', icon: 'phone', about: 'How ELT Suite looks and works for you.' },
+  { k: 'teaching', label: 'Teaching', icon: 'classes', about: 'Spelling, your calendar, pictures and sounds.' },
+  { k: 'messages', label: 'Messages and tips', icon: 'message', about: 'Messages, notifications and feature tips.' },
+  { k: 'coach', label: 'Teacher’s Companion', icon: 'discuss', about: 'What the Companion can read, and how it talks with you.' },
+];
+const groupOf = (title: string) =>
+  /^(Profile|Your profile|Sign-in|Account)/.test(title) ? 'you'
+  : /^(Appearance|Home|Text toolbar|Keyboard)/.test(title) ? 'look'
+  : /^(Messages|Feature tips)/.test(title) ? 'messages'
+  : /Companion/.test(title) ? 'coach'
+  : 'teaching';
+const GroupCtx = createContext('');
 function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
   const [open0, setOpen] = useState(() => !narrow() || title === 'Profile' || window.location.hash === '#' + slug(title));
   const q = useContext(SearchCtx);
+  const group = useContext(GroupCtx);
   const open = open0 || !!q;
   return (
-    <section className={'set-sec' + (open ? ' open' : '')} id={slug(title)} data-title={title} data-icon={icon}>
+    <section className={'set-sec' + (open ? ' open' : '')} id={slug(title)} data-title={title} data-icon={icon} data-group={groupOf(title)} hidden={!q && !!group && groupOf(title) !== group}>
       <h2 className="set-h">
         <button type="button" className="set-h-btn" onClick={() => narrow() && setOpen((o) => !o)} aria-expanded={open}>
           <UiIcon name={icon} size={16} />
@@ -63,27 +79,39 @@ function Section({ icon, title, children }: { icon: string; title: string; child
   );
 }
 
-// On a computer: the parts of settings in a list on the left.
-function SettingsNav() {
-  const [list, setList] = useState<{ id: string; title: string; icon: string }[]>([]);
-  const [on, setOn] = useState('');
+// The groups down the left, with the parts of the open group under it. On a phone, a menu at the top.
+function SettingsNav({ group, setGroup }: { group: string; setGroup: (g: string) => void }) {
+  const [list, setList] = useState<{ id: string; title: string; icon: string; group: string }[]>([]);
   useEffect(() => {
-    const read = () => setList([...document.querySelectorAll<HTMLElement>('.set-sec')].map((e) => ({ id: e.id, title: e.dataset.title ?? '', icon: e.dataset.icon ?? '' })));
+    const read = () => setList([...document.querySelectorAll<HTMLElement>('.set-sec')].map((e) => ({ id: e.id, title: e.dataset.title ?? '', icon: e.dataset.icon ?? '', group: e.dataset.group ?? '' })));
     read();
     const t = window.setTimeout(read, 800);
-    const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && setOn(e.target.id)), { rootMargin: '-20% 0px -70% 0px' });
-    document.querySelectorAll('.set-sec').forEach((e) => io.observe(e));
-    return () => (window.clearTimeout(t), io.disconnect());
+    return () => window.clearTimeout(t);
   }, []);
+  const groups = GROUPS.filter((g) => list.some((x) => x.group === g.k));
   return (
-    <nav className="set-nav" aria-label="Settings">
-      {list.map((x) => (
-        <a key={x.id} href={'#' + x.id} className={on === x.id ? 'on' : ''} onClick={(e) => (e.preventDefault(), document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))}>
-          <UiIcon name={x.icon} size={15} />
-          {x.title}
-        </a>
-      ))}
-    </nav>
+    <>
+      <nav className="set-nav set-groups" aria-label="Settings">
+        {groups.map((g) => (
+          <div key={g.k} className={'set-group' + (group === g.k ? ' on' : '')}>
+            <a href={'#set-group-' + g.k} className={'set-group-h' + (group === g.k ? ' on' : '')} aria-current={group === g.k ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setGroup(g.k); }}>
+              <UiIcon name={g.icon} size={16} />
+              {g.label}
+            </a>
+            {group === g.k && list.filter((x) => x.group === g.k).length > 1 && (
+              <span className="set-group-parts">
+                {list.filter((x) => x.group === g.k).map((x) => (
+                  <a key={x.id} href={'#' + x.id} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{x.title}</a>
+                ))}
+              </span>
+            )}
+          </div>
+        ))}
+      </nav>
+      <label className="set-groups-m"><span className="sr-only">Settings group</span>
+        <NSelect aria-label="Settings group" value={group} onChange={(e) => setGroup(e.target.value)}>{groups.map((g) => <option key={g.k} value={g.k}>{g.label}</option>)}</NSelect>
+      </label>
+    </>
   );
 }
 
@@ -145,6 +173,30 @@ export function SettingsPage() {
   const name = (learnerAcct ? (profile as { displayName?: string } | null)?.displayName : '') || user?.displayName || (learnerAcct ? 'Learner' : user?.email?.split('@')[0]) || '';
   // Searching: only the parts and rows that mention the words stay in view.
   const [q, setSearch] = useState('');
+  // The open group: from the address (#set-…), or the first.
+  const [group, setGroupState] = useState(() => {
+    const h = window.location.hash.slice(1);
+    const g = h.startsWith('set-group-') ? h.slice(10) : '';
+    if (GROUPS.some((x) => x.k === g)) return g;
+    const t = h ? document.getElementById(h)?.getAttribute('data-title') : null;
+    return t ? groupOf(t) : 'you';
+  });
+  const setGroup = (g: string) => { setGroupState(g); setSearch(''); window.history.replaceState(null, '', '#set-group-' + g); window.scrollTo({ top: 0 }); };
+  // A link to one part (#set-keyboard-shortcuts) opens its group and goes to it.
+  useEffect(() => {
+    const go = () => {
+      const h = window.location.hash.slice(1);
+      if (!h || h.startsWith('set-group-')) return;
+      const el = document.getElementById(h);
+      if (!el) return;
+      setGroupState(el.getAttribute('data-group') || 'you');
+      window.setTimeout(() => document.getElementById(h)?.scrollIntoView({ block: 'start' }), 60);
+    };
+    go();
+    const t = window.setTimeout(go, 500);
+    window.addEventListener('hashchange', go);
+    return () => { window.clearTimeout(t); window.removeEventListener('hashchange', go); };
+  }, []);
   const [none, setNone] = useState(false);
   useEffect(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -170,7 +222,8 @@ export function SettingsPage() {
     <div className="shell">
       <TopBar>{teacher ? <MainNav on="" /> : <LearnerNav on={null} phoneOnly />}</TopBar>
       <div className="set-layout">
-      <SettingsNav />
+      <SettingsNav group={group} setGroup={setGroup} />
+      <GroupCtx.Provider value={group}>
       <SearchCtx.Provider value={q.trim()}>
       <main className="set-page">
         <span className="set-titlebar">
@@ -185,6 +238,7 @@ export function SettingsPage() {
             )}
           </label>
         </span>
+        {!q.trim() && <header className="set-group-head"><h2>{GROUPS.find((g) => g.k === group)?.label}</h2><p className="hint">{GROUPS.find((g) => g.k === group)?.about}</p></header>}
         {q.trim() && none && <p className="hint set-none">No setting matches “{q.trim()}”.</p>}
 
         <Section icon="person" title="Profile">
@@ -316,6 +370,7 @@ export function SettingsPage() {
         </Section>
       </main>
       </SearchCtx.Provider>
+      </GroupCtx.Provider>
       </div>
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}

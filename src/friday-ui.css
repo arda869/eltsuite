@@ -504,17 +504,31 @@ body .dp .cd-main.has-nav .dn { top: 160px; max-height: calc(100dvh - 220px); }
 .dp .cd-side .cd-tabs button { flex: 1 1 auto; }
 
 /* Settings → Keyboard shortcuts */
-.ks { display: flex; flex-direction: column; gap: 14px; }
-.ks-about { margin: 0; }
-.ks-group h3 { margin: 0 0 4px; font: 700 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.ks-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 14px; min-height: 44px; padding: 4px 8px; border-radius: 10px; }
-.ks-row:hover, .ks-row.on { background: color-mix(in srgb, var(--surface) 60%, transparent); }
-.ks-what { font-size: 14px; }
-.ks-keys { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.ks-keys kbd, .ks-row kbd { display: inline-flex; align-items: center; min-width: 24px; height: 26px; padding: 0 8px; justify-content: center; border-radius: 6px; background: var(--paper); box-shadow: inset 0 -1px 0 var(--hair-strong), 0 0 0 1px var(--hair-strong); font: 600 12.5px var(--sans); color: var(--ink); }
-.ks-then { margin: 0 6px 0 0; color: var(--muted); font-size: 12px; }
-.ks-wait { color: var(--accent-text); font-weight: 600; }
-.ks-mine { padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 12%, transparent); color: var(--accent-text); font: 600 11px var(--sans); }
-.ks-btns { display: inline-flex; gap: 6px; }
-.ks-msg { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--wrong, #9a5148) 10%, transparent); color: var(--wrong, #9a5148); font-size: 13px; }
-@media (max-width: 600px) { .ks-row { grid-template-columns: 1fr auto; } .ks-keys { grid-column: 1; } }
+.kys { display: flex; flex-direction: column; gap: 14px; }
+.kys-about { margin: 0; }
+.kys-group h3 { margin: 0 0 4px; font: 700 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kys-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 14px; min-height: 44px; padding: 4px 8px; border-radius: 10px; }
+.kys-row:hover, .kys-row.on { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.kys-what { font-size: 14px; }
+.kys-keys { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.kys-keys kbd, .kys-row kbd { display: inline-flex; align-items: center; min-width: 24px; height: 26px; padding: 0 8px; justify-content: center; border-radius: 6px; background: var(--paper); box-shadow: inset 0 -1px 0 var(--hair-strong), 0 0 0 1px var(--hair-strong); font: 600 12.5px var(--sans); color: var(--ink); }
+.kys-then { margin: 0 6px 0 0; color: var(--muted); font-size: 12px; }
+.kys-wait { color: var(--accent-text); font-weight: 600; }
+.kys-mine { padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--accent-text) 12%, transparent); color: var(--accent-text); font: 600 11px var(--sans); }
+.kys-btns { display: inline-flex; gap: 6px; }
+.kys-msg { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--wrong, #9a5148) 10%, transparent); color: var(--wrong, #9a5148); font-size: 13px; }
+@media (max-width: 600px) { .kys-row { grid-template-columns: 1fr auto; } .kys-keys { grid-column: 1; } }
+
+/* Settings in groups (SettingsPage.tsx). */
+.set-sec[hidden] { display: none !important; }
+.set-groups { gap: 4px; }
+.set-group { display: flex; flex-direction: column; gap: 2px; }
+.set-nav a.set-group-h { height: 40px; padding: 0 12px; font: 500 14.5px var(--sans); color: var(--ink); align-items: center; }
+.set-nav a.set-group-h.on { background: var(--paper); color: var(--accent-text); font-weight: 600; box-shadow: 0 0 0 1px var(--hair), 0 2px 8px -4px rgba(0, 0, 0, .15); }
+.set-group-parts { display: flex; flex-direction: column; gap: 0; margin: 2px 0 8px 22px; padding-left: 12px; border-left: 1px solid var(--hair); }
+.set-nav .set-group-parts a { padding: 6px 10px; font-size: 13px; color: var(--muted); }
+.set-group-head { margin: 0 0 4px; }
+.set-group-head h2 { margin: 0; font: 600 26px/1.2 var(--serif); }
+.set-group-head p { margin: 4px 0 0; }
+.set-groups-m { display: none; }
+@media (max-width: 760px) { .set-groups-m { display: block; margin: 12px 16px 0; } .set-groups-m .nsel, .set-groups-m .sel { width: 100%; } }
