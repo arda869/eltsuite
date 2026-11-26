@@ -28,6 +28,7 @@ import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes'
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
@@ -92,6 +93,8 @@ import { PaperBar, SheetView, type Zoom } from '../lessons/SheetView';
 import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
+import { useLivePopout } from '../components/LivePopout';
+import { JoinProjector } from '../components/JoinProjector';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
 import { applyAccess, familyOf, isVariant, makeVariant, roleOf, ROLE_NAMES, unlinkVariant, useClassLevels, useGroupSets, useTaskBodies } from '../lib/groups';
@@ -539,6 +542,9 @@ export function LessonEditor() {
   const panels = usePanels('ll.teacherPanels', 1100);
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
+  const [projectQr, setProjectQr] = useState(false);
+  const { popout, popOut, dock, blocked: popoutBlocked } = useLivePopout(`${classId}-${itemId}`);
+  useEffect(() => { if (!teachingHere) dock(); }, [teachingHere, dock]);
   const [fullscreen, setFullscreen] = useState(false);
   const presentRef = useRef(present);
   presentRef.current = present;
@@ -552,8 +558,8 @@ export function LessonEditor() {
     return () => document.removeEventListener('fullscreenchange', on);
   }, []);
   useEffect(() => {
-    if (!present && document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  }, [present]);
+    if (!present && !projectQr && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, [present, projectQr]);
   const [activityOpen, setActivityOpen] = useState(false);
   const activityRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -1005,6 +1011,53 @@ export function LessonEditor() {
                 </div>
               </div>
   ) : null;
+  const livePanel = task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid || !!popout) ? (
+            <LivePanel
+              classId={classId}
+              taskId={task.id}
+              content={previewKey.content}
+              answerKey={previewKey.key}
+              presence={inLesson}
+              seeLearners={seeLearners}
+              revealedIds={singles}
+              onRevealQuestion={toggleSingle}
+              signals={signals}
+              codes={c?.codes ?? DEFAULT_CODES}
+              annotations={teacherAnns}
+              onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
+              people={
+                <div className="lp-people">
+                  <span className="session-count">
+                    <span className="live-dot" aria-hidden="true" />
+                    {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
+                  </span>
+                  <span className="session-people">
+                    {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
+                    {online.map((p) => (
+                      <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere') + (signals[p.id]?.hand ? ' hand' : '') + (signals[p.id]?.stuck ? ' stuck' : '')} data-tip={p.itemId === itemId ? (!seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}`) + (signals[p.id]?.hand ? ' · hand up' : '') + (signals[p.id]?.stuck ? ' · stuck' : '') : `${p.name} · online, not in this lesson`}>
+                        <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
+                        <span className="pname">{p.name.split(' ')[0]}</span>
+                        {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
+                      </span>
+                    ))}
+                  </span>
+                  {hands.length > 0 && (
+                    <span className="hint">
+                      <Icon name="wave" size="14" /> {hands.map((h) => h.name.split(' ')[0]).join(', ')} {hands.length === 1 ? 'has a hand up' : 'have hands up'} ·{' '}
+                      <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
+                        Lower all
+                      </button>
+                    </span>
+                  )}
+                </div>
+              }
+              rooms={activeSet?.groups}
+              only={gridOnly}
+              tagOf={tagOf}
+              onPopOut={popout ? undefined : popOut}
+              popoutBlocked={popoutBlocked}
+            />
+          ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
     <RefsContext.Provider value={refsValue}>
@@ -1101,6 +1154,13 @@ export function LessonEditor() {
           <TextSizeControl />
         </span>
       </TopBar>
+
+      {projectQr && c && item && <JoinProjector className={c.name} classCode={c.classCode} classId={classId} lesson={{ id: itemId, title: item.title }} onClose={() => setProjectQr(false)} />}
+      {popout && livePanel && createPortal(
+        <div className="shell wide classes-shell live-popout-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+          <header className="live-popout-head"><span><strong>{item?.title ?? 'Live lesson'}</strong><small>Teacher controls · {task?.title ?? ''}</small></span><button type="button" className="btn small-btn" onClick={dock}>Dock back</button></header>
+          {livePanel}
+        </div>, popout.target)}
 
       {quizOpen && <GameDialog classId={classId} itemId={itemId} tasks={tasks} currentTaskId={selected ?? undefined} onClose={() => setQuizOpen(false)} onSelect={(id) => void select(id)} />}
       {NOTEBOOK && user && (
@@ -1293,6 +1353,8 @@ export function LessonEditor() {
               </span>
               {/* Full screen: the side panels hide and the task fills the screen, for sharing it with the class. */}
               <span className="tb-group hide-phone">
+                {c && <button type="button" className="btn small-btn" onClick={() => setProjectQr(true)}>Project QR</button>}
+                {popout && <button type="button" className="btn small-btn" onClick={dock}>Dock controls</button>}
                 {present && <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />}
                 <IconBtn icon={present ? 'fullscreenOff' : 'fullscreen'} label={present ? 'Leave full screen (Esc)' : 'Full screen (F)'} active={present} onClick={() => changeMode(present ? 'teach' : 'present')} />
               </span>
@@ -1547,51 +1609,7 @@ export function LessonEditor() {
           </div>
 
           {panels.right && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
-          {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid) && (
-            <LivePanel
-              classId={classId}
-              taskId={task.id}
-              content={previewKey.content}
-              answerKey={previewKey.key}
-              presence={inLesson}
-              seeLearners={seeLearners}
-              revealedIds={singles}
-              onRevealQuestion={toggleSingle}
-              signals={signals}
-              codes={c?.codes ?? DEFAULT_CODES}
-              annotations={teacherAnns}
-              onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
-              people={
-                <div className="lp-people">
-                  <span className="session-count">
-                    <span className="live-dot" aria-hidden="true" />
-                    {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
-                  </span>
-                  <span className="session-people">
-                    {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
-                    {online.map((p) => (
-                      <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere') + (signals[p.id]?.hand ? ' hand' : '') + (signals[p.id]?.stuck ? ' stuck' : '')} data-tip={p.itemId === itemId ? (!seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}`) + (signals[p.id]?.hand ? ' · hand up' : '') + (signals[p.id]?.stuck ? ' · stuck' : '') : `${p.name} · online, not in this lesson`}>
-                        <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
-                        <span className="pname">{p.name.split(' ')[0]}</span>
-                        {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
-                      </span>
-                    ))}
-                  </span>
-                  {hands.length > 0 && (
-                    <span className="hint">
-                      <Icon name="wave" size="14" /> {hands.map((h) => h.name.split(' ')[0]).join(', ')} {hands.length === 1 ? 'has a hand up' : 'have hands up'} ·{' '}
-                      <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
-                        Lower all
-                      </button>
-                    </span>
-                  )}
-                </div>
-              }
-              rooms={activeSet?.groups}
-              only={gridOnly}
-              tagOf={tagOf}
-            />
-          )}
+          {livePanel && (popout ? <aside className="task-side live-panel live-popout-placeholder"><span>Live controls are in a separate window.</span><button type="button" className="btn small-btn" onClick={dock}>Dock back</button></aside> : livePanel)}
           {task && draft && viewer && (
             <aside className="task-side" aria-label="Viewing">
               <span className="eyebrow">Viewing</span>

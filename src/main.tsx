@@ -183,8 +183,16 @@ function SiteGate() {
 }
 
 function Join() {
-  const { user, ready } = useAuth();
-  if (!ready) return <Boot />;
+  const { user, profile, ready } = useAuth();
+  if (!ready || (user && !profile)) return <Boot />;
+  const params = new URLSearchParams(window.location.search);
+  const lesson = params.get('lesson');
+  const classId = params.get('class');
+  // A projected lesson link keeps its destination through the learner sign-in.
+  // A learner in a different class must enter the invited class code first.
+  if (user && profile?.role === 'learner' && lesson && classId && profile.classId === classId && /^[A-Za-z0-9_-]{1,120}$/.test(lesson))
+    return <Navigate to={`/learn/${encodeURIComponent(lesson)}`} replace />;
+  if (user && profile?.role === 'learner' && classId && profile.classId !== classId) return <LearnerJoin />;
   return user ? <Navigate to="/" replace /> : <LearnerJoin />;
 }
 
