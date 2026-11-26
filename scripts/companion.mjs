@@ -11,17 +11,18 @@ import { sendDevices } from '../functions/push-delivery.js';
 import { frame, pad, h1, p, small, button, esc, SITE } from './email-layout.mjs';
 
 const app = initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
-const db = getFirestore(app);
-const fcm = getMessaging();
 const now = Date.now();
 const SMTP = process.env.SMTP_URL;
 const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
-const mail = SMTP ? (await import('nodemailer')).default.createTransport(SMTP) : null;
 // Older than this and the moment has passed: mark it without sending.
 const STALE = 7 * 864e5;
 
 let pushed = 0, mailed = 0, failures = 0;
+let db, mail;
 try {
+db = getFirestore(app);
+const fcm = getMessaging();
+mail = SMTP ? (await import('nodemailer')).default.createTransport(SMTP) : null;
 const teachers = await db.collection('teachingCoach').listDocuments();
 for (const t of teachers) {
   const uid = t.id;
@@ -85,6 +86,6 @@ console.log(`Companion reminders: ${pushed} teachers notified on their devices, 
 if (failures) { console.error(`${failures} Companion reminders failed; they stay due for the next run.`); process.exitCode = 1; }
 } finally {
   try { mail?.close?.(); } finally {
-    try { await db.terminate(); } finally { await deleteApp(app); }
+    try { await db?.terminate(); } finally { await deleteApp(app); }
   }
 }

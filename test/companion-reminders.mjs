@@ -40,10 +40,10 @@ const modules = {
   `,
   'firebase-admin/auth': `export const getAuth = () => ({ getUser: async () => ({ email: 'teacher@example.test' }) });`,
   'firebase-admin/messaging': `export const getMessaging = () => ({ send: async () => 'sent' });`,
-  'nodemailer': `export default { createTransport: () => ({
+  'nodemailer': `export default { createTransport: () => { if (process.env.COMPANION_FAIL_INIT === '1') throw Error('emulated transport setup failure'); return ({
     sendMail: async () => { globalThis.event('email:attempt'); if (process.env.COMPANION_FAIL_MAIL === '1') throw Error('emulated mail outage'); },
     close: () => globalThis.event('mail:close')
-  }) };`,
+  }); } };`,
   'push-delivery': `export const sendDevices = async () => { globalThis.event('push:attempt'); return { complete: true, failed: 0 }; };`,
 };
 try {
@@ -53,8 +53,8 @@ try {
       b.onResolve({ filter: /push-delivery\.js$/ }, () => ({ path: 'push-delivery', namespace: 'fake' }));
       b.onLoad({ filter: /.*/, namespace: 'fake' }, args => ({ contents: modules[args.path], loader: 'js' }));
     } }] });
-  const run = fail => {
-    const r = spawnSync(process.execPath, [entry], { env: { ...process.env, COMPANION_FIXTURE: file, COMPANION_FAIL_MAIL: fail ? '1' : '0', SMTP_URL: 'smtp://test' }, encoding: 'utf8', timeout: 15000 });
+  const run = (fail, initFailure = false) => {
+    const r = spawnSync(process.execPath, [entry], { env: { ...process.env, COMPANION_FIXTURE: file, COMPANION_FAIL_MAIL: fail ? '1' : '0', COMPANION_FAIL_INIT: initFailure ? '1' : '0', SMTP_URL: 'smtp://test' }, encoding: 'utf8', timeout: 15000 });
     const x = JSON.parse(readFileSync(file, 'utf8'));
     if (r.error) throw r.error;
     return { r, x };
@@ -64,8 +64,10 @@ try {
   const second = run(false);
   if (second.r.status !== 0 || second.x.inquiry.remindedEmailFor !== fixture.inquiry.reviewAt || second.x.inquiry.remindedFor !== fixture.inquiry.reviewAt) throw Error('Email retry did not finish reminder: ' + second.r.stderr);
   const third = run(false);
-  const count = name => third.x.events.filter(x => x === name).length;
-  if (third.r.status !== 0 || count('push:attempt') !== 1 || count('email:attempt') !== 2) throw Error('A completed reminder was resent');
-  for (const name of ['db:close', 'app:close', 'mail:close']) if (count(name) !== 3) throw Error(name + ' was not closed after every run');
-  console.log('Companion scheduler: push once, email retried once, completed reminder not resent, and all resources closed.');
+  const count = (runResult, name) => runResult.x.events.filter(x => x === name).length;
+  if (third.r.status !== 0 || count(third, 'push:attempt') !== 1 || count(third, 'email:attempt') !== 2) throw Error('A completed reminder was resent');
+  for (const name of ['db:close', 'app:close', 'mail:close']) if (count(third, name) !== 3) throw Error(name + ' was not closed after every run');
+  const fourth = run(false, true);
+  if (fourth.r.status === 0 || count(fourth, 'db:close') !== 4 || count(fourth, 'app:close') !== 4 || count(fourth, 'mail:close') !== 3) throw Error('Transport setup failure left Admin or Firestore open');
+  console.log('Companion scheduler: retry and idempotency pass; resources close even when transport setup fails.');
 } finally { rmSync(dir, { recursive: true, force: true }); }
