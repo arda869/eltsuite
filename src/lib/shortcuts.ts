@@ -12,7 +12,7 @@ import { isMac, keyLabel } from './keys';
 // them and it works in full screen only. Keys the computer itself keeps (quit, F11…) can't be used.
 
 export type CmdId = 'go-home' | 'go-classes' | 'go-files' | 'go-messages' | 'go-timetable' | 'go-hub' | 'go-collab' | 'go-design' | 'go-recordings' | 'go-settings'
-  | 'new-doc' | 'new-lesson' | 'new-recording' | 'new-design' | 'search';
+  | 'new-doc' | 'new-lesson' | 'new-recording' | 'new-design' | 'search' | 'copy-suite-script';
 export type Cmd = { id: CmdId; group: 'Go to' | 'Make' | 'Everywhere'; label: string; def: string; to?: string; make?: 'doc' | 'lesson' };
 
 export const COMMANDS: Cmd[] = [
@@ -31,6 +31,7 @@ export const COMMANDS: Cmd[] = [
   { id: 'new-recording', group: 'Make', label: 'A new recording', def: 'N R', to: '/studio/sound/new' },
   { id: 'new-design', group: 'Make', label: 'A new design', def: 'N P', to: '/design' },
   { id: 'search', group: 'Everywhere', label: 'Search everything', def: 'Mod+K' },
+  { id: 'copy-suite-script', group: 'Everywhere', label: 'Copy as SuiteScript', def: 'Mod+Shift+C' },
 ];
 
 // Keys a browser keeps for itself: a page never sees them, or can't stop what they do.

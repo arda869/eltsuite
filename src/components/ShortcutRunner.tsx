@@ -19,6 +19,7 @@ export function ShortcutRunner() {
     let first = '';
     let timer = 0;
     const run = async (c: Cmd) => {
+      if (c.id === 'copy-suite-script') { window.dispatchEvent(new Event('ll:copy-suitescript')); return; }
       if (c.make && user) {
         const id = await newSharedDoc({ uid: user.uid, name: user.displayName || 'Teacher' }, c.make);
         return navigate('/doc/' + id);
@@ -37,6 +38,7 @@ export function ShortcutRunner() {
       const seq = first ? first + ' ' + combo : combo;
       const hit = bound.find((b) => b.k === seq);
       if (hit && canRunHere(hit.k, !!document.fullscreenElement)) {
+        if (hit.c.id === 'copy-suite-script' && !(document.activeElement as HTMLElement | null)?.closest('.ProseMirror')) return;
         e.preventDefault();
         first = '';
         window.clearTimeout(timer);

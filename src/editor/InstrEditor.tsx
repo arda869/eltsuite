@@ -5,7 +5,12 @@ import { UiIcon } from '../components/UiIcon';
 import { useAuth } from '../lib/auth';
 import { tell } from '../lib/ask';
 import { useEffect, useRef, useState } from 'react';
-import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
+import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
+import { isSuiteScript, parseSuiteScript, toSuiteScript } from '../lib/suiteScript';
+import { SUITE_TYPES } from './TaskEditor';
+import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
+import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
+import { auth } from '../lib/firebase';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -28,6 +33,9 @@ const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match
 
 export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
   const ctx=useEditorClass();
+  const teacherRef = useRef(false);
+  teacherRef.current = useAuth().profile?.role === 'teacher';
+  const editorRef = useRef<Editor | null>(null);
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
   const [defOpen, setDefOpen] = useState(false);
@@ -50,6 +58,25 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
     content: doc ?? plainDoc(text),
     editorProps: {
       attributes: { class: 'instr-editor', 'aria-label': 'Instruction', role: 'textbox' },
+      handlePaste: (_view, event) => {
+        const plain = event.clipboardData?.getData('text/plain') ?? '';
+        if (!teacherRef.current || !isSuiteScript(plain)) return false;
+        event.preventDefault();
+        const result = parseSuiteScript(plain, SUITE_TYPES);
+        if (result.errors.length) { void tell(result.errors.join('\n')); return true; }
+        if (result.content.some(node => node.type !== 'paragraph')) { void tell('This instruction supports text and inline elements. Paste the full activity into its task content.'); return true; }
+        void (async () => {
+          try {
+            const classId = givenClass || ctx.classId;
+            const resolved = await resolveSuiteScriptContent(result.content, classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
+            const inline = resolved.content.flatMap((node, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(node.content ?? [])]);
+            inline.forEach(node => editorRef.current?.schema.nodeFromJSON(node).check());
+            editorRef.current?.chain().focus().insertContent(inline).run();
+            if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));
+          } catch (error) { void tell(`SuiteScript could not be pasted into this instruction: ${error instanceof Error ? error.message : String(error)}`); }
+        })();
+        return true;
+      },
       // One paragraph: Enter does nothing, Shift + Enter makes a line break.
       handleKeyDown: (_view, e) => e.key === 'Enter' && !e.shiftKey,
     },
@@ -60,6 +87,23 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
       changeRef.current(hasRich(json) ? json : null, plain);
     },
   });
+  editorRef.current = editor;
+  useEffect(() => {
+    if (!editor) return;
+    const copy = () => {
+      if (!teacherRef.current || !editor.isFocused) return;
+      const nodes = editor.state.selection.empty ? editor.getJSON().content ?? [] : editor.state.selection.content().content.toJSON() as JSONContent[];
+      void (async () => {
+        try {
+          const ready = auth.currentUser ? await suiteScriptCopyNodes(nodes, auth.currentUser.uid, givenClass || ctx.classId) : nodes;
+          await navigator.clipboard.writeText(toSuiteScript(ready, SUITE_TYPES));
+          void tell('SuiteScript copied as plain text.');
+        } catch (error) { void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript.'); }
+      })();
+    };
+    window.addEventListener('ll:copy-suitescript', copy);
+    return () => window.removeEventListener('ll:copy-suitescript', copy);
+  }, [editor]);
   useEffect(() => () => editor?.destroy(), [editor]);
   if (!editor) return null;
   const B = (label: React.ReactNode, on: boolean, run: () => void, title: string) => (

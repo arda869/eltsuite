@@ -9,12 +9,18 @@ import { InvestigationNode, newInvestigationBlock } from '../linguistics/Investi
 import { FAMILIES } from '../linguistics/model';
 import { SpeakingBlock, newSpeaking } from './SpeakingNode';
 import { auth } from '../lib/firebase';
+import { useAuth } from '../lib/auth';
+import { isSuiteScript, parseSuiteScript, suiteScriptMessageSafe, toSuiteScript, type SuiteScriptTypes } from '../lib/suiteScript';
+import { suiteScriptGuide } from '../lib/suiteScriptGuide';
 import { imageToData } from '../lib/flash';
 import { Extension } from '@tiptap/core';
 import {QUESTION_TYPES} from '../lib/questions';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
+import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
+import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
+import { keyLabel } from '../lib/keys';
 import { newTimeline, TimelineNode } from './Timeline';
 import { DG, DG_KINDS, DiagramCell, DiagramNode, newDiagram } from './Diagram';
 import { TableHandles } from './TableHandles';
@@ -260,6 +266,17 @@ export const COMMANDS: Cmd[] = [
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
   ...BLOCK_CMDS,
 ];
+// The names come from the same registry as the teacher's insertion menu.
+const suiteCommandLabel = (key: string) => COMMANDS.find(command => command.key === key)?.label;
+export const SUITE_TYPES: SuiteScriptTypes = Object.fromEntries([
+  ['gap', 'gap'], ['gap:letters', 'lettergap'], ['gap:stem', 'wordform'],
+  ['choice:radio', 'radio'], ['choice:dropdown', 'dropdown'],
+  ['match', 'match'], ['dropgap', 'drop'], ['wordbank', 'bank'], ['order', 'order'],
+  ['writing', 'writing'], ['collab', 'collab'], ['upload', 'upload'], ['survey', 'survey'],
+  ...COMMUNICATIVE_INSERTS.map(command => [`communicativeActivity:${command.key.slice('activity-'.length)}`, command.key]),
+  ...FAMILIES.map(family => [`investigation:${family.id}`, family.id]),
+  ...COMMANDS.filter(command => command.key.startsWith('pq-')).map(command => [`pq:${command.key.slice(3)}`, command.key]),
+].map(([nodeType, commandKey]) => [nodeType, suiteCommandLabel(commandKey)]).filter((entry): entry is [string, string] => !!entry[1]));
 // The questions that can sit on a PDF page, in a box of their own.
 export const PDF_Q_KEYS = ['gap', 'lettergap', 'wordform', 'radio', 'dropdown', 'truefalse', 'notgiven', 'match', 'drop', 'order', 'writing'];
 setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter((c): c is Cmd => !!c));
@@ -531,6 +548,8 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
 }
 
 export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void }) {
+  const teacherRef = useRef(false);
+  teacherRef.current = useAuth().profile?.role === 'teacher';
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -629,6 +648,24 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       transformPastedHTML: cleanPastedHTML,
       // Paste or drop pictures straight into the task: they are uploaded to the class.
       handlePaste: (view, e) => {
+        const plain = e.clipboardData?.getData('text/plain') ?? '';
+        if (teacherRef.current && isSuiteScript(plain)) {
+          e.preventDefault();
+          const result = parseSuiteScript(plain, SUITE_TYPES);
+          if (result.errors.length) { void tell(result.errors.join('\n')); return true; }
+          void (async () => {
+            try {
+              const place = classRef.current;
+              const resolved = place.startsWith('chat:')
+                ? { content: suiteScriptMessageSafe(result.content), warnings: [] }
+                : await resolveSuiteScriptContent(result.content, place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+              resolved.content.forEach(item => view.state.schema.nodeFromJSON(item).check());
+              await pasteClip({ v: 1, space: '', content: resolved.content });
+              if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));
+            } catch (error) { void tell(`SuiteScript could not be pasted here: ${error instanceof Error ? error.message : String(error)}`); }
+          })();
+          return true;
+        }
         // Elements copied from a message or another task: with answers, pictures and sounds.
         const clip = readClip(e.clipboardData?.getData('text/html'));
         if (clip) {
@@ -710,6 +747,23 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       void tell('We couldn’t upload the picture. Try a smaller one.');
     }
   }
+  async function copySuiteScript(guide = false) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const slice = ed.state.selection.empty ? (ed.getJSON().content ?? []) : (ed.state.selection.content().content.toJSON() as JSONContent[]);
+    try {
+      const nodes = guide || !auth.currentUser ? slice : await suiteScriptCopyNodes(slice, auth.currentUser.uid, classRef.current);
+      const value = guide ? suiteScriptGuide(COMMANDS) : toSuiteScript(nodes, SUITE_TYPES);
+      await navigator.clipboard.writeText(value);
+      void tell(guide ? 'AI instructions copied.' : 'SuiteScript copied as plain text.');
+    } catch (error) { void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript. Try again or allow clipboard access.'); }
+  }
+  useEffect(() => {
+    if (!editor) return;
+    const copy = () => { if (teacherRef.current && editor.isFocused) void copySuiteScript(); };
+    window.addEventListener('ll:copy-suitescript', copy);
+    return () => window.removeEventListener('ll:copy-suitescript', copy);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
   const [picOpen, setPicOpen] = useState(false);
   useEffect(() => { if (initialDesignId) setPicOpen(true); }, [initialDesignId]);
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -1023,6 +1077,10 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           host={host}
           onDefinition={() => setDefOpen(true)}
           onLink={() => setLinkOpen(true)}
+          extra={teacherRef.current ? [
+            { label: 'Copy as SuiteScript', hint: keyLabel('Mod+Shift+C'), run: () => void copySuiteScript() },
+            { label: 'Copy SuiteScript AI instructions', run: () => void copySuiteScript(true) },
+          ] : []}
           actions={{
             gap: (t) => editor.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, answers: [t] } }).run(),
             drop: (t) => {

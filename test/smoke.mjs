@@ -208,6 +208,44 @@ const J = {
     if (result.before !== 'Mod+T' || result.next || !result.reservedIgnored || result.teacher1Choice !== 'hidden' || result.teacher2Choice !== 'auto') throw Error('Shortcut or status choice leaked across teachers, or reserved shortcut ran outside fullscreen: ' + JSON.stringify(result));
     return s;
   },
+  'Copy as SuiteScript shortcut stays in the focused teacher editor': async b => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/dev.html?seed&as=teacher');
+    await s.p.waitForFunction(() => !!localStorage.mockdemo, null, { timeout: 180000 });
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 190, 'task', { title: 'SuiteScript keyboard check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Listen for the room number.' }] }] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript keyboard check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.focus();
+    await s.p.evaluate(() => {
+      window.__suiteCopied = '';
+      navigator.clipboard.writeText = async text => { window.__suiteCopied = text; };
+    });
+    await s.p.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+C' : 'Control+Shift+C');
+    // Chromium can keep Ctrl/Cmd+Shift+C for Inspect Element in a normal tab.
+    // Exercise the app handler directly too, then verify the menu fallback.
+    if (!await s.p.evaluate(() => window.__suiteCopied)) {
+      const handled = await s.p.evaluate(() => { const event = new KeyboardEvent('keydown', { key: 'C', code: 'KeyC', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }); document.activeElement?.dispatchEvent(event); return event.defaultPrevented; });
+      if (!handled) throw Error('The focused editor did not handle Copy as SuiteScript.');
+    }
+    await s.p.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
+    const text = await s.p.evaluate(() => window.__suiteCopied);
+    if (!text.includes('Listen for the room number.')) throw Error('The focused task was not copied.');
+    await s.p.getByRole('button', { name: 'Got it' }).click();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Copy as SuiteScript', { exact: true }).last().click();
+    await s.p.waitForFunction(() => window.__suiteCopied?.startsWith('SuiteScript v1\n'));
+    await s.p.getByRole('button', { name: 'Got it' }).click();
+    await s.p.keyboard.press(process.platform === 'darwin' ? 'Meta+C' : 'Control+C');
+    if (await s.p.evaluate(() => window.__suiteCopied) !== text) throw Error('Ordinary copy unexpectedly became SuiteScript.');
+    return s;
+  },
   'Signing out clears the teacher online tab': async b => {
     const s = await session(b);
     await s.p.goto(BASE + '/settings');
