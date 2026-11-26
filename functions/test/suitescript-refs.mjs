@@ -43,8 +43,8 @@ test('stable IDs survive rename/move, and source and destination permissions are
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'resourceHub' } }), e => e.code === 'permission-denied');
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['learner'] } })).sourceId, 'doc1');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['stranger'] } }), e => e.code === 'permission-denied');
-  const swapped = audio.id.slice(0, 9) + audio.id[10] + audio.id[9] + audio.id.slice(11);
-  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: swapped, destination: { mode: 'private' } }), e => e.code === 'invalid-argument');
+  const wrongChecksum = audio.id.slice(0, -1) + (audio.id.endsWith('0') ? '1' : '0');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: wrongChecksum, destination: { mode: 'private' } }), e => e.code === 'invalid-argument');
   records.delete('users/teacher/archive/audio1');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'private' } }), e => e.code === 'not-found');
 });

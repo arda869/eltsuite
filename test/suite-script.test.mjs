@@ -25,7 +25,7 @@ await unlink(keyUrl);
 const hubBuilt = await build({ entryPoints: ['src/resourceHub/suiteScriptHubApply.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
 const hubUrl = new URL('./.suite-script-hub-test-bundle.mjs', import.meta.url);
 await writeFile(hubUrl, hubBuilt.outputFiles[0].text);
-const { applySuiteScriptBundleToHubDraft } = await import(hubUrl.href);
+const { applySuiteScriptBundleToHubDraft, hubSectionToSuiteScriptTask } = await import(hubUrl.href);
 await unlink(hubUrl);
 
 const labels = { gap: 'Gap fill', 'choice:radio': 'Multiple choice, as a list', 'choice:dropdown': 'Multiple choice in line' };
@@ -172,14 +172,18 @@ test('explicit whole-task and whole-activity drafts preserve instructions, priva
 });
 
 test('whole Hub activity carries metadata and teacher notes; selected A edit preserves B and version metadata', () => {
-  const task = { title: 'A', kind: 'task', instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask.' }] }], content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A answer' }] }], teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Private lead in' }] }], paperInstructions: [] };
+  const task = { title: 'A', kind: 'task', layout: 'two', hidden: true, locked: true, paper: { gap: 'medium', lines: 3, show: 'both', icon: 'none' }, anchor: 'step-one', identity: { id: 'new', name: 'New', colour: '#bb5533', icon: 'spark' }, instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask.' }] }], content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A answer' }] }], teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Private lead in' }] }], paperInstructions: [] };
   const draft = { title: 'Old', level: 'B1', summary: 'Old summary', focus: 'Old focus', minutes: 20, sections: [
-    { id: 'a', title: 'Old A', audience: 'learner', kind: 'task', versionGroup: 'pair', versionLabel: 'Learner A', content: { type: 'doc', content: [{ type: 'paragraph' }] } },
+    { id: 'a', title: 'Old A', audience: 'learner', kind: 'task', identity: { id: 'original', name: 'Original', colour: '#333333', icon: 'check' }, versionGroup: 'pair', versionLabel: 'Learner A', content: { type: 'doc', content: [{ type: 'paragraph' }] } },
     { id: 'b', title: 'B', audience: 'learner', kind: 'task', versionGroup: 'pair', versionLabel: 'Learner B', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B remains' }] }] } },
   ] };
   const changed = applySuiteScriptBundleToHubDraft(draft, { kind: 'task', task }, 'a');
   assert.equal(changed.sections[0].versionGroup, 'pair');
   assert.equal(changed.sections[0].versionLabel, 'Learner A');
+  assert.deepEqual(changed.sections[0].identity, draft.sections[0].identity);
+  assert.equal(changed.sections[0].suiteScriptTaskMeta.layout, 'two');
+  assert.deepEqual(hubSectionToSuiteScriptTask(changed.sections[0], changed.sections).paper, task.paper);
+  assert.equal(hubSectionToSuiteScriptTask(changed.sections[0], changed.sections).hidden, true);
   assert.deepEqual(changed.sections.at(-1), draft.sections[1]);
   assert.equal(changed.sections[1].audience, 'teacher');
   assert.equal(changed.sections[1].content.content[0].content[0].text, 'Private lead in');

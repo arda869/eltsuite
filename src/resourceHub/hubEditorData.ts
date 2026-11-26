@@ -7,7 +7,7 @@ import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 /** Draft and public editions live in different collections. Public reads never expose draft text. */
 export type HubEditorState = 'draft' | 'in-review';
 export type HubResourceType = 'activity' | 'lesson';
-export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; content: JSONContent };
+export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; suiteScriptTaskMeta?: Pick<import('../lib/suiteScriptBundle').SuiteScriptTaskDraft, 'layout' | 'afterCheck' | 'showScore' | 'hidden' | 'locked' | 'colScroll' | 'paper' | 'anchor'>; content: JSONContent };
 export type HubResourceDraft = {
   id: string; resourceType?: HubResourceType; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
   aim?: string;

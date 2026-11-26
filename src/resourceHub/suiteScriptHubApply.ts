@@ -20,7 +20,9 @@ export function suiteScriptHubSections(task: SuiteScriptTaskDraft, id = newId())
     id, title: task.title, audience: 'learner', kind: 'task',
     instructions: textOf(instrDoc), instrDoc,
     printInstructions: textOf(printInstrDoc), printInstrDoc,
-    ...(task.identity ? { identity: task.identity } : {}), content,
+    ...(task.identity ? { identity: task.identity } : {}),
+    suiteScriptTaskMeta: Object.fromEntries((['layout', 'afterCheck', 'showScore', 'hidden', 'locked', 'colScroll', 'paper', 'anchor'] as const).filter(key => task[key] !== undefined).map(key => [key, task[key]])),
+    content,
   };
   if (!task.teacherNotes.length) return [learner];
   const notes: HubEditorSection = {
@@ -44,7 +46,7 @@ export function applySuiteScriptBundleToHubDraft(draft: HubResourceDraft, bundle
   const original = draft.sections[index];
   if (!original || original.audience !== 'learner' || original.kind !== 'task') throw new Error('Select an existing learner task.');
   const next = suiteScriptHubSections(bundle.task, selectedSectionId);
-  const learner = { ...next[0], versionGroup: original.versionGroup, versionLabel: original.versionLabel };
+  const learner = { ...next[0], identity: original.identity, versionGroup: original.versionGroup, versionLabel: original.versionLabel };
   const notesId = `${selectedSectionId}-notes`;
   const withoutOwnedNotes = draft.sections.filter(section => section.id !== notesId);
   const at = withoutOwnedNotes.findIndex(section => section.id === selectedSectionId);
@@ -71,7 +73,7 @@ export function hubSectionToSuiteScriptTask(section: HubEditorSection, sections:
   if (section.audience !== 'learner' || section.kind !== 'task') throw new Error('Choose a learner task.');
   const notes = sections.find(item => item.id === `${section.id}-notes`);
   return {
-    title: section.title, kind: 'task', ...(section.identity ? { identity: section.identity } : {}),
+    title: section.title, kind: 'task', ...section.suiteScriptTaskMeta, ...(section.identity ? { identity: section.identity } : {}),
     instructions: section.instrDoc?.type === 'doc' ? section.instrDoc.content ?? [] : section.instructions ? [{ type: 'paragraph', content: [{ type: 'text', text: section.instructions }] }] : [],
     content: section.content.content ?? [],
     teacherNotes: notes?.content.content ?? [],

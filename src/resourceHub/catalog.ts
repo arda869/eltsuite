@@ -5,7 +5,6 @@ import igxCover from './assets/cover-igx.svg';
 import spgCover from './assets/cover-spg.svg';
 import picCover from './assets/cover-pic.svg';
 import metadata from './metadata.json';
-import type { JSONContent } from '@tiptap/react';
 
 export type HubCollectionId = 'otp' | 'nop' | 'wfc' | 'igx' | 'spg' | 'pic';
 export type HubActivityStatus = 'ready' | 'outline';
@@ -39,7 +38,7 @@ export interface HubActivity {
   notes: string[];
   worksheet: string[];
   tags: string[];
-  editorSections?: { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; content: JSONContent }[];
+  editorSections?: import('./hubEditorData').HubEditorSection[];
   authoredParts?: { id: string; title: string; audience: 'learner' | 'teacher'; lines: string[] }[];
 }
 
