@@ -60,3 +60,11 @@ export function CoachPreferences({ uid }: { uid: string }) {
     {error&&<p role="alert" className="error">{error}</p>}
   </div>;
 }
+
+// One setting, from anywhere (the context strip in the Companion).
+export async function setCoachPreference(uid: string, patch: Partial<CoachPreferencesValue>) {
+  await runTransaction(db, async tx => {
+    const ref = doc(db, 'teachingCoach', uid, 'settings', 'context'), old = await tx.get(ref), data = old.data();
+    tx.set(ref, { ...contextPermissions(data), mode: modes.includes(data?.mode) ? data!.mode : modes[0], ...patch, version: (data?.version ?? 0) + 1 });
+  });
+}
