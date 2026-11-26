@@ -587,14 +587,14 @@ const J = {
   'Google teachers can add a password without changing their account': async b=>{
     const s=await session(b);
     await s.p.evaluate(()=>{const all=JSON.parse(localStorage.getItem('mockauth'));all.teacher1.providers=['google.com'];delete all.teacher1.password;localStorage.setItem('mockauth',JSON.stringify(all));sessionStorage.setItem('mock-link-recent','1');});
-    await s.p.goto(BASE+'/settings');await s.p.getByRole('button',{name:'Add password',exact:true}).click();
-    const save=s.p.getByRole('button',{name:'Save password',exact:true});if(await save.isEnabled())throw Error('Empty password accepted');
-    await s.p.getByText('Enter a password with at least 8 characters.',{exact:true}).waitFor();
-    await s.p.getByLabel('New password',{exact:true}).fill('Test-only-friday-123');await s.p.getByLabel('Confirm password',{exact:true}).fill('wrong');
+    await s.p.goto(BASE+'/settings');await s.p.getByRole('button',{name:'Add a password',exact:true}).click();
+    const save=s.p.getByRole('button',{name:'Add password',exact:true});if(await save.isEnabled())throw Error('Empty password accepted');
+    await s.p.getByText('Enter a new password with at least 8 characters.',{exact:true}).waitFor();
+    await s.p.getByLabel('New password',{exact:true}).fill('Test-only-friday-123');await s.p.getByLabel('New password again',{exact:true}).fill('wrong');
     if(await save.isEnabled())throw Error('Mismatched passwords accepted');
-    await s.p.getByLabel('Confirm password',{exact:true}).fill('Test-only-friday-123');await save.click();
-    await s.p.getByRole('button',{name:'Confirm with Google and add password',exact:true}).click();await s.p.getByText('Password sign-in is enabled.',{exact:true}).waitFor();
-    await s.p.reload();await s.p.getByText('Password sign-in is enabled.',{exact:true}).waitFor();
+    await s.p.getByLabel('New password again',{exact:true}).fill('Test-only-friday-123');await save.click();
+    await s.p.getByRole('button',{name:'Confirm with Google and add password',exact:true}).click();await s.p.getByText(/Password added\. You can now sign in/).waitFor();
+    await s.p.reload();await s.p.getByRole('button',{name:'Change password',exact:true}).waitFor();
     const uid=await s.p.evaluate(async()=>{const a=await import('/test/mock/auth.ts');const auth=a.getAuth();await a.signOut(auth);return(await a.signInWithEmailAndPassword(auth,'teacher@example.com','Test-only-friday-123')).user.uid;});if(uid!=='teacher1')throw Error('Password sign-in created a different identity');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
     await axe(s.p,'Same teacher lesson after password sign-in',A11Y_FOUND);return s;
