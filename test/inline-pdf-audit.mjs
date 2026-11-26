@@ -23,7 +23,7 @@ try{
   const {flattenWithSections,collectMedia}=await import('/src/lib/worksheet.ts');
   const {worksheetHtml}=await import('/src/lib/worksheetHtml.ts');
   const {worksheetPdf}=await import('/src/lib/pdfMake.ts');
-  const {docBodyHtml,prepareDocumentPrint,EXPORT_DEFAULT}=await import('/src/collab/export.ts');
+  const {docBodyHtml,prepareDocumentPrint,exportForRole,EXPORT_DEFAULT}=await import('/src/collab/export.ts');
   const {htmlToPdf}=await import('/src/lib/folderExport.ts');
   const text=text=>({type:'text',text}),para=(...content)=>({type:'paragraph',content});
   const choice = (...options) => ({type:'choice',attrs:{options,correct:0}});
@@ -95,7 +95,10 @@ try{
   const media=await sheetPictures('audit',items);
   if(!media['pdf-page:1:file:audit-source']?.data.startsWith('data:image/jpeg')) throw Error('Lost the original attachment page.');
   const html=worksheetHtml('Town lesson',items,{...opts,media,sounds:await sheetSounds('audit',items,'#975f40')});
-  await prepareDocumentPrint(doc,'audit');const collab=docBodyHtml(doc,'Town document',EXPORT_DEFAULT);
+  await prepareDocumentPrint(doc,'audit');
+  const collab=docBodyHtml(doc,'Town document',exportForRole(EXPORT_DEFAULT,false));
+  const teacherCollab=docBodyHtml(doc,'Town document',exportForRole(EXPORT_DEFAULT,true));
+  if(!teacherCollab.includes('secret-key'))throw Error('A teacher copy lost its answer key.');
   for(const output of [html,collab]){
    for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions'])if(!output.includes(expected))throw Error('Missing '+expected);
    if(output.includes('secret-key'))throw Error('A learner copy exposed a private answer.');
