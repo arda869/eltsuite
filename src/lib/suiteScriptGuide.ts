@@ -7,6 +7,8 @@ export type SuiteScriptCatalogEntry = { key: string; label: string; group: strin
 export function suiteScriptGuide(commands: SuiteScriptCatalogEntry[]): string {
   const questions = commands.filter(command => command.group === 'Questions');
   const types = [...new Set(questions.map(command => command.label))];
+  const activities = [...new Set(commands.filter(command => command.group === 'Blocks').map(command => command.label))];
+  const textTools = [...new Set(commands.filter(command => command.group === 'Text').map(command => command.label))];
   return `ELT Suite is a toolkit for English language teachers. Teachers use it to create and adapt lessons and activities, organise them in Classes, and find teaching materials in Resource Hub. SuiteScript is a text format for creating editable ELT Suite materials. Write for the teacher’s requested level and learning aim, and use the native activity and question types described below.
 
 FORMAT
@@ -19,7 +21,9 @@ FORMATTING
 @heading("At reception") starts a heading. In a paragraph, write @bold("room number"), @italic("sorry"), @underline("important") or @strike("removed"). @stress("four", "teen", stressed: 2) uses an explicitly supplied one-based stressed syllable. Do not infer syllables from spelling. @numbered("First step", "Second step") makes a numbered list. @bullet("One", "Two") makes a bulleted list. For other native formatting and elements, copy an existing SuiteScript example from the editor; preserve its @element or @marked data exactly.
 
 NATIVE QUESTION AND ACTIVITY NAMES
-Use the exact displayed name, including punctuation and capitalisation. Current registry: ${types.join('; ')}.
+Use the exact displayed name, including punctuation and capitalisation. Current question registry: ${types.join('; ')}.
+Communicative activities and other blocks: ${activities.join('; ')}.
+Text and inline tools: ${textTools.join('; ')}.
 For a multiple-choice question: @question(type: "Multiple choice, as a list", prompt: "Which room is ready?", options: ["Room 14", "Room 40"], teacherOnly: { answer: "Room 40" }). The answer belongs only in teacherOnly. For other question types, copy an example from ELT Suite and preserve its data: @question(type: "<exact displayed name>", data: { ... }). Never replace its type with a guess.
 
 MEDIA AND LINKS

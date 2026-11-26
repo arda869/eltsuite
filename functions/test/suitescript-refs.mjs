@@ -37,6 +37,7 @@ test('stable IDs survive rename/move, and source and destination permissions are
   await assert.rejects(suiteScriptReferenceService(db, 'other', { action: 'resolve', id: audio.id, destination: { mode: 'private' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'class', classId: 'foreign' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'message', recipientIds: ['learner'] } }), e => e.code === 'permission-denied');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'resourceHub' } }), e => e.code === 'permission-denied');
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['learner'] } })).sourceId, 'doc1');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['stranger'] } }), e => e.code === 'permission-denied');
   const swapped = audio.id.slice(0, 9) + audio.id[10] + audio.id[9] + audio.id.slice(11);

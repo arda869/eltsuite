@@ -31,7 +31,7 @@ import { useToolGate } from '../lib/toolbarPrefs';
 const plainDoc = (text: string): JSONContent => ({ type: 'doc', content: [text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' }] });
 const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia|activityRef)"/) !== null;
 
-export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
+export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.', suiteScriptAudience = 'private' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string; suiteScriptAudience?: 'private' | 'resourceHub' }) {
   const ctx=useEditorClass();
   const teacherRef = useRef(false);
   teacherRef.current = useAuth().profile?.role === 'teacher';
@@ -68,7 +68,7 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
         void (async () => {
           try {
             const classId = givenClass || ctx.classId;
-            const resolved = await resolveSuiteScriptContent(result.content, classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
+            const resolved = await resolveSuiteScriptContent(result.content, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
             const inline = resolved.content.flatMap((node, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(node.content ?? [])]);
             inline.forEach(node => editorRef.current?.schema.nodeFromJSON(node).check());
             editorRef.current?.chain().focus().insertContent(inline).run();

@@ -46,7 +46,9 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
         if (node.type === 'picture') return { type: 'picture', attrs: { src: `media:${media}`, alt: node.attrs?.alt ?? '' } };
         return { type: node.type, attrs: { media, archiveId: ref.sourceId, kind: ref.itemType, title: '', scriptMode: 'none', plays: 0, space: destClass } };
       } catch {
-        warnings.push(`${path}: ${type} unavailable here. Reselect the exact item from My Files.`);
+        warnings.push(destination.mode === 'resourceHub'
+          ? `${path}: This private ${type.toLowerCase()} cannot be published in Resource Hub. Upload an asset that teachers can access.`
+          : `${path}: ${type} unavailable here. Reselect the exact item from My Files.`);
         return unavailable(type, inline);
       }
     }

@@ -244,6 +244,12 @@ const J = {
     await s.p.getByRole('button', { name: 'Got it' }).click();
     await s.p.keyboard.press(process.platform === 'darwin' ? 'Meta+C' : 'Control+C');
     if (await s.p.evaluate(() => window.__suiteCopied) !== text) throw Error('Ordinary copy unexpectedly became SuiteScript.');
+    await field.focus();
+    await field.evaluate(el => { const data = new DataTransfer(); data.setData('text/plain', 'SuiteScript v1\nA @bold("new") note.'); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); });
+    await s.p.waitForFunction(() => document.querySelector('.task-editor .ProseMirror')?.textContent?.includes('A new note.'));
+    if (!await field.locator('strong').filter({ hasText: 'new' }).count()) throw Error('SuiteScript paste did not restore editable bold text.');
+    await field.evaluate(el => { const data = new DataTransfer(); data.setData('text/plain', ' Ordinary prose.'); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); });
+    await s.p.waitForFunction(() => document.querySelector('.task-editor .ProseMirror')?.textContent?.includes('Ordinary prose.'));
     return s;
   },
   'Signing out clears the teacher online tab': async b => {

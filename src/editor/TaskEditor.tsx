@@ -270,9 +270,10 @@ export const COMMANDS: Cmd[] = [
 const suiteCommandLabel = (key: string) => COMMANDS.find(command => command.key === key)?.label;
 export const SUITE_TYPES: SuiteScriptTypes = Object.fromEntries([
   ['gap', 'gap'], ['gap:letters', 'lettergap'], ['gap:stem', 'wordform'],
-  ['choice:radio', 'radio'], ['choice:dropdown', 'dropdown'],
+  ['choice:radio', 'radio'], ['choice:dropdown', 'dropdown'], ['choice:truefalse', 'truefalse'], ['choice:notgiven', 'notgiven'],
   ['match', 'match'], ['dropgap', 'drop'], ['wordbank', 'bank'], ['order', 'order'],
   ['writing', 'writing'], ['collab', 'collab'], ['upload', 'upload'], ['survey', 'survey'],
+  ['reflect:self', 'reflect'], ['reflect:peer', 'peer'], ['board:board', 'board'], ['board:postits', 'postits'],
   ...COMMUNICATIVE_INSERTS.map(command => [`communicativeActivity:${command.key.slice('activity-'.length)}`, command.key]),
   ...FAMILIES.map(family => [`investigation:${family.id}`, family.id]),
   ...COMMANDS.filter(command => command.key.startsWith('pq-')).map(command => [`pq:${command.key.slice(3)}`, command.key]),
@@ -547,7 +548,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptAudience = 'private' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptAudience?: 'private' | 'resourceHub' }) {
   const teacherRef = useRef(false);
   teacherRef.current = useAuth().profile?.role === 'teacher';
   const changeRef = useRef(onChange);
@@ -658,7 +659,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               const place = classRef.current;
               const resolved = place.startsWith('chat:')
                 ? { content: suiteScriptMessageSafe(result.content), warnings: [] }
-                : await resolveSuiteScriptContent(result.content, place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+                : await resolveSuiteScriptContent(result.content, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
               resolved.content.forEach(item => view.state.schema.nodeFromJSON(item).check());
               await pasteClip({ v: 1, space: '', content: resolved.content });
               if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));

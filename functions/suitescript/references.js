@@ -33,7 +33,7 @@ async function checkAudience(db, uid, kind, item, destination) {
   }
   if (mode === 'message') {
     const recipients = destination?.recipientIds;
-    if (!Array.isArray(recipients) || !recipients.length || !recipients.every(safeKey)) throw denied();
+    if (!Array.isArray(recipients) || !recipients.length || recipients.length > 100 || !recipients.every(safeKey)) throw denied();
     if (kind === 'archive' || !recipients.every(id => id === item.owner || item.memberIds?.includes(id))) throw denied();
     return;
   }

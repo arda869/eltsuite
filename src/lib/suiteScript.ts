@@ -12,8 +12,12 @@ export type SuiteScriptTypes = Record<string, string>;
 export type SuiteScriptParse = { content: JSONContent[]; errors: string[] };
 const questionLabel = (node: JSONContent, labels: SuiteScriptTypes) =>
   (node.type === 'gap' && (node.attrs?.letters ? labels['gap:letters'] : node.attrs?.stem ? labels['gap:stem'] : undefined))
+  ?? (node.type === 'choice' && node.attrs?.display === 'radio' && JSON.stringify(node.attrs?.options) === '["True","False","Not given"]' ? labels['choice:notgiven'] : undefined)
+  ?? (node.type === 'choice' && node.attrs?.display === 'radio' && JSON.stringify(node.attrs?.options) === '["True","False"]' ? labels['choice:truefalse'] : undefined)
   ?? labels[`${node.type}:${node.attrs?.kind}`]
   ?? labels[`${node.type}:${node.attrs?.family}`]
+  ?? labels[`${node.type}:${node.attrs?.about}`]
+  ?? labels[`${node.type}:${node.attrs?.mode}`]
   ?? labels[`${node.type}:${node.attrs?.display}`]
   ?? labels[node.type ?? ''];
 
@@ -288,7 +292,10 @@ export function suiteScriptMessageSafe(content: JSONContent[]): JSONContent[] {
     if (node.type === 'gap') return '________';
     if (node.type === 'stress') return (node.attrs?.syllables as string[] | undefined)?.join('') ?? '';
     if (node.type === 'inlineMedia' || node.type === 'media') return node.attrs?.kind === 'video' ? '[Video]' : '[Audio]';
-    if (node.type === 'pq' || node.type === 'communicativeActivity' || node.type === 'investigation') return '[Activity]';
+    if (node.type === 'hardBreak') return '\n';
+    // Unknown nodes can carry private notes or answers in their descendants.
+    // The message projection is allowlisted, never a generic content walk.
+    if (!['paragraph', 'heading', 'listItem', 'bulletList', 'orderedList'].includes(node.type ?? '')) return '[Activity]';
     return (node.content ?? []).map(visible).join(node.type === 'paragraph' ? '' : ' ');
   };
   return content.map(node => ({ type: 'paragraph', content: [{ type: 'text', text: visible(node) }] }));

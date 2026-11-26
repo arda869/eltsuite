@@ -92,6 +92,8 @@ test('learner-visible message projection removes private keys and opaque content
   const safe = suiteScriptMessageSafe(parsed.content);
   assert.doesNotMatch(JSON.stringify(safe), /correct|teacherOnly|Room 40.*correct/);
   assert.match(JSON.stringify(safe), /Room 14 \/ Room 40/);
+  const opaque = suiteScriptMessageSafe([{ type: 'teacherNote', content: [{ type: 'text', text: 'PRIVATE ANSWER' }] }]);
+  assert.doesNotMatch(JSON.stringify(opaque), /PRIVATE ANSWER/);
 });
 
 test('12 digit checksum detects single digit and adjacent swaps, preserving leading zeroes', () => {
