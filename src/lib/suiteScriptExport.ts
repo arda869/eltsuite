@@ -30,6 +30,18 @@ export function classTaskToSuiteScriptDraft(task: Task, key: AnswerKey, noteDoc:
   };
 }
 
+export function selectSuiteScriptClassVersions(all: Task[], selectedTaskIds?: string[]): Task[] {
+  const chosen = selectedTaskIds ? selectedTaskIds.map(id => all.find(task => task.id === id) ?? (() => { throw new Error(`Task ${id} is no longer in this lesson.`); })()) : all;
+  if (!chosen.length) throw new Error('Choose at least one task.');
+  const families = new Set<string>();
+  for (const task of chosen) {
+    const family = task.family || (task.variants?.length ? task.id : '');
+    if (family && families.has(family)) throw new Error('Export each learner version separately. Choose one task from each version set.');
+    if (family) families.add(family);
+  }
+  return [...chosen].sort((a, b) => a.order - b.order);
+}
+
 export async function exportSuiteScriptClassTask(classId: string, itemId: string, taskId: string, uid: string): Promise<SuiteScriptTaskDraft> {
   const [snap, key, notes] = await Promise.all([getDoc(taskRef(classId, itemId, taskId)), loadKey(classId, itemId, taskId), loadNoteDoc(classId, itemId, taskId)]);
   if (!snap.exists()) throw new Error('The selected task no longer exists.');
@@ -44,15 +56,7 @@ export async function exportSuiteScriptClassLesson(classId: string, itemId: stri
   const [lesson, tasks] = await Promise.all([getDoc(doc(db, 'classes', classId, 'items', itemId)), getDocs(collection(db, 'classes', classId, 'items', itemId, 'tasks'))]);
   if (!lesson.exists() || lesson.get('type') !== 'lesson') throw new Error('Choose a lesson.');
   const all = tasks.docs.map(snap => ({ id: snap.id, ...snap.data() } as Task));
-  const chosen = selectedTaskIds ? selectedTaskIds.map(id => all.find(task => task.id === id) ?? (() => { throw new Error(`Task ${id} is no longer in this lesson.`); })()) : all;
-  if (!chosen.length) throw new Error('Choose at least one task.');
-  const family = new Set<string>();
-  for (const task of chosen) {
-    const group = task.family || (task.variants?.length ? task.id : '');
-    if (group && family.has(group)) throw new Error('Export each learner version separately. Choose one task from each version set.');
-    if (group) family.add(group);
-  }
-  const ordered = [...chosen].sort((a, b) => a.order - b.order);
+  const ordered = selectSuiteScriptClassVersions(all, selectedTaskIds);
   const exported = await Promise.all(ordered.map(task => exportSuiteScriptClassTask(classId, itemId, task.id, uid)));
   const meta = lesson.get('suiteScriptMeta') ?? {};
   return { title: lesson.get('title') ?? 'Lesson',

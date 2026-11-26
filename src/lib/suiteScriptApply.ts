@@ -153,3 +153,32 @@ export async function replaceSelectedSuiteScriptTask(classId: string, itemId: st
     tx.set(note, row.notes);
   });
 }
+
+// A whole-activity draft can replace several selected tasks in one version
+// scope. The caller must supply the exact destination task IDs; SuiteScript
+// itself contains no A/B routing tags. Other siblings are never written.
+export async function replaceSelectedSuiteScriptActivityTasks(classId: string, itemId: string, targets: { taskId: string; expectedTaskUpdatedAt: number; expectedNotesUpdatedAt: number; prepared: PreparedSuiteScriptTask }[]): Promise<void> {
+  if (!classId || !itemId || targets.length < 1 || targets.length > 100 || new Set(targets.map(target => target.taskId)).size !== targets.length
+    || targets.some(target => !target.taskId || !Number.isFinite(target.expectedTaskUpdatedAt) || !Number.isFinite(target.expectedNotesUpdatedAt))) {
+    throw new Error('Choose one existing destination task for each activity task.');
+  }
+  const rows = await Promise.all(targets.map(target => projectSuiteScriptClassTask(target.prepared, classId)));
+  const refs = targets.map(target => ({ task: taskRef(classId, itemId, target.taskId), notes: notesRef(classId, itemId, target.taskId) }));
+  await runTransaction(db, async tx => {
+    const snapshots = await Promise.all(refs.map(async ref => ({ task: await tx.get(ref.task), notes: await tx.get(ref.notes) })));
+    for (const [index, snapshotsForTask] of snapshots.entries()) {
+      if (!snapshotsForTask.task.exists()) throw new Error(`Destination task ${index + 1} was removed. Keep your draft and reopen the lesson.`);
+      const taskAt = snapshotsForTask.task.get('updatedAt')?.toMillis?.() ?? 0;
+      const notesAt = snapshotsForTask.notes.exists() ? snapshotsForTask.notes.get('updatedAt')?.toMillis?.() ?? 0 : 0;
+      if (taskAt !== targets[index].expectedTaskUpdatedAt || notesAt !== targets[index].expectedNotesUpdatedAt)
+        throw new Error(`Destination task ${index + 1} changed while SuiteScript was open. Keep your draft and reopen it.`);
+    }
+    refs.forEach((ref, index) => {
+      const row = rows[index];
+      tx.update(ref.task, selectedSuiteScriptTaskPatch(snapshots[index].task.data() as Record<string, unknown>, row.publicTask) as DocumentData);
+      tx.set(keyRef(classId, itemId, targets[index].taskId), row.key);
+      tx.set(activityContentRef(classId, itemId, targets[index].taskId), row.activities);
+      tx.set(ref.notes, row.notes);
+    });
+  });
+}
