@@ -277,3 +277,17 @@
 /* The chat's own styles expect its page; the same here. */
 .cp-talk label.coach-chat-input-label { flex: 1; min-width: 0; margin: 0; }
 .cp-talk .coach-chat-composer textarea { width: 100%; min-height: 54px; max-height: 160px; resize: none; background: none; border: 0; padding: 7px; outline: none; line-height: 1.6; box-shadow: none; font: inherit; }
+
+/* Use the width of the window, as the other apps do. */
+.development-shell.cp-shell { max-width: none; width: 100%; }
+.cp { width: 100%; }
+.cp-main { padding: 24px clamp(16px, 2.5vw, 32px) 48px; }
+.cp-section, .jh, .cp-talk { max-width: none; margin: 0; }
+.cl-debrief, .ex { max-width: 860px; }
+.jw.with-rail:not(.focus) .jw-body { max-width: none; grid-template-columns: minmax(0, 1fr) 320px; justify-items: center; }
+.jw-page { width: min(900px, 100%); }
+/* “.cp” is also used elsewhere with a fixed width; the Companion takes the whole window. */
+.cp-shell .cp { max-width: none; margin: 0; padding: 0; gap: 0; display: grid; }
+.cp-shell .cp-rail { padding-left: 12px; }
+.jw.with-rail:not(.focus) .jw-body { justify-items: stretch; padding-left: clamp(16px, 2.5vw, 32px); padding-right: clamp(16px, 2.5vw, 32px); }
+.jw.with-rail:not(.focus) .jw-page { width: 100%; }
