@@ -436,6 +436,7 @@ const J = {
       fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
       fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Pictures', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
       fs['sharedDocs/suite-image'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Front desk.png', kind: 'file', uploadStatus: 'ready', file: { name: 'Front desk.png', type: 'image/png', bytes: atob(base64).length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/stranger-image'] = { owner: 'teacher2', ownerName: 'Other teacher', title: 'Private staff photo.png', kind: 'file', uploadStatus: 'ready', file: { name: 'Private staff photo.png', type: 'image/png', bytes: atob(base64).length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
       fs['sharedDocs/suite-image/blob/p0'] = { part: 0, data: base64 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
       return d;
@@ -451,6 +452,7 @@ const J = {
     await s.p.getByRole('option', { name: 'Browse files' }).click();
     const window = s.p.getByRole('dialog', { name: 'Choose an image' });
     await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    if (await window.getByRole('button', { name: 'Private staff photo.png' }).count()) throw Error('The picker offered a file the teacher cannot read.');
     if (process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT });
     await window.getByRole('button', { name: 'Front desk.png' }).click();
     await s.p.waitForFunction(() => {

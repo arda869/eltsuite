@@ -83,6 +83,8 @@ type SuggestionState = { mode: 'command' | 'question' | 'file'; items: Suggestio
 type FileChoice = { kind: 'audio' | 'video' | 'image' | 'pdf'; start: number; end: number };
 
 function sharedFileFits(doc: SharedDoc, kind: FileChoice['kind'], classId: string): boolean {
+  const uid = auth.currentUser?.uid;
+  if (!uid || (doc.owner !== uid && !doc.memberIds?.includes(uid))) return false;
   if (doc.kind === 'file' && doc.uploadStatus !== 'ready') return false;
   const sharedWithClass = !!doc.classes?.[classId]?.role;
   if (kind === 'pdf') return (sharedWithClass && doc.kind === 'pdf') || (doc.kind === 'file' && doc.file?.type === 'application/pdf');
