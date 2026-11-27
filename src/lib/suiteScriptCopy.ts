@@ -2,6 +2,8 @@ import type { JSONContent } from '@tiptap/react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
 import { ensureSuiteScriptReference } from './suiteScriptReferences';
+import { suiteScriptRawAssetPath } from './suiteScriptAssetScan';
+import { suiteScriptSafeMeta } from './suiteScriptMeta';
 
 type ArchiveLink = { id: string; home?: { classId: string; mediaId: string }; copies?: Record<string, string> };
 
@@ -35,8 +37,13 @@ export async function suiteScriptCopyNodes(content: JSONContent[], uid: string, 
       if (attrs.fileDoc) source = { kind: 'sharedDoc', id: attrs.fileDoc };
       else if (attrs.docKey) throw new Error('This class-only shared document must be saved in My Files before copying it as SuiteScript.');
     }
+    const nested = suiteScriptRawAssetPath(node, !!source);
+    if (nested) throw new Error(`This element has a picture, recording or file at ${nested}. Save that item in My Files and add it with its SuiteScript reference before copying.`);
     if (source) {
-      return { ...node, attrs: { ...attrs, suiteRef: await ensureSuiteScriptReference(source.kind, source.id) } };
+      if (node.type === 'picture' && attrs.bw) throw new Error('This picture has a separate black-and-white print version. Remove that version or choose it separately before copying as SuiteScript.');
+      const safe = suiteScriptSafeMeta(node);
+      const children = node.content?.length ? await Promise.all(node.content.map(visit)) : node.content;
+      return { ...node, attrs: { ...safe, ...(node.type === 'media' || node.type === 'inlineMedia' ? { kind: attrs.kind } : {}), suiteRef: await ensureSuiteScriptReference(source.kind, source.id) }, ...(children ? { content: children } : {}) };
     }
     if (!node.content?.length) return node;
     return { ...node, content: await Promise.all(node.content.map(visit)) };

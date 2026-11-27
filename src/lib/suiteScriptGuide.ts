@@ -34,13 +34,15 @@ COMPLEX NATIVE ELEMENTS
 The editor inserts complete, editable templates for the catalogue entries. For a complex element, use its actual template from the editor; do not improvise Tiptap node types or required fields. A single @element(data: { ... }) or @question(type: "<exact displayed name>", data: { ... }) can span multiple source lines. Keep teacher-only values in their private fields. The editor generates internal element IDs; omit them from teacher-facing timeline code.
 Timeline example:
 @timeline(
-  title: "Past simple",
-  sentence: "I visited Rome last year.",
+  title: "Past perfect",
+  sentence: "The film had started when we arrived.",
   now: 600,
   showNow: true,
   ends: true,
   marks: [
-    { kind: "event", x: 330, label: "last year", side: "above", color: "accent" }
+    { kind: "event", x: 220, label: "The film started", side: "above" },
+    { kind: "period", x: 220, x2: 430, label: "Before we arrived", side: "below" },
+    { kind: "event", x: 430, label: "We arrived", side: "above" }
   ]
 )
 Timeline mark kinds are event, point, wave, period, repeat, arrow and question. x and x2 are positions from 30 to 970; wave, period, repeat and arrow need both. A repeat mark may use count from 2 to 12. The editor supplies IDs in the background.

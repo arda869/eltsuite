@@ -983,16 +983,17 @@ export function LessonEditor() {
                   {lessonStyleOf(c) === 'young' ? (
                     <div className="yl-instr-edit">
                       <YoungIconPicker value={task.ylIcon} content={draft.content} instructions={draft.instructions} onChange={(ylIcon) => void setTaskFlags(classId, itemId, task.id, { ylIcon })} />
-                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                     </div>
                   ) : (
-                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                   )}
                 </div>
                 <div className="frame-body">
                   <TaskEditor
                     key={editorKey}
                     compact
+                    suiteScriptEnabled
                     content={draft.content}
                     onChange={(content) => change({ content })}
                     classmates={classmates}

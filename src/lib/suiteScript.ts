@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/react';
+import { suiteScriptSafeMeta, suiteScriptValidMeta } from './suiteScriptMeta';
 
 // SuiteScript is deliberately plain text. The first line is the opt-in marker;
 // ordinary prose and ordinary clipboard text remain ordinary editor content.
@@ -27,6 +28,16 @@ const encoded = (value: unknown) => JSON.stringify(value);
 const command = (name: string, value: unknown) => `@${name}(${encoded(value)})`;
 const quoteLiteral = (value: string) => value.replace(/@/g, '@@');
 
+function fileCommand(node: JSONContent): string {
+  const name = node.type === 'picture' ? 'image' : node.type === 'pdfBlock' ? 'pdf' : node.type === 'collab' ? 'collab' : node.attrs?.kind === 'video' ? 'video' : 'audio';
+  const meta = suiteScriptSafeMeta(node);
+  const fields = [encoded(node.attrs?.suiteRef)];
+  if (node.type === 'inlineMedia') fields.push('inline: true');
+  if (Object.keys(meta).length) fields.push(`meta: ${encoded(meta)}`);
+  if (node.content?.length) fields.push(`content: ${encoded(node.content)}`);
+  return `@${name}(${fields.join(', ')})`;
+}
+
 function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
   return nodes.map(node => {
     if (node.type === 'text') {
@@ -39,8 +50,7 @@ function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
     if (node.type === 'hardBreak') return '@break()';
     if (node.type === 'stress' && Array.isArray(node.attrs?.syllables) && node.attrs.syllables.length > 0 && (node.attrs.style ?? 'box') === 'box') return `@stress(${node.attrs.syllables.map(encoded).join(', ')}, stressed: ${Number(node.attrs.stressed ?? 0) + 1})`;
     if (node.attrs?.suiteRef && ['media', 'inlineMedia', 'picture', 'pdfBlock', 'collab'].includes(node.type ?? '')) {
-      const name = node.type === 'picture' ? 'image' : node.type === 'pdfBlock' ? 'pdf' : node.type === 'collab' ? 'collab' : node.attrs.kind === 'video' ? 'video' : 'audio';
-      return `@${name}(${encoded(node.attrs.suiteRef)})`;
+      return fileCommand(node);
     }
     const label = questionLabel(node, labels);
     if (label) {
@@ -55,6 +65,11 @@ function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
 }
 
 function block(node: JSONContent, labels: SuiteScriptTypes): string {
+  // A copied native file keeps its checked reference in suiteRef. Do not emit
+  // its class-owned media ID, document key or URL through generic JSON.
+  if (node.attrs?.suiteRef && ['media', 'inlineMedia', 'picture', 'pdfBlock', 'collab'].includes(node.type ?? '')) {
+    return fileCommand(node);
+  }
   if (node.type === 'timeline') {
     const attrs = node.attrs ?? {};
     const marks = Array.isArray(attrs.items) ? attrs.items as Record<string, unknown>[] : [];
@@ -190,7 +205,7 @@ function timelineNode(args: ReturnType<typeof parseArgs>): JSONContent {
   if (typeof title !== 'string' || typeof sentence !== 'string') throw new Error('@timeline title and sentence must be quoted text.');
   if (typeof now !== 'number' || !Number.isFinite(now) || now < 30 || now > 970) throw new Error('@timeline now must be between 30 and 970.');
   if (typeof showNow !== 'boolean' || typeof ends !== 'boolean') throw new Error('@timeline showNow and ends must be true or false.');
-  if (!Array.isArray(marks) || marks.length > 100) throw new Error('@timeline marks must be a list of at most 100 marks.');
+  if (!Array.isArray(marks)) throw new Error('@timeline marks must be a list.');
   const items = marks.map((value, index) => {
     const n = index + 1;
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Timeline mark ${n} must be an object.`);
@@ -228,8 +243,12 @@ function valueOf(cmd: ReturnType<typeof readCommand> & object, labels: SuiteScri
   }
   if (name === 'element') return [asNode(args.named.data ?? first)];
   if (['audio', 'video', 'image', 'pdf', 'collab'].includes(name) && typeof first === 'string' && !args.named.data) {
-    const nodeType = name === 'image' ? 'picture' : name === 'pdf' ? 'pdfBlock' : name === 'collab' ? 'collab' : 'media';
-    return [{ type: nodeType, attrs: { suiteRef: first, ...(name === 'audio' || name === 'video' ? { kind: name } : {}), ...(name === 'image' ? { alt: typeof args.named.alt === 'string' ? args.named.alt : '' } : {}) } }];
+    if (args.named.inline !== undefined && (typeof args.named.inline !== 'boolean' || !['audio', 'video'].includes(name))) throw new Error('inline is only true or false for audio and video.');
+    const nodeType = name === 'image' ? 'picture' : name === 'pdf' ? 'pdfBlock' : name === 'collab' ? 'collab' : args.named.inline ? 'inlineMedia' : 'media';
+    const meta = suiteScriptValidMeta(nodeType, args.named.meta);
+    const content = args.named.content;
+    if (content !== undefined && (!Array.isArray(content) || !content.every(item => item && typeof item === 'object' && !Array.isArray(item) && typeof item.type === 'string'))) throw new Error(`@${name} content must be a list of native elements.`);
+    return [{ type: nodeType, attrs: { suiteRef: first, ...meta, ...(name === 'audio' || name === 'video' ? { kind: name } : {}), ...(name === 'image' && typeof args.named.alt === 'string' ? { alt: args.named.alt } : {}) }, ...(content?.length ? { content: content as JSONContent[] } : {}) }];
   }
   if (name === 'audio' || name === 'video') {
     const node = asNode(args.named.data);
