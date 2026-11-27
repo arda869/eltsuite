@@ -35,7 +35,7 @@ async function checkAudience(db, uid, kind, item, destination) {
     const mime = item.file?.type ?? '';
     const copiedMedia = destination?.mediaCopy === true && kind === 'sharedDoc'
       && item.kind === 'file' && item.uploadStatus === 'ready'
-      && /^(image\/(png|jpeg|webp|gif)|audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm))$/.test(mime);
+      && /^(image\/(png|jpeg|webp|gif)|application\/pdf|audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm))$/.test(mime);
     if (kind === 'sharedDoc' && !copiedMedia && !['edit', 'suggest', 'comment', 'view'].includes(item.classes?.[id]?.role)) throw denied();
     return;
   }

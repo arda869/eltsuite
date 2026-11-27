@@ -8,20 +8,22 @@ import { writeFile, unlink } from 'node:fs/promises';
 const boundary = {
   name: 'suite-script-reference-boundary',
   setup(builder) {
-    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media|picturePrepare)$/ }, args =>
+    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media|picturePrepare)$|^\.\.\/pdf\/pdfData$/ }, args =>
       args.importer.endsWith('suiteScriptResolve.ts') ? { path: args.path, namespace: 'reference-boundary' } : undefined);
     builder.onLoad({ filter: /.*/, namespace: 'reference-boundary' }, args => ({
       contents: args.path === './fullcopy'
         ? 'export async function carryMedia() { throw Error("No media copy expected"); }'
         : args.path === './fileStore'
-          ? 'export async function loadAnyFile(id) { return new Blob(["safe bytes"], {type: id === "video-file" ? "video/mp4" : id === "safe-image" ? "image/png" : "audio/mpeg"}); }'
+          ? 'export async function loadAnyFile(id) { return new Blob(["safe bytes"], {type: id === "video-file" ? "video/mp4" : id === "safe-image" ? "image/png" : id === "pdf-file" ? "application/pdf" : "audio/mpeg"}); }'
           : args.path === './archive'
             ? 'export async function saveSound(_space, _file, meta) { return {mediaId: meta.video ? "copied-video" : "copied-audio"}; }'
             : args.path === './media'
               ? 'export async function saveImage(space, blob) { if (space !== "class-1" || blob.type !== "image/jpeg") throw Error("Invalid image copy"); return "copied-image"; }'
               : args.path === './picturePrepare'
                 ? 'export async function preparePicture(blob) { if (blob.type !== "image/png") throw Error("Invalid source image"); return new Blob(["compressed"], {type:"image/jpeg"}); }'
-                : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : { kind: "sharedDoc", itemType: "file", sourceId: "safe-image", mime: "image/png" }; }',
+                : args.path === '../pdf/pdfData'
+                  ? 'export async function loadPdf(src) { if (src !== "file:pdf-native") throw Error("Wrong PDF source"); return new Uint8Array([37,80,68,70]); } export async function filePdfInfo(id) { return id === "pdf-native" ? {pages:[{w:612,h:792}]} : null; } export async function openPdf(bytes) { if (!bytes.length) throw Error("Empty PDF"); return {}; } export async function pageSizes() { return [{w:612,h:792}]; } export async function saveClassPdf(space, bytes, pages) { if (space !== "class-1" || !bytes.length || pages[0].w !== 612) throw Error("Invalid PDF copy"); return "copied-pdf"; }'
+                  : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : id === "pdf-ref" ? {kind:"sharedDoc",itemType:"pdf",sourceId:"pdf-native"} : id === "pdf-file-ref" ? {kind:"sharedDoc",itemType:"file",sourceId:"pdf-file",mime:"application/pdf"} : { kind: "sharedDoc", itemType: "file", sourceId: "safe-image", mime: "image/png" }; }',
       loader: 'js',
     }));
   },
@@ -67,6 +69,15 @@ test('an authorised Organisation picture becomes Class media that the learner re
   const result = await resolveSuiteScriptContent([{ type: 'picture', attrs: { suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }], { mode: 'class', classId: 'class-1' });
   assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'media:copied-image', alt: 'Front desk' } }]);
   assert.deepEqual(result.warnings, []);
+});
+
+test('a verified PDF from Files becomes a Class copy and keeps its page geometry', async () => {
+  for (const reference of ['pdf-ref', 'pdf-file-ref']) {
+    const result = await resolveSuiteScriptContent([{ type: 'pdfBlock', attrs: { suiteRef: reference } }], { mode: 'class', classId: 'class-1' });
+    assert.equal(result.content[0].attrs.src, 'media:copied-pdf');
+    assert.deepEqual(result.content[0].attrs.pages, [{ w: 612, h: 792 }]);
+    assert.deepEqual(result.warnings, []);
+  }
 });
 
 test('authorised organisation audio and video files become playable class media copies', async () => {

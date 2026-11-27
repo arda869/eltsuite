@@ -28,6 +28,7 @@ test('stable IDs survive rename/move, and source and destination permissions are
     'sharedDocs/sound1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'audio/mpeg' } },
     'sharedDocs/video1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'video/mp4' } },
     'sharedDocs/image1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'image/png' } },
+    'sharedDocs/pdf1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'application/pdf' } },
     'classes/class1': { teacherId: 'teacher' },
     'classes/foreign': { teacherId: 'other' },
   });
@@ -36,6 +37,7 @@ test('stable IDs survive rename/move, and source and destination permissions are
   const sound = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'sound1' });
   const video = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'video1' });
   const image = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'image1' });
+  const pdf = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'pdf1' });
   assert.match(audio.id, /^ELTSUITE-(\d{4}-){3}\d{4}$/);
   records.set('users/teacher/archive/audio1', { ...records.get('users/teacher/archive/audio1'), title: 'Moved and renamed', folderId: 'new' });
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' })).id, audio.id);
@@ -52,6 +54,8 @@ test('stable IDs survive rename/move, and source and destination permissions are
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'image/png');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'foreign', mediaCopy: true } }), e => e.code === 'permission-denied');
+  assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: pdf.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'application/pdf');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: pdf.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'other', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'class', classId: 'foreign', mediaCopy: true } }), e => e.code === 'permission-denied');

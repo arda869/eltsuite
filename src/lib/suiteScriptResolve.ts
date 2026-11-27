@@ -4,6 +4,7 @@ import { loadAnyFile } from './fileStore';
 import { saveSound } from './archive';
 import { saveImage } from './media';
 import { preparePicture } from './picturePrepare';
+import { filePdfInfo, loadPdf, openPdf, pageSizes, saveClassPdf } from '../pdf/pdfData';
 import { resolveSuiteScriptReference, type SuiteScriptDestination } from './suiteScriptReferences';
 import { suiteScriptRawAssetPath } from './suiteScriptAssetScan';
 import { suiteScriptSafeMeta } from './suiteScriptMeta';
@@ -33,7 +34,7 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
         const nested = suiteScriptRawAssetPath(node, true);
         if (nested) throw new Error(`unchecked nested asset at ${nested}`);
         if (destination.mode === 'private' || destination.mode === 'resourceHub') throw new Error('destination audience unknown');
-        const mediaCopy = ['picture', 'media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
+        const mediaCopy = ['picture', 'pdfBlock', 'media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
         const ref = await resolveSuiteScriptReference(id, mediaCopy ? { ...destination, mediaCopy: true } : destination);
         const meta = suiteScriptSafeMeta(node);
         if (node.type === 'collab') {
@@ -42,8 +43,15 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           return withChildren({ type: 'collab', attrs: { ...meta, id: crypto.randomUUID(), docKey: ref.docKey, kind: 'doc', scope: 'class', modes, fileDoc: ref.sourceId } });
         }
         if (node.type === 'pdfBlock') {
-          if (ref.kind !== 'sharedDoc' || !(ref.itemType === 'pdf' || ref.mime === 'application/pdf')) throw new Error('wrong type');
-          return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `file:${ref.sourceId}`, from: ref.sourceId } });
+          if (destination.mode !== 'class' || ref.kind !== 'sharedDoc'
+            || !(ref.itemType === 'pdf' || (ref.itemType === 'file' && ref.mime === 'application/pdf'))) throw new Error('wrong type');
+          const [bytes, info] = ref.itemType === 'pdf'
+            ? await Promise.all([loadPdf(`file:${ref.sourceId}`), filePdfInfo(ref.sourceId)])
+            : [new Uint8Array(await (await loadAnyFile(ref.sourceId)).arrayBuffer()), null];
+          const pages = info?.pages?.length ? info.pages : await pageSizes(await openPdf(bytes));
+          if (!pages.length) throw new Error('empty PDF');
+          const media = await saveClassPdf(destination.classId, bytes, pages, 'PDF from Files');
+          return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `media:${media}`, pages, first: 0, inLesson: true } });
         }
         if (node.type === 'picture' && ref.kind === 'sharedDoc') {
           if (destination.mode !== 'class' || ref.itemType !== 'file'
