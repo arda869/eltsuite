@@ -228,13 +228,19 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   }, [s.css, m, mg.left, mg.right, mg.bottom, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers, layout.firstDifferent, layout.headerFirst, layout.footerFirst, layout.numberStyle, layout.numberAlign, layout.headerAlign, layout.runLogo, logoDims, title]);
   // Where the toolbar ends as you scroll: the ruler and the tabs panel stick below it. The toolbar's height changes as it wraps.
   useEffect(() => {
-    const bar = document.querySelector<HTMLElement>('.cd-pagebar');
-    if (!bar) return;
-    const set = () => { const cs = getComputedStyle(bar); document.documentElement.style.setProperty('--cd-bar-bottom', `${(parseFloat(cs.top) || 0) + (parseFloat(cs.marginTop) || 0) + bar.offsetHeight + 6}px`); };
+    const shell = desk.current?.closest<HTMLElement>('.cd');
+    const bar = shell?.querySelector<HTMLElement>('.cd-pagebar');
+    if (!shell || !bar) return;
+    // The sticky top is already the toolbar's border-box top. Adding its margin again
+    // leaves a strip of the moving page visible above the ruler while scrolling.
+    const set = () => { const cs = getComputedStyle(bar); shell.style.setProperty('--cd-bar-bottom', `${(parseFloat(cs.top) || 0) + bar.offsetHeight}px`); };
     set();
     const ro = new ResizeObserver(set);
     ro.observe(bar);
-    return () => ro.disconnect();
+    const menu = shell.querySelector<HTMLElement>('.document-menubar');
+    if (menu) ro.observe(menu);
+    window.addEventListener('resize', set);
+    return () => { ro.disconnect(); window.removeEventListener('resize', set); shell.style.removeProperty('--cd-bar-bottom'); };
   }, []);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
