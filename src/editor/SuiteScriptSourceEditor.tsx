@@ -78,10 +78,12 @@ type SuggestionState = { mode: 'command' | 'question' | 'file'; items: Suggestio
 type FileChoice = { kind: 'audio' | 'video' | 'image' | 'pdf'; start: number; end: number };
 
 function sharedFileFits(doc: SharedDoc, kind: FileChoice['kind'], classId: string): boolean {
+  if (doc.kind === 'file' && doc.uploadStatus !== 'ready') return false;
   const sharedWithClass = !!doc.classes?.[classId]?.role;
   if (kind === 'pdf') return sharedWithClass && (doc.kind === 'pdf' || doc.kind === 'file' && doc.file?.type === 'application/pdf');
   if (kind === 'image') return sharedWithClass && doc.kind === 'file' && !!doc.file?.type.startsWith('image/');
-  if (kind === 'audio' || kind === 'video') return doc.kind === 'file' && !!doc.file?.type.startsWith(`${kind}/`);
+  if (kind === 'audio') return doc.kind === 'file' && ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-wav', 'audio/ogg'].includes(doc.file?.type ?? '');
+  if (kind === 'video') return doc.kind === 'file' && ['video/mp4', 'video/webm'].includes(doc.file?.type ?? '');
   return false;
 }
 
