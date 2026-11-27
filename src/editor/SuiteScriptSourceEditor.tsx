@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import type { Editor, JSONContent } from '@tiptap/react';
 import { AddWindow } from '../components/AddWindow';
 import { FileBrowser } from '../components/FileBrowser';
+import { FileIcon } from '../components/FileIcon';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { auth } from '../lib/firebase';
+import { libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
+import { useFolderDocs, useMyDocs, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { parseSuiteScript, SUITE_SCRIPT_HEADER, type SuiteScriptTypes } from '../lib/suiteScript';
 import { suiteScriptGuide, type SuiteScriptCatalogEntry } from '../lib/suiteScriptGuide';
-import { ensureSuiteScriptReference, validSuiteScriptReference } from '../lib/suiteScriptReferences';
+import { ensureSuiteScriptReference, validSuiteScriptReference, type SuiteScriptDestination } from '../lib/suiteScriptReferences';
 import type { ArchiveItem } from '../lib/archive';
 import { splitKey } from '../lib/questions';
 import starterCatalogJson from './suiteScriptStarterCatalog.json';
@@ -63,6 +66,8 @@ export type SuiteScriptSourceEditorProps = {
   title?: string;
   textOnly?: boolean;
   previewClassId?: string;
+  /** File choices are shown only where the resolver can make them usable. */
+  referenceDestination: SuiteScriptDestination;
   /** Optional host picker for saved questions and organisation-specific forms. */
   chooseDynamic?: (key: 'bankpick' | 'tt-org') => Promise<string | null>;
 };
@@ -70,7 +75,50 @@ export type SuiteScriptSourceEditorProps = {
 type Issue = { line: number; text: string };
 type Suggestion = { key: string; label: string; body?: string; kind: 'command' | 'question' | 'file' | 'dynamic'; fileAction?: 'browse' | 'type' };
 type SuggestionState = { mode: 'command' | 'question' | 'file'; items: Suggestion[]; start: number; end: number; top: number; left: number };
-type FileChoice = { kind: 'audio' | 'video' | 'image'; start: number; end: number };
+type FileChoice = { kind: 'audio' | 'video' | 'image' | 'pdf'; start: number; end: number };
+
+function sharedFileFits(doc: SharedDoc, kind: FileChoice['kind'], classId: string): boolean {
+  const sharedWithClass = !!doc.classes?.[classId]?.role;
+  if (kind === 'pdf') return sharedWithClass && (doc.kind === 'pdf' || doc.kind === 'file' && doc.file?.type === 'application/pdf');
+  if (kind === 'image') return sharedWithClass && doc.kind === 'file' && !!doc.file?.type.startsWith('image/');
+  if (kind === 'audio' || kind === 'video') return doc.kind === 'file' && !!doc.file?.type.startsWith(`${kind}/`);
+  return false;
+}
+
+function SharedFileList({ kind, classId, files, busy, onPick, empty }: { kind: FileChoice['kind']; classId: string; files: SharedDoc[] | null; busy: boolean; onPick: (doc: SharedDoc) => void; empty: string }) {
+  const [query, setQuery] = useState('');
+  const shown = (files ?? []).filter(doc => sharedFileFits(doc, kind, classId) && doc.title.toLowerCase().includes(query.trim().toLowerCase()));
+  return <div className="fb">
+    <div className="fb-bar"><span className="fb-search"><input type="search" aria-label="Search files" placeholder="Search files" value={query} onChange={event => setQuery(event.target.value)} /></span></div>
+    <div className="fb-scroll"><div className="fb-items list">
+      {files === null ? <p className="hint fb-wait">Opening files…</p> : shown.length ? shown.map(doc => <button key={doc.id} type="button" className="fb-item" disabled={busy} onClick={() => onPick(doc)}><span className="fb-kind"><FileIcon kind={doc.kind} size={18} label={false} /></span><span className="fb-name">{doc.title}</span></button>) : <p className="hint fb-wait">{query ? 'No files match this search.' : empty}</p>}
+    </div></div>
+  </div>;
+}
+
+function MySharedFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
+  const { mine, withMe } = useMyDocs(auth.currentUser?.uid);
+  const files = mine === null || withMe === null ? null : [...new Map([...mine, ...withMe].map(doc => [doc.id, doc])).values()];
+  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty="No PDFs shared with this Class yet." />;
+}
+
+function OrgFolderFiles({ folder, uid, kind, classId, busy, onPick }: { folder: DriveFolder; uid: string; kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
+  const files = useFolderDocs(folder as unknown as SharedFolder, uid);
+  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'image' || kind === 'pdf' ? `No ${kind === 'pdf' ? 'PDFs' : 'pictures'} shared with this Class in this folder.` : `No ${kind === 'audio' ? 'recordings' : 'videos'} in this folder.`} />;
+}
+
+function OrganisationFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
+  const org = useMyOrg();
+  const folders = useDrive(org);
+  const uid = auth.currentUser?.uid ?? '';
+  const available = (folders ?? []).filter(folder => folder.owner === uid || (folder.memberIds ?? []).includes(uid));
+  const [folderId, setFolderId] = useState('');
+  const chosen = available.find(folder => folder.id === folderId) ?? available[0];
+  if (!org) return <p className="hint fb-wait">Join an organisation to browse its files.</p>;
+  if (!folders) return <p className="hint fb-wait">Opening {libName(org)}…</p>;
+  if (!chosen) return <p className="hint fb-wait">No organisation folders are available to you.</p>;
+  return <div className="fb"><div className="fb-bar"><nav className="fb-path" aria-label="Organisation folder">{available.map(folder => <button key={folder.id} type="button" className={chosen.id === folder.id ? 'on' : ''} onClick={() => setFolderId(folder.id)}>{folder.name}</button>)}</nav></div><OrgFolderFiles key={chosen.id} folder={chosen} uid={uid} kind={kind} classId={classId} busy={busy} onPick={onPick} /></div>;
+}
 
 function stripHeaders(value: string): string {
   let text = value.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
@@ -175,7 +223,7 @@ function highlighted(text: string): string {
   }).join('\n') + '\n';
 }
 
-export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, previewClassId = '', chooseDynamic }: SuiteScriptSourceEditorProps) {
+export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, previewClassId = '', referenceDestination, chooseDynamic }: SuiteScriptSourceEditorProps) {
   const [value, setValue] = useState(`${SUITE_SCRIPT_HEADER}\n`);
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -192,6 +240,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const [helpOpen, setHelpOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [fileChoice, setFileChoice] = useState<FileChoice | null>(null);
+  const [fileSource, setFileSource] = useState<'my' | 'org'>('my');
   const [fileBusy, setFileBusy] = useState(false);
   const [fileError, setFileError] = useState('');
   const [statusError, setStatusError] = useState('');
@@ -314,7 +363,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
       items = questionCatalog.filter(item => item.label.toLowerCase().includes(q[1].toLowerCase())).map(item => ({ key: item.key, label: item.label, body: item.body, kind: 'question' }));
     } else if (media && media[2].length === 0) {
       mode = 'file';
-      if (media[1] !== 'pdf') items.push({ key: 'browse', label: 'Browse My Files', kind: 'file', fileAction: 'browse' });
+      items.push({ key: 'browse', label: 'Browse files', kind: 'file', fileAction: 'browse' });
       items.push({ key: 'type', label: 'Type a reference', kind: 'file', fileAction: 'type' });
     } else {
       const cmd = current.match(/@([A-Za-z0-9-]*)$/);
@@ -342,9 +391,9 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     if (item.kind === 'file') {
       if (item.fileAction === 'type') { textarea.current?.focus(); return; }
       const before = valueRef.current.slice(0, start);
-      const match = before.match(/@(audio|video|image)\("$/);
+      const match = before.match(/@(audio|video|image|pdf)\("$/);
       const kind = match?.[1] as FileChoice['kind'] | undefined;
-      if (kind) setFileChoice({ kind, start, end });
+      if (kind) { setFileSource('my'); setFileChoice({ kind, start, end }); }
       return;
     }
     if (item.kind === 'dynamic') {
@@ -419,10 +468,25 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     try {
       const ref = await ensureSuiteScriptReference('archive', chosen.id);
       if (!validSuiteScriptReference(ref)) throw new Error('The file reference could not be verified.');
-      const target = /‹[^›]+›/.exec(valueRef.current.slice(fileChoice.start));
-      const start = fileChoice.start + (target?.index ?? 0);
-      replaceRange(start, start + (target?.[0].length ?? 0), ref);
-      setFileChoice(null);
+      insertFileReference(ref);
+    } catch (error) { setFileError(error instanceof Error ? error.message : String(error)); }
+    finally { setFileBusy(false); }
+  }
+  function insertFileReference(ref: string) {
+    if (!fileChoice) return;
+    const target = /^‹[^›\n]+›/.exec(valueRef.current.slice(fileChoice.start));
+    const start = fileChoice.start;
+    const after = valueRef.current.slice(start + (target?.[0].length ?? 0));
+    const close = after.startsWith('"') ? '' : '")';
+    replaceRange(start, start + (target?.[0].length ?? 0), ref + close);
+    setFileChoice(null);
+  }
+  async function pickSharedFile(doc: SharedDoc) {
+    setFileBusy(true); setFileError('');
+    try {
+      const ref = await ensureSuiteScriptReference('sharedDoc', doc.id);
+      if (!validSuiteScriptReference(ref)) throw new Error('The file reference could not be verified.');
+      insertFileReference(ref);
     } catch (error) { setFileError(error instanceof Error ? error.message : String(error)); }
     finally { setFileBusy(false); }
   }
@@ -466,6 +530,24 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     </div>
     <footer className="ss-source__status"><span className={issues.length || statusError ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
     {confirmClose && <div className="ss-source__confirm" role="dialog" aria-modal="true" aria-label="Discard unfinished SuiteScript"><div><h3>Return to rich text?</h3><p>The last valid change is already in the task. The unfinished code will be discarded.</p><button type="button" onClick={() => setConfirmClose(false)}>Keep editing</button><button type="button" onClick={() => { setConfirmClose(false); onClose(); }}>Discard unfinished code</button></div></div>}
-    {fileChoice && <AddWindow title={`Choose ${fileChoice.kind === 'audio' ? 'a recording' : fileChoice.kind === 'image' ? 'an image' : 'a video'}`} sources={[{ k: 'my', label: 'My Files', icon: 'folder' }]} source="my" onSource={() => {}} onClose={() => setFileChoice(null)} status={fileError || (fileBusy ? 'Preparing this file…' : 'Choose an item from My Files.')} wide><FileBrowser uid={auth.currentUser?.uid} kind={fileChoice.kind} busy={fileBusy} onPick={items => void pickFile(items)} /></AddWindow>}
+    {fileChoice && <AddWindow<'my' | 'org'>
+      title={`Choose ${fileChoice.kind === 'audio' ? 'a recording' : fileChoice.kind === 'image' ? 'an image' : fileChoice.kind === 'pdf' ? 'a PDF' : 'a video'}`}
+      sources={[{ k: 'my', label: 'My Files', icon: 'folder' }, { k: 'org', label: 'Organisation Files', icon: 'folder' }]}
+      source={fileSource}
+      onSource={setFileSource}
+      onClose={() => setFileChoice(null)}
+      status={referenceDestination.mode !== 'class'
+        ? 'SuiteScript file references are available in Classes. This destination cannot provide learner access to those files yet.'
+        : fileError || (fileBusy ? 'Preparing this file…' : fileChoice.kind === 'pdf' || fileSource === 'org' && fileChoice.kind === 'image' ? 'Choose a file already shared with this Class.' : 'Choose an item to copy into this Class.')}
+      wide
+    >
+      {referenceDestination.mode !== 'class'
+        ? <p className="hint fb-wait">Files cannot be added to this lesson with SuiteScript yet. Use a Class lesson for files, or continue editing text here.</p>
+        : fileSource === 'org'
+          ? <OrganisationFiles kind={fileChoice.kind} classId={referenceDestination.classId} busy={fileBusy} onPick={doc => void pickSharedFile(doc)} />
+          : fileChoice.kind === 'pdf'
+            ? <MySharedFiles kind="pdf" classId={referenceDestination.classId} busy={fileBusy} onPick={doc => void pickSharedFile(doc)} />
+            : <FileBrowser uid={auth.currentUser?.uid} kind={fileChoice.kind} busy={fileBusy} onPick={items => void pickFile(items)} />}
+    </AddWindow>}
   </section>;
 }

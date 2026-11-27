@@ -7,6 +7,30 @@ import { db, rtdb } from '../../src/lib/firebase';
 export const getFunctions = () => ({});
 const mediaScriptSessions = new Map<string,number>();
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'suiteScriptReference') {
+    const { getAuth } = await import('./auth');
+    const uid = getAuth().currentUser?.uid;
+    if (!uid) throw Error('Sign in first.');
+    if (d.action === 'ensure' && d.kind === 'sharedDoc') {
+      const ref = doc(db, 'sharedDocs', d.id);
+      const file = (await getDoc(ref)).data();
+      if (!file || file.deletedAt || file.owner !== uid && !file.memberIds?.includes(uid)) throw Error('This item is unavailable here.');
+      const id = 'ELTSUITE-0001-0002-0003-0786';
+      await updateDoc(ref, { suiteScriptRef: id });
+      return { data: { id } };
+    }
+    if (d.action === 'resolve') {
+      const files = JSON.parse(localStorage.getItem('mockfs') || '{}');
+      const entry = Object.entries(files).find(([path, value]) => path.startsWith('sharedDocs/') && (value as { suiteScriptRef?: string }).suiteScriptRef === d.id);
+      if (!entry) throw Error('This item is unavailable here.');
+      const [path, file] = entry as [string, any];
+      const classId = d.destination?.classId;
+      const room = classId ? (await getDoc(doc(db, 'classes', classId))).data() : null;
+      if (d.destination?.mode !== 'class' || room?.teacherId !== uid || !file.classes?.[classId]?.role || file.owner !== uid && !file.memberIds?.includes(uid)) throw Error('This item is unavailable here.');
+      return { data: { id: d.id, kind: 'sharedDoc', sourceId: path.slice('sharedDocs/'.length), owner: file.owner, itemType: file.kind, mime: file.file?.type ?? '', classRole: file.classes[classId].role } };
+    }
+    throw Error('Choose a reference action.');
+  }
   if (name === 'adminAiRoutingLab') {
     if (d.action !== 'status') throw Error('Connect a provider before running a trial.');
     return { data: {

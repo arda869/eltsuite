@@ -288,12 +288,45 @@ const J = {
     await source.waitFor();
     await source.fill('SuiteScript v1\nOriginal @bold("revised") sentence.');
     await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
+    if (process.env.SUITESCRIPT_EDITOR_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_EDITOR_SCREENSHOT });
     await source.fill('SuiteScript v1\n@timeline(now: -1)');
     await s.p.locator('.ss-source__gutter-error').first().waitFor();
     await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
     await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
     await s.p.getByRole('button', { name: 'Discard unfinished code' }).click();
     await field.locator('strong').filter({ hasText: 'revised' }).waitFor();
+    return s;
+  },
+  'SuiteScript PDF picker uses an authorised Organisation File': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 192, 'task', { title: 'PDF picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Worksheets', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-pdf'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Class worksheet.pdf', kind: 'pdf', docKey: 'pdf-key', memberIds: [], members: {}, folder: 'suite-folder', classes: { [d.classId]: { role: 'view', name: 'Demo class' } } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'PDF picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@pdf("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose a PDF' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    await window.getByRole('button', { name: 'Class worksheet.pdf' }).click();
+    await s.p.waitForFunction(() => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes('ELTSUITE-0001-0002-0003-0786'));
+    await s.p.locator('.ss-source__preview .pdf-block').waitFor();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('pdfBlock'), demo);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised PDF reference produced a source error.');
     return s;
   },
   'Copy as SuiteScript physical shortcut works in Collab': async b => {

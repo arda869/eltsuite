@@ -952,6 +952,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                   commands={[]}
                   textOnly
                   title="Document block"
+                  referenceDestination={classId ? { mode: 'class', classId } : { mode: 'private' }}
                   loadSource={async () => {
                     const scope = sourceScope.current;
                     if (!scope || scope.baseline !== JSON.stringify(editor.getJSON())) throw new Error('The document changed. Reopen this block to see the latest text.');

@@ -175,6 +175,7 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
         textOnly
         title="Instruction"
         previewClassId={suiteScriptAudience === 'resourceHub' ? '' : givenClass || ctx.classId}
+        referenceDestination={suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : givenClass || ctx.classId ? (givenClass || ctx.classId).startsWith('user:') ? { mode: 'private' } : { mode: 'class', classId: givenClass || ctx.classId } : { mode: 'private' }}
         loadSource={async () => {
           const uid = auth.currentUser?.uid;
           if (!uid) throw new Error('Sign in before editing this instruction as SuiteScript.');

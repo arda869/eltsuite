@@ -1122,6 +1122,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         textOnly={textOnly}
         title={label}
         previewClassId={suiteScriptAudience === 'resourceHub' ? '' : classRef.current}
+        referenceDestination={suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classRef.current && !classRef.current.startsWith('user:') && !classRef.current.startsWith('chat:') ? { mode: 'class', classId: classRef.current } : { mode: 'private' }}
         loadSource={async () => {
           const uid = auth.currentUser?.uid;
           if (!uid) throw new Error('Sign in before editing this task as SuiteScript.');
