@@ -30,7 +30,7 @@ import { Loader } from '../components/Loader';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { doc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { updateItem, type ClassDoc, type Item } from '../lib/classes';
@@ -85,6 +85,12 @@ import { useAuth } from '../lib/auth';
 import { isOnline, usePresence } from '../lib/presence';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
+import { SuiteScriptStructureEditor } from '../editor/SuiteScriptStructureEditor';
+import { SUITE_TYPES } from '../editor/TaskEditor';
+import { toSuiteScriptBundle, type SuiteScriptBundle } from '../lib/suiteScriptBundle';
+import { exportSuiteScriptClassLesson, exportSuiteScriptClassTask } from '../lib/suiteScriptExport';
+import { prepareSuiteScriptBundleForClass, replaceSelectedSuiteScriptActivityTasks, replaceSelectedSuiteScriptTask } from '../lib/suiteScriptApply';
+import { notesRef, taskRef } from '../lib/tasks';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { IdentityDialog, IdentityMark, RefsContext, VersionSign } from '../components/Identity';
@@ -167,6 +173,11 @@ export function LessonEditor() {
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user, profile } = useAuth();
   const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
+  const [suiteStructure, setSuiteStructure] = useState<'task' | 'activity' | null>(null);
+  const [suiteStructureError, setSuiteStructureError] = useState('');
+  const suiteStamps = useRef(new Map<string, { task: number; notes: number }>());
+  const suiteItemStamp = useRef(0);
+  const suiteValidate = useRef<((doc: JSONContent) => void) | null>(null);
   const phone = usePhone(); // on a phone, lessons are taught and looked at, not built
   useEffect(() => {
     if (viewer) setPreview(true);
@@ -232,6 +243,48 @@ export function LessonEditor() {
   const groupSets = useGroupSets(classId);
   const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);
+  const suiteRows = tasks.map(t => ({ id: t.id, title: t.title || 'Untitled task', group: t.family || (t.variants?.length ? t.id : undefined), version: t.variant ? `Learner ${t.variant}` : t.variants?.length ? 'Learner A' : undefined }));
+  const openSuiteStructure = (kind: 'task' | 'activity') => {
+    setExportOpen(false);
+    setSuiteStructureError('');
+    if (!user || viewer || phone || teachingHere || mode !== 'edit') { setSuiteStructureError('Open the editable lesson to use SuiteScript.'); return; }
+    if (kind === 'task' && !task) { setSuiteStructureError('Select a task before opening SuiteScript.'); return; }
+    setSuiteStructure(kind);
+  };
+  const loadSuiteStructure = async (kind: 'task' | 'activity', ids: string[]): Promise<string> => {
+    if (!user || !(await flush())) throw new Error('Save this lesson before opening SuiteScript.');
+    if (kind === 'activity') {
+      const lesson = await getDoc(doc(db, 'classes', classId, 'items', itemId));
+      if (!lesson.exists() || lesson.get('type') !== 'lesson') throw new Error('This lesson is no longer available.');
+      suiteItemStamp.current = lesson.get('updatedAt')?.toMillis?.() ?? 0;
+    }
+    const stamps = await Promise.all(ids.map(async id => {
+      const [taskSnap, noteSnap] = await Promise.all([getDoc(taskRef(classId, itemId, id)), getDoc(notesRef(classId, itemId, id))]);
+      if (!taskSnap.exists()) throw new Error('A destination task was removed. Reopen the lesson.');
+      return [id, { task: taskSnap.get('updatedAt')?.toMillis?.() ?? 0, notes: noteSnap.exists() ? noteSnap.get('updatedAt')?.toMillis?.() ?? 0 : 0 }] as const;
+    }));
+    suiteStamps.current = new Map(stamps);
+    const bundle: SuiteScriptBundle = kind === 'task'
+      ? { kind: 'task', task: await exportSuiteScriptClassTask(classId, itemId, ids[0], user.uid) }
+      : { kind: 'activity', activity: await exportSuiteScriptClassLesson(classId, itemId, user.uid, ids) };
+    return toSuiteScriptBundle(bundle, SUITE_TYPES);
+  };
+  const applySuiteStructure = async (bundle: SuiteScriptBundle, ids: string[]): Promise<void> => {
+    if (!user || viewer || teachingHere || mode !== 'edit') throw new Error('You no longer have permission to edit this lesson.');
+    const validate = suiteValidate.current;
+    if (!validate) throw new Error('The task editor is not ready to check this script. Reopen the task.');
+    const prepared = await prepareSuiteScriptBundleForClass(bundle, classId, validate);
+    if (prepared.length !== ids.length) throw new Error('Every SuiteScript task needs one selected destination task.');
+    const targets = ids.map((id, index) => {
+      const stamp = suiteStamps.current.get(id);
+      if (!stamp) throw new Error('The destination changed. Reopen SuiteScript before applying.');
+      return { taskId: id, expectedTaskUpdatedAt: stamp.task, expectedNotesUpdatedAt: stamp.notes, prepared: prepared[index] };
+    });
+    if (bundle.kind === 'task' && targets.length === 1) await replaceSelectedSuiteScriptTask(classId, itemId, targets[0].taskId, targets[0].expectedTaskUpdatedAt, targets[0].expectedNotesUpdatedAt, targets[0].prepared);
+    else if (bundle.kind === 'activity') await replaceSelectedSuiteScriptActivityTasks(classId, itemId, targets, { expectedItemUpdatedAt: suiteItemStamp.current, draft: bundle.activity });
+    else throw new Error('This SuiteScript has the wrong scope.');
+    setTaskTry(n => n + 1);
+  };
   // Live grid with versions: only the learners on this version, each with their room, role or level.
   const fam = familyOf(tasks, task);
   const famMain = fam[0];
@@ -994,6 +1047,7 @@ export function LessonEditor() {
                     key={editorKey}
                     compact
                     suiteScriptEnabled
+                    onSchemaReady={validate => { suiteValidate.current = validate; }}
                     content={draft.content}
                     onChange={(content) => change({ content })}
                     classmates={classmates}
@@ -1085,6 +1139,10 @@ export function LessonEditor() {
                   Groups and breakout rooms
                 </button>
               )}
+              {!viewer && !phone && mode === 'edit' && !teachingHere && item?.type === 'lesson' && <>
+                <button role="menuitem" onClick={() => openSuiteStructure('task')}>Edit selected task as SuiteScript…</button>
+                <button role="menuitem" onClick={() => openSuiteStructure('activity')}>Edit lesson as SuiteScript…</button>
+              </>}
               <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), openShortcuts(teachingHere ? 'teaching' : 'writing'))}>
                 Keyboard shortcuts
               </button>
@@ -1741,6 +1799,8 @@ export function LessonEditor() {
           }}
         />
       )}
+      {suiteStructureError && <div className="toasts" role="alert"><div className="toast">{suiteStructureError}<button type="button" className="btn small-btn" onClick={() => setSuiteStructureError('')}>Close</button></div></div>}
+      {suiteStructure && <SuiteScriptStructureEditor kind={suiteStructure} title={suiteStructure === 'task' ? task?.title || 'Selected task' : item?.title || 'Lesson'} rows={suiteStructure === 'task' ? suiteRows.filter(row => row.id === selected) : suiteRows} classId={classId} loadSource={ids => loadSuiteStructure(suiteStructure, ids)} applyBundle={applySuiteStructure} onClose={() => setSuiteStructure(null)} />}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
       {fromLib && user && (
         <LibraryPicker

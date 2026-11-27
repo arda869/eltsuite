@@ -21,6 +21,8 @@ export function suiteScriptRawAssetPath(node: JSONContent, nestedOnly = false): 
     }
     for (const [key, child] of Object.entries(value)) {
       if (key === 'suiteRef') {
+        // Only the node's own typed reference is resolved. A reference nested
+        // inside native element configuration has no destination check.
         if (depth > 0 && child) return path ? `${path}.${key}` : key;
         continue;
       }
