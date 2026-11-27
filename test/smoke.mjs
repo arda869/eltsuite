@@ -578,6 +578,7 @@ const J = {
     await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
     const unavailable = s.p.locator('.ss-source__unavailable');
     await unavailable.getByText('File editing in SuiteScript is available in Classes only.', { exact: false }).waitFor();
+    if (process.env.SUITESCRIPT_STANDALONE_WARNING_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_STANDALONE_WARNING_SCREENSHOT });
     if (await s.p.getByRole('textbox', { name: 'SuiteScript source' }).count()) throw Error('A failed media export opened an empty source that could overwrite the standalone task.');
     await unavailable.getByRole('button', { name: 'Return to rich text editor' }).click();
     await field.waitFor();

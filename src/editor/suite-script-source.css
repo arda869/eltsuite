@@ -110,7 +110,7 @@
 .ss-source__help p { margin: 6px 0 12px; }
 .ss-source__help button { padding: 7px 10px; border: 0; border-radius: 6px; background: #955d3e; color: #fff; font-weight: 700; cursor: pointer; }
 .ss-source__loading { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 260px; color: #b8c8d1; font-size: 13px; }
-.ss-source__unavailable { flex-direction: column; gap: 12px; padding: 24px; text-align: center; }
+.ss-source__unavailable { flex-direction: column; gap: 12px; padding: 24px; text-align: center; color: #eaf0f3; font-size: 14px; }
 .ss-source__unavailable p { max-width: 48ch; margin: 0; line-height: 1.5; }
 .ss-source__unavailable button { border: 1px solid #677582; border-radius: 7px; background: transparent; color: #eaf0f3; padding: 8px 12px; cursor: pointer; }
 .ss-source__confirm { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: #10161bc9; }
