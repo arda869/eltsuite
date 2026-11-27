@@ -550,7 +550,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptEnabled = false, suiteScriptAudience = 'private', onSchemaReady }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; onSchemaReady?: (validate: (doc: JSONContent) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptEnabled = false, suiteScriptAudience = 'private', suiteScriptLearnerSeat = 0, suiteScriptPreviewAudience = 'learner', onSchemaReady }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; suiteScriptLearnerSeat?: number; suiteScriptPreviewAudience?: 'learner' | 'teacher'; onSchemaReady?: (validate: (doc: JSONContent) => void) => void }) {
   const [sourceMode, setSourceMode] = useState(false);
   const teacherRef = useRef(false);
   teacherRef.current = useAuth().profile?.role === 'teacher';
@@ -1120,6 +1120,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       </div>
       {sourceMode && <SuiteScriptSourceEditor
         editor={editor}
+        previewLearnerSeat={suiteScriptLearnerSeat}
+        previewAudience={suiteScriptPreviewAudience}
         labels={SUITE_TYPES}
         commands={COMMANDS}
         textOnly={textOnly}

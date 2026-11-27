@@ -99,6 +99,7 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
   let n = 0;
   const label = (s: HubEditorSection) => (s.versionLabel ? `${s.title} · ${s.versionLabel}` : s.title) || (s.audience === 'teacher' ? 'Teacher notes' : 'Task');
   const teacher = section?.audience === 'teacher';
+  const learnerSeat = section?.versionGroup ? Math.max(0, draft.sections.filter(item => item.versionGroup === section.versionGroup).findIndex(item => item.id === section.id)) : 0;
   const frame = section && (
     <div className="frame-inner rhl-frame" data-spelling-editor="true">
       <div className={'frame-head' + (teacher ? ' rhl-teacher-head' : '')}>
@@ -114,7 +115,7 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
         )}
         <input className="task-title input" value={section.title} placeholder={teacher ? 'Title, for example: Before the lesson' : 'Task title'} aria-label="Task title" disabled={!editable} onChange={(e) => patchSection(section.id, { title: e.target.value })} />
         {editable ? (
-          <InstrEditor key={section.id + '-screen'} doc={section.instrDoc} text={section.instructions} suiteScriptAudience="resourceHub" suiteScriptEnabled onChange={(instrDoc, instructions) => patchSection(section.id, { instrDoc, instructions })} placeholder={teacher ? 'Introduction, for example: Before the lesson (optional)' : undefined} />
+          <InstrEditor key={section.id + '-screen'} doc={section.instrDoc} text={section.instructions} suiteScriptAudience="resourceHub" suiteScriptEnabled suiteScriptLearnerSeat={learnerSeat} suiteScriptPreviewAudience={teacher ? 'teacher' : 'learner'} onChange={(instrDoc, instructions) => patchSection(section.id, { instrDoc, instructions })} placeholder={teacher ? 'Introduction, for example: Before the lesson (optional)' : undefined} />
         ) : <InstrView doc={section.instrDoc} text={section.instructions} />}
       </div>
       {section.kind === 'answer-key' && (
@@ -125,7 +126,7 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
       )}
       <div className="frame-body">
         {editable ? (
-          <TaskEditor key={section.id} compact content={section.content} onChange={(content) => patchSection(section.id, { content })} classId="" suiteScriptAudience="resourceHub" suiteScriptEnabled textOnly={teacher} label={section.title} taskTitle={section.title} taskContext={section.instructions} />
+          <TaskEditor key={section.id} compact content={section.content} onChange={(content) => patchSection(section.id, { content })} classId="" suiteScriptAudience="resourceHub" suiteScriptEnabled suiteScriptLearnerSeat={learnerSeat} suiteScriptPreviewAudience={teacher ? 'teacher' : 'learner'} textOnly={teacher} label={section.title} taskTitle={section.title} taskContext={section.instructions} />
         ) : (
           <LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(section.content, true).content} responses={{}} disabled classId="" /></LocalActivityMode.Provider>
         )}
@@ -205,7 +206,7 @@ export function HubLessonEditor({ draft, editable, active, setActive, patch, pat
           {section.audience === 'learner' && (
             <Fold id="paper" title="On paper" open={fold} setOpen={setFold}>
               <p className="hint">A different instruction for the printed page. Leave it empty to print the one above.</p>
-              {editable ? <InstrEditor key={section.id + '-paper'} doc={section.printInstrDoc} text={section.printInstructions ?? ''} suiteScriptAudience="resourceHub" suiteScriptEnabled onChange={(printInstrDoc, printInstructions) => patchSection(section.id, { printInstrDoc, printInstructions })} placeholder="Instruction on paper, for example: Write the answers on the lines." /> : <InstrView doc={section.printInstrDoc} text={section.printInstructions ?? ''} />}
+              {editable ? <InstrEditor key={section.id + '-paper'} doc={section.printInstrDoc} text={section.printInstructions ?? ''} suiteScriptAudience="resourceHub" suiteScriptEnabled suiteScriptLearnerSeat={learnerSeat} suiteScriptPreviewAudience={teacher ? 'teacher' : 'learner'} onChange={(printInstrDoc, printInstructions) => patchSection(section.id, { printInstrDoc, printInstructions })} placeholder="Instruction on paper, for example: Write the answers on the lines." /> : <InstrView doc={section.printInstrDoc} text={section.printInstructions ?? ''} />}
             </Fold>
           )}
           <Fold id="publish" title="Readiness" open={fold} setOpen={setFold} badge={checks ? <span className="rhl-badge" aria-label={`${checks} to fix`}>{checks}</span> : undefined}>

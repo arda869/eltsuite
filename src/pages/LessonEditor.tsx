@@ -1036,10 +1036,10 @@ export function LessonEditor() {
                   {lessonStyleOf(c) === 'young' ? (
                     <div className="yl-instr-edit">
                       <YoungIconPicker value={task.ylIcon} content={draft.content} instructions={draft.instructions} onChange={(ylIcon) => void setTaskFlags(classId, itemId, task.id, { ylIcon })} />
-                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                     </div>
                   ) : (
-                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                   )}
                 </div>
                 <div className="frame-body">
@@ -1047,6 +1047,7 @@ export function LessonEditor() {
                     key={editorKey}
                     compact
                     suiteScriptEnabled
+                    suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))}
                     onSchemaReady={validate => { suiteValidate.current = validate; }}
                     content={draft.content}
                     onChange={(content) => change({ content })}
