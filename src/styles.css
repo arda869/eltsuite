@@ -9089,10 +9089,68 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .sh-pb-instr-ed { flex: 1 1 100%; }
 .fcm-new { flex-wrap: wrap; }
 .fcm-about { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
-/* Standalone lessons: notes under the task as in Classes, a narrower AI tools menu, the Lesson menu. */
+/* Standalone lessons share the Classes task and presenter-notes layout. */
 .lf { position: relative; }
-.lf-notes { grid-column: 2; min-width: 0; padding: 10px 18px 18px; border-top: 1px solid var(--hair); background: var(--bg); }
-@media (max-width: 860px) { .dp.k-lesson .lf-notes { grid-column: 1; } }
+.lf-notes { flex: none; min-width: 0; }
+.dp.k-lesson .lf { grid-template-rows: minmax(0, 1fr); grid-template-columns: 220px minmax(0, 1fr); background: var(--page); }
+.dp.k-lesson .lf-side { grid-row: 1; gap: 2px; padding: 16px 10px; background: var(--page); }
+.dp.k-lesson .lf-side-title { overflow: hidden; padding: 2px 10px 8px; margin-bottom: 4px; color: var(--ink); font: 500 16px/1.3 var(--serif); text-overflow: ellipsis; white-space: nowrap; }
+.dp.k-lesson .lf-side .task-row { min-height: 35px; }
+.dp.k-lesson .lf-side .task-row.on { background: var(--card); box-shadow: inset 3px 0 0 var(--accent), 0 1px 3px rgba(51, 48, 44, .08); }
+.dp.k-lesson .lf-side .task-row .task-pick { padding: 6px 10px; font: 13px/1.45 var(--sans); }
+.dp.k-lesson .lf-side .task-row .n { min-width: 14px; font: 400 13px var(--serif); color: var(--soft); }
+.dp.k-lesson .dp-bar { min-height: 58px; box-sizing: border-box; gap: 10px; padding: 8px 16px; background: var(--page); }
+.dp.k-lesson .dp-lesson-brand { display: inline-flex; align-items: center; gap: 9px; flex: none; padding: 0; text-decoration: none; }
+.dp.k-lesson .dp-lesson-wordmark { display: flex; flex-direction: column; justify-content: center; gap: 0; white-space: nowrap; }
+.dp.k-lesson .dp-lesson-wordmark small { color: var(--soft); font: 700 10px/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase; }
+.dp.k-lesson .dp-lesson-wordmark strong { color: var(--accent-text); font: 600 20px/1.05 var(--serif); }
+.dp.k-lesson .dp-lesson-crumb { display: inline-flex; align-items: center; gap: 10px; min-width: 0; margin-left: 5px; color: var(--soft); font: 13px var(--sans); }
+.dp.k-lesson .dp-lesson-crumb a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+.dp.k-lesson .dp-lesson-crumb a:hover { color: var(--accent-text); text-decoration: underline; }
+.dp.k-lesson .dp-lesson-names { flex: 0 1 auto; min-width: 0; }
+.dp.k-lesson .dp-lesson-names .dp-title { max-width: min(260px, 18vw); font: 600 14px var(--sans); }
+.dp.k-lesson .dp-lesson-names .dp-title.ro { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp.k-lesson .dp-acts { flex: 1; min-width: 0; gap: 7px; }
+.dp.k-lesson .dp-lesson-slot, .dp.k-lesson .lf-header-controls { flex: 1; min-width: 0; }
+.dp.k-lesson .lf-start-live { order: 0; flex: none; white-space: nowrap; }
+.dp.k-lesson .lf-ai-tools { order: 1; height: 36px; margin: 0; padding: 0; border: 0; }
+.dp.k-lesson .lf-lesson-menu { order: 2; }
+.dp.k-lesson .lf-header-view { order: 4; margin-left: auto; }
+.dp.k-lesson .lf-main { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; padding: 16px 18px 18px 0; background: var(--page); }
+.dp.k-lesson .lf-main > .lf-task { flex: 1 1 auto; min-height: 0; }
+.dp.k-lesson .lf-task { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; background: var(--card); border: 1px solid var(--hair); box-shadow: 0 1px 2px rgba(51, 48, 44, .04), 0 8px 24px -12px rgba(51, 48, 44, .12); }
+.dp.k-lesson .lf-task .frame-inner { flex: 1; min-height: 0; }
+.dp.k-lesson .lf-task .frame-head { padding: 14px 16px 12px; }
+.dp.k-lesson .lf-task .frame-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 16px 24px; }
+.dp.k-lesson .lf-main > .lf-task .lf-body { flex: 1 1 auto; }
+.dp.k-lesson .lf-main > .lf-task .lf-body > * { flex: 0 1 auto; }
+.dp.k-lesson .lf-title { min-width: 0; margin: 0; padding: 0; font: 600 18px/1.3 var(--serif); }
+.dp.k-lesson .lf-head { min-height: 27px; }
+.dp.k-lesson .lf-acts { flex: none; }
+.dp.k-lesson .lf-notes > .pn, .dp.k-lesson .lf-notes > .pn-closed { width: 100%; }
+.dp.k-lesson .lf-main > .sh-split { flex: 1 1 auto; min-height: 0; }
+.dp.k-lesson .lf-main:has(> .lf-learner-preview) { overflow-y: auto; }
+@media (max-width: 1120px) {
+  .dp.k-lesson .dp-bar { flex-wrap: wrap; align-content: flex-start; row-gap: 6px; height: 104px; flex: 0 0 104px; }
+  .dp.k-lesson .dp-acts { flex: 1 1 100%; }
+}
+@media (max-width: 860px) {
+  .dp.k-lesson .lf { grid-template-columns: 180px minmax(0, 1fr); }
+  .dp.k-lesson .lf-main { padding-right: 10px; }
+  .dp.k-lesson .dp-lesson-crumb { display: none; }
+  .dp.k-lesson .dp-lesson-wordmark strong { font-size: 17px; }
+}
+@media (max-width: 640px) {
+  .dp.k-lesson .dp-bar { height: 140px; flex-basis: 140px; }
+  .dp.k-lesson .dp-lesson-wordmark { display: none; }
+  .dp.k-lesson .dp-acts { flex: 1 1 100%; flex-wrap: wrap; height: auto; overflow: visible; }
+  .dp.k-lesson .dp-lesson-slot, .dp.k-lesson .lf-header-controls { display: contents; }
+  .dp.k-lesson .lf-start-live { display: none; }
+  .dp.k-lesson .lf-header-view { order: 0; margin-left: 0; }
+  .dp.k-lesson .lf { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .dp.k-lesson .lf-side { grid-row: 1; height: auto; max-height: 34vh; border-right: 0; border-bottom: 1px solid var(--hair); }
+  .dp.k-lesson .lf-main { padding: 10px; }
+}
 .lf-ai-tools .lesson-support-actions { width: 290px; max-width: calc(100vw - 32px); }
 .lf-ai-tools .lesson-support-actions .btn { width: 100%; justify-content: flex-start; }
 .lf-lesson-menu { gap: 6px; }

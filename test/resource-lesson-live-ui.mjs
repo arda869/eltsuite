@@ -127,6 +127,24 @@ try {
   await teacher.locator('.lf-learner-preview').waitFor();
   await teacher.getByRole('radio', { name: 'Digital' }).click();
   await teacher.locator('.lf-task').waitFor();
+  const editorLayout = await teacher.evaluate(() => {
+    const task = document.querySelector('.lf-main > .lf-task')?.getBoundingClientRect();
+    const notes = document.querySelector('.lf-notes .pn')?.getBoundingClientRect();
+    const sidebar = document.querySelector('.lf-side')?.getBoundingClientRect();
+    return { task: task && { left: task.left, right: task.right, bottom: task.bottom }, notes: notes && { left: notes.left, right: notes.right, top: notes.top }, sidebar: sidebar && { bottom: sidebar.bottom }, toolbarVisible: !!document.querySelector('.lf-notes .notes-tools'), viewport: innerWidth };
+  });
+  assert.ok(editorLayout.task && editorLayout.notes && Math.abs(editorLayout.task.left - editorLayout.notes.left) <= 1 && Math.abs(editorLayout.task.right - editorLayout.notes.right) <= 1, `task and notes share the same edges: ${JSON.stringify(editorLayout)}`);
+  assert.ok(editorLayout.notes.top - editorLayout.task.bottom >= 8 && editorLayout.notes.top - editorLayout.task.bottom <= 12, `notes sit directly below the task: ${JSON.stringify(editorLayout)}`);
+  assert.ok(editorLayout.toolbarVisible, 'the teacher notes toolbar is ready without an extra click');
+  assert.equal(await teacher.locator('.lf-side-title').innerText(), 'My standalone lesson');
+  const notesEditor = teacher.locator('.lf-notes .ProseMirror');
+  await notesEditor.fill('Private teaching reminder');
+  await teacher.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/standalone-file/taskNotes/task-1']?.text === 'Private teaching reminder');
+  await teacher.reload();
+  await teacher.locator('.lf-notes .ProseMirror').getByText('Private teaching reminder').waitFor();
+  await teacher.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'standalone editor fits a phone without horizontal overflow');
+  await teacher.setViewportSize({ width: 1280, height: 850 });
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
   await teacher.getByRole('menuitem', { name: /Invite learners/ }).click();
