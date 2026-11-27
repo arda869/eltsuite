@@ -252,6 +252,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const [fileSource, setFileSource] = useState<'my' | 'org'>('my');
   const [fileBusy, setFileBusy] = useState(false);
   const [fileError, setFileError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [statusError, setStatusError] = useState('');
   const [previewDoc, setPreviewDoc] = useState<JSONContent>(() => editor.getJSON());
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -280,7 +281,14 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
       valueRef.current = next; applied.current = next; history.current = [next]; historyIndex.current = 0;
       setValue(next); setLoading(false);
       window.setTimeout(() => textarea.current?.focus(), 0);
-    }).catch(error => { if (active) { setStatusError(error instanceof Error ? error.message : 'Could not prepare this field for SuiteScript.'); setLoading(false); } });
+    }).catch(error => {
+      if (!active) return;
+      const message = error instanceof Error ? error.message : 'Could not prepare this field for SuiteScript.';
+      setLoadError(referenceDestination.mode !== 'class' && /file|picture|recording|media|pdf|reference|shared document/i.test(message)
+        ? 'File editing in SuiteScript is available in Classes only. This item is unchanged. Use the rich text editor here.'
+        : message);
+      setLoading(false);
+    });
     return () => { active = false; revision.current++; };
   }, []);
   useEffect(() => {
@@ -479,6 +487,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     remember(`${SUITE_SCRIPT_HEADER}\n${body}`);
   }
   function close() {
+    if (loadError) { onClose(); return; }
     // A valid edit may still be waiting for the short apply delay or an async
     // host save. Require an explicit decision instead of dropping that source.
     if (valueRef.current !== applied.current || busy || issues.length || statusError) setConfirmClose(true);
@@ -516,9 +525,9 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   }
   const currentLine = lineAt(value, caret);
   const errorByLine = new Map(issues.map(issue => [issue.line, issue.text]));
-  const status = loading ? 'Opening SuiteScript…' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}` : 'No problems';
-  const allProblems = [...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(statusError ? [statusError] : []), ...warnings];
-  const body: ReactNode = loading ? <div className="ss-source__loading" role="status">Preparing your editable SuiteScript…</div> : (
+  const status = loading ? 'Opening SuiteScript…' : loadError ? 'Use rich text here' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}` : 'No problems';
+  const allProblems = [...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(loadError ? [loadError] : []), ...(statusError ? [statusError] : []), ...warnings];
+  const body: ReactNode = loading ? <div className="ss-source__loading" role="status">Preparing your editable SuiteScript…</div> : loadError ? <div className="ss-source__loading ss-source__unavailable" role="alert"><p>{loadError}</p><button type="button" onClick={onClose}>Return to rich text editor</button></div> : (
     <div className="ss-source__codebox">
       <div className="ss-source__current" style={{ top: `${14 + (currentLine - 1) * 24 - scrollTop}px` }} aria-hidden="true" />
       <div className="ss-source__gutter" ref={gutter} aria-hidden="true">{Array.from({ length: lineCount }, (_, index) => <div key={index} className={errorByLine.has(index + 1) ? 'ss-source__gutter-error' : ''} title={errorByLine.get(index + 1)}>{index + 1}</div>)}</div>
@@ -536,8 +545,8 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     <header className="ss-source__toolbar" role="toolbar" aria-label="SuiteScript tools">
       <span className="ss-source__identity">@_ <strong>{title}</strong></span>
       <button type="button" onClick={undo} disabled={historyIndex.current <= 0} aria-label="Undo" title="Undo (Ctrl or Command Z)">↶ <span>Undo</span></button>
-      <button type="button" onClick={() => void paste()} disabled={loading} aria-label="Paste plain text" title="Paste plain text">▤ <span>Paste</span></button>
-      <button type="button" onClick={() => void copy(value)} disabled={loading} aria-label="Copy all SuiteScript" title="Copy all SuiteScript">▣ <span>Copy all</span></button>
+      <button type="button" onClick={() => void paste()} disabled={loading || !!loadError} aria-label="Paste plain text" title="Paste plain text">▤ <span>Paste</span></button>
+      <button type="button" onClick={() => void copy(value)} disabled={loading || !!loadError} aria-label="Copy all SuiteScript" title="Copy all SuiteScript">▣ <span>Copy all</span></button>
       <button type="button" onClick={() => setSpellcheck(on => !on)} aria-pressed={spellcheck} aria-label="Spelling" title="Spelling">A<span className="ss-source__spell-mark">✓</span></button>
       <button type="button" onClick={() => setHelpOpen(open => !open)} aria-expanded={helpOpen} aria-label="SuiteScript help" title="SuiteScript help">?</button>
       <button type="button" onClick={() => setFindOpen(open => !open)} aria-expanded={findOpen} aria-label="Find and replace" title="Find and replace (Ctrl or Command F)">⌕</button>
@@ -545,14 +554,14 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     </header>
     {findOpen && <div className="ss-source__find" role="search"><input type="search" aria-label="Find" placeholder="Find" value={findText} onChange={event => setFindText(event.target.value)} /><button type="button" onClick={() => findNext(true)} aria-label="Previous match">↑</button><button type="button" onClick={() => findNext()} aria-label="Next match">↓</button><input className="ss-source__replace" aria-label="Replace with" placeholder="Replace with" value={replaceText} onChange={event => setReplaceText(event.target.value)} /><button type="button" onClick={replaceCurrent}>Replace</button><button type="button" onClick={replaceAll}>All</button><button type="button" onClick={() => setFindOpen(false)} aria-label="Close find">×</button></div>}
     {helpOpen && <div className="ss-source__help"><strong>Write naturally. Add power with @.</strong><p>Type @ to add a command. Use Tab and Shift+Tab between placeholders. A valid edit updates the real lesson preview. Keep answers teacher-only.</p><button type="button" onClick={() => void copy(aiInstructions(commands, textOnly))}>{textOnly ? 'Copy AI instructions for this field' : `Copy AI instructions for all ${starterCatalog.length} Add items`}</button></div>}
-    <div className="ss-source__workspace">
+    <div className={`ss-source__workspace${loadError ? ' is-unavailable' : ''}`}>
       {body}
-      {!loading && <aside className="ss-source__preview" aria-label={previewAudience === 'teacher' ? 'Private teacher preview' : 'Live learner preview'}>
+      {!loading && !loadError && <aside className="ss-source__preview" aria-label={previewAudience === 'teacher' ? 'Private teacher preview' : 'Live learner preview'}>
         <div className="ss-source__preview-head"><span>{previewAudience === 'teacher' ? 'PRIVATE TEACHER PREVIEW' : 'LEARNER PREVIEW'}</span><span>{busy ? 'Updating…' : issues.length || statusError ? 'Last valid version' : 'Live'}</span></div>
         <div className="ss-source__preview-body"><LocalLearnerPreviewMode.Provider value={previewLearnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={previewAudience === 'teacher' ? previewDoc : splitKey(previewDoc, true).content} responses={{}} disabled hideAnswers={previewAudience !== 'teacher'} classId={previewClassId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div>
       </aside>}
     </div>
-    <footer className="ss-source__status"><span className={issues.length || statusError || warnings.length ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
+    <footer className="ss-source__status"><span className={loadError || issues.length || statusError || warnings.length ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
     {confirmClose && <div className="ss-source__confirm" role="dialog" aria-modal="true" aria-label="Discard unfinished SuiteScript"><div><h3>Return to rich text?</h3><p>The last valid change is already in the task. The unfinished code will be discarded.</p><button type="button" onClick={() => setConfirmClose(false)}>Keep editing</button><button type="button" onClick={() => { setConfirmClose(false); onClose(); }}>Discard unfinished code</button></div></div>}
     {fileChoice && <AddWindow<'my' | 'org'>
       title={`Choose ${fileChoice.kind === 'audio' ? 'a recording' : fileChoice.kind === 'image' ? 'an image' : fileChoice.kind === 'pdf' ? 'a PDF' : 'a video'}`}

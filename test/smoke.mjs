@@ -561,6 +561,30 @@ const J = {
     if (afterInvalid !== saved) throw Error('An invalid checksum replaced the last valid learner task.');
     return s;
   },
+  'SuiteScript keeps existing standalone media in rich text when files are unavailable': async b => {
+    const s = await session(b);
+    const lessonId = 'suite-standalone-media';
+    const taskPath = `sharedDocs/${lessonId}/tasks/media-task`;
+    await s.p.evaluate(({ lessonId, taskPath }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs[`sharedDocs/${lessonId}`] = { owner: 'teacher1', ownerName: 'Arda', title: 'Standalone media', kind: 'lesson', standaloneLesson: true, docKey: 'standalone-doc-key', members: {}, memberIds: [], createdAt: Date.now(), updatedAt: Date.now() };
+      fs[taskPath] = { order: 0, kind: 'task', title: 'Media task', instructions: '', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src: 'media:existing-picture', alt: 'Existing picture' } }] }] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, { lessonId, taskPath });
+    await s.p.goto(`${BASE}/doc/${lessonId}`);
+    const field = s.p.locator('.lf-body .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const unavailable = s.p.locator('.ss-source__unavailable');
+    await unavailable.getByText('File editing in SuiteScript is available in Classes only.', { exact: false }).waitFor();
+    if (await s.p.getByRole('textbox', { name: 'SuiteScript source' }).count()) throw Error('A failed media export opened an empty source that could overwrite the standalone task.');
+    await unavailable.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await field.waitFor();
+    const saved = await s.p.evaluate(path => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[path]?.content ?? {}), taskPath);
+    if (!saved.includes('media:existing-picture')) throw Error('Returning to rich text changed the existing standalone picture.');
+    return s;
+  },
   'Copy as SuiteScript physical shortcut works in Collab': async b => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');

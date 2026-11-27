@@ -48,6 +48,7 @@
 .ss-source__toolbar .ss-source__close:hover { background: #804342; border-color: #804342; }
 .ss-source__spell-mark { color: #9ac3a5; font-size: 9px; align-self: end; margin-bottom: 5px; }
 .ss-source__workspace { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(250px, .92fr); flex: 1; min-height: 280px; overflow: hidden; }
+.ss-source__workspace.is-unavailable { grid-template-columns: minmax(0, 1fr); }
 .ss-source__codebox { min-width: 0; min-height: 280px; display: flex; position: relative; overflow: hidden; background: #171d24; }
 .ss-source__preview { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid #414b53; background: #f7f5f1; color: #312e2b; }
 .ss-source__preview-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex: 0 0 33px; padding: 0 14px; border-bottom: 1px solid #e6e1da; color: #756d65; font: 700 10px var(--sans, Karla, Arial, sans-serif); letter-spacing: .09em; }
@@ -109,6 +110,9 @@
 .ss-source__help p { margin: 6px 0 12px; }
 .ss-source__help button { padding: 7px 10px; border: 0; border-radius: 6px; background: #955d3e; color: #fff; font-weight: 700; cursor: pointer; }
 .ss-source__loading { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 260px; color: #b8c8d1; font-size: 13px; }
+.ss-source__unavailable { flex-direction: column; gap: 12px; padding: 24px; text-align: center; }
+.ss-source__unavailable p { max-width: 48ch; margin: 0; line-height: 1.5; }
+.ss-source__unavailable button { border: 1px solid #677582; border-radius: 7px; background: transparent; color: #eaf0f3; padding: 8px 12px; cursor: pointer; }
 .ss-source__confirm { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: #10161bc9; }
 .ss-source__confirm > div { width: min(360px, 100%); padding: 22px; border-radius: 12px; background: #fffdf9; color: #302b29; box-shadow: 0 20px 40px #0006; }
 .ss-source__confirm h3 { margin: 0 0 6px; font: 600 20px var(--serif, Georgia, serif); }
