@@ -45,6 +45,11 @@ test('nested private pictures and media cannot bypass SuiteScript reference chec
   const second = await resolveSuiteScriptContent([nestedRef], { mode: 'class', classId: 'class-1' });
   assert.match(JSON.stringify(second.content), /Item unavailable/);
   assert.doesNotMatch(JSON.stringify(second.content), /ELTSUITE-0001/);
+
+  const typedWithNestedRef = { type: 'picture', attrs: { suiteRef: 'safe-image', alt: 'A room', data: { cards: [{ suiteRef: 'private-nested-ref' }] } } };
+  const third = await resolveSuiteScriptContent([typedWithNestedRef], { mode: 'class', classId: 'class-1' });
+  assert.match(JSON.stringify(third.content), /Image unavailable/);
+  assert.doesNotMatch(JSON.stringify(third.content), /private-nested-ref/);
 });
 
 test('empty media slots and non-media configuration remain usable', async () => {
