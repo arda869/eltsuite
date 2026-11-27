@@ -270,6 +270,32 @@ const J = {
     await s.p.waitForFunction(() => document.querySelector('.task-editor .ProseMirror')?.textContent?.includes('Ordinary prose.'));
     return s;
   },
+  'Edit as SuiteScript updates the real task and learner preview': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 191, 'task', { title: 'SuiteScript source check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original sentence.' }] }] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript source check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.waitFor();
+    await source.fill('SuiteScript v1\nOriginal @bold("revised") sentence.');
+    await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
+    await source.fill('SuiteScript v1\n@timeline(now: -1)');
+    await s.p.locator('.ss-source__gutter-error').first().waitFor();
+    await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.getByRole('button', { name: 'Discard unfinished code' }).click();
+    await field.locator('strong').filter({ hasText: 'revised' }).waitFor();
+    return s;
+  },
   'Copy as SuiteScript physical shortcut works in Collab': async b => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');
