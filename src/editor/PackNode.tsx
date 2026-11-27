@@ -18,7 +18,7 @@ import { useEditorClass } from './context';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
 import { ExampleToggle } from './ExampleToggle';
-import { PIC_QUALITY, preparePicture, shrinkPicture as shrink, type PicQuality } from '../lib/picturePrepare';
+import { PIC_QUALITY, shrinkPicture as shrink, type PicQuality } from '../lib/picturePrepare';
 export { PIC_QUALITY, preparePicture } from '../lib/picturePrepare';
 export type { PicQuality } from '../lib/picturePrepare';
 

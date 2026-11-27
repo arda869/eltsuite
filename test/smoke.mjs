@@ -365,7 +365,11 @@ const J = {
   },
   'SuiteScript PDF picker uses an authorised Organisation File': async b => {
     const s = await session(b);
-    const demo = await s.p.evaluate(async () => {
+    const { PDFDocument } = await import('pdf-lib');
+    const pdf = await PDFDocument.create();
+    pdf.addPage([612, 792]);
+    const pdfBytes = await pdf.save();
+    const demo = await s.p.evaluate(async ({ base64, bytesLength }) => {
       const d = JSON.parse(localStorage.mockdemo);
       const { addTask } = await import('/src/lib/tasks.ts');
       d.taskId = await addTask(d.classId, d.itemId, 192, 'task', { title: 'PDF picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
@@ -374,9 +378,11 @@ const J = {
       fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
       fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Worksheets', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
       fs['sharedDocs/suite-pdf'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Class worksheet.pdf', kind: 'pdf', docKey: 'pdf-key', memberIds: [], members: {}, folder: 'suite-folder', classes: { [d.classId]: { role: 'view', name: 'Demo class' } } };
+      fs['sharedDocs/suite-pdf/pdf/info'] = { parts: 1, bytes: bytesLength, pages: [{ w: 612, h: 792 }] };
+      fs['sharedDocs/suite-pdf/pdf/p0'] = { part: 0, data: base64 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
       return d;
-    });
+    }, { base64: Buffer.from(pdfBytes).toString('base64'), bytesLength: pdfBytes.length });
     await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
     await s.p.getByRole('button', { name: 'PDF picker check', exact: false }).first().click();
     const field = s.p.locator('.task-editor .ProseMirror').first();
@@ -391,7 +397,14 @@ const J = {
     await window.getByRole('button', { name: 'Class worksheet.pdf' }).click();
     await s.p.waitForFunction(() => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes('ELTSUITE-0001-0002-0003-0786'));
     await s.p.locator('.ss-source__preview .pdf-block').waitFor();
+    await s.p.locator('.ss-source__preview .pdf-pagewrap canvas').waitFor();
+    await s.p.waitForFunction(() => {
+      const canvas = document.querySelector('.ss-source__preview .pdf-pagewrap canvas');
+      return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0;
+    });
+    if (await s.p.locator('.ss-source__preview .pdf-err').count()) throw Error('Learner PDF preview could not load its copied Class file.');
     await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('pdfBlock'), demo);
+    if (!(await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media:'), demo))) throw Error('PDF task did not persist its Class media copy.');
     if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised PDF reference produced a source error.');
     return s;
   },
