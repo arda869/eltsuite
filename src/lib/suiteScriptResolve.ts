@@ -1,5 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { carryMedia } from './fullcopy';
+import { loadAnyFile } from './fileStore';
+import { saveSound } from './archive';
 import { resolveSuiteScriptReference, type SuiteScriptDestination } from './suiteScriptReferences';
 
 export type SuiteScriptResolution = { content: JSONContent[]; warnings: string[] };
@@ -7,13 +9,21 @@ export type SuiteScriptResolution = { content: JSONContent[]; warnings: string[]
 const unavailable = (type: string, inline: boolean): JSONContent => inline
   ? { type: 'text', text: `[${type} unavailable — choose a file]` }
   : { type: 'paragraph', content: [{ type: 'text', text: `[${type} unavailable — choose a file]` }] };
-// Generic/native element commands may contain nested media. Fail closed instead
-// of accepting an unverified URL, class media ID or private document key.
-const rawAsset = (node: JSONContent) => {
-  const attrs = node.attrs ?? {};
-  return ['media', 'inlineMedia', 'picture', 'pdfBlock', 'collab'].includes(node.type ?? '')
-    ? !!(attrs.media || attrs.src || attrs.fileDoc || attrs.docKey)
-    : Object.keys(attrs).some(key => /^(media|src|fileDoc|docKey|audioId|videoId|pdfId)$/i.test(key) && !!attrs[key]);
+// Generic/native element commands may hide pictures and recordings inside
+// configuration arrays (for example, communicative cards and A/B pictures).
+// A typed reference is resolved only at the node root, so nested references
+// and raw assets must fail closed instead of reaching a saved task unchanged.
+const ASSET_FIELD = /^(media|src|fileDoc|docKey|audioId|videoId|pdfId|suiteRef)$/i;
+const rawAsset = (node: JSONContent): boolean => {
+  const inspect = (value: unknown, depth: number): boolean => {
+    if (depth > 32) return true;
+    if (Array.isArray(value)) return value.some(item => inspect(item, depth + 1));
+    if (!value || typeof value !== 'object') return false;
+    return Object.entries(value).some(([key, child]) =>
+      (ASSET_FIELD.test(key) && child !== null && child !== undefined && child !== '')
+      || inspect(child, depth + 1));
+  };
+  return inspect(node.attrs ?? {}, 0);
 };
 
 // Resolve all typed IDs on the server before inserting anything. An inaccessible
@@ -26,7 +36,12 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
       const type = node.type === 'picture' ? 'Image' : node.type === 'pdfBlock' ? 'PDF' : node.type === 'collab' ? 'Shared document' : node.attrs?.kind === 'video' ? 'Video' : 'Audio';
       const inline = node.type === 'picture' || node.type === 'inlineMedia';
       try {
-        const ref = await resolveSuiteScriptReference(id, destination);
+        // Private editors do not say which learners may open the eventual
+        // lesson or document. Resource Hub needs a separately published asset.
+        // A source read for the teacher cannot prove either audience's access.
+        if (destination.mode === 'private' || destination.mode === 'resourceHub') throw new Error('destination audience unknown');
+        const mediaCopy = ['media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
+        const ref = await resolveSuiteScriptReference(id, mediaCopy ? { ...destination, mediaCopy: true } : destination);
         if (node.type === 'collab') {
           if (ref.kind !== 'sharedDoc' || ref.itemType !== 'doc' || !ref.docKey) throw new Error('wrong type');
           const modes = ref.classRole === 'edit' ? ['edit', 'suggest', 'comment'] : ref.classRole === 'suggest' ? ['suggest', 'comment'] : ref.classRole === 'comment' ? ['comment'] : ['view'];
@@ -37,6 +52,17 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           return { type: 'pdfBlock', attrs: { src: `file:${ref.sourceId}`, from: ref.sourceId } };
         }
         if (node.type === 'picture' && ref.kind === 'sharedDoc' && ref.mime?.startsWith('image/')) return { type: 'picture', attrs: { src: `file:${ref.sourceId}`, alt: node.attrs?.alt ?? '' } };
+        if (['media', 'inlineMedia'].includes(node.type ?? '') && ref.kind === 'sharedDoc') {
+          const video = node.attrs?.kind === 'video';
+          if (destination.mode !== 'class' || ref.itemType !== 'file'
+            || !(/^(video\/(mp4|webm))$/.test(ref.mime ?? '') === video)
+            || !/^(audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm))$/.test(ref.mime ?? '')) throw new Error('unsupported file');
+          const file = await loadAnyFile(ref.sourceId);
+          if (file.type !== ref.mime) throw new Error('file type changed');
+          const title = video ? 'Video from Files' : 'Recording from Files';
+          const copy = await saveSound(destination.classId, file, { title, video });
+          return { type: node.type, attrs: { media: copy.mediaId, archiveId: '', kind: video ? 'video' : 'audio', title, scriptMode: 'none', plays: 0 } };
+        }
         if (ref.kind !== 'archive' || ref.itemType !== (node.type === 'picture' ? 'image' : node.attrs?.kind)) throw new Error('wrong type');
         const source = ref.home;
         if (!source?.classId || !source.mediaId) throw new Error('missing media');

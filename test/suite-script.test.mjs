@@ -189,7 +189,15 @@ test('whole Hub activity carries metadata and teacher notes; selected A edit pre
   assert.equal(changed.sections[1].content.content[0].content[0].text, 'Private lead in');
   assert.equal(draft.sections.length, 2);
   const activity = { title: 'Meeting people', level: 'A2', aim: 'Talk', minutes: 30, summary: 'Welcome', focus: 'Countries', tasks: [task] };
-  const whole = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity });
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }), /Choose one learner version/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a', 'b']), /exactly one learner version/);
+  const scoped = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a']);
+  assert.equal(scoped.title, draft.title, 'shared metadata stays untouched in an A/B scope');
+  assert.equal(scoped.sections[0].versionLabel, 'Learner A');
+  assert.deepEqual(scoped.sections.at(-1), draft.sections[1], 'Learner B stays byte-for-byte intact');
+  assert.equal(scoped.sections[1].content.content[0].content[0].text, 'Private lead in');
+  const unversioned = { ...draft, sections: draft.sections.map(section => ({ ...section, versionGroup: undefined, versionLabel: undefined })) };
+  const whole = applySuiteScriptBundleToHubDraft(unversioned, { kind: 'activity', activity });
   assert.equal(whole.title, activity.title);
   assert.equal(whole.level, activity.level);
   assert.equal(whole.summary, activity.summary);
@@ -199,4 +207,20 @@ test('whole Hub activity carries metadata and teacher notes; selected A edit pre
   assert.equal(whole.sections.length, 2);
   assert.deepEqual(draft.sections[1], changed.sections.at(-1));
   assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'task', task: { ...task, kind: 'section' } }, 'a'), /no section-heading/);
+});
+
+test('whole Hub version scope requires every independent task and preserves sibling notes', () => {
+  const section = (id, versionGroup = undefined) => ({ id, title: id, audience: 'learner', kind: 'task', ...(versionGroup ? { versionGroup, versionLabel: id } : {}), content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+  const siblingNotes = { id: 'b-notes', title: 'B notes', audience: 'teacher', kind: 'notes', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B private answer' }] }] } };
+  const draft = { title: 'Shared title', sections: [section('a', 'pair'), section('b', 'pair'), siblingNotes, section('final')] };
+  const task = { title: 'Changed', kind: 'task', instructions: [], content: [{ type: 'paragraph', content: [{ type: 'text', text: 'New' }] }], teacherNotes: [], paperInstructions: [] };
+  const activity = { title: 'Different metadata', tasks: [task, { ...task, title: 'Changed final' }] };
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a']), /Include every task/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['final', 'a']), /page order/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity: { ...activity, tasks: [task] } }, undefined, ['a', 'final']), /one task for each/);
+  const changed = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a', 'final']);
+  assert.equal(changed.title, 'Shared title');
+  assert.deepEqual(changed.sections[1], draft.sections[1]);
+  assert.deepEqual(changed.sections[2], siblingNotes);
+  assert.equal(changed.sections.at(-1).title, 'Changed final');
 });

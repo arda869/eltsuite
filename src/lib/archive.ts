@@ -135,7 +135,7 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(s);
 };
 
-export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number; stems?:SongStemIds; project?: string }, onProgress?: (p: number) => void) {
+export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number; stems?:SongStemIds; project?: string; video?: boolean }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const ref = doc(mediaCol(classId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -149,7 +149,7 @@ export async function saveSound(classId: string, blob: Blob, meta: { title: stri
     }),
   );
   if (isClassSpace(classId)) await saveClassScript(classId, ref.id, meta.script ?? []);
-  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}), ...(meta.project?{project:meta.project}:{}) };
+  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, ...(!isClassSpace(classId) ? {script: meta.script ?? []} : {}), duration: meta.duration ?? 0, public: true, ...(meta.video ? { video: true } : {}), ...(meta.stems?{stems:meta.stems}:{}), ...(meta.project?{project:meta.project}:{}) };
   await setDoc(ref, m);
   onProgress?.(1);
   return { mediaId: ref.id, bytes: bytes.length };
