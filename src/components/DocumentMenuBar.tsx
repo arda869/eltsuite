@@ -24,7 +24,23 @@ export function DocumentMenuBar({ menus: given }: { menus: { label: string; item
   const [active, setActive] = useState<number | null>(null);
   const root = useDismiss<HTMLDivElement>(active !== null, () => setActive(null));
   const [headerHeight,setHeaderHeight]=useState(64);
-  useEffect(()=>{const header=root.current?.closest('.dp')?.querySelector('.dp-bar');if(!header)return;const measure=()=>setHeaderHeight(header.getBoundingClientRect().height);measure();const observer=new ResizeObserver(measure);observer.observe(header);return()=>observer.disconnect();},[]);
+  useLayoutEffect(()=>{
+    const menuBar=root.current;
+    const header=menuBar?.closest('.dp')?.querySelector('.dp-bar');
+    const documentShell=menuBar?.closest<HTMLElement>('.cd');
+    if(!menuBar||!header||!documentShell)return;
+    const measure=()=>{
+      const height=header.getBoundingClientRect().height;
+      setHeaderHeight(height);
+      documentShell.style.setProperty('--cd-menu-bottom',`${height+menuBar.offsetHeight}px`);
+    };
+    measure();
+    const observer=new ResizeObserver(measure);
+    observer.observe(header);
+    observer.observe(menuBar);
+    window.addEventListener('resize',measure);
+    return()=>{observer.disconnect();window.removeEventListener('resize',measure);documentShell.style.removeProperty('--cd-menu-bottom');};
+  },[]);
   const menu = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const id = useId();

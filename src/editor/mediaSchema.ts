@@ -1,7 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 export const MediaBlockSchema = Node.create({
   name:'media',group:'block',atom:true,draggable:true,
-  addAttributes:()=>({media:{default:''},archiveId:{default:''},kind:{default:'audio'},title:{default:''},scriptMode:{default:'karaoke'},plays:{default:0},mute:{default:[]},space:{default:''},size:{default:'m'},notes:{default:false}}),
+  addAttributes:()=>({media:{default:''},suiteRef:{default:'',renderHTML:()=>({})},archiveId:{default:''},kind:{default:'audio'},title:{default:''},scriptMode:{default:'karaoke'},plays:{default:0},mute:{default:[]},space:{default:''},size:{default:'m'},notes:{default:false}}),
   parseHTML:()=>[{tag:'div[data-media]'}],
   renderHTML:({HTMLAttributes})=>['div',mergeAttributes(HTMLAttributes,{'data-media':''})],
 });

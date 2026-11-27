@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { doc, runTransaction, serverTimestamp, writeBatch, type DocumentData } from 'firebase/firestore';
 import { rehomeActivityPictures } from '../communicative/privatePictures';
+import { bodyRef } from './privateBodyRef';
 import { db } from './firebase';
 import { freshIds } from './clip';
 import { splitKey } from './questions';
@@ -147,7 +148,9 @@ export async function replaceSelectedSuiteScriptTask(classId: string, itemId: st
     const stamp = current.get('updatedAt')?.toMillis?.() ?? 0;
     const noteStamp = currentNotes.exists() ? currentNotes.get('updatedAt')?.toMillis?.() ?? 0 : 0;
     if (stamp !== expectedTaskUpdatedAt || noteStamp !== expectedNotesUpdatedAt) throw new Error('This task changed while SuiteScript was open. Keep your draft and reopen the task.');
-    tx.update(ref, selectedSuiteScriptTaskPatch(current.data() as Record<string, unknown>, row.publicTask) as DocumentData);
+    const restricted = current.get('restricted') === true;
+    tx.update(ref, selectedSuiteScriptTaskPatch(current.data() as Record<string, unknown>, restricted ? { ...row.publicTask, content: null } : row.publicTask) as DocumentData);
+    if (restricted) tx.set(bodyRef(classId, itemId, taskId), { content: row.publicTask.content });
     tx.set(keyRef(classId, itemId, taskId), row.key);
     tx.set(activityContentRef(classId, itemId, taskId), row.activities);
     tx.set(note, row.notes);
@@ -157,15 +160,22 @@ export async function replaceSelectedSuiteScriptTask(classId: string, itemId: st
 // A whole-activity draft can replace several selected tasks in one version
 // scope. The caller must supply the exact destination task IDs; SuiteScript
 // itself contains no A/B routing tags. Other siblings are never written.
-export async function replaceSelectedSuiteScriptActivityTasks(classId: string, itemId: string, targets: { taskId: string; expectedTaskUpdatedAt: number; expectedNotesUpdatedAt: number; prepared: PreparedSuiteScriptTask }[]): Promise<void> {
+export async function replaceSelectedSuiteScriptActivityTasks(classId: string, itemId: string, targets: { taskId: string; expectedTaskUpdatedAt: number; expectedNotesUpdatedAt: number; prepared: PreparedSuiteScriptTask }[], activity?: { expectedItemUpdatedAt: number; draft: SuiteScriptActivityDraft }): Promise<void> {
   if (!classId || !itemId || targets.length < 1 || targets.length > 100 || new Set(targets.map(target => target.taskId)).size !== targets.length
     || targets.some(target => !target.taskId || !Number.isFinite(target.expectedTaskUpdatedAt) || !Number.isFinite(target.expectedNotesUpdatedAt))) {
     throw new Error('Choose one existing destination task for each activity task.');
   }
   const rows = await Promise.all(targets.map(target => projectSuiteScriptClassTask(target.prepared, classId)));
   const refs = targets.map(target => ({ task: taskRef(classId, itemId, target.taskId), notes: notesRef(classId, itemId, target.taskId) }));
+  const item = doc(db, 'classes', classId, 'items', itemId);
   await runTransaction(db, async tx => {
+    const lesson = await tx.get(item);
     const snapshots = await Promise.all(refs.map(async ref => ({ task: await tx.get(ref.task), notes: await tx.get(ref.notes) })));
+    if (activity) {
+      if (!lesson.exists() || lesson.get('type') !== 'lesson') throw new Error('This lesson is no longer available. Keep your draft and reopen it.');
+      const itemAt = lesson.get('updatedAt')?.toMillis?.() ?? 0;
+      if (itemAt !== activity.expectedItemUpdatedAt) throw new Error('The lesson details changed while SuiteScript was open. Keep your draft and reopen it.');
+    }
     for (const [index, snapshotsForTask] of snapshots.entries()) {
       if (!snapshotsForTask.task.exists()) throw new Error(`Destination task ${index + 1} was removed. Keep your draft and reopen the lesson.`);
       const taskAt = snapshotsForTask.task.get('updatedAt')?.toMillis?.() ?? 0;
@@ -175,10 +185,16 @@ export async function replaceSelectedSuiteScriptActivityTasks(classId: string, i
     }
     refs.forEach((ref, index) => {
       const row = rows[index];
-      tx.update(ref.task, selectedSuiteScriptTaskPatch(snapshots[index].task.data() as Record<string, unknown>, row.publicTask) as DocumentData);
+      const restricted = snapshots[index].task.get('restricted') === true;
+      tx.update(ref.task, selectedSuiteScriptTaskPatch(snapshots[index].task.data() as Record<string, unknown>, restricted ? { ...row.publicTask, content: null } : row.publicTask) as DocumentData);
+      if (restricted) tx.set(bodyRef(classId, itemId, targets[index].taskId), { content: row.publicTask.content });
       tx.set(keyRef(classId, itemId, targets[index].taskId), row.key);
       tx.set(activityContentRef(classId, itemId, targets[index].taskId), row.activities);
       tx.set(ref.notes, row.notes);
     });
+    if (activity) tx.update(item, { title: activity.draft.title, suiteScriptMeta: {
+      level: activity.draft.level ?? '', aim: activity.draft.aim ?? '', minutes: activity.draft.minutes ?? null,
+      summary: activity.draft.summary ?? '', focus: activity.draft.focus ?? '',
+    }, updatedAt: serverTimestamp() });
   });
 }

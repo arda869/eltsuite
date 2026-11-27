@@ -404,6 +404,7 @@ export const PdfBlock = Node.create({
   addStorage: () => ({ tool: 'select' as PdfTool, color: 'yellow', ink: 'ink', shape: 'arrow' as ShapeKind, pending: null }),
   addAttributes: () => ({
     src: { default: '' }, // "file:<id>" in Files, "media:<id>" in a class
+    suiteRef: { default: '', renderHTML: () => ({}) }, // checked source of a Class copy
     pages: { default: [] },
     title: { default: '' },
     from: { default: '' }, // the file it was copied from

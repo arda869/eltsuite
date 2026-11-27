@@ -32,10 +32,43 @@ export function suiteScriptHubSections(task: SuiteScriptTaskDraft, id = newId())
   return [learner, notes];
 }
 
-export function applySuiteScriptBundleToHubDraft(draft: HubResourceDraft, bundle: SuiteScriptBundle, selectedSectionId?: string): HubResourceDraft {
+function versionScope(sections: HubEditorSection[], ids?: string[]): HubEditorSection[] {
+  const learners = sections.filter(section => section.audience === 'learner' && section.kind === 'task');
+  const groups = new Set(learners.map(section => section.versionGroup).filter(Boolean));
+  if (!groups.size) return learners;
+  if (!ids?.length || new Set(ids).size !== ids.length) throw new Error('Choose one learner version from each set before applying the whole activity.');
+  const chosen = learners.filter(section => ids.includes(section.id));
+  if (chosen.length !== ids.length || chosen.some((section, index) => section.id !== ids[index])) throw new Error('Choose existing learner tasks in page order.');
+  if (learners.some(section => !section.versionGroup && !ids.includes(section.id))) throw new Error('Include every task that is not part of an A/B set.');
+  if ([...groups].some(group => chosen.filter(section => section.versionGroup === group).length !== 1)) throw new Error('Choose exactly one learner version from each set.');
+  return chosen;
+}
+
+export function applySuiteScriptBundleToHubDraft(draft: HubResourceDraft, bundle: SuiteScriptBundle, selectedSectionId?: string, versionScopeIds?: string[]): HubResourceDraft {
   if (bundle.kind === 'activity') {
     if (selectedSectionId) throw new Error('Open the whole resource to replace an activity. A selected task accepts only @task.');
     if (bundle.activity.tasks.length > 40) throw new Error('A Resource Hub activity can contain at most 40 sections.');
+    if (draft.sections.some(section => section.versionGroup)) {
+      const chosen = versionScope(draft.sections, versionScopeIds);
+      if (chosen.length !== bundle.activity.tasks.length) throw new Error('This script needs one task for each selected learner version.');
+      const replacements = new Map(chosen.map((section, index) => {
+        const next = suiteScriptHubSections(bundle.activity.tasks[index], section.id);
+        return [section.id, [
+          { ...next[0], identity: section.identity, versionGroup: section.versionGroup, versionLabel: section.versionLabel },
+          ...next.slice(1),
+        ]] as const;
+      }));
+      const sections = draft.sections.flatMap(section => {
+        const replacement = replacements.get(section.id);
+        if (replacement) return replacement;
+        if (section.id.endsWith('-notes') && replacements.has(section.id.slice(0, -6))) return [];
+        return [section];
+      });
+      if (sections.length > 40) throw new Error('The activity has too many learner and teacher sections for Resource Hub.');
+      // Shared metadata and all sibling versions remain unchanged when one
+      // version scope is applied. Edit metadata in the activity details panel.
+      return { ...draft, sections };
+    }
     const sections = bundle.activity.tasks.flatMap(task => suiteScriptHubSections(task));
     if (sections.length > 40) throw new Error('The activity has too many learner and teacher sections for Resource Hub.');
     return { ...draft, title: bundle.activity.title, level: bundle.activity.level ?? draft.level, aim: bundle.activity.aim ?? draft.aim, summary: bundle.activity.summary ?? draft.summary,
@@ -57,7 +90,7 @@ export function applySuiteScriptBundleToHubDraft(draft: HubResourceDraft, bundle
 
 // Resolve references before the revision-checked, atomic draft save. A stale
 // draft is rejected by saveResourceDraft; the caller keeps its SuiteScript text.
-export async function saveSuiteScriptBundleToHubDraft(draft: HubResourceDraft, expectedRevision: number, bundle: SuiteScriptBundle, selectedSectionId?: string): Promise<HubResourceDraft> {
+export async function saveSuiteScriptBundleToHubDraft(draft: HubResourceDraft, expectedRevision: number, bundle: SuiteScriptBundle, selectedSectionId?: string, versionScopeIds?: string[]): Promise<HubResourceDraft> {
   const tasks = bundle.kind === 'activity' ? bundle.activity.tasks : [bundle.task];
   const resolved: SuiteScriptTaskDraft[] = [];
   for (const [index, task] of tasks.entries()) {
@@ -66,7 +99,7 @@ export async function saveSuiteScriptBundleToHubDraft(draft: HubResourceDraft, e
     resolved.push({ ...task, instructions: result[0].content, content: result[1].content, teacherNotes: result[2].content, paperInstructions: result[3].content });
   }
   const safeBundle: SuiteScriptBundle = bundle.kind === 'activity' ? { kind: 'activity', activity: { ...bundle.activity, tasks: resolved } } : { kind: 'task', task: resolved[0] };
-  return saveResourceDraft(applySuiteScriptBundleToHubDraft(draft, safeBundle, selectedSectionId), expectedRevision);
+  return saveResourceDraft(applySuiteScriptBundleToHubDraft(draft, safeBundle, selectedSectionId, versionScopeIds), expectedRevision);
 }
 
 export function hubSectionToSuiteScriptTask(section: HubEditorSection, sections: HubEditorSection[]): SuiteScriptTaskDraft {
@@ -81,11 +114,11 @@ export function hubSectionToSuiteScriptTask(section: HubEditorSection, sections:
   };
 }
 
-export async function exportSuiteScriptHubDraft(resourceId: string, uid: string, selectedSectionId?: string): Promise<SuiteScriptBundle> {
+export async function exportSuiteScriptHubDraft(resourceId: string, uid: string, selectedSectionId?: string, versionScopeIds?: string[]): Promise<SuiteScriptBundle> {
   const draft = await getResourceDraft(resourceId);
   if (!draft) throw new Error('This Resource Hub draft is unavailable.');
   const learners = draft.sections.filter(section => section.audience === 'learner' && section.kind === 'task');
-  const chosen = selectedSectionId ? learners.filter(section => section.id === selectedSectionId) : learners;
+  const chosen = selectedSectionId ? learners.filter(section => section.id === selectedSectionId) : versionScope(draft.sections, versionScopeIds);
   if (!chosen.length) throw new Error('Choose a learner task.');
   const groups = new Set<string>();
   for (const section of chosen) {

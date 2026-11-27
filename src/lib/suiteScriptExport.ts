@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
+import { bodyRef } from './privateBodyRef';
 import { mergeKey, type AnswerKey } from './questions';
 import { suiteScriptCopyNodes } from './suiteScriptCopy';
 import type { SuiteScriptActivityDraft, SuiteScriptTaskDraft } from './suiteScriptBundle';
@@ -46,6 +47,11 @@ export async function exportSuiteScriptClassTask(classId: string, itemId: string
   const [snap, key, notes] = await Promise.all([getDoc(taskRef(classId, itemId, taskId)), loadKey(classId, itemId, taskId), loadNoteDoc(classId, itemId, taskId)]);
   if (!snap.exists()) throw new Error('The selected task no longer exists.');
   const task = { id: snap.id, ...snap.data() } as Task;
+  if (task.restricted && !task.content) {
+    const body = await getDoc(bodyRef(classId, itemId, taskId));
+    if (!body.exists() || !body.get('content')) throw new Error('The selected task has no readable content.');
+    task.content = body.get('content') as JSONContent;
+  }
   const raw = classTaskToSuiteScriptDraft(task, key, notes.doc, notes.text);
   const [instructions, content, teacherNotes, paperInstructions] = await Promise.all(
     [raw.instructions, raw.content, raw.teacherNotes, raw.paperInstructions].map(nodes => suiteScriptCopyNodes(nodes, uid, classId)));

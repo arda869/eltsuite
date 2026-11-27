@@ -4,7 +4,7 @@ import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 import { build } from 'esbuild';
 import { writeFile, unlink } from 'node:fs/promises';
-import { parseSuiteScript, toSuiteScript, suiteScriptMessageSafe, SUITE_SCRIPT_MAX_CHARS } from '../src/lib/suiteScript.ts';
+import { suiteScriptRawAssetPath } from '../src/lib/suiteScriptAssetScan.ts';
 import { suiteScriptChecksum, suiteScriptId, validSuiteScriptId } from '../functions/suitescript/id.js';
 
 const bundled = await build({ entryPoints: ['src/lib/suiteScriptDraft.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
@@ -27,6 +27,11 @@ const hubUrl = new URL('./.suite-script-hub-test-bundle.mjs', import.meta.url);
 await writeFile(hubUrl, hubBuilt.outputFiles[0].text);
 const { applySuiteScriptBundleToHubDraft, hubSectionToSuiteScriptTask } = await import(hubUrl.href);
 await unlink(hubUrl);
+const parserBundle = await build({ entryPoints: ['src/lib/suiteScript.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false });
+const parserFile = new URL('./.suite-script-parser-test-bundle.mjs', import.meta.url);
+await writeFile(parserFile, parserBundle.outputFiles[0].text);
+const { parseSuiteScript, toSuiteScript, suiteScriptMessageSafe, SUITE_SCRIPT_MAX_CHARS } = await import(parserFile.href);
+await unlink(parserFile);
 
 const labels = { gap: 'Gap fill', 'choice:radio': 'Multiple choice, as a list', 'choice:dropdown': 'Multiple choice in line' };
 const fixture = `SuiteScript v1
@@ -81,6 +86,155 @@ test('plain-text intermediary round-trips rich marks, answers and Unicode; ordin
   const parsed = parseSuiteScript(cloned, labels);
   assert.deepEqual(parsed.errors, []);
   assert.deepEqual(parsed.content, original);
+});
+
+test('multiline timeline creates stable internal IDs and round-trips every mark kind without exposing IDs', () => {
+  const source = `SuiteScript v1
+@timeline(
+  title: "A timeline",
+  sentence: "We lived there for years.",
+  now: 625,
+  showNow: false,
+  ends: false,
+  marks: [
+    {kind: "event", x: 120, label: "arrived"},
+    {kind: "point", x: 170, side: "below", color: "#3d6fb6"},
+    {kind: "wave", x: 200, x2: 350, label: "living"},
+    {kind: "period", x: 360, x2: 480, side: "below"},
+    {kind: "repeat", x: 490, x2: 570, count: 7, label: "often"},
+    {kind: "arrow", x: 650, x2: 750, color: "accent"},
+    {kind: "question", x: 820, label: "maybe"}
+  ]
+)`;
+  const first = parseSuiteScript(source, labels);
+  assert.deepEqual(first.errors, []);
+  assert.equal(first.content[0].type, 'timeline');
+  assert.deepEqual(first.content[0].attrs.items.map(item => item.kind), ['event', 'point', 'wave', 'period', 'repeat', 'arrow', 'question']);
+  assert.equal(first.content[0].attrs.items[4].count, 7);
+  const internalIds = [first.content[0].attrs.id, ...first.content[0].attrs.items.map(item => item.id)];
+  assert.equal(new Set(internalIds).size, 8);
+  assert.ok(internalIds.every(id => /^suiteScript-\d+$/.test(id)));
+  assert.deepEqual(first.content, parseSuiteScript(source, labels).content, 'generated IDs must be deterministic');
+  const copied = toSuiteScript(first.content, labels);
+  assert.match(copied, /@timeline\(\n  title:/);
+  assert.doesNotMatch(copied, /\bid\s*:/);
+  assert.doesNotMatch(copied, /suiteScript-\d+/);
+  assert.deepEqual(parseSuiteScript(copied, labels), first);
+});
+
+test('timeline keeps multiple named events and a named period through copy and paste', () => {
+  const source = `SuiteScript v1
+@timeline(
+  title: "Past perfect",
+  sentence: "The film had started when we arrived.",
+  marks: [
+    {kind: "event", x: 220, label: "had started"},
+    {kind: "event", x: 400, label: "we arrived", side: "below"},
+    {kind: "period", x: 220, x2: 400, label: "before we arrived"}
+  ]
+)`;
+  const parsed = parseSuiteScript(source, labels);
+  assert.deepEqual(parsed.errors, []);
+  assert.deepEqual(parsed.content[0].attrs.items.map(item => item.label), ['had started', 'we arrived', 'before we arrived']);
+  assert.deepEqual(parsed.content[0].attrs.items.map(item => item.kind), ['event', 'event', 'period']);
+  const copy = toSuiteScript(parsed.content, labels);
+  assert.doesNotMatch(copy, /\bid\s*:/);
+  assert.deepEqual(parseSuiteScript(copy, labels), parsed);
+
+  const manyMarks = Array.from({ length: 101 }, (_, index) => `{kind: "event", x: ${30 + index * 9}, label: "Event ${index + 1}"}`).join(', ');
+  const crowded = parseSuiteScript(`SuiteScript v1\n@timeline(marks: [${manyMarks}])`, labels);
+  assert.deepEqual(crowded.errors, []);
+  assert.equal(crowded.content[0].attrs.items.length, 101);
+});
+
+test('checked file commands never serialize raw class media IDs or document keys', () => {
+  const cases = [
+    [{ type: 'media', attrs: { media: 'private-audio', archiveId: 'private-archive', kind: 'audio', suiteRef: 'ELTSUITE-0001-0002-0003-0006' } }, '@audio'],
+    [{ type: 'pdfBlock', attrs: { src: 'file:private-pdf', from: 'private-pdf', suiteRef: 'ELTSUITE-0001-0002-0003-0006' } }, '@pdf'],
+    [{ type: 'collab', attrs: { id: 'private-id', docKey: 'private-doc', fileDoc: 'private-file', suiteRef: 'ELTSUITE-0001-0002-0003-0006' } }, '@collab'],
+    [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src: 'media:private-picture', alt: 'A landscape', suiteRef: 'ELTSUITE-0001-0002-0003-0006' } }] }, '@image'],
+  ];
+  for (const [node, command] of cases) {
+    const source = toSuiteScript([node], labels);
+    assert.ok(source.includes(command), command);
+    assert.doesNotMatch(source, /private-(?:audio|archive|pdf|doc|file|picture|id)/);
+  }
+});
+
+test('checked media keeps safe presentation settings and picture captions', () => {
+  const ref = 'ELTSUITE-6042-9173-8562-3460';
+  const original = [
+    { type: 'media', attrs: { suiteRef: ref, media: 'private-audio', archiveId: 'private-archive', kind: 'audio', title: 'Listen closely', scriptMode: 'karaoke', plays: 2, size: 'm' } },
+    { type: 'paragraph', content: [{ type: 'picture', attrs: { suiteRef: ref, src: 'media:private-image', alt: 'A station', size: 'l', crop: '.1 .2 .7 .6', filter: 'warm', w: 340 }, content: [{ type: 'text', text: 'At the station' }] }] },
+    { type: 'pdfBlock', attrs: { suiteRef: ref, src: 'file:private-pdf', from: 'private-pdf', title: 'Worksheet', pages: [{ w: 595, h: 842 }], first: 1 } },
+  ];
+  const source = toSuiteScript(original, labels);
+  assert.doesNotMatch(source, /private-(?:audio|archive|image|pdf)/);
+  const parsed = parseSuiteScript(source, labels);
+  assert.deepEqual(parsed.errors, []);
+  const [sound, pictureBlock, pdf] = parsed.content;
+  assert.equal(sound.attrs.title, 'Listen closely');
+  assert.equal(sound.attrs.scriptMode, 'karaoke');
+  assert.equal(sound.attrs.plays, 2);
+  const picture = pictureBlock.content[0];
+  assert.equal(picture.attrs.alt, 'A station');
+  assert.equal(picture.attrs.crop, '.1 .2 .7 .6');
+  assert.equal(picture.attrs.size, 'l');
+  assert.equal(picture.attrs.w, 340);
+  assert.equal(picture.content[0].text, 'At the station');
+  assert.equal(pdf.attrs.title, 'Worksheet');
+  assert.deepEqual(pdf.attrs.pages, [{ w: 595, h: 842 }]);
+});
+
+test('checked inline audio and video stay inline after a source roundtrip', () => {
+  const ref = 'ELTSUITE-6042-9173-8562-3460';
+  for (const kind of ['audio', 'video']) {
+    const original = [{ type: 'paragraph', content: [
+      { type: 'text', text: 'Play this: ' },
+      { type: 'inlineMedia', attrs: { suiteRef: ref, media: 'private-media', archiveId: 'private-archive', kind, title: 'Clip', plays: 2 } },
+      { type: 'text', text: ' then discuss.' },
+    ] }];
+    const source = toSuiteScript(original, labels);
+    assert.match(source, new RegExp(`@${kind}\\([^\\n]+inline: true`));
+    assert.doesNotMatch(source, /private-(?:media|archive)/);
+    const parsed = parseSuiteScript(source, labels);
+    assert.deepEqual(parsed.errors, []);
+    assert.equal(parsed.content[0].content[1].type, 'inlineMedia');
+    assert.equal(parsed.content[0].content[1].attrs.title, 'Clip');
+    assert.equal(parsed.content[0].content[1].attrs.plays, 2);
+    assert.equal(parsed.content[0].content[1].attrs.kind, kind);
+  }
+});
+
+test('nested picture and audio fields cannot bypass SuiteScript asset validation', () => {
+  const cases = [
+    [{ type: 'pickCard', attrs: { picture: { src: 'media:private-image' } } }, 'attrs.picture.src'],
+    [{ type: 'communicativeActivity', attrs: { settings: { versions: [{ picture: { src: 'media:private-image' } }] } } }, 'attrs.settings.versions[0].picture.src'],
+    [{ type: 'pq', attrs: { data: { images: ['https://example.org/private.png'] } } }, 'attrs.data.images[0]'],
+    [{ type: 'dictCut', attrs: { data: { image: 'data:image/png;base64,AAA' } } }, 'attrs.data.image'],
+    [{ type: 'ipa', attrs: { audioId: 'class-owned-recording' } }, 'attrs.audioId'],
+    [{ type: 'text', text: 'A word', marks: [{ type: 'definition', attrs: { image: 'media:private-definition' } }] }, 'marks[0].attrs.image'],
+  ];
+  for (const [node, path] of cases) assert.equal(suiteScriptRawAssetPath(node), path);
+  assert.equal(suiteScriptRawAssetPath({ type: 'linkCard', attrs: { url: 'https://example.org/public-page' } }), null);
+});
+
+test('timeline syntax rejects invalid marks and values without partially applying a draft', () => {
+  const bad = [
+    ['kind', 'marks: [{kind: "dragon", x: 300}]', /valid kind/],
+    ['position', 'marks: [{kind: "event", x: 1001}]', /between 30 and 970/],
+    ['span', 'marks: [{kind: "period", x: 300}]', /needs an x2/],
+    ['repeat count', 'marks: [{kind: "repeat", x: 300, x2: 500, count: 13}]', /count must be 2–12/],
+    ['hidden id', 'marks: [{id: "external", kind: "point", x: 300}]', /unknown field: id/],
+    ['boolean', 'showNow: "false", marks: []', /true or false/],
+    ['now', 'now: -1, marks: []', /between 30 and 970/],
+  ];
+  for (const [name, args, expected] of bad) {
+    const parsed = parseSuiteScript(`SuiteScript v1\nA valid opening line.\n@timeline(${args})`, labels);
+    assert.deepEqual(parsed.content, [], name);
+    assert.match(parsed.errors[0], /Line 3:/, name);
+    assert.match(parsed.errors[0], expected, name);
+  }
 });
 
 test('malformed commands and invalid stress leave no partial parsed content', () => {
@@ -189,7 +343,15 @@ test('whole Hub activity carries metadata and teacher notes; selected A edit pre
   assert.equal(changed.sections[1].content.content[0].content[0].text, 'Private lead in');
   assert.equal(draft.sections.length, 2);
   const activity = { title: 'Meeting people', level: 'A2', aim: 'Talk', minutes: 30, summary: 'Welcome', focus: 'Countries', tasks: [task] };
-  const whole = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity });
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }), /Choose one learner version/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a', 'b']), /exactly one learner version/);
+  const scoped = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a']);
+  assert.equal(scoped.title, draft.title, 'shared metadata stays untouched in an A/B scope');
+  assert.equal(scoped.sections[0].versionLabel, 'Learner A');
+  assert.deepEqual(scoped.sections.at(-1), draft.sections[1], 'Learner B stays byte-for-byte intact');
+  assert.equal(scoped.sections[1].content.content[0].content[0].text, 'Private lead in');
+  const unversioned = { ...draft, sections: draft.sections.map(section => ({ ...section, versionGroup: undefined, versionLabel: undefined })) };
+  const whole = applySuiteScriptBundleToHubDraft(unversioned, { kind: 'activity', activity });
   assert.equal(whole.title, activity.title);
   assert.equal(whole.level, activity.level);
   assert.equal(whole.summary, activity.summary);
@@ -199,4 +361,20 @@ test('whole Hub activity carries metadata and teacher notes; selected A edit pre
   assert.equal(whole.sections.length, 2);
   assert.deepEqual(draft.sections[1], changed.sections.at(-1));
   assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'task', task: { ...task, kind: 'section' } }, 'a'), /no section-heading/);
+});
+
+test('whole Hub version scope requires every independent task and preserves sibling notes', () => {
+  const section = (id, versionGroup = undefined) => ({ id, title: id, audience: 'learner', kind: 'task', ...(versionGroup ? { versionGroup, versionLabel: id } : {}), content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+  const siblingNotes = { id: 'b-notes', title: 'B notes', audience: 'teacher', kind: 'notes', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B private answer' }] }] } };
+  const draft = { title: 'Shared title', sections: [section('a', 'pair'), section('b', 'pair'), siblingNotes, section('final')] };
+  const task = { title: 'Changed', kind: 'task', instructions: [], content: [{ type: 'paragraph', content: [{ type: 'text', text: 'New' }] }], teacherNotes: [], paperInstructions: [] };
+  const activity = { title: 'Different metadata', tasks: [task, { ...task, title: 'Changed final' }] };
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a']), /Include every task/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['final', 'a']), /page order/);
+  assert.throws(() => applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity: { ...activity, tasks: [task] } }, undefined, ['a', 'final']), /one task for each/);
+  const changed = applySuiteScriptBundleToHubDraft(draft, { kind: 'activity', activity }, undefined, ['a', 'final']);
+  assert.equal(changed.title, 'Shared title');
+  assert.deepEqual(changed.sections[1], draft.sections[1]);
+  assert.deepEqual(changed.sections[2], siblingNotes);
+  assert.equal(changed.sections.at(-1).title, 'Changed final');
 });

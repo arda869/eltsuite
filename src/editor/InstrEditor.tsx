@@ -11,6 +11,9 @@ import { SUITE_TYPES } from './TaskEditor';
 import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
 import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
 import { auth } from '../lib/firebase';
+import { openMenu } from '../components/ContextMenu';
+import { SuiteScriptSourceEditor } from './SuiteScriptSourceEditor';
+import { captureFieldSelection, editFieldClipboard } from '../lib/fieldClipboard';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -30,9 +33,16 @@ import { useToolGate } from '../lib/toolbarPrefs';
 // One line (Shift + Enter for a new line). The plain text is kept beside it for exports and search.
 const plainDoc = (text: string): JSONContent => ({ type: 'doc', content: [text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' }] });
 const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia|activityRef)"/) !== null;
+const instructionNodes = (nodes: JSONContent[]): JSONContent[] => {
+  if (nodes.some(node => node.type !== 'paragraph' && node.type !== 'media')) throw new Error('This instruction supports text and inline audio or video. Put full activities in task content.');
+  return nodes.map(node => node.type === 'media'
+    ? { type: 'paragraph', content: [{ type: 'inlineMedia', attrs: node.attrs }] }
+    : node);
+};
 
-export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.', suiteScriptAudience = 'private' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string; suiteScriptAudience?: 'private' | 'resourceHub' }) {
+export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.', suiteScriptEnabled = false, suiteScriptAudience = 'private', suiteScriptLearnerSeat = 0, suiteScriptPreviewAudience = 'learner' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; suiteScriptLearnerSeat?: number; suiteScriptPreviewAudience?: 'learner' | 'teacher' }) {
   const ctx=useEditorClass();
+  const [sourceMode, setSourceMode] = useState(false);
   const teacherRef = useRef(false);
   teacherRef.current = useAuth().profile?.role === 'teacher';
   const editorRef = useRef<Editor | null>(null);
@@ -64,15 +74,14 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
         event.preventDefault();
         const result = parseSuiteScript(plain, SUITE_TYPES);
         if (result.errors.length) { void tell(result.errors.join('\n')); return true; }
-        if (result.content.some(node => node.type !== 'paragraph')) { void tell('This instruction supports text and inline elements. Paste the full activity into its task content.'); return true; }
         void (async () => {
           try {
             const classId = givenClass || ctx.classId;
-            const resolved = await resolveSuiteScriptContent(result.content, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
+            const resolved = await resolveSuiteScriptContent(instructionNodes(result.content), suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
+            if (resolved.warnings.length) { void tell(resolved.warnings.join('\n')); return; }
             const inline = resolved.content.flatMap((node, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(node.content ?? [])]);
             inline.forEach(node => editorRef.current?.schema.nodeFromJSON(node).check());
             editorRef.current?.chain().focus().insertContent(inline).run();
-            if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));
           } catch (error) { void tell(`SuiteScript could not be pasted into this instruction: ${error instanceof Error ? error.message : String(error)}`); }
         })();
         return true;
@@ -118,10 +127,23 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
     });
     return a ?? 'RP';
   };
+  const openSourceMenu = (event: React.MouseEvent) => {
+    const field = (event.target as HTMLElement).closest('.instr-editor') as HTMLElement | null;
+    if (!suiteScriptEnabled || !teacherRef.current || !field) return;
+    const saved = captureFieldSelection(field);
+    openMenu(event, [
+      { label: 'Cut', disabled: !saved.text, onClick: () => void editFieldClipboard(field, 'cut', saved) },
+      { label: 'Copy', disabled: !saved.text, onClick: () => void editFieldClipboard(field, 'copy', saved) },
+      { label: 'Paste', onClick: () => { void navigator.clipboard.readText().then(value => { field.focus(); document.execCommand('insertText', false, value); }).catch(() => void tell('Use your normal Paste shortcut here.')); } },
+      { label: 'Select all', onClick: () => editor.chain().focus().selectAll().run() },
+      'sep',
+      { label: 'Edit as SuiteScript', onClick: () => { setDefOpen(false); setSourceMode(true); } },
+    ]);
+  };
   return (
-    <EditorClassContext.Provider value={{...ctx,classId:givenClass || ctx.classId,lessonId:givenLesson || ctx.lessonId}}><div className="instr-wrap">
-      <EditorContent editor={editor} className="task-instr input" />
-      <div className="ne-bar instr-bar" role="toolbar" aria-label="Instruction formatting">
+    <EditorClassContext.Provider value={{...ctx,classId:givenClass || ctx.classId,lessonId:givenLesson || ctx.lessonId}}><div className="instr-wrap" onContextMenu={openSourceMenu}>
+      <EditorContent editor={editor} className="task-instr input" style={sourceMode ? { display: 'none' } : undefined} />
+      <div className="ne-bar instr-bar" role="toolbar" aria-label="Instruction formatting" style={sourceMode ? { display: 'none' } : undefined}>
         {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
         {B('I', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
         {B('U', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
@@ -146,6 +168,31 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
         {B(REF_TOOL_FACE, editor.isActive('activityRef'), () => void insertActivityRef(editor), 'Refer to another activity or to Learner A or B')}
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      {sourceMode && <SuiteScriptSourceEditor
+        editor={editor}
+        previewLearnerSeat={suiteScriptLearnerSeat}
+        previewAudience={suiteScriptPreviewAudience}
+        labels={SUITE_TYPES}
+        commands={[]}
+        textOnly
+        title="Instruction"
+        previewClassId={suiteScriptAudience === 'resourceHub' ? '' : givenClass || ctx.classId}
+        referenceDestination={suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : givenClass || ctx.classId ? (givenClass || ctx.classId).startsWith('user:') ? { mode: 'private' } : { mode: 'class', classId: givenClass || ctx.classId } : { mode: 'private' }}
+        loadSource={async () => {
+          const uid = auth.currentUser?.uid;
+          if (!uid) throw new Error('Sign in before editing this instruction as SuiteScript.');
+          const ready = await suiteScriptCopyNodes(editor.getJSON().content ?? [], uid, givenClass || ctx.classId);
+          return toSuiteScript(ready, SUITE_TYPES);
+        }}
+        prepareContent={async (parsed) => {
+          const place = givenClass || ctx.classId;
+          const resolved = await resolveSuiteScriptContent(instructionNodes(parsed), suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+          const inline = resolved.content.flatMap((node, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(node.content ?? [])]);
+          return { content: [{ type: 'paragraph', ...(inline.length ? { content: inline } : {}) }], warnings: resolved.warnings };
+        }}
+        applyContent={(prepared) => { editor.commands.setContent({ type: 'doc', content: prepared }, true); }}
+        onClose={() => { setSourceMode(false); window.requestAnimationFrame(() => editor.commands.focus()); }}
+      />}
     </div></EditorClassContext.Provider>
   );
 }

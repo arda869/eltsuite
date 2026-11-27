@@ -270,6 +270,355 @@ const J = {
     await s.p.waitForFunction(() => document.querySelector('.task-editor .ProseMirror')?.textContent?.includes('Ordinary prose.'));
     return s;
   },
+  'Edit as SuiteScript updates the real task and learner preview': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 191, 'task', { title: 'SuiteScript source check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original sentence.' }] }] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript source check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.waitFor();
+    await source.fill('SuiteScript v1\nOriginal @bold("revised") sentence.');
+    await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
+    if (process.env.SUITESCRIPT_EDITOR_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_EDITOR_SCREENSHOT });
+    await source.fill('SuiteScript v1\nFirst valid sentence.');
+    await source.fill('SuiteScript v1\nSecond valid sentence.');
+    await source.fill('SuiteScript v1\nThird valid sentence.');
+    await s.p.locator('.ss-source__preview').getByText('Third valid sentence.').waitFor();
+    const stored = async () => s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Third valid sentence.'), demo);
+    if ((await stored()).includes('First valid sentence.') || (await stored()).includes('Second valid sentence.')) throw Error('An older edit overwrote the newest SuiteScript content.');
+    await source.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z');
+    await s.p.locator('.ss-source__preview').getByText('Second valid sentence.').waitFor();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Second valid sentence.'), demo);
+    await source.fill('SuiteScript v1\n@timeline(now: -1)');
+    await s.p.locator('.ss-source__gutter-error').first().waitFor();
+    await s.p.locator('.ss-source__preview').getByText('Second valid sentence.').waitFor();
+    await s.p.waitForTimeout(450);
+    if (!(await stored()).includes('Second valid sentence.')) throw Error('Invalid SuiteScript persisted over the last valid edit.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.getByRole('button', { name: 'Discard unfinished code' }).click();
+    await field.getByText('Second valid sentence.').waitFor();
+    return s;
+  },
+  'SuiteScript close does not silently drop an edit awaiting apply': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 193, 'task', { title: 'SuiteScript close check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original text.' }] }] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript close check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.waitFor();
+    await source.fill('SuiteScript v1\nPending close text.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    const confirm = s.p.getByRole('dialog', { name: 'Discard unfinished SuiteScript' });
+    if (await confirm.isVisible().catch(() => false)) {
+      await confirm.getByRole('button', { name: 'Keep editing' }).click();
+      await s.p.locator('.ss-source__preview').getByText('Pending close text.').waitFor();
+      await s.p.locator('.ss-source__status').getByText('No problems').waitFor();
+      await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    }
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Pending close text.'), demo);
+    await field.getByText('Pending close text.').waitFor();
+    return s;
+  },
+  'SuiteScript field learner preview hides communicative teacher controls': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      const { default: catalog } = await import('/src/editor/suiteScriptStarterCatalog.json?import');
+      const starter = catalog.find(item => item.key === 'activity-cue').body;
+      const activity = JSON.parse(starter.slice(starter.indexOf('data: ') + 6, -1));
+      const first = structuredClone(activity.content[0]), second = structuredClone(activity.content[0]);
+      first.attrs.activityItemId = 'private-cue-a'; first.attrs.title = 'Private card A';
+      second.attrs.activityItemId = 'private-cue-b'; second.attrs.title = 'Private card B';
+      activity.content = [first, second];
+      d.taskId = await addTask(d.classId, d.itemId, 194, 'task', { title: 'SuiteScript preview privacy', content: { type: 'doc', content: [activity] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript preview privacy', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const preview = s.p.locator('.ss-source__preview');
+    await preview.locator('.ca-local').waitFor();
+    if (await preview.locator('.ca-view-as-row').count()) throw Error('Source editor learner preview exposed teacher view controls.');
+    if (await preview.getByText('Private card A').count() && await preview.getByText('Private card B').count()) throw Error('Source editor learner preview exposed both private cards.');
+    return s;
+  },
+  'SuiteScript PDF picker uses an authorised Organisation File': async b => {
+    const s = await session(b);
+    const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([612, 792]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    page.drawText('Class worksheet', { x: 52, y: 710, size: 30, font, color: rgb(0.2, 0.3, 0.4) });
+    page.drawText('This PDF remains visible to the learner after reload.', { x: 52, y: 665, size: 14, font });
+    page.drawRectangle({ x: 52, y: 620, width: 280, height: 20, color: rgb(0.78, 0.36, 0.19) });
+    const pdfBytes = await pdf.save();
+    const demo = await s.p.evaluate(async ({ base64, bytesLength }) => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 192, 'task', { title: 'PDF picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Worksheets', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-pdf'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Class worksheet.pdf', kind: 'file', uploadStatus: 'ready', file: { name: 'Class worksheet.pdf', type: 'application/pdf', bytes: bytesLength, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-pdf/blob/p0'] = { part: 0, data: base64 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    }, { base64: Buffer.from(pdfBytes).toString('base64'), bytesLength: pdfBytes.length });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'PDF picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@pdf("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose a PDF' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    if (process.env.SUITESCRIPT_PDF_PICKER_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_PDF_PICKER_SCREENSHOT });
+    await window.getByRole('button', { name: 'Class worksheet.pdf' }).click();
+    await s.p.waitForFunction(() => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes('ELTSUITE-0001-0002-0003-0786'));
+    await s.p.locator('.ss-source__preview .pdf-block').waitFor();
+    await s.p.locator('.ss-source__preview .pdf-pagewrap canvas').waitFor();
+    await s.p.waitForFunction(() => {
+      const canvas = document.querySelector('.ss-source__preview .pdf-pagewrap canvas');
+      return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0;
+    });
+    if (await s.p.locator('.ss-source__preview .pdf-err').count()) throw Error('Learner PDF preview could not load its copied Class file.');
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('pdfBlock'), demo);
+    if (!(await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media:'), demo))) throw Error('PDF task did not persist its Class media copy.');
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised PDF reference produced a source error.');
+    const savedReference = (await source.inputValue()).match(/ELTSUITE-\d{4}-\d{4}-\d{4}-\d{4}/)?.[0];
+    if (!savedReference) throw Error('The selected Organisation PDF has no stable SuiteScript reference.');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'PDF picker check', exact: false }).first().click();
+    await s.p.locator('.task-editor .ProseMirror').first().click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    await s.p.waitForFunction(ref => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes(ref), savedReference);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('Reopening the copied Organisation PDF lost its reference.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    await s.p.waitForFunction(() => {
+      const canvas = document.querySelector('.frame-body .pdf-pagewrap canvas');
+      return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0;
+    });
+    if (await s.p.locator('.frame-body .pdf-err').count()) throw Error('Learner could not open the copied PDF after reload.');
+    if (process.env.SUITESCRIPT_LEARNER_PDF_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_LEARNER_PDF_SCREENSHOT });
+    return s;
+  },
+  'SuiteScript image picker copies an Organisation File into the learner task': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 195, 'task', { title: 'Image picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 48;
+      const paint = canvas.getContext('2d'); paint.fillStyle = '#c65a34'; paint.fillRect(0, 0, 64, 48);
+      const base64 = canvas.toDataURL('image/png').split(',')[1];
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Pictures', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-image'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Front desk.png', kind: 'file', uploadStatus: 'ready', file: { name: 'Front desk.png', type: 'image/png', bytes: atob(base64).length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/stranger-image'] = { owner: 'teacher2', ownerName: 'Other teacher', title: 'Private staff photo.png', kind: 'file', uploadStatus: 'ready', file: { name: 'Private staff photo.png', type: 'image/png', bytes: atob(base64).length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-image/blob/p0'] = { part: 0, data: base64 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Image picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@image("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose an image' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    if (await window.getByRole('button', { name: 'Private staff photo.png' }).count()) throw Error('The picker offered a file the teacher cannot read.');
+    if (process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT });
+    await window.getByRole('button', { name: 'Front desk.png' }).click();
+    await s.p.waitForFunction(() => {
+      const image = document.querySelector('.ss-source__preview .pic-rendered img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media:'), demo);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised picture reference produced a source error.');
+    const savedReference = (await source.inputValue()).match(/ELTSUITE-\d{4}-\d{4}-\d{4}-\d{4}/)?.[0];
+    if (!savedReference) throw Error('The selected Organisation picture has no stable SuiteScript reference.');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'Image picker check', exact: false }).first().click();
+    await s.p.locator('.task-editor .ProseMirror').first().click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    await s.p.waitForFunction(ref => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes(ref), savedReference);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('Reopening the copied Organisation picture lost its reference.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    await s.p.waitForFunction(() => {
+      const image = document.querySelector('.frame-body .pic-rendered img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
+    if (process.env.SUITESCRIPT_LEARNER_IMAGE_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_LEARNER_IMAGE_SCREENSHOT });
+    return s;
+  },
+  'SuiteScript audio picker makes an Organisation recording playable in Class': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 196, 'task', { title: 'Audio picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const rate = 8000, samples = rate * 3;
+      const bytes = new Uint8Array(44 + samples * 2), view = new DataView(bytes.buffer);
+      const word = (offset, value) => { for (let i = 0; i < value.length; i++) bytes[offset + i] = value.charCodeAt(i); };
+      word(0, 'RIFF'); view.setUint32(4, bytes.length - 8, true); word(8, 'WAVE'); word(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+      view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true); word(36, 'data'); view.setUint32(40, samples * 2, true);
+      for (let i = 0; i < samples; i++) view.setInt16(44 + i * 2, Math.round(Math.sin(i * 2 * Math.PI * 440 / rate) * 9000), true);
+      let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Recordings', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-audio'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Greeting.wav', kind: 'file', uploadStatus: 'ready', file: { name: 'Greeting.wav', type: 'audio/wav', bytes: bytes.length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-audio/blob/p0'] = { part: 0, data: btoa(binary) };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Audio picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@audio("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose a recording' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    await window.getByRole('button', { name: 'Greeting.wav' }).click();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media'), demo);
+    const savedReference = (await source.inputValue()).match(/ELTSUITE-\d{4}-\d{4}-\d{4}-\d{4}/)?.[0];
+    if (!savedReference) throw Error('The selected Organisation recording has no stable SuiteScript reference.');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'Audio picker check', exact: false }).first().click();
+    await s.p.locator('.task-editor .ProseMirror').first().click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    await s.p.waitForFunction(ref => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes(ref), savedReference);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('Reopening the copied Organisation recording lost its reference.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    const play = s.p.locator('.frame-body .mp-play').first();
+    await play.waitFor();
+    await s.p.waitForFunction(() => {
+      const control = document.querySelector('.frame-body .mp-play');
+      return control instanceof HTMLButtonElement && !control.disabled;
+    });
+    await play.click();
+    await s.p.locator('.frame-body .mp-play[aria-label="Pause"]').waitFor();
+    await s.p.waitForFunction(() => {
+      const label = document.querySelector('.frame-body .mp-time')?.textContent ?? '';
+      return /0:0[1-3]/.test(label);
+    });
+    return s;
+  },
+  'SuiteScript inaccessible media never reaches a learner task': async b => {
+    const s = await session(b);
+    const { suiteScriptId } = await import('../functions/suitescript/id.js');
+    const hiddenId = suiteScriptId();
+    const demo = await s.p.evaluate(async id => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 197, 'task', { title: 'Inaccessible reference check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep this valid task.' }] }] } });
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['sharedDocs/private-audio'] = { owner: 'teacher2', ownerName: 'Other teacher', title: 'Private recording', kind: 'file', uploadStatus: 'ready', suiteScriptRef: id, file: { name: 'Private.wav', type: 'audio/wav', bytes: 8000, parts: 1 }, memberIds: [], members: {} };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    }, hiddenId);
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Inaccessible reference check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill(`SuiteScript v1\n@audio("${hiddenId}")`);
+    await s.p.locator('.ss-source__preview').getByText('Keep this valid task.').waitFor();
+    await s.p.locator('.ss-source__preview-head').getByText('Last valid version').waitFor();
+    await s.p.locator('.ss-source__status > span').first().hover();
+    await s.p.locator('.ss-source__status').getByText(/Audio unavailable here/).waitFor();
+    const saved = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (!saved.includes('Keep this valid task.') || saved.includes('Audio unavailable') || saved.includes(hiddenId) || saved.includes('private-audio')) throw Error('An inaccessible file command replaced valid learner content.');
+    await source.fill(`SuiteScript v1\n@audio("${hiddenId.slice(0, -1)}${hiddenId.at(-1) === '0' ? '1' : '0'}")`);
+    await s.p.locator('.ss-source__gutter-error').waitFor();
+    await s.p.waitForTimeout(350);
+    const afterInvalid = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (afterInvalid !== saved) throw Error('An invalid checksum replaced the last valid learner task.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.getByRole('dialog', { name: 'Discard unfinished SuiteScript' }).getByRole('button', { name: 'Discard unfinished code' }).click();
+    await field.evaluate((el, id) => { const data = new DataTransfer(); data.setData('text/plain', `SuiteScript v1\n@audio("${id}")`); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); }, hiddenId);
+    await s.p.waitForTimeout(350);
+    const afterPaste = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (afterPaste !== saved) throw Error('An inaccessible plain-text SuiteScript paste replaced valid content.');
+    return s;
+  },
+  'SuiteScript keeps existing standalone media in rich text when files are unavailable': async b => {
+    const s = await session(b);
+    const lessonId = 'suite-standalone-media';
+    const taskPath = `sharedDocs/${lessonId}/tasks/media-task`;
+    await s.p.evaluate(({ lessonId, taskPath }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs[`sharedDocs/${lessonId}`] = { owner: 'teacher1', ownerName: 'Arda', title: 'Standalone media', kind: 'lesson', standaloneLesson: true, docKey: 'standalone-doc-key', members: {}, memberIds: [], createdAt: Date.now(), updatedAt: Date.now() };
+      fs[taskPath] = { order: 0, kind: 'task', title: 'Media task', instructions: '', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src: 'media:existing-picture', alt: 'Existing picture' } }] }] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    }, { lessonId, taskPath });
+    await s.p.goto(`${BASE}/doc/${lessonId}`);
+    const field = s.p.locator('.lf-body .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const unavailable = s.p.locator('.ss-source__unavailable');
+    await unavailable.getByText('File editing in SuiteScript is available in Classes only.', { exact: false }).waitFor();
+    if (process.env.SUITESCRIPT_STANDALONE_WARNING_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_STANDALONE_WARNING_SCREENSHOT });
+    if (await s.p.getByRole('textbox', { name: 'SuiteScript source' }).count()) throw Error('A failed media export opened an empty source that could overwrite the standalone task.');
+    await unavailable.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await field.waitFor();
+    const saved = await s.p.evaluate(path => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[path]?.content ?? {}), taskPath);
+    if (!saved.includes('media:existing-picture')) throw Error('Returning to rich text changed the existing standalone picture.');
+    return s;
+  },
   'Copy as SuiteScript physical shortcut works in Collab': async b => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');

@@ -1,0 +1,110 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { writeFile, unlink } from 'node:fs/promises';
+
+// Exercise the real resolver without a production Firebase connection. Only
+// the network/reference boundary is replaced; the asset walk is production code.
+const boundary = {
+  name: 'suite-script-reference-boundary',
+  setup(builder) {
+    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media|picturePrepare)$|^\.\.\/pdf\/pdfData$/ }, args =>
+      args.importer.endsWith('suiteScriptResolve.ts') ? { path: args.path, namespace: 'reference-boundary' } : undefined);
+    builder.onLoad({ filter: /.*/, namespace: 'reference-boundary' }, args => ({
+      contents: args.path === './fullcopy'
+        ? 'export async function carryMedia() { throw Error("No media copy expected"); }'
+        : args.path === './fileStore'
+          ? 'export async function loadAnyFile(id) { return new Blob(["safe bytes"], {type: id === "video-file" ? "video/mp4" : id === "safe-image" ? "image/png" : id === "pdf-file" ? "application/pdf" : "audio/mpeg"}); }'
+          : args.path === './archive'
+            ? 'export async function saveSound(_space, _file, meta) { return {mediaId: meta.video ? "copied-video" : "copied-audio"}; }'
+            : args.path === './media'
+              ? 'export async function saveImage(space, blob) { if (space !== "class-1" || blob.type !== "image/jpeg") throw Error("Invalid image copy"); return "copied-image"; }'
+              : args.path === './picturePrepare'
+                ? 'export async function preparePicture(blob) { if (blob.type !== "image/png") throw Error("Invalid source image"); return new Blob(["compressed"], {type:"image/jpeg"}); }'
+                : args.path === '../pdf/pdfData'
+                  ? 'export async function loadPdf(src) { if (src !== "file:pdf-native") throw Error("Wrong PDF source"); return new Uint8Array([37,80,68,70]); } export async function filePdfInfo(id) { return id === "pdf-native" ? {pages:[{w:612,h:792}]} : null; } export async function openPdf(bytes) { if (!bytes.length) throw Error("Empty PDF"); return {}; } export async function pageSizes() { return [{w:612,h:792}]; } export async function saveClassPdf(space, bytes, pages) { if (space !== "class-1" || !bytes.length || pages[0].w !== 612) throw Error("Invalid PDF copy"); return "copied-pdf"; }'
+                  : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : id === "pdf-ref" ? {kind:"sharedDoc",itemType:"pdf",sourceId:"pdf-native"} : id === "pdf-file-ref" ? {kind:"sharedDoc",itemType:"file",sourceId:"pdf-file",mime:"application/pdf"} : { kind: "sharedDoc", itemType: "file", sourceId: "safe-image", mime: "image/png" }; }',
+      loader: 'js',
+    }));
+  },
+};
+const built = await build({ entryPoints: ['src/lib/suiteScriptResolve.ts'], bundle: true, packages: 'external', platform: 'node', format: 'esm', write: false, plugins: [boundary] });
+const file = new URL('./.suite-script-resolve-test-bundle.mjs', import.meta.url);
+await writeFile(file, built.outputFiles[0].text);
+const { resolveSuiteScriptContent } = await import(file.href);
+await unlink(file);
+
+test('nested private pictures and media cannot bypass SuiteScript reference checks', async () => {
+  const raw = { type: 'communicativeActivity', attrs: {
+    activity: { kind: 'spot', items: [
+      { title: 'Learner A', picture: { src: 'private-activity:class-secret:image-1', alt: 'A room' } },
+      { title: 'Learner B', picture: { src: 'https://private.example.test/photo?token=secret', alt: 'Another room' } },
+    ] },
+  } };
+  const result = await resolveSuiteScriptContent([raw], { mode: 'class', classId: 'class-1' });
+  assert.equal(result.content[0].type, 'paragraph');
+  assert.match(JSON.stringify(result.content), /Item unavailable/);
+  assert.doesNotMatch(JSON.stringify(result), /class-secret|private\.example|token=secret/);
+  assert.equal(result.warnings.length, 1);
+
+  const nestedRef = { type: 'pack', attrs: { cards: [{ media: { suiteRef: 'ELTSUITE-0001-0002-0003-0018' } }] } };
+  const second = await resolveSuiteScriptContent([nestedRef], { mode: 'class', classId: 'class-1' });
+  assert.match(JSON.stringify(second.content), /Item unavailable/);
+  assert.doesNotMatch(JSON.stringify(second.content), /ELTSUITE-0001/);
+
+  const typedWithNestedRef = { type: 'picture', attrs: { suiteRef: 'safe-image', alt: 'A room', data: { cards: [{ suiteRef: 'private-nested-ref' }] } } };
+  const third = await resolveSuiteScriptContent([typedWithNestedRef], { mode: 'class', classId: 'class-1' });
+  assert.match(JSON.stringify(third.content), /Image unavailable/);
+  assert.doesNotMatch(JSON.stringify(third.content), /private-nested-ref/);
+});
+
+test('empty media slots and non-media configuration remain usable', async () => {
+  const node = { type: 'timeline', attrs: { title: 'The conversation', marks: [{ kind: 'event', label: 'Arrived', x: 210 }], cover: null, src: '' } };
+  const result = await resolveSuiteScriptContent([node], { mode: 'class', classId: 'class-1' });
+  assert.deepEqual(result.content, [node]);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('an authorised Organisation picture becomes Class media that the learner renderer can load', async () => {
+  const result = await resolveSuiteScriptContent([{ type: 'picture', attrs: { suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }], { mode: 'class', classId: 'class-1' });
+  assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'media:copied-image', suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }]);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('a verified PDF from Files becomes a Class copy and keeps its page geometry', async () => {
+  for (const reference of ['pdf-ref', 'pdf-file-ref']) {
+    const result = await resolveSuiteScriptContent([{ type: 'pdfBlock', attrs: { suiteRef: reference } }], { mode: 'class', classId: 'class-1' });
+    assert.equal(result.content[0].attrs.src, 'media:copied-pdf');
+    assert.equal(result.content[0].attrs.suiteRef, reference);
+    assert.deepEqual(result.content[0].attrs.pages, [{ w: 612, h: 792 }]);
+    assert.deepEqual(result.warnings, []);
+  }
+});
+
+test('authorised organisation audio and video files become playable class media copies', async () => {
+  for (const [reference, kind, media] of [['audio-ref', 'audio', 'copied-audio'], ['video-ref', 'video', 'copied-video']]) {
+    const result = await resolveSuiteScriptContent([{ type: 'media', attrs: { suiteRef: reference, kind } }], { mode: 'class', classId: 'class-1' });
+    assert.equal(result.content[0].attrs.media, media);
+    assert.equal(result.content[0].attrs.suiteRef, reference);
+    assert.equal(result.content[0].attrs.kind, kind);
+    assert.deepEqual(result.warnings, []);
+  }
+  const privateResult = await resolveSuiteScriptContent([{ type: 'media', attrs: { suiteRef: 'audio-ref', kind: 'audio' } }], { mode: 'private' });
+  assert.match(JSON.stringify(privateResult.content), /Audio unavailable/);
+});
+
+test('standalone and Resource Hub media references fail closed without exposing the source', async () => {
+  for (const destination of [{ mode: 'private' }, { mode: 'resourceHub' }]) {
+    for (const [type, attrs] of [
+      ['picture', { suiteRef: 'safe-image', alt: 'Private picture' }],
+      ['pdfBlock', { suiteRef: 'pdf-ref' }],
+      ['media', { suiteRef: 'audio-ref', kind: 'audio' }],
+      ['media', { suiteRef: 'video-ref', kind: 'video' }],
+    ]) {
+      const result = await resolveSuiteScriptContent([{ type, attrs }], destination);
+      assert.equal(result.warnings.length, 1);
+      assert.doesNotMatch(JSON.stringify(result.content), /safe-image|pdf-ref|audio-ref|video-ref|private picture/);
+      assert.match(JSON.stringify(result.content), /unavailable/);
+    }
+  }
+});

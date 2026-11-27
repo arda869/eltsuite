@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { TopBar } from '../components/TopBar';
@@ -16,6 +16,10 @@ import { createCollectionDraft, createResourceDraft, getCollectionDraft, getReso
 import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 import { ResourceLivePreview } from './ResourceLivePreview';
 import { HubLessonEditor } from './HubLessonEditor';
+import { SuiteScriptStructureEditor } from '../editor/SuiteScriptStructureEditor';
+import { SUITE_TYPES } from '../editor/TaskEditor';
+import { toSuiteScriptBundle, type SuiteScriptBundle } from '../lib/suiteScriptBundle';
+import { exportSuiteScriptHubDraft, saveSuiteScriptBundleToHubDraft } from './suiteScriptHubApply';
 import { ResourceActivityDirectory } from './ResourceActivityDirectory';
 import { ResourceActivityMetrics } from './ResourceActivityMetrics';
 import { prepareStaticPage, saveStaticKitOverride, subscribeStaticKitOverride, type HubStaticOverride } from './hubStaticOverride';
@@ -77,6 +81,8 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
   const [printPreview, setPrintPreview] = useState<Uint8Array | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [suiteStructure, setSuiteStructure] = useState<'task' | 'activity' | null>(null);
+  const suiteSharedDetails = useRef('');
   // As in a lesson: the digital view, or the printed page beside the task.
   const [paper, setPaperState] = useState(() => { try { return localStorage.getItem('rhe-paper') === '1'; } catch { return false; } });
   const setPaper = (v: boolean) => { setPaperState(v); try { localStorage.setItem('rhe-paper', v ? '1' : ''); } catch { /* fine */ } };
@@ -205,6 +211,27 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
   };
   const publishedActivityId = isLesson ? `lesson-${draft.id}` : `${draft.collectionId}-${draft.number.padStart(3, '0')}`;
   const collectionLook = { ...HUB_COLLECTIONS.find(item => item.id === draft.collectionId)!, ...publishedCollections.items?.find(item => item.id === draft.collectionId) };
+  const suiteRows = draft.sections.filter(item => item.audience === 'learner' && item.kind === 'task').map(item => ({ id: item.id, title: item.title || 'Untitled task', group: item.versionGroup, version: item.versionLabel }));
+  const hasVersionScope = suiteRows.some(row => row.group);
+  const openSuiteStructure = (kind: 'task' | 'activity') => {
+    setError('');
+    if (!editable) { setError('Return this resource to draft before editing it as SuiteScript.'); return; }
+    if (dirty || busy) { setError('Save this draft before opening SuiteScript.'); return; }
+    if (kind === 'task' && (!section || section.audience !== 'learner' || section.kind !== 'task')) { setError('Select a learner task to edit it as SuiteScript.'); return; }
+    setSuiteStructure(kind);
+  };
+  const loadSuiteStructure = async (kind: 'task' | 'activity', ids: string[]): Promise<string> => {
+    if (!saved || dirty || busy) throw new Error('Save this draft before opening SuiteScript.');
+    const bundle = await exportSuiteScriptHubDraft(id, uid, kind === 'task' ? ids[0] : undefined, kind === 'activity' ? ids : undefined);
+    if (bundle.kind === 'activity' && hasVersionScope) suiteSharedDetails.current = JSON.stringify((({ title, level, aim, minutes, summary, focus }) => ({ title, level, aim, minutes, summary, focus }))(bundle.activity));
+    return toSuiteScriptBundle(bundle, SUITE_TYPES);
+  };
+  const applySuiteStructure = async (bundle: SuiteScriptBundle, ids: string[]) => {
+    if (!saved || dirty || !editable) throw new Error('Save this draft before applying SuiteScript.');
+    if (bundle.kind === 'activity' && hasVersionScope && JSON.stringify((({ title, level, aim, minutes, summary, focus }) => ({ title, level, aim, minutes, summary, focus }))(bundle.activity)) !== suiteSharedDetails.current) throw new Error('Shared resource title and details cannot change in a version-scoped SuiteScript edit. Edit them in Details.');
+    const next = await saveSuiteScriptBundleToHubDraft(saved, saved.revision, bundle, bundle.kind === 'task' ? ids[0] : undefined, bundle.kind === 'activity' ? ids : undefined);
+    setSaved(next); setDraft(next); setSaveFailed(false); setError('');
+  };
   const publishing = <div className="rhl-publish">
     <ul className="rhl-checks">{validation.length ? validation.map(message => <li key={message} className="needs">{message}</li>) : <li className="okay">Ready for review or publication.</li>}{hasDigitalOnly && <li>Some parts work only on screen. The PDF shows a short note in their place; the Class copy has the full task.</li>}</ul>
     {draft.sourceReview && <details className="rhe-source-review"><summary>Imported source and checks</summary><p>{draft.sourceReview.fileName}</p>{draft.sourceReview.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</details>}
@@ -224,6 +251,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
         <span className="rhl-pub" title={draft.publishedAt ? `Teachers see the edition published on ${new Date(draft.publishedAt).toLocaleDateString()} until you publish this draft.` : 'Private until its first edition is published.'}>{draft.publishedAt ? <Link to={`/resource-hub?activity=${publishedActivityId}`} target="_blank" rel="noopener noreferrer">Published {new Date(draft.publishedAt).toLocaleDateString('en-GB')} ↗</Link> : 'Not published yet'}</span>
       </div>
       <div className="rhl-head-r">
+        {tab === 'content' && <><button type="button" className="btn small-btn" onClick={() => openSuiteStructure('task')}>SuiteScript task</button><button type="button" className="btn small-btn" onClick={() => openSuiteStructure('activity')}>SuiteScript activity</button></>}
         <span className="seg rhl-view" role="radiogroup" aria-label="View">
           <button type="button" role="radio" aria-checked={tab === 'content' && !paper} className={tab === 'content' && !paper ? 'on' : ''} onClick={() => { setTab('content'); setPaper(false); }}>Digital</button>
           <button type="button" role="radio" aria-checked={tab === 'content' && paper} className={tab === 'content' && paper ? 'on' : ''} onClick={() => { setTab('content'); setPaper(true); }}>Paper</button>
@@ -242,6 +270,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
     </div>}
     {printPreview && <PdfPreview bytes={printPreview} name={`${draft.title || "Resource Hub"} preview`} onClose={() => setPrintPreview(null)} />}
     {idOpen && section && <IdentityDialog value={section.identity} used={lessonIdentities(draft.sections)} onSave={saveIdentity} onClose={() => setIdOpen(false)} />}
+    {suiteStructure && <SuiteScriptStructureEditor kind={suiteStructure} title={suiteStructure === 'task' ? section?.title || 'Selected task' : draft.title || 'Activity'} rows={suiteStructure === 'task' ? suiteRows.filter(row => row.id === section?.id) : suiteRows} sharedMetadata={suiteStructure === 'activity' && hasVersionScope} loadSource={ids => loadSuiteStructure(suiteStructure, ids)} applyBundle={applySuiteStructure} onClose={() => setSuiteStructure(null)} />}
   </div></RefsContext.Provider>;
 }
 
