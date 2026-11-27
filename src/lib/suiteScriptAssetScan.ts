@@ -20,7 +20,10 @@ export function suiteScriptRawAssetPath(node: JSONContent, nestedOnly = false): 
       return null;
     }
     for (const [key, child] of Object.entries(value)) {
-      if (key === 'suiteRef') continue;
+      if (key === 'suiteRef') {
+        if (depth > 0 && child) return path ? `${path}.${key}` : key;
+        continue;
+      }
       const found = walk(child, path ? `${path}.${key}` : key, key, depth + 1);
       if (found) return found;
     }

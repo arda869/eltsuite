@@ -1,5 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { carryMedia } from './fullcopy';
+import { loadAnyFile } from './fileStore';
+import { saveSound } from './archive';
 import { resolveSuiteScriptReference, type SuiteScriptDestination } from './suiteScriptReferences';
 import { suiteScriptRawAssetPath } from './suiteScriptAssetScan';
 import { suiteScriptSafeMeta } from './suiteScriptMeta';
@@ -28,7 +30,9 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
       try {
         const nested = suiteScriptRawAssetPath(node, true);
         if (nested) throw new Error(`unchecked nested asset at ${nested}`);
-        const ref = await resolveSuiteScriptReference(id, destination);
+        if (destination.mode === 'private' || destination.mode === 'resourceHub') throw new Error('destination audience unknown');
+        const mediaCopy = ['media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
+        const ref = await resolveSuiteScriptReference(id, mediaCopy ? { ...destination, mediaCopy: true } : destination);
         const meta = suiteScriptSafeMeta(node);
         if (node.type === 'collab') {
           if (ref.kind !== 'sharedDoc' || ref.itemType !== 'doc' || !ref.docKey) throw new Error('wrong type');
@@ -40,6 +44,17 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `file:${ref.sourceId}`, from: ref.sourceId } });
         }
         if (node.type === 'picture' && ref.kind === 'sharedDoc' && ref.mime?.startsWith('image/')) return withChildren({ type: 'picture', attrs: { ...meta, src: `file:${ref.sourceId}` } });
+        if (['media', 'inlineMedia'].includes(node.type ?? '') && ref.kind === 'sharedDoc') {
+          const video = node.attrs?.kind === 'video';
+          if (destination.mode !== 'class' || ref.itemType !== 'file'
+            || !(/^(video\/(mp4|webm))$/.test(ref.mime ?? '') === video)
+            || !/^(audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm))$/.test(ref.mime ?? '')) throw new Error('unsupported file');
+          const file = await loadAnyFile(ref.sourceId);
+          if (file.type !== ref.mime) throw new Error('file type changed');
+          const title = video ? 'Video from Files' : 'Recording from Files';
+          const copy = await saveSound(destination.classId, file, { title, video });
+          return withChildren({ type: node.type, attrs: { ...meta, media: copy.mediaId, archiveId: '', kind: video ? 'video' : 'audio', title, scriptMode: 'none', plays: 0, space: destination.classId } });
+        }
         if (ref.kind !== 'archive' || ref.itemType !== (node.type === 'picture' ? 'image' : node.attrs?.kind)) throw new Error('wrong type');
         const source = ref.home;
         if (!source?.classId || !source.mediaId) throw new Error('missing media');
