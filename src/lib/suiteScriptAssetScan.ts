@@ -20,7 +20,12 @@ export function suiteScriptRawAssetPath(node: JSONContent, nestedOnly = false): 
       return null;
     }
     for (const [key, child] of Object.entries(value)) {
-      if (key === 'suiteRef') continue;
+      if (key === 'suiteRef') {
+        // Only the node's own typed reference is resolved. A reference nested
+        // inside native element configuration has no destination check.
+        if (path !== 'attrs' && typeof child === 'string' && child.trim()) return `${path}.${key}`;
+        continue;
+      }
       const found = walk(child, path ? `${path}.${key}` : key, key, depth + 1);
       if (found) return found;
     }

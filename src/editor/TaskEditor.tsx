@@ -550,7 +550,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptEnabled = false, suiteScriptAudience = 'private' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub' }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptEnabled = false, suiteScriptAudience = 'private', onSchemaReady }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; onSchemaReady?: (validate: (doc: JSONContent) => void) => void }) {
   const [sourceMode, setSourceMode] = useState(false);
   const teacherRef = useRef(false);
   teacherRef.current = useAuth().profile?.role === 'teacher';
@@ -700,6 +700,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   classRef.current = classId;
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
+  useEffect(() => {
+    if (editor && onSchemaReady) onSchemaReady(doc => editor.schema.nodeFromJSON(doc).check());
+  }, [editor, onSchemaReady]);
   // Copy: the usual, plus the elements as JSON with where their media live.
   function copyOut(view: EditorView, e: ClipboardEvent, cut: boolean) {
     const sel = view.state.selection;
