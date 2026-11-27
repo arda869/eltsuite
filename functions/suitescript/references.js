@@ -28,7 +28,15 @@ async function checkAudience(db, uid, kind, item, destination) {
     // An archive upload must be copied into the class media collection by the
     // existing media flow. A reusable shared document must already be shared
     // with the class; an ID itself never grants class access.
-    if (kind === 'sharedDoc' && !['edit', 'suggest', 'comment', 'view'].includes(item.classes?.[id]?.role)) throw denied();
+    // A teacher may deliberately copy a ready sound/video file they can read
+    // into their own class media. The copy gives the class its own bytes; a
+    // Collab document, PDF or image that remains linked to Files still needs
+    // an explicit class share.
+    const mime = item.file?.type ?? '';
+    const copiedMedia = destination?.mediaCopy === true && kind === 'sharedDoc'
+      && item.kind === 'file' && item.uploadStatus === 'ready'
+      && /^(audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm))$/.test(mime);
+    if (kind === 'sharedDoc' && !copiedMedia && !['edit', 'suggest', 'comment', 'view'].includes(item.classes?.[id]?.role)) throw denied();
     return;
   }
   if (mode === 'message') {

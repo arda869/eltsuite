@@ -25,11 +25,17 @@ test('stable IDs survive rename/move, and source and destination permissions are
   const { db, records } = memoryDb({
     'users/teacher/archive/audio1': { kind: 'audio', home: { classId: 'class1', mediaId: 'm1' }, title: 'Original' },
     'sharedDocs/doc1': { kind: 'doc', owner: 'teacher', memberIds: ['learner'], classes: { class1: { role: 'view', name: 'Example class' } }, docKey: 'doc-key' },
+    'sharedDocs/sound1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'audio/mpeg' } },
+    'sharedDocs/video1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'video/mp4' } },
+    'sharedDocs/image1': { kind: 'file', owner: 'teacher', memberIds: [], uploadStatus: 'ready', file: { type: 'image/png' } },
     'classes/class1': { teacherId: 'teacher' },
     'classes/foreign': { teacherId: 'other' },
   });
   const audio = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' });
   const shared = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'doc1' });
+  const sound = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'sound1' });
+  const video = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'video1' });
+  const image = await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'sharedDoc', id: 'image1' });
   assert.match(audio.id, /^ELTSUITE-(\d{4}-){3}\d{4}$/);
   records.set('users/teacher/archive/audio1', { ...records.get('users/teacher/archive/audio1'), title: 'Moved and renamed', folderId: 'new' });
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'ensure', kind: 'archive', id: 'audio1' })).id, audio.id);
@@ -41,6 +47,12 @@ test('stable IDs survive rename/move, and source and destination permissions are
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'class', classId: 'foreign' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'message', recipientIds: ['learner'] } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'resourceHub' } }), e => e.code === 'permission-denied');
+  assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'audio/mpeg');
+  assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: video.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'video/mp4');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } }), e => e.code === 'permission-denied');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
+  await assert.rejects(suiteScriptReferenceService(db, 'other', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } }), e => e.code === 'permission-denied');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'class', classId: 'foreign', mediaCopy: true } }), e => e.code === 'permission-denied');
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['learner'] } })).sourceId, 'doc1');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'message', recipientIds: ['stranger'] } }), e => e.code === 'permission-denied');
   const wrongChecksum = audio.id.slice(0, -1) + (audio.id.endsWith('0') ? '1' : '0');
