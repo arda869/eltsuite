@@ -309,6 +309,60 @@ const J = {
     await field.getByText('Second valid sentence.').waitFor();
     return s;
   },
+  'SuiteScript close does not silently drop an edit awaiting apply': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 193, 'task', { title: 'SuiteScript close check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original text.' }] }] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript close check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.waitFor();
+    await source.fill('SuiteScript v1\nPending close text.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    const confirm = s.p.getByRole('dialog', { name: 'Discard unfinished SuiteScript' });
+    if (await confirm.isVisible().catch(() => false)) {
+      await confirm.getByRole('button', { name: 'Keep editing' }).click();
+      await s.p.locator('.ss-source__preview').getByText('Pending close text.').waitFor();
+      await s.p.locator('.ss-source__status').getByText('No problems').waitFor();
+      await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    }
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Pending close text.'), demo);
+    await field.getByText('Pending close text.').waitFor();
+    return s;
+  },
+  'SuiteScript field learner preview hides communicative teacher controls': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      const { default: catalog } = await import('/src/editor/suiteScriptStarterCatalog.json?import');
+      const starter = catalog.find(item => item.key === 'activity-cue').body;
+      const activity = JSON.parse(starter.slice(starter.indexOf('data: ') + 6, -1));
+      const first = structuredClone(activity.content[0]), second = structuredClone(activity.content[0]);
+      first.attrs.activityItemId = 'private-cue-a'; first.attrs.title = 'Private card A';
+      second.attrs.activityItemId = 'private-cue-b'; second.attrs.title = 'Private card B';
+      activity.content = [first, second];
+      d.taskId = await addTask(d.classId, d.itemId, 194, 'task', { title: 'SuiteScript preview privacy', content: { type: 'doc', content: [activity] } });
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'SuiteScript preview privacy', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const preview = s.p.locator('.ss-source__preview');
+    await preview.locator('.ca-local').waitFor();
+    if (await preview.locator('.ca-view-as-row').count()) throw Error('Source editor learner preview exposed teacher view controls.');
+    if (await preview.getByText('Private card A').count() && await preview.getByText('Private card B').count()) throw Error('Source editor learner preview exposed both private cards.');
+    return s;
+  },
   'SuiteScript PDF picker uses an authorised Organisation File': async b => {
     const s = await session(b);
     const demo = await s.p.evaluate(async () => {

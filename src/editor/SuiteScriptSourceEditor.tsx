@@ -4,6 +4,7 @@ import { AddWindow } from '../components/AddWindow';
 import { FileBrowser } from '../components/FileBrowser';
 import { FileIcon } from '../components/FileIcon';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { LocalActivityMode, LocalLearnerPreviewMode } from '../communicative/LocalActivity';
 import { auth } from '../lib/firebase';
 import { libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { useFolderDocs, useMyDocs, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
@@ -66,6 +67,10 @@ export type SuiteScriptSourceEditorProps = {
   title?: string;
   textOnly?: boolean;
   previewClassId?: string;
+  /** Zero-based seat represented by the current learner version. */
+  previewLearnerSeat?: number;
+  /** A private teacher field must never be presented as learner-visible. */
+  previewAudience?: 'learner' | 'teacher';
   /** File choices are shown only where the resolver can make them usable. */
   referenceDestination: SuiteScriptDestination;
   /** Optional host picker for saved questions and organisation-specific forms. */
@@ -225,7 +230,7 @@ function highlighted(text: string): string {
   }).join('\n') + '\n';
 }
 
-export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, previewClassId = '', referenceDestination, chooseDynamic }: SuiteScriptSourceEditorProps) {
+export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, previewClassId = '', previewLearnerSeat = 0, previewAudience = 'learner', referenceDestination, chooseDynamic }: SuiteScriptSourceEditorProps) {
   const [value, setValue] = useState(`${SUITE_SCRIPT_HEADER}\n`);
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -471,7 +476,12 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     const body = valueRef.current.slice(HEADER_START).replace(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), replaceText.replace(/\$/g, '$$$$'));
     remember(`${SUITE_SCRIPT_HEADER}\n${body}`);
   }
-  function close() { if (issues.length || statusError) setConfirmClose(true); else onClose(); }
+  function close() {
+    // A valid edit may still be waiting for the short apply delay or an async
+    // host save. Require an explicit decision instead of dropping that source.
+    if (valueRef.current !== applied.current || busy || issues.length || statusError) setConfirmClose(true);
+    else onClose();
+  }
   async function copy(text: string) { try { await navigator.clipboard.writeText(text); setStatusError(''); } catch { setStatusError('Clipboard access is unavailable. Use your browser’s Copy shortcut.'); } }
   async function paste() { try { insert(await navigator.clipboard.readText()); } catch { setStatusError('Use your browser’s Paste shortcut in the code area.'); } }
   async function pickFile(items: ArchiveItem[]) {
@@ -535,9 +545,9 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     {helpOpen && <div className="ss-source__help"><strong>Write naturally. Add power with @.</strong><p>Type @ to add a command. Use Tab and Shift+Tab between placeholders. A valid edit updates the real lesson preview. Keep answers teacher-only.</p><button type="button" onClick={() => void copy(aiInstructions(commands, textOnly))}>{textOnly ? 'Copy AI instructions for this field' : `Copy AI instructions for all ${starterCatalog.length} Add items`}</button></div>}
     <div className="ss-source__workspace">
       {body}
-      {!loading && <aside className="ss-source__preview" aria-label="Live learner preview">
-        <div className="ss-source__preview-head"><span>LEARNER PREVIEW</span><span>{busy ? 'Updating…' : issues.length || statusError ? 'Last valid version' : 'Live'}</span></div>
-        <div className="ss-source__preview-body"><TaskRenderer content={splitKey(previewDoc, true).content} responses={{}} disabled classId={previewClassId} /></div>
+      {!loading && <aside className="ss-source__preview" aria-label={previewAudience === 'teacher' ? 'Private teacher preview' : 'Live learner preview'}>
+        <div className="ss-source__preview-head"><span>{previewAudience === 'teacher' ? 'PRIVATE TEACHER PREVIEW' : 'LEARNER PREVIEW'}</span><span>{busy ? 'Updating…' : issues.length || statusError ? 'Last valid version' : 'Live'}</span></div>
+        <div className="ss-source__preview-body"><LocalLearnerPreviewMode.Provider value={previewLearnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={previewAudience === 'teacher' ? previewDoc : splitKey(previewDoc, true).content} responses={{}} disabled hideAnswers={previewAudience !== 'teacher'} classId={previewClassId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div>
       </aside>}
     </div>
     <footer className="ss-source__status"><span className={issues.length || statusError ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
