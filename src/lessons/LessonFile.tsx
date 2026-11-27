@@ -32,6 +32,7 @@ import { FileLessonAi } from './FileLessonAi';
 import { IdentityDialog, IdentityMark, RefsContext } from '../components/Identity';
 import { lessonIdentities, refTargets, type ActivityIdentity } from '../lib/identity';
 import { UiIcon } from '../components/UiIcon';
+import { PanelToggle, usePanels } from '../components/PanelToggles';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
@@ -45,7 +46,7 @@ export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = 
   { v: 'homework', label: 'Homework', hint: 'With a due date' },
   { v: 'exam', label: 'Exam', hint: 'Timed, with results released later' },
 ];
-export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null; teacherNotes?: string; teacherNotesDoc?: JSONContent | null; anchor?: string; identity?: ActivityIdentity | null };
+export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null; layout?: 'single' | 'two' | 'two-wide' | 'media'; colScroll?: 'separate' | 'together'; teacherNotes?: string; teacherNotesDoc?: JSONContent | null; anchor?: string; identity?: ActivityIdentity | null };
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
 const notesCol = (id: string) => collection(db, 'sharedDocs', id, 'taskNotes');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
@@ -80,7 +81,7 @@ export async function saveLessonToFiles(owner: { uid: string; name: string }, cl
   for (const t of s.docs) {
     const d = t.data();
     const body = d.kind === 'section' ? null : await lessonTaskBody({ classId, itemId, taskId: t.id });
-    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', anchor: d.anchor || t.id, ...(d.identity ? { identity: d.identity } : {}), title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, print: d.print ?? null, content: body?.content ?? EMPTY })));
+    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', anchor: d.anchor || t.id, ...(d.identity ? { identity: d.identity } : {}), title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, print: d.print ?? null, layout: d.layout ?? 'single', colScroll: d.colScroll ?? 'separate', content: body?.content ?? EMPTY })));
   }
   await b.commit();
   return id;
@@ -92,7 +93,7 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
   for (const r of rows) {
     const taskId = await addTask(c.id, itemId, i++, r.kind, { title: r.title, instructions: r.instructions, content: r.content ?? EMPTY });
     // The row's anchor goes with it, so references between its tasks still find them in the class.
-    await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ anchor: r.anchor || r.id, ...(r.identity ? { identity: r.identity } : {}), ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}) })));
+    await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ anchor: r.anchor || r.id, ...(r.identity ? { identity: r.identity } : {}), ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}), layout: r.layout ?? 'single', colScroll: r.colScroll ?? 'separate' })));
     if (r.teacherNotes) await setDoc(doc(taskRef(c.id, itemId, taskId), 'private', 'notes'), { text: r.teacherNotes });
   }
   return itemId;
@@ -170,6 +171,9 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   const [liveInviteOpen, setLiveInviteOpen] = useState(false);
   useEffect(() => { setLiveInvite(null); setLiveInviteOpen(false); }, [d.id]);
   const [idOpen, setIdOpen] = useState(false);
+  const panels = usePanels('lf.lessonPanels', 900);
+  const [fold, setFold] = useState('who');
+  const [editorNonce, setEditorNonce] = useState(0);
   const fileOrigin = d as SharedDoc & { originClassId?: string; sourceClassId?: string; classId?: string };
   const standaloneLive = canEdit && d.standaloneLesson === true && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
   const startLive = async () => {
@@ -328,12 +332,14 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
                 {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
               </div>
               {cur.kind === 'task' && <div className="frame-body lf-body">
-                {canEdit ? <TaskEditor compact content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} taskContext={cur.instructions} taskTitle={cur.title} suiteScriptEnabled /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
+                {canEdit ? <TaskEditor key={editorNonce} compact content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} taskContext={cur.instructions} taskTitle={cur.title} suiteScriptEnabled /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled layout={cur.layout ?? 'single'} colScroll={cur.colScroll ?? 'separate'} classId={'user:' + d.owner} />}
               </div>}
             </div>
           </div>
   ) : null;
   let n = 0;
+  const showSettings = canEdit && cur?.kind === 'task' && !sheet && !learnerPreview;
+  const hasColumns = !!cur?.content && JSON.stringify(cur.content).includes('"columnBreak"');
   const refsValue = { targets: refTargets(rows.map(r => ({ ...r, anchor: r.anchor || r.id }))), versions: [], here: cur ? cur.anchor || cur.id : undefined, strict: canEdit };
   return (
     <>
@@ -354,9 +360,9 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
       ])}>Lesson <span aria-hidden="true">▾</span></button>
     </div>, headerSlot)}
     <RefsContext.Provider value={refsValue}>
-    <div className="lf">
+    <div className={'lf' + panels.cls + (!showSettings ? ' no-right' : '')}>
       <aside className="lf-side task-list">
-        <div className="lf-side-title" title={d.title}>{d.title}</div>
+        <div className="lf-side-title" title={d.title}>{d.title}{panels.compact && <button type="button" className="btn link small" onClick={panels.toggleLeft} aria-label="Close task list">Close</button>}</div>
         <nav className="lf-list" aria-label="Tasks">
           {/* As in a class lesson: hover between tasks to add one there, drag a task to move it. */}
           {rows.map((r, i) => (
@@ -381,8 +387,9 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
         </nav>
       </aside>
       <main className="lf-main">
+        {!sheet && !learnerPreview && (panels.compact ? <div className="lf-compact-actions"><button type="button" className="btn small-btn" onClick={panels.toggleLeft}>Tasks</button>{showSettings && <button type="button" className="btn small-btn" onClick={panels.toggleRight}>Task settings</button>}</div> : <div className="panel-toggles lf-panel-toggles"><PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />{showSettings && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label="the task settings" />}</div>)}
         {liveError && <p role="alert" className="rll-error">{liveError}</p>}
-        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}>{cur.identity && <div className="aid-row"><IdentityMark identity={cur.identity} /></div>}<h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
+        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}>{cur.identity && <div className="aid-row"><IdentityMark identity={cur.identity} /></div>}<h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} layout={cur.layout ?? 'single'} colScroll={cur.colScroll ?? 'separate'} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
         {sheet && rows.length && sheetData ? (
           <div className="sh-split lf-split">
             <section className="sh-left" aria-label="The worksheet">
@@ -446,6 +453,28 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
           </div>
         )}
       </main>
+      {showSettings && <aside className="task-side folds lf-settings" aria-label="Task settings">
+        {panels.compact && <button type="button" className="btn small-btn lf-settings-close" onClick={panels.toggleRight}>Close task settings</button>}
+        <LessonSettingsFold id="who" title="Who sees this" open={fold} setOpen={setFold}>
+          <span className="seg lf-everyone" role="radiogroup" aria-label="Who sees this"><span role="radio" aria-checked="true">Everyone who joins</span></span>
+          <span className="hint">In a class, you can also assign tasks to groups or individual learners.</span>
+        </LessonSettingsFold>
+        <LessonSettingsFold id="layout" title="Layout" open={fold} setOpen={setFold}>
+          <div className="field lf-settings-field"><span>Columns</span>
+            {!hasColumns ? <><button type="button" className="btn small-btn" onClick={() => { if (!cur) return; const content = cur.content ?? EMPTY; const halfway = Math.max(1, Math.floor((content.content?.length ?? 1) / 2)); patch(cur.id, { content: { ...content, content: [...(content.content ?? []).slice(0, halfway), { type: 'columnBreak' }, ...(content.content ?? []).slice(halfway)] }, layout: 'two' }, 0); void savePending(cur.id).then(() => setEditorNonce(value => value + 1)).catch(() => void tell('The column could not be added. Try again.')); }}>Split into two columns</button><span className="hint">Or type / and choose “Next column” where the second column should start.</span></> : <>
+              <span className="seg" role="radiogroup" aria-label="Column widths">{([['two', 'Equal'], ['two-wide', 'Wide left'], ['media', 'Media + questions']] as const).map(([value, label]) => <button type="button" key={value} role="radio" aria-checked={(cur?.layout ?? 'two') === value} className={(cur?.layout ?? 'two') === value ? 'on' : ''} onClick={() => cur && patch(cur.id, { layout: value }, 0)}>{label}</button>)}</span>
+              <span className="seg" role="radiogroup" aria-label="Scrolling">{([['separate', 'Scroll separately'], ['together', 'Scroll together']] as const).map(([value, label]) => <button type="button" key={value} role="radio" aria-checked={(cur?.colScroll ?? 'separate') === value} className={(cur?.colScroll ?? 'separate') === value ? 'on' : ''} onClick={() => cur && patch(cur.id, { colScroll: value }, 0)}>{label}</button>)}</span>
+              <span className="hint">Remove the “Next column” line in the text to return to one column.</span>
+            </>}
+          </div>
+        </LessonSettingsFold>
+        <LessonSettingsFold id="paper" title="On paper" open={fold} setOpen={setFold}>
+          {cur && <PaperBar key={cur.id} look={cur.print ?? {}} onChange={print => patch(cur.id, { print }, 0)} gaps={JSON.stringify(cur.content).includes('"type":"gap"') || JSON.stringify(cur.content).includes('"type":"dropgap"')} writing={JSON.stringify(cur.content).includes('"type":"writing"')} online={[]} />}
+        </LessonSettingsFold>
+        <LessonSettingsFold id="more" title="History and tips" open={fold} setOpen={setFold}>
+          <p className="hint">Type <strong>/</strong> in the task to add questions, media or a second column. Use Paper to see exactly how the A4 worksheet fits.</p>
+        </LessonSettingsFold>
+      </aside>}
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
       {idOpen && cur && <IdentityDialog value={cur.identity} used={lessonIdentities(rows)} onSave={(v, scope) => { const was = cur.identity; for (const r of rows) if (r.id === cur.id || (scope === 'all' && was && v && r.identity?.id === was.id)) patch(r.id, { identity: v }, 0); setIdOpen(false); }} onClose={() => setIdOpen(false)} />}
       {liveInviteOpen && liveInvite && <StandaloneLessonInvite code={liveInvite.code} runId={liveInvite.runId} onClose={() => setLiveInviteOpen(false)} onViewRoom={() => navigate(`/resource-hub/lesson/live/${encodeURIComponent(liveInvite.runId)}`)} />}
@@ -453,4 +482,12 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
     </RefsContext.Provider>
     </>
   );
+}
+
+function LessonSettingsFold({ id, title, open, setOpen, children }: { id: string; title: string; open: string; setOpen: (value: string) => void; children: React.ReactNode }) {
+  const expanded = open === id;
+  return <section className={'fold' + (expanded ? ' on' : '')}>
+    <button type="button" className="fold-h" aria-expanded={expanded} onClick={() => setOpen(expanded ? '' : id)}>{title}<span className="fold-chev" aria-hidden="true">›</span></button>
+    {expanded && <div className="fold-b">{children}</div>}
+  </section>;
 }

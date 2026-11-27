@@ -1,0 +1,54 @@
+/* The lesson file uses the same application bar as a lesson in Classes. */
+:root .dp.k-lesson > .suite-topbar {
+  flex: none;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 64px;
+  max-height: none;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 8px 16px;
+  gap: 8px 12px;
+  background: var(--page);
+  border-bottom: 1px solid var(--hair);
+  z-index: 40;
+}
+.dp.k-lesson > .suite-topbar::before { display: none; }
+.dp.k-lesson > .suite-topbar > .org-logo { display: none; }
+.dp.k-lesson .lf-crumbs { flex: 0 1 235px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.dp.k-lesson .lf-crumb-title {
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font: 600 13px var(--sans);
+}
+.dp.k-lesson input.lf-crumb-title {
+  width: 100%;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+.dp.k-lesson input.lf-crumb-title:hover { border-color: var(--hair); }
+.dp.k-lesson input.lf-crumb-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dp.k-lesson .dp-lesson-slot { flex: 1 1 auto; min-width: 0; }
+.dp.k-lesson .lf-header-controls { width: 100%; }
+.dp.k-lesson .lf-topbar-actions { display: inline-flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+.dp.k-lesson .lf-topbar-actions > .dp-share { height: 36px; min-height: 36px; }
+.dp.k-lesson > .suite-topbar > .right { flex: none; margin-left: 0; }
+@media (max-width: 1350px) {
+  :root .dp.k-lesson > .suite-topbar { min-height: 104px; }
+  .dp.k-lesson .dp-lesson-slot { order: 3; flex: 1 1 100%; }
+  .dp.k-lesson .lf-topbar-actions { margin-left: auto; }
+  .dp.k-lesson .lf-header-view { margin-left: auto; }
+}
+@media (max-width: 700px) {
+  :root .dp.k-lesson > .suite-topbar:has(nav.crumbs) { min-height: 0; flex-wrap: wrap; }
+  .dp.k-lesson .lf-crumbs { flex: 1 1 auto; }
+  .dp.k-lesson .lf-crumb-title { max-width: none; }
+  .dp.k-lesson .dp-lesson-slot { order: 4; flex: 1 1 100%; }
+  .dp.k-lesson .lf-topbar-actions .dp-share { padding: 0 9px; }
+}

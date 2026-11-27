@@ -62,7 +62,7 @@ function cleanIdentity(value) {
 }
 
 function publicTask(task) {
-  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ?? null, content: task.content, versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null, identity: task.identity ?? null };
+  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ?? null, content: task.content, layout: task.layout ?? 'single', colScroll: task.colScroll ?? 'separate', versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null, identity: task.identity ?? null };
 }
 
 function marksFor(content, key, responses) {
@@ -128,7 +128,7 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
     const tasks = sections.map(s => {
       const { content, key } = splitKey(s.content);
       const instrDoc = s.instrDoc ? splitKey(s.instrDoc).content : null;
-      return { id: s.id, title: String(s.title ?? 'Task').slice(0, 160), instructions: String(s.instructions ?? '').slice(0, 5000), instrDoc, content, key, versionGroup: s.versionGroup ?? null, versionLabel: s.versionLabel ?? null, identity: cleanIdentity(s.identity) };
+      return { id: s.id, title: String(s.title ?? 'Task').slice(0, 160), instructions: String(s.instructions ?? '').slice(0, 5000), instrDoc, content, key, layout: ['two', 'two-wide', 'media'].includes(s.layout) ? s.layout : 'single', colScroll: s.colScroll === 'together' ? 'together' : 'separate', versionGroup: s.versionGroup ?? null, versionLabel: s.versionLabel ?? null, identity: cleanIdentity(s.identity) };
     });
     const ref = db.collection('resourceLessonRuns').doc();
     let code = '';

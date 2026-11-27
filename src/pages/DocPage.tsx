@@ -1,5 +1,7 @@
 import { AccessRow, AddPeople, GeneralAccess, RoleMenu, ShareShell } from '../components/ShareShell';
 import { HelpMenu } from '../help/HelpMenu';
+import { TopBar } from '../components/TopBar';
+import { TextSizeControl } from '../components/TextSizeControl';
 import { tell } from '../lib/ask';
 import { OrgLogo } from '../components/OrgLook';
 import { PdfFile } from '../pdf/PdfFile';
@@ -28,6 +30,7 @@ import { isImageFile } from '../design/files';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
 import { PersonFace } from '../components/avatars';
 import { AnyFile } from '../components/AnyFile';
+import '../lessons/lessonFileHeader.css';
 
 import { loadStart } from '../lib/fileStore';
 const DesignFile = lazy(() => import('../design/DesignerFile').then((m) => ({ default: m.DesignerFile })));
@@ -131,28 +134,44 @@ export function DocPage() {
   );
   return (
     <div className={'dp k-' + kind}>
+      {kind === 'lesson' ? (
+        <TopBar>
+          <nav aria-label="Breadcrumb" className="crumbs lf-crumbs">
+            <Link to="/archive?s=docs">My Files</Link>
+            <span aria-hidden="true">/</span>
+            {canRename ? (
+              <input className="lf-crumb-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
+            ) : (
+              <span className="here lf-crumb-title" title={title}>{title || KIND_LABEL[kind]}</span>
+            )}
+          </nav>
+          <span ref={setLessonSlot} className="dp-lesson-slot" />
+          <span className="lf-topbar-actions">
+            <TextSizeControl />
+            {d && role && <FileComments d={d} role={role} me={{ uid, name }} />}
+            {d && teacher && <button type="button" className="btn primary dp-share" data-shared={others > 0 || !!d.link} onClick={() => setSharing(true)}><UiIcon name={others || d.link ? 'groups' : 'lock'} size={15} /> Share</button>}
+          </span>
+        </TopBar>
+      ) : (
       <header className="dp-bar">
-<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : '/archive?s=docs'} className={'dp-home' + (kind === 'lesson' ? ' dp-lesson-brand' : '')} aria-label={inDesigner ? 'Back to Designer' : 'Back to My Files'}>
+<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : 'Back to My Files'}>
           <Mark size={30} />
-          {kind === 'lesson' && <span className="dp-lesson-wordmark"><small>ELT Suite</small><strong>My Files</strong></span>}
         </Link>
-        {kind !== 'lesson' && <OrgLogo />}
-        {kind !== 'lesson' && <span className="dp-kind" aria-hidden="true"><DocIcon kind={kind} /></span>}
-        {kind === 'lesson' && <nav className="dp-lesson-crumb" aria-label="Breadcrumb"><Link to="/archive?s=docs">My Files</Link><span aria-hidden="true">/</span></nav>}
-        <span className={'dp-names' + (kind === 'lesson' ? ' dp-lesson-names' : '')}>
+        <OrgLogo />
+        <span className="dp-kind" aria-hidden="true"><DocIcon kind={kind} /></span>
+        <span className="dp-names">
           {canRename ? (
             <input className="dp-title" size={Math.max(6, title.length + 2)} value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
           ) : (
             <span className="dp-title ro">{title || KIND_LABEL[kind]}</span>
           )}
-          {kind !== 'lesson' && <span className="dp-sub">
+          <span className="dp-sub">
             {kind === 'pd' && <>Reading Journal · </>}
             {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${KIND_LABEL[kind].toLowerCase()} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
             {d?.classes && Object.keys(d.classes).length > 0 && ` · in ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
-          </span>}
+          </span>
         </span>
         <span className="dp-acts">
-          {kind === 'lesson' && <span ref={setLessonSlot} className="dp-lesson-slot" />}
           <HelpMenu />
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {kind === 'design' && role === 'edit' && <span ref={setSlot} className="dp-slot dp-dz-slot" />}
@@ -165,6 +184,7 @@ export function DocPage() {
 
         </span>
       </header>
+      )}
       <CiteStyleContext.Provider value={cite}>
         <main className="dp-main">{kind === 'game' && d ? <div className="dp-msg">Standalone Games have moved into lessons. This saved game is still in My Files and can be added to a lesson task.</div> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} canComment={role === 'edit' || role === 'comment' || role === 'suggest'} me={{ uid, name }} /> : kind === ('slides' as string) || kind === ('storyboard' as string) ? <div className="dp-msg">{kind === ('slides' as string) ? 'Slides are' : 'Storyboards are'} no longer part of ELT Suite.</div> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} toolSlot={kind === 'design' && role === 'edit' ? slot : undefined} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>

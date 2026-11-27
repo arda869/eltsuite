@@ -9165,6 +9165,38 @@ body .dp .cd-main.has-nav.has-nav .dn { padding-left: max(12px, calc(var(--page-
 .lf-side .task-row.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 .lf-header-controls .lf-lesson-menu { height: 36px; min-height: 36px; padding: 0 14px; font-size: 14px; }
 
+/* The file lesson uses the same three-pane editing proportions as Classes. */
+.dp.k-lesson .lf { grid-template-columns: 220px minmax(0, 1fr) 260px; }
+.dp.k-lesson .lf.no-left { grid-template-columns: minmax(0, 1fr) 260px; }
+.dp.k-lesson .lf.no-right { grid-template-columns: 220px minmax(0, 1fr); }
+.dp.k-lesson .lf.no-left.no-right { grid-template-columns: minmax(0, 1fr); }
+.dp.k-lesson .lf.no-left > .lf-side, .dp.k-lesson .lf.no-right > .lf-settings { display: none; }
+.dp.k-lesson .lf-main { position: relative; padding-right: 6px; padding-left: 6px; }
+.dp.k-lesson .lf-panel-toggles { display: block; }
+.dp.k-lesson .lf-settings { box-sizing: border-box; min-width: 0; min-height: 0; width: auto; max-height: 100%; overflow: auto; padding: 16px 12px 70px 16px; background: var(--page); }
+.dp.k-lesson .lf-settings .fold-b { min-width: 0; }
+.dp.k-lesson .lf-settings .lf-everyone { align-self: stretch; padding: 3px; }
+.dp.k-lesson .lf-settings .lf-everyone > span { flex: 1; padding: 6px 8px; border-radius: 6px; background: var(--paper); font: 600 12px var(--sans); text-align: center; }
+.dp.k-lesson .lf-settings-field { gap: 8px; }
+.dp.k-lesson .lf-settings-field > .btn { align-self: flex-start; }
+.dp.k-lesson .lf-settings .sh-paperbar { display: grid; gap: 10px; margin: 0; padding: 0; background: transparent; }
+.dp.k-lesson .lf-settings .sh-pb-k { display: none; }
+.dp.k-lesson .lf-settings .sh-pb-f { display: grid; gap: 4px; min-width: 0; }
+.dp.k-lesson .lf-settings .sh-pb-f .nsel, .dp.k-lesson .lf-settings .sh-pb-f .sel { width: 100%; min-width: 0; }
+.dp.k-lesson .lf-settings .sh-pb-c { align-items: flex-start; }
+.dp.k-lesson .lf-side-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dp.k-lesson .lf-compact-actions, .dp.k-lesson .lf-settings-close { display: none; }
+@media (max-width: 900px) {
+  .dp.k-lesson .lf.compact-panels, .dp.k-lesson .lf.compact-panels.no-left, .dp.k-lesson .lf.compact-panels.no-right, .dp.k-lesson .lf.compact-panels.no-left.no-right { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .dp.k-lesson .lf.compact-panels > .lf-side, .dp.k-lesson .lf.compact-panels > .lf-settings { position: absolute; top: 0; bottom: 0; z-index: 24; width: min(300px, 88vw); max-height: none; box-shadow: 0 16px 40px #0003; }
+  .dp.k-lesson .lf.compact-panels > .lf-side { left: 0; border-right: 1px solid var(--hair); }
+  .dp.k-lesson .lf.compact-panels > .lf-settings { right: 0; border-left: 1px solid var(--hair); }
+  .dp.k-lesson .lf.compact-panels > .lf-main { grid-column: 1; grid-row: 1; min-width: 0; padding: 10px; }
+  .dp.k-lesson .lf-panel-toggles { display: none; }
+  .dp.k-lesson .lf-compact-actions { display: flex; gap: 6px; flex: none; }
+  .dp.k-lesson .lf-settings-close { display: block; align-self: flex-end; }
+}
+
 /* People here now show their own picture, ringed in their cursor colour. */
 .cd-avatar { overflow: hidden; box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ring, transparent); }
 .cd-avatar > .avatar-pic, .cd-avatar > .avatar-fallback, .cd-avatar > img, .cd-avatar > span { width: 100% !important; height: 100% !important; border-radius: 50%; }

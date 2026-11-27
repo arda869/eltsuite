@@ -17,7 +17,7 @@ if (vite) {
 }
 const browser = await chromium.launch({ headless: true, ...(process.platform === 'darwin' ? { channel: 'chrome' } : {}) });
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 850 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const teacher = await context.newPage();
   await teacher.goto(`${base}/dev.html?seed&as=teacher`);
   await teacher.waitForFunction(async () => {
@@ -26,6 +26,12 @@ try {
     return !!localStorage.getItem('mockdemo');
   }, null, { timeout: 180000 });
   await teacher.waitForLoadState('networkidle');
+  if (screenshots) {
+    const demo = await teacher.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
+    await teacher.goto(`${base}/class/${demo.classId}/lesson/${demo.itemId}`);
+    await teacher.locator('.classes-shell .task-frame').waitFor();
+    await teacher.screenshot({ path: `${screenshots}/class-lesson-editor-1280.png` });
+  }
   await teacher.evaluate(() => localStorage.setItem('rll.fixture', JSON.stringify({ code: '482193', run: { runId: 'fixture-run', resourceId: 'fixture-resource', title: 'Standalone conversation lesson', edition: 1, status: 'lobby', currentTaskId: null, taskIds: ['task-1'], taskTitles: { 'task-1': 'First task' }, startedAt: Date.now(), endedAt: null, participantCount: 0, joinOpen: true, expired: false }, participants: [], answers: [] })));
   await teacher.goto(`${base}/resource-hub/lesson/live/fixture-run`);
   await teacher.getByText('482193').waitFor();
@@ -113,13 +119,31 @@ try {
   });
   await teacher.goto(`${base}/doc/standalone-file`);
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).waitFor();
-  const header = await teacher.locator('.dp-bar').boundingBox();
+  await teacher.setViewportSize({ width: 1280, height: 800 });
+  const header = await teacher.locator('.dp.k-lesson > .suite-topbar').boundingBox();
   const view = await teacher.getByRole('radiogroup', { name: 'Lesson view' }).boundingBox();
   const outline = await teacher.locator('.lf-side').boundingBox();
+  const settings = await teacher.getByRole('complementary', { name: 'Task settings' }).boundingBox();
   const shell = await teacher.locator('.dp.k-lesson').boundingBox();
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-layout.png` });
   assert.ok(header && view && outline && view.y >= header.y && view.y + view.height <= header.y + header.height, 'Digital, Paper and Learner preview belong in the document header');
   assert.ok(shell && outline && Math.abs(outline.y + outline.height - (shell.y + shell.height)) <= 2, `the lesson outline should fill its available height above Messages: ${JSON.stringify({shell,outline})}`);
+  assert.ok(settings && outline && Math.abs(settings.y - outline.y) <= 1, 'the task settings rail aligns with the task list');
+  await teacher.getByRole('button', { name: 'Layout', exact: true }).click();
+  await teacher.getByRole('button', { name: 'Split into two columns' }).waitFor();
+  await teacher.getByRole('button', { name: 'On paper', exact: true }).click();
+  await teacher.locator('.lf-settings .sh-paperbar').waitFor();
+  await teacher.setViewportSize({ width: 900, height: 800 });
+  const narrowHeader = await teacher.locator('.dp.k-lesson > .suite-topbar').boundingBox();
+  const narrowView = await teacher.getByRole('radiogroup', { name: 'Lesson view' }).boundingBox();
+  const narrowOverflow = await teacher.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  assert.ok(narrowHeader && narrowView && narrowView.y + narrowView.height <= narrowHeader.y + narrowHeader.height, 'The lesson view stays inside the header at narrow desktop width');
+  assert.ok(narrowOverflow <= 1, `The standalone editor should not scroll horizontally: ${narrowOverflow}px`);
+  await teacher.getByRole('button', { name: 'Task settings', exact: true }).click();
+  await teacher.getByRole('complementary', { name: 'Task settings' }).waitFor({ state: 'visible' });
+  await teacher.getByRole('button', { name: 'Close task settings' }).click();
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-layout-900.png` });
+  await teacher.setViewportSize({ width: 1280, height: 850 });
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
   await teacher.getByRole('menuitem', { name: /Invite learners/ }).waitFor();
   await teacher.keyboard.press('Escape');

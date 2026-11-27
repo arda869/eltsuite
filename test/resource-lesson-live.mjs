@@ -65,7 +65,7 @@ function fixture() {
   db.rows.set('accounts/teacher-1', { suspended: false });
   const edition = { id: 'published-1', resourceType: 'lesson', title: 'Paris lesson', edition: 7, sections: [
     { id: 'teacher-notes', audience: 'teacher', kind: 'notes', title: 'Do not show', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'SECRET TEACHER NOTES' }] }] } },
-    { id: 'task-1', audience: 'learner', kind: 'task', title: 'Task one', instructions: 'Answer the questions.', content: baseDoc,
+    { id: 'task-1', audience: 'learner', kind: 'task', title: 'Task one', instructions: 'Answer the questions.', content: baseDoc, layout: 'two-wide', colScroll: 'together',
       identity: { id: 'aid-1', name: 'Activation', colour: '#b4442e', icon: 'activation', privateNote: 'Do not send this' } },
   ] };
   db.rows.set('resourceHubPublished/published-1', edition);
@@ -98,6 +98,8 @@ test('standalone published lesson: secure guest join, answer, retry, end and tea
   await assert.rejects(service(db, null, req('signal', { ...seat, token: 'wrong', kind: 'hand', value: false }), 3006), { code: 'permission-denied' });
   await assert.rejects(service(db, null, req('signal', { ...seat, kind: 'reaction', value: 'unlisted' }), 3006), { code: 'invalid-argument' });
   assert.deepEqual(learner.tasks, [{ id: 'task-1', title: 'Task one' }]);
+  assert.equal(learner.currentTask.layout, 'two-wide');
+  assert.equal(learner.currentTask.colScroll, 'together');
   assert.equal(learner.currentTask.content.content[0].content[1].attrs.answers.length, 0);
   assert.deepEqual(learner.currentTask.identity, { id: 'aid-1', name: 'Activation', colour: '#b4442e', icon: 'activation' });
   assert.equal(JSON.stringify(learner).includes('Do not send this'), false);
