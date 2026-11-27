@@ -78,10 +78,10 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
           try {
             const classId = givenClass || ctx.classId;
             const resolved = await resolveSuiteScriptContent(instructionNodes(result.content), suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classId && !classId.startsWith('user:') ? { mode: 'class', classId } : { mode: 'private' });
+            if (resolved.warnings.length) { void tell(resolved.warnings.join('\n')); return; }
             const inline = resolved.content.flatMap((node, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(node.content ?? [])]);
             inline.forEach(node => editorRef.current?.schema.nodeFromJSON(node).check());
             editorRef.current?.chain().focus().insertContent(inline).run();
-            if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));
           } catch (error) { void tell(`SuiteScript could not be pasted into this instruction: ${error instanceof Error ? error.message : String(error)}`); }
         })();
         return true;

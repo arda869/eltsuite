@@ -92,3 +92,19 @@ test('authorised organisation audio and video files become playable class media 
   const privateResult = await resolveSuiteScriptContent([{ type: 'media', attrs: { suiteRef: 'audio-ref', kind: 'audio' } }], { mode: 'private' });
   assert.match(JSON.stringify(privateResult.content), /Audio unavailable/);
 });
+
+test('standalone and Resource Hub media references fail closed without exposing the source', async () => {
+  for (const destination of [{ mode: 'private' }, { mode: 'resourceHub' }]) {
+    for (const [type, attrs] of [
+      ['picture', { suiteRef: 'safe-image', alt: 'Private picture' }],
+      ['pdfBlock', { suiteRef: 'pdf-ref' }],
+      ['media', { suiteRef: 'audio-ref', kind: 'audio' }],
+      ['media', { suiteRef: 'video-ref', kind: 'video' }],
+    ]) {
+      const result = await resolveSuiteScriptContent([{ type, attrs }], destination);
+      assert.equal(result.warnings.length, 1);
+      assert.doesNotMatch(JSON.stringify(result.content), /safe-image|pdf-ref|audio-ref|video-ref|private picture/);
+      assert.match(JSON.stringify(result.content), /unavailable/);
+    }
+  }
+});

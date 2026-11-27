@@ -316,6 +316,14 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
         try {
           const prepared = await prepareRef.current(remapIds(parsed.content, originalIds.current, generatedIds.current));
           if (generation !== revision.current || value !== valueRef.current) return;
+          // A missing or inaccessible file yields a safe placeholder for
+          // diagnostics, but must not overwrite the last valid task.
+          if (prepared.warnings?.length) {
+            setWarnings(prepared.warnings);
+            setStatusError('');
+            setBusy(false);
+            return;
+          }
           editor.schema.nodeFromJSON({ type: 'doc', content: prepared.content.length ? prepared.content : [{ type: 'paragraph' }] }).check();
           // Apply calls may be asynchronous in a host editor. Keep their order
           // so an older save cannot finish after a newer valid edit or Undo.
@@ -557,7 +565,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     <div className={`ss-source__workspace${loadError ? ' is-unavailable' : ''}`}>
       {body}
       {!loading && !loadError && <aside className="ss-source__preview" aria-label={previewAudience === 'teacher' ? 'Private teacher preview' : 'Live learner preview'}>
-        <div className="ss-source__preview-head"><span>{previewAudience === 'teacher' ? 'PRIVATE TEACHER PREVIEW' : 'LEARNER PREVIEW'}</span><span>{busy ? 'Updating…' : issues.length || statusError ? 'Last valid version' : 'Live'}</span></div>
+        <div className="ss-source__preview-head"><span>{previewAudience === 'teacher' ? 'PRIVATE TEACHER PREVIEW' : 'LEARNER PREVIEW'}</span><span>{busy ? 'Updating…' : issues.length || statusError || warnings.length ? 'Last valid version' : 'Live'}</span></div>
         <div className="ss-source__preview-body"><LocalLearnerPreviewMode.Provider value={previewLearnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={previewAudience === 'teacher' ? previewDoc : splitKey(previewDoc, true).content} responses={{}} disabled hideAnswers={previewAudience !== 'teacher'} classId={previewClassId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div>
       </aside>}
     </div>

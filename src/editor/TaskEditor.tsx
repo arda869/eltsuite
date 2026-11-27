@@ -663,9 +663,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               const resolved = place.startsWith('chat:')
                 ? { content: suiteScriptMessageSafe(result.content), warnings: [] }
                 : await resolveSuiteScriptContent(result.content, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+              if (resolved.warnings.length) { void tell(resolved.warnings.join('\n')); return; }
               resolved.content.forEach(item => view.state.schema.nodeFromJSON(item).check());
               await pasteClip({ v: 1, space: '', content: resolved.content });
-              if (resolved.warnings.length) void tell(resolved.warnings.join('\n'));
             } catch (error) { void tell(`SuiteScript could not be pasted here: ${error instanceof Error ? error.message : String(error)}`); }
           })();
           return true;

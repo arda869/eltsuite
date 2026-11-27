@@ -561,7 +561,7 @@ const J = {
     const demo = await s.p.evaluate(async id => {
       const d = JSON.parse(localStorage.mockdemo);
       const { addTask } = await import('/src/lib/tasks.ts');
-      d.taskId = await addTask(d.classId, d.itemId, 197, 'task', { title: 'Inaccessible reference check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      d.taskId = await addTask(d.classId, d.itemId, 197, 'task', { title: 'Inaccessible reference check', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep this valid task.' }] }] } });
       const fs = JSON.parse(localStorage.getItem('mockfs'));
       fs['sharedDocs/private-audio'] = { owner: 'teacher2', ownerName: 'Other teacher', title: 'Private recording', kind: 'file', uploadStatus: 'ready', suiteScriptRef: id, file: { name: 'Private.wav', type: 'audio/wav', bytes: 8000, parts: 1 }, memberIds: [], members: {} };
       localStorage.setItem('mockfs', JSON.stringify(fs));
@@ -575,17 +575,23 @@ const J = {
     await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
     const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
     await source.fill(`SuiteScript v1\n@audio("${hiddenId}")`);
-    await s.p.locator('.ss-source__preview').getByText('[Audio unavailable — choose a file]').waitFor();
+    await s.p.locator('.ss-source__preview').getByText('Keep this valid task.').waitFor();
+    await s.p.locator('.ss-source__preview-head').getByText('Last valid version').waitFor();
     await s.p.locator('.ss-source__status > span').first().hover();
     await s.p.locator('.ss-source__status').getByText(/Audio unavailable here/).waitFor();
-    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Audio unavailable'), demo);
     const saved = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
-    if (saved.includes(hiddenId) || saved.includes('private-audio')) throw Error('An inaccessible file identifier entered the learner task.');
+    if (!saved.includes('Keep this valid task.') || saved.includes('Audio unavailable') || saved.includes(hiddenId) || saved.includes('private-audio')) throw Error('An inaccessible file command replaced valid learner content.');
     await source.fill(`SuiteScript v1\n@audio("${hiddenId.slice(0, -1)}${hiddenId.at(-1) === '0' ? '1' : '0'}")`);
     await s.p.locator('.ss-source__gutter-error').waitFor();
     await s.p.waitForTimeout(350);
     const afterInvalid = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
     if (afterInvalid !== saved) throw Error('An invalid checksum replaced the last valid learner task.');
+    await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
+    await s.p.getByRole('dialog', { name: 'Discard unfinished SuiteScript' }).getByRole('button', { name: 'Discard unfinished code' }).click();
+    await field.evaluate((el, id) => { const data = new DataTransfer(); data.setData('text/plain', `SuiteScript v1\n@audio("${id}")`); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); }, hiddenId);
+    await s.p.waitForTimeout(350);
+    const afterPaste = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (afterPaste !== saved) throw Error('An inaccessible plain-text SuiteScript paste replaced valid content.');
     return s;
   },
   'SuiteScript keeps existing standalone media in rich text when files are unavailable': async b => {
