@@ -135,6 +135,8 @@ try {
   await teacher.getByRole('radiogroup', { name: 'Column widths' }).waitFor();
   await teacher.getByRole('radio', { name: 'Wide left' }).click();
   await teacher.getByRole('radio', { name: 'Scroll together' }).click();
+  await teacher.getByRole('radio', { name: 'Wide left', checked: true }).waitFor();
+  await teacher.getByRole('radio', { name: 'Scroll together', checked: true }).waitFor();
   await teacher.reload();
   await teacher.getByRole('button', { name: 'Layout', exact: true }).click();
   assert.equal(await teacher.getByRole('radio', { name: 'Wide left' }).getAttribute('aria-checked'), 'true', 'column widths persist after reload');
