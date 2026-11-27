@@ -70,6 +70,22 @@ try {
   assert.match(JSON.stringify(persisted.a.notes), /Private A note/);
   assert.match(JSON.stringify(persisted.b.notes), /Private B note/);
   await page.evaluate(async scene => {
+    const { saveTask } = await import('/src/lib/tasks.ts');
+    const { communicativeFixture } = await import('/test/communicative-fixtures.ts');
+    await saveTask(scene.classId, scene.lessonId, scene.b, { content: { type: 'doc', content: [communicativeFixture('cue')] }, restricted: true });
+  }, scene);
+  await page.goto(`${base}/class/${scene.classId}/lesson/${scene.lessonId}?task=${scene.b}&as=teacher`);
+  const bField = page.locator('.task-editor .ProseMirror').first();
+  await bField.waitFor();
+  await bField.click({ button: 'right' });
+  await page.getByText('Edit as SuiteScript', { exact: true }).last().click();
+  await page.getByRole('textbox', { name: 'SuiteScript source' }).waitFor();
+  const bFieldPreview = await page.locator('.ss-source__preview').innerText();
+  assert.match(bFieldPreview, /With Learner A/, 'Learner B field editor must preview B’s assigned seat');
+  assert.doesNotMatch(bFieldPreview, /full set of cards|Teacher view|With Learner B/);
+  assert.equal((bFieldPreview.match(/Your private budget is \d+ tokens/g) ?? []).length, 1, 'Learner B preview must show one card');
+  await page.getByRole('button', { name: 'Return to rich text editor' }).click();
+  await page.evaluate(async scene => {
     const { addTask } = await import('/src/lib/tasks.ts');
     const { communicativeFixture } = await import('/test/communicative-fixtures.ts');
     return addTask(scene.classId, scene.lessonId, 3, 'task', { title: 'Private cue cards', instructions: '', content: { type: 'doc', content: [communicativeFixture('cue')] } });
