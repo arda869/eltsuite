@@ -52,6 +52,7 @@ export function DocPage() {
   const [qs] = useSearchParams();
   const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
   const [lessonSlot, setLessonSlot] = useState<HTMLSpanElement | null>(null);
+  const [lessonViewSlot, setLessonViewSlot] = useState<HTMLSpanElement | null>(null);
   const [setOpen, setSetOpen] = useState(false);
   const { user, profile } = useAuth();
   const shareToken = qs.get('share') ?? '';
@@ -147,6 +148,7 @@ export function DocPage() {
           </nav>
           <span ref={setLessonSlot} className="dp-lesson-slot" />
           <span className="lf-topbar-actions">
+            <span ref={setLessonViewSlot} className="lf-view-slot" />
             <TextSizeControl />
             {d && role && <FileComments d={d} role={role} me={{ uid, name }} />}
             {d && teacher && <button type="button" className="btn primary dp-share" data-shared={others > 0 || !!d.link} onClick={() => setSharing(true)}><UiIcon name={others || d.link ? 'groups' : 'lock'} size={15} /> Share</button>}
@@ -186,7 +188,7 @@ export function DocPage() {
       </header>
       )}
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'game' && d ? <div className="dp-msg">Standalone Games have moved into lessons. This saved game is still in My Files and can be added to a lesson task.</div> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} canComment={role === 'edit' || role === 'comment' || role === 'suggest'} me={{ uid, name }} /> : kind === ('slides' as string) || kind === ('storyboard' as string) ? <div className="dp-msg">{kind === ('slides' as string) ? 'Slides are' : 'Storyboards are'} no longer part of ELT Suite.</div> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} toolSlot={kind === 'design' && role === 'edit' ? slot : undefined} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'game' && d ? <div className="dp-msg">Standalone Games have moved into lessons. This saved game is still in My Files and can be added to a lesson task.</div> : kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} headerSlot={lessonSlot} viewSlot={lessonViewSlot} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} canComment={role === 'edit' || role === 'comment' || role === 'suggest'} me={{ uid, name }} /> : kind === ('slides' as string) || kind === ('storyboard' as string) ? <div className="dp-msg">{kind === ('slides' as string) ? 'Slides are' : 'Storyboards are'} no longer part of ELT Suite.</div> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} toolSlot={kind === 'design' && role === 'edit' ? slot : undefined} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
 
       {setOpen && kind==='doc' && d && <div className="scrim" onClick={()=>setSetOpen(false)} onKeyDown={e=>{if(e.key==='Escape')setSetOpen(false);}}><div className="dialog" role="dialog" aria-modal="true" aria-label="Citation style" onClick={e=>e.stopPropagation()}><h2>Citation style</h2><label className="field"><span>Citation style</span><Select label="Citation style" value={cite} disabled={role!=='edit'} search options={CITE_STYLES.map(c=>({v:c.k,label:c.label,hint:c.about}))} onChange={v=>void updateDoc(fsDoc(db,'sharedDocs',d.id),{citeStyle:v}).catch(e=>void tell(e.message))}/></label><p className="hint">Citations, the reference list and Word and PDF downloads follow this style.{role!=='edit'?' Only people who can edit can change it.':''}</p><button type="button" className="btn" onClick={()=>setSetOpen(false)}>Done</button></div></div>}

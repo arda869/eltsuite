@@ -122,11 +122,15 @@ try {
   await teacher.setViewportSize({ width: 1280, height: 800 });
   const header = await teacher.locator('.dp.k-lesson > .suite-topbar').boundingBox();
   const view = await teacher.getByRole('radiogroup', { name: 'Lesson view' }).boundingBox();
+  const comments = await teacher.getByRole('button', { name: 'Comments' }).boundingBox();
+  const share = await teacher.getByRole('button', { name: 'Share' }).boundingBox();
   const outline = await teacher.locator('.lf-side').boundingBox();
   const settings = await teacher.getByRole('complementary', { name: 'Task settings' }).boundingBox();
   const shell = await teacher.locator('.dp.k-lesson').boundingBox();
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-layout.png` });
   assert.ok(header && view && outline && view.y >= header.y && view.y + view.height <= header.y + header.height, 'Digital, Paper and Learner preview belong in the document header');
+  assert.ok(comments && share && view && Math.abs(view.y + view.height / 2 - (comments.y + comments.height / 2)) <= 8 && Math.abs(view.y + view.height / 2 - (share.y + share.height / 2)) <= 8, 'Digital, Paper and Learner preview share the Comments and Share row at desktop width');
+  assert.equal(await teacher.locator('.lf-start-live').count(), 0, 'Live lesson initiation belongs under Lesson, without a duplicate button');
   assert.ok(shell && outline && Math.abs(outline.y + outline.height - (shell.y + shell.height)) <= 2, `the lesson outline should fill its available height above Messages: ${JSON.stringify({shell,outline})}`);
   assert.ok(settings && outline && Math.abs(settings.y - outline.y) <= 1, 'the task settings rail aligns with the task list');
   await teacher.getByRole('button', { name: 'Layout', exact: true }).click();
@@ -183,6 +187,9 @@ try {
   await teacher.locator('.lf-notes .ProseMirror').getByText('Private teaching reminder').waitFor();
   await teacher.setViewportSize({ width: 390, height: 844 });
   assert.equal(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'standalone editor fits a phone without horizontal overflow');
+  assert.equal(await teacher.getByRole('radiogroup', { name: 'Lesson view' }).isVisible(), true, 'lesson views stay available on a phone');
+  assert.equal(await teacher.getByRole('button', { name: 'Lesson', exact: true }).isVisible(), true, 'the Lesson menu stays available on a phone');
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-mobile.png` });
   await teacher.setViewportSize({ width: 1280, height: 850 });
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();

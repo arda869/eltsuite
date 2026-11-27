@@ -31,7 +31,6 @@ import { openMenuAt } from '../components/ContextMenu';
 import { FileLessonAi } from './FileLessonAi';
 import { IdentityDialog, IdentityMark, RefsContext } from '../components/Identity';
 import { lessonIdentities, refTargets, type ActivityIdentity } from '../lib/identity';
-import { UiIcon } from '../components/UiIcon';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
@@ -162,7 +161,7 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
   );
 }
 
-export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: boolean; headerSlot?: HTMLElement | null }) {
+export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc; canEdit: boolean; headerSlot?: HTMLElement | null; viewSlot?: HTMLElement | null }) {
   const navigate = useNavigate();
   const rows = useRows(d.id);
   const [liveBusy, setLiveBusy] = useState(false);
@@ -344,12 +343,6 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   return (
     <>
     {headerSlot && createPortal(<div className="lf-header-controls">
-      {standaloneLive && <button type="button" className="btn small-btn lf-start-live" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}><UiIcon name="video" size={16} />{liveBusy ? 'Starting…' : 'Start teaching live'}</button>}
-      <span className="lf-header-view" role="radiogroup" aria-label="Lesson view">
-        <button type="button" role="radio" aria-checked={!learnerPreview && !sheet} className={!learnerPreview && !sheet ? 'on' : ''} onClick={() => chooseView('digital')}>Digital</button>
-        <button type="button" role="radio" aria-checked={!learnerPreview && sheet} className={!learnerPreview && sheet ? 'on' : ''} onClick={() => chooseView('paper')}>Paper</button>
-        <button type="button" role="radio" aria-checked={learnerPreview} className={learnerPreview ? 'on' : ''} onClick={() => chooseView('learner')}>Learner <span className="lf-preview-word">preview</span></button>
-      </span>
       {canEdit && <FileLessonAi fileId={d.id} selectedTaskId={cur?.kind === 'task' ? cur.id : undefined} beforeOpen={flushPending} onApplied={id => { if (id && id !== 'lesson') setSel(id); }} />}
       {/* Everything about the lesson as a whole: what it becomes in a class, adding it to one, teaching it live and its history. */}
       <button type="button" className="btn small-btn lf-lesson-menu" aria-haspopup="menu" onClick={event => openMenuAt(event.currentTarget, [
@@ -359,6 +352,12 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
         ...LESSON_TYPES.map(t => ({ label: `${(d.ltype ?? 'lesson') === t.v ? '✓ ' : ''}In a class, it becomes ${t.label.toLowerCase()}`, icon: 'task', disabled: !canEdit, onClick: () => void updateDoc(doc(db, 'sharedDocs', d.id), { ltype: t.v }) })),
       ])}>Lesson <span aria-hidden="true">▾</span></button>
     </div>, headerSlot)}
+    {viewSlot && createPortal(
+      <span className="lf-header-view" role="radiogroup" aria-label="Lesson view">
+        <button type="button" role="radio" aria-checked={!learnerPreview && !sheet} className={!learnerPreview && !sheet ? 'on' : ''} onClick={() => chooseView('digital')}>Digital</button>
+        <button type="button" role="radio" aria-checked={!learnerPreview && sheet} className={!learnerPreview && sheet ? 'on' : ''} onClick={() => chooseView('paper')}>Paper</button>
+        <button type="button" role="radio" aria-checked={learnerPreview} className={learnerPreview ? 'on' : ''} onClick={() => chooseView('learner')}>Learner <span className="lf-preview-word">preview</span></button>
+      </span>, viewSlot)}
     <RefsContext.Provider value={refsValue}>
     <div className={'lf' + panels.cls + (!showSettings ? ' no-right' : '')}>
       <aside className="lf-side task-list">
