@@ -131,6 +131,14 @@ try {
   assert.ok(settings && outline && Math.abs(settings.y - outline.y) <= 1, 'the task settings rail aligns with the task list');
   await teacher.getByRole('button', { name: 'Layout', exact: true }).click();
   await teacher.getByRole('button', { name: 'Split into two columns' }).waitFor();
+  await teacher.getByRole('button', { name: 'Split into two columns' }).click();
+  await teacher.getByRole('radiogroup', { name: 'Column widths' }).waitFor();
+  await teacher.getByRole('radio', { name: 'Wide left' }).click();
+  await teacher.getByRole('radio', { name: 'Scroll together' }).click();
+  await teacher.reload();
+  await teacher.getByRole('button', { name: 'Layout', exact: true }).click();
+  assert.equal(await teacher.getByRole('radio', { name: 'Wide left' }).getAttribute('aria-checked'), 'true', 'column widths persist after reload');
+  assert.equal(await teacher.getByRole('radio', { name: 'Scroll together' }).getAttribute('aria-checked'), 'true', 'column scrolling persists after reload');
   await teacher.getByRole('button', { name: 'On paper', exact: true }).click();
   await teacher.locator('.lf-settings .sh-paperbar').waitFor();
   await teacher.setViewportSize({ width: 900, height: 800 });
