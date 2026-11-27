@@ -8,16 +8,20 @@ import { writeFile, unlink } from 'node:fs/promises';
 const boundary = {
   name: 'suite-script-reference-boundary',
   setup(builder) {
-    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore)$/ }, args =>
+    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media)$|^\.\.\/editor\/PackNode$/ }, args =>
       args.importer.endsWith('suiteScriptResolve.ts') ? { path: args.path, namespace: 'reference-boundary' } : undefined);
     builder.onLoad({ filter: /.*/, namespace: 'reference-boundary' }, args => ({
       contents: args.path === './fullcopy'
         ? 'export async function carryMedia() { throw Error("No media copy expected"); }'
         : args.path === './fileStore'
-          ? 'export async function loadAnyFile(id) { return new Blob(["safe bytes"], {type: id === "video-file" ? "video/mp4" : "audio/mpeg"}); }'
+          ? 'export async function loadAnyFile(id) { return new Blob(["safe bytes"], {type: id === "video-file" ? "video/mp4" : id === "safe-image" ? "image/png" : "audio/mpeg"}); }'
           : args.path === './archive'
             ? 'export async function saveSound(_space, _file, meta) { return {mediaId: meta.video ? "copied-video" : "copied-audio"}; }'
-            : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : { kind: "sharedDoc", sourceId: "safe-image", mime: "image/png" }; }',
+            : args.path === './media'
+              ? 'export async function saveImage(space, blob) { if (space !== "class-1" || blob.type !== "image/jpeg") throw Error("Invalid image copy"); return "copied-image"; }'
+              : args.path === '../editor/PackNode'
+                ? 'export async function preparePicture(blob) { if (blob.type !== "image/png") throw Error("Invalid source image"); return new Blob(["compressed"], {type:"image/jpeg"}); }'
+                : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : { kind: "sharedDoc", itemType: "file", sourceId: "safe-image", mime: "image/png" }; }',
       loader: 'js',
     }));
   },
@@ -59,9 +63,9 @@ test('empty media slots and non-media configuration remain usable', async () => 
   assert.deepEqual(result.warnings, []);
 });
 
-test('a root typed picture reference still resolves to its authorised file', async () => {
+test('an authorised Organisation picture becomes Class media that the learner renderer can load', async () => {
   const result = await resolveSuiteScriptContent([{ type: 'picture', attrs: { suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }], { mode: 'class', classId: 'class-1' });
-  assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'file:safe-image', alt: 'Front desk' } }]);
+  assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'media:copied-image', alt: 'Front desk' } }]);
   assert.deepEqual(result.warnings, []);
 });
 

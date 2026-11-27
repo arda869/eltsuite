@@ -2,6 +2,8 @@ import type { JSONContent } from '@tiptap/react';
 import { carryMedia } from './fullcopy';
 import { loadAnyFile } from './fileStore';
 import { saveSound } from './archive';
+import { saveImage } from './media';
+import { preparePicture } from '../editor/PackNode';
 import { resolveSuiteScriptReference, type SuiteScriptDestination } from './suiteScriptReferences';
 import { suiteScriptRawAssetPath } from './suiteScriptAssetScan';
 import { suiteScriptSafeMeta } from './suiteScriptMeta';
@@ -31,7 +33,7 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
         const nested = suiteScriptRawAssetPath(node, true);
         if (nested) throw new Error(`unchecked nested asset at ${nested}`);
         if (destination.mode === 'private' || destination.mode === 'resourceHub') throw new Error('destination audience unknown');
-        const mediaCopy = ['media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
+        const mediaCopy = ['picture', 'media', 'inlineMedia'].includes(node.type ?? '') && destination.mode === 'class';
         const ref = await resolveSuiteScriptReference(id, mediaCopy ? { ...destination, mediaCopy: true } : destination);
         const meta = suiteScriptSafeMeta(node);
         if (node.type === 'collab') {
@@ -43,7 +45,14 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           if (ref.kind !== 'sharedDoc' || !(ref.itemType === 'pdf' || ref.mime === 'application/pdf')) throw new Error('wrong type');
           return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `file:${ref.sourceId}`, from: ref.sourceId } });
         }
-        if (node.type === 'picture' && ref.kind === 'sharedDoc' && ref.mime?.startsWith('image/')) return withChildren({ type: 'picture', attrs: { ...meta, src: `file:${ref.sourceId}` } });
+        if (node.type === 'picture' && ref.kind === 'sharedDoc') {
+          if (destination.mode !== 'class' || ref.itemType !== 'file'
+            || !/^image\/(png|jpeg|webp|gif)$/.test(ref.mime ?? '')) throw new Error('unsupported image');
+          const file = await loadAnyFile(ref.sourceId);
+          if (file.type !== ref.mime) throw new Error('file type changed');
+          const media = await saveImage(destination.classId, await preparePicture(file));
+          return withChildren({ type: 'picture', attrs: { ...meta, src: `media:${media}` } });
+        }
         if (['media', 'inlineMedia'].includes(node.type ?? '') && ref.kind === 'sharedDoc') {
           const video = node.attrs?.kind === 'video';
           if (destination.mode !== 'class' || ref.itemType !== 'file'

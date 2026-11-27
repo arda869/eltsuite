@@ -49,7 +49,9 @@ test('stable IDs survive rename/move, and source and destination permissions are
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: audio.id, destination: { mode: 'resourceHub' } }), e => e.code === 'permission-denied');
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'audio/mpeg');
   assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: video.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'video/mp4');
-  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } }), e => e.code === 'permission-denied');
+  assert.equal((await suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } })).mime, 'image/png');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
+  await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: image.id, destination: { mode: 'class', classId: 'foreign', mediaCopy: true } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1' } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'other', { action: 'resolve', id: sound.id, destination: { mode: 'class', classId: 'class1', mediaCopy: true } }), e => e.code === 'permission-denied');
   await assert.rejects(suiteScriptReferenceService(db, 'teacher', { action: 'resolve', id: shared.id, destination: { mode: 'class', classId: 'foreign', mediaCopy: true } }), e => e.code === 'permission-denied');
