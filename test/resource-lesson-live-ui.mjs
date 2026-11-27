@@ -20,7 +20,12 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 850 } });
   const teacher = await context.newPage();
   await teacher.goto(`${base}/dev.html?seed&as=teacher`);
-  await teacher.waitForFunction(() => !!localStorage.getItem('mockdemo'));
+  await teacher.waitForFunction(async () => {
+    if (!window.__mockReady) return false;
+    await window.__mockReady;
+    return !!localStorage.getItem('mockdemo');
+  }, null, { timeout: 180000 });
+  await teacher.waitForLoadState('networkidle');
   await teacher.evaluate(() => localStorage.setItem('rll.fixture', JSON.stringify({ code: '482193', run: { runId: 'fixture-run', resourceId: 'fixture-resource', title: 'Standalone conversation lesson', edition: 1, status: 'lobby', currentTaskId: null, taskIds: ['task-1'], taskTitles: { 'task-1': 'First task' }, startedAt: Date.now(), endedAt: null, participantCount: 0, joinOpen: true, expired: false }, participants: [], answers: [] })));
   await teacher.goto(`${base}/resource-hub/lesson/live/fixture-run`);
   await teacher.getByText('482193').waitFor();
