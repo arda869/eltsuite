@@ -67,7 +67,7 @@ test('empty media slots and non-media configuration remain usable', async () => 
 
 test('an authorised Organisation picture becomes Class media that the learner renderer can load', async () => {
   const result = await resolveSuiteScriptContent([{ type: 'picture', attrs: { suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }], { mode: 'class', classId: 'class-1' });
-  assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'media:copied-image', alt: 'Front desk' } }]);
+  assert.deepEqual(result.content, [{ type: 'picture', attrs: { src: 'media:copied-image', suiteRef: 'ELTSUITE-0001-0002-0003-0018', alt: 'Front desk' } }]);
   assert.deepEqual(result.warnings, []);
 });
 
@@ -75,6 +75,7 @@ test('a verified PDF from Files becomes a Class copy and keeps its page geometry
   for (const reference of ['pdf-ref', 'pdf-file-ref']) {
     const result = await resolveSuiteScriptContent([{ type: 'pdfBlock', attrs: { suiteRef: reference } }], { mode: 'class', classId: 'class-1' });
     assert.equal(result.content[0].attrs.src, 'media:copied-pdf');
+    assert.equal(result.content[0].attrs.suiteRef, reference);
     assert.deepEqual(result.content[0].attrs.pages, [{ w: 612, h: 792 }]);
     assert.deepEqual(result.warnings, []);
   }
@@ -84,6 +85,7 @@ test('authorised organisation audio and video files become playable class media 
   for (const [reference, kind, media] of [['audio-ref', 'audio', 'copied-audio'], ['video-ref', 'video', 'copied-video']]) {
     const result = await resolveSuiteScriptContent([{ type: 'media', attrs: { suiteRef: reference, kind } }], { mode: 'class', classId: 'class-1' });
     assert.equal(result.content[0].attrs.media, media);
+    assert.equal(result.content[0].attrs.suiteRef, reference);
     assert.equal(result.content[0].attrs.kind, kind);
     assert.deepEqual(result.warnings, []);
   }

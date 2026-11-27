@@ -51,7 +51,7 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           const pages = info?.pages?.length ? info.pages : await pageSizes(await openPdf(bytes));
           if (!pages.length) throw new Error('empty PDF');
           const media = await saveClassPdf(destination.classId, bytes, pages, 'PDF from Files');
-          return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `media:${media}`, pages, first: 0, inLesson: true } });
+          return withChildren({ type: 'pdfBlock', attrs: { ...meta, src: `media:${media}`, suiteRef: id, pages, first: 0, inLesson: true } });
         }
         if (node.type === 'picture' && ref.kind === 'sharedDoc') {
           if (destination.mode !== 'class' || ref.itemType !== 'file'
@@ -59,7 +59,7 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           const file = await loadAnyFile(ref.sourceId);
           if (file.type !== ref.mime) throw new Error('file type changed');
           const media = await saveImage(destination.classId, await preparePicture(file));
-          return withChildren({ type: 'picture', attrs: { ...meta, src: `media:${media}` } });
+          return withChildren({ type: 'picture', attrs: { ...meta, src: `media:${media}`, suiteRef: id } });
         }
         if (['media', 'inlineMedia'].includes(node.type ?? '') && ref.kind === 'sharedDoc') {
           const video = node.attrs?.kind === 'video';
@@ -70,7 +70,7 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
           if (file.type !== ref.mime) throw new Error('file type changed');
           const title = video ? 'Video from Files' : 'Recording from Files';
           const copy = await saveSound(destination.classId, file, { title, video });
-          return withChildren({ type: node.type, attrs: { ...meta, media: copy.mediaId, archiveId: '', kind: video ? 'video' : 'audio', title, scriptMode: 'none', plays: 0, space: destination.classId } });
+          return withChildren({ type: node.type, attrs: { ...meta, media: copy.mediaId, suiteRef: id, archiveId: '', kind: video ? 'video' : 'audio', title, scriptMode: 'none', plays: 0, space: destination.classId } });
         }
         if (ref.kind !== 'archive' || ref.itemType !== (node.type === 'picture' ? 'image' : node.attrs?.kind)) throw new Error('wrong type');
         const source = ref.home;
@@ -79,8 +79,8 @@ export async function resolveSuiteScriptContent(content: JSONContent[], destinat
         const same = ref.copies?.[destClass] ?? (source.classId === destClass ? source.mediaId : '');
         const media = same || (await carryMedia(source.classId, destClass, [{ media: source.mediaId }]))[source.mediaId];
         if (!media) throw new Error('missing media');
-        if (node.type === 'picture') return withChildren({ type: 'picture', attrs: { ...meta, src: `media:${media}` } });
-        return withChildren({ type: node.type, attrs: { ...meta, media, archiveId: ref.sourceId, kind: ref.itemType, title: meta.title ?? '', scriptMode: meta.scriptMode ?? 'none', plays: meta.plays ?? 0, space: destClass } });
+        if (node.type === 'picture') return withChildren({ type: 'picture', attrs: { ...meta, src: `media:${media}`, suiteRef: id } });
+        return withChildren({ type: node.type, attrs: { ...meta, media, suiteRef: id, archiveId: ref.sourceId, kind: ref.itemType, title: meta.title ?? '', scriptMode: meta.scriptMode ?? 'none', plays: meta.plays ?? 0, space: destClass } });
       } catch {
         warnings.push(destination.mode === 'resourceHub'
           ? `${path}: This private ${type.toLowerCase()} cannot be published in Resource Hub. Upload an asset that teachers can access.`

@@ -514,6 +514,9 @@ export const Picture = Node.create({
   draggable: true,
   addAttributes: () => ({
     src: { default: '' },
+    // Keep the checked source while the class uses its own copy of the bytes.
+    // The reference is rechecked before a later SuiteScript copy/export.
+    suiteRef: { default: '', renderHTML: () => ({}) },
     alt: { default: '' },
     credit: { default: '' },
     designerId: { default: '', parseHTML: (element: HTMLElement) => element.getAttribute('data-designer-id') || '', renderHTML: (attrs: Record<string, unknown>) => attrs.designerId ? { 'data-designer-id': attrs.designerId } : {} },
