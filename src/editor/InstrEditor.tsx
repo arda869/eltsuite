@@ -40,7 +40,7 @@ const instructionNodes = (nodes: JSONContent[]): JSONContent[] => {
     : node);
 };
 
-export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.', suiteScriptEnabled = false, suiteScriptAudience = 'private' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub' }) {
+export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.', suiteScriptEnabled = false, suiteScriptAudience = 'private', suiteScriptLearnerSeat = 0, suiteScriptPreviewAudience = 'learner' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; suiteScriptLearnerSeat?: number; suiteScriptPreviewAudience?: 'learner' | 'teacher' }) {
   const ctx=useEditorClass();
   const [sourceMode, setSourceMode] = useState(false);
   const teacherRef = useRef(false);
@@ -170,6 +170,8 @@ export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLes
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
       {sourceMode && <SuiteScriptSourceEditor
         editor={editor}
+        previewLearnerSeat={suiteScriptLearnerSeat}
+        previewAudience={suiteScriptPreviewAudience}
         labels={SUITE_TYPES}
         commands={[]}
         textOnly
