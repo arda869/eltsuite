@@ -133,24 +133,24 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : 'Back to My Files'}>
+<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : '/archive?s=docs'} className={'dp-home' + (kind === 'lesson' ? ' dp-lesson-brand' : '')} aria-label={inDesigner ? 'Back to Designer' : 'Back to My Files'}>
           <Mark size={30} />
+          {kind === 'lesson' && <span className="dp-lesson-wordmark"><small>ELT Suite</small><strong>My Files</strong></span>}
         </Link>
-        <OrgLogo />
-        <span className="dp-kind" aria-hidden="true">
-          <DocIcon kind={kind} />
-        </span>
-        <span className="dp-names">
+        {kind !== 'lesson' && <OrgLogo />}
+        {kind !== 'lesson' && <span className="dp-kind" aria-hidden="true"><DocIcon kind={kind} /></span>}
+        {kind === 'lesson' && <nav className="dp-lesson-crumb" aria-label="Breadcrumb"><Link to="/archive?s=docs">My Files</Link><span aria-hidden="true">/</span></nav>}
+        <span className={'dp-names' + (kind === 'lesson' ? ' dp-lesson-names' : '')}>
           {canRename ? (
             <input className="dp-title" size={Math.max(6, title.length + 2)} value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
           ) : (
             <span className="dp-title ro">{title || KIND_LABEL[kind]}</span>
           )}
-          <span className="dp-sub">
+          {kind !== 'lesson' && <span className="dp-sub">
             {kind === 'pd' && <>Reading Journal · </>}
             {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${KIND_LABEL[kind].toLowerCase()} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
             {d?.classes && Object.keys(d.classes).length > 0 && ` · in ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
-          </span>
+          </span>}
         </span>
         <span className="dp-acts">
           {kind === 'lesson' && <span ref={setLessonSlot} className="dp-lesson-slot" />}

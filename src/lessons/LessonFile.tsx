@@ -31,6 +31,7 @@ import { openMenuAt } from '../components/ContextMenu';
 import { FileLessonAi } from './FileLessonAi';
 import { IdentityDialog, IdentityMark, RefsContext } from '../components/Identity';
 import { lessonIdentities, refTargets, type ActivityIdentity } from '../lib/identity';
+import { UiIcon } from '../components/UiIcon';
 
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
@@ -241,14 +242,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   const [insertAt, setInsertAt] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
-  const notesPane = usePresenterNotes('ll.lessonFileNotesPane', 125);
-  const [notesEditing, setNotesEditing] = useState(false);
-  useEffect(() => setNotesEditing(false), [sel]);
-  useEffect(() => {
-    if (!notesEditing) return;
-    const frame = requestAnimationFrame(() => document.querySelector<HTMLElement>('.lf-notes .ProseMirror')?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [notesEditing]);
+  const notesPane = usePresenterNotes();
   // Comments can be about the task being edited, and a comment opens its task again.
   const curRow = rows?.find((r) => r.id === sel);
   useEffect(() => { setCommentTask(curRow?.kind === 'task' ? { id: curRow.id, title: curRow.title } : null); }, [curRow?.id, curRow?.title, curRow?.kind]);
@@ -312,37 +306,31 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
     await b.commit();
   };
   const taskBlock = cur ? (
-          <div className="lf-task" key={cur.id}>
-            {cur.kind === 'task' && (cur.identity || canEdit) && (
-              <div className="aid-row">
-                {cur.identity ? <IdentityMark identity={cur.identity} onClick={canEdit ? () => setIdOpen(true) : undefined} /> : <button type="button" className="aid-add" onClick={() => setIdOpen(true)}><span aria-hidden="true">+</span> Activity type</button>}
-              </div>
-            )}
-            <div className="lf-head">
-              <input className="lf-title" defaultValue={cur.title} disabled={!canEdit} onChange={(e) => patch(cur.id, { title: e.target.value })} aria-label="Title" />
-              {canEdit && (
-                <span className="lf-acts">
-                  <button type="button" className="icon-btn" aria-label="Move up" onClick={() => void move(cur.id, -1)}>
-                    ↑
-                  </button>
-                  <button type="button" className="icon-btn" aria-label="Move down" onClick={() => void move(cur.id, 1)}>
-                    ↓
-                  </button>
-                  <button type="button" className="btn link small" onClick={() => void ask(`Delete “${cur.title}”?`).then((ok) => ok && void deleteDoc(doc(rowsCol(d.id), cur.id)))}>
-                    Delete
-                  </button>
-                </span>
-              )}
-            </div>
-            {cur.kind === 'task' && (
-              <>
-                {canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} />}
-                <div className="lf-body">
-                  {canEdit ? <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
+          <div className="lf-task task-frame" key={cur.id}>
+            <div className="frame-inner" data-spelling-editor="true">
+              <div className="frame-head">
+                {cur.kind === 'task' && (cur.identity || canEdit) && (
+                  <div className="aid-row">
+                    {cur.identity ? <IdentityMark identity={cur.identity} onClick={canEdit ? () => setIdOpen(true) : undefined} /> : <button type="button" className="aid-add" onClick={() => setIdOpen(true)}><span aria-hidden="true">+</span> Activity type</button>}
+                  </div>
+                )}
+                <div className="lf-head">
+                  <input className="lf-title task-title input" defaultValue={cur.title} disabled={!canEdit} onChange={(e) => patch(cur.id, { title: e.target.value })} aria-label="Task title" />
+                  {canEdit && (
+                    <span className="lf-acts">
+                      <button type="button" className="icon-btn" aria-label="Move up" onClick={() => void move(cur.id, -1)}>↑</button>
+                      <button type="button" className="icon-btn" aria-label="Move down" onClick={() => void move(cur.id, 1)}>↓</button>
+                      <button type="button" className="btn link small" onClick={() => void ask(`Delete “${cur.title}”?`).then((ok) => ok && void deleteDoc(doc(rowsCol(d.id), cur.id)))}>Delete</button>
+                    </span>
+                  )}
                 </div>
-              </>
-            )}
-            {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
+                {cur.kind === 'task' && (canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} />)}
+                {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
+              </div>
+              {cur.kind === 'task' && <div className="frame-body lf-body">
+                {canEdit ? <TaskEditor compact content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} taskContext={cur.instructions} taskTitle={cur.title} /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
+              </div>}
+            </div>
           </div>
   ) : null;
   let n = 0;
@@ -350,6 +338,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   return (
     <>
     {headerSlot && createPortal(<div className="lf-header-controls">
+      {standaloneLive && <button type="button" className="btn small-btn lf-start-live" disabled={liveBusy || !rows.some(row => row.kind === 'task')} onClick={() => void startLive()}><UiIcon name="video" size={16} />{liveBusy ? 'Starting…' : 'Start teaching live'}</button>}
       <span className="lf-header-view" role="radiogroup" aria-label="Lesson view">
         <button type="button" role="radio" aria-checked={!learnerPreview && !sheet} className={!learnerPreview && !sheet ? 'on' : ''} onClick={() => chooseView('digital')}>Digital</button>
         <button type="button" role="radio" aria-checked={!learnerPreview && sheet} className={!learnerPreview && sheet ? 'on' : ''} onClick={() => chooseView('paper')}>Paper</button>
@@ -367,7 +356,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
     <RefsContext.Provider value={refsValue}>
     <div className="lf">
       <aside className="lf-side task-list">
-        <span className="pd-k">The lesson</span>
+        <div className="lf-side-title" title={d.title}>{d.title}</div>
         <nav className="lf-list" aria-label="Tasks">
           {/* As in a class lesson: hover between tasks to add one there, drag a task to move it. */}
           {rows.map((r, i) => (
@@ -448,23 +437,15 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
             <span className="hint">Add tasks and sections. Everything you can put in a class lesson works here.</span>
           </div>
         )}</>}
+        {cur?.kind === 'task' && !learnerPreview && (canEdit || cur.teacherNotes) && (
+          <div className="lf-notes">
+            <PresenterNotes pane={notesPane} hasNotes={!!cur.teacherNotes?.trim()}>
+              {canEdit ? <NotesEditor key={cur.id} className="pn-editor" doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} onChange={(docJ, text) => patch(cur.id, { teacherNotes: text, teacherNotesDoc: docJ }, 700)} placeholder="Click to add notes" />
+                : <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} />}
+            </PresenterNotes>
+          </div>
+        )}
       </main>
-      {cur?.kind === 'task' && !learnerPreview && (canEdit || cur.teacherNotes) && (
-        <div className="lf-notes">
-          <PresenterNotes pane={notesPane} hasNotes={!!cur.teacherNotes?.trim()}>
-            {canEdit && notesEditing ? (
-              <div className="pn-editing">
-                <NotesEditor key={cur.id} className="pn-editor" doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} onChange={(docJ, text) => patch(cur.id, { teacherNotes: text, teacherNotesDoc: docJ }, 700)} placeholder="Click to add notes" />
-                <button type="button" className="btn small-btn" onClick={() => setNotesEditing(false)}>Done</button>
-              </div>
-            ) : canEdit ? (
-              <div className="pn-read" role="button" tabIndex={0} onClick={() => setNotesEditing(true)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setNotesEditing(true); } }} aria-label="Edit teacher notes">
-                {cur.teacherNotes?.trim() ? <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes} /> : <span className="pn-empty">Click to add notes</span>}
-              </div>
-            ) : <NotesView doc={cur.teacherNotesDoc ?? null} text={cur.teacherNotes ?? ''} />}
-          </PresenterNotes>
-        </div>
-      )}
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
       {idOpen && cur && <IdentityDialog value={cur.identity} used={lessonIdentities(rows)} onSave={(v, scope) => { const was = cur.identity; for (const r of rows) if (r.id === cur.id || (scope === 'all' && was && v && r.identity?.id === was.id)) patch(r.id, { identity: v }, 0); setIdOpen(false); }} onClose={() => setIdOpen(false)} />}
       {liveInviteOpen && liveInvite && <StandaloneLessonInvite code={liveInvite.code} runId={liveInvite.runId} onClose={() => setLiveInviteOpen(false)} onViewRoom={() => navigate(`/resource-hub/lesson/live/${encodeURIComponent(liveInvite.runId)}`)} />}
