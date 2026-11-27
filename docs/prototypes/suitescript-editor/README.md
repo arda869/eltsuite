@@ -1,6 +1,6 @@
 # SuiteScript editor interaction concept
 
-Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locally in a browser. The adjacent `suitescript-spell.js` file is required for spelling suggestions. The screenshots show the Classes lesson editor in rich text, the right-click menu, and the in-place SuiteScript view.
+Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locally in a browser. The adjacent `suitescript-spell.js` and `suitescript-question-catalog.js` files are required. The screenshots show the Classes lesson editor in rich text, the right-click menu, and the in-place SuiteScript view.
 
 ## Approved interaction
 
@@ -8,6 +8,7 @@ Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locall
 - Valid changes update the preview immediately. In production, they should update only the current content field of the current learner version. There is no Apply button or persistent success banner. An incomplete command keeps the last valid content in the preview. Closing with an incomplete command asks whether to discard it.
 - The source toolbar groups **Undo**, **Paste**, and **Copy all**. Spelling and Find are compact icon controls; Find is last before the close button. The close button returns to rich text.
 - Typing `@` offers compact command suggestions. Choosing a command inserts its full template. **Tab** advances through placeholders; **Shift+Tab** goes back. With selected source text, Ctrl/Cmd+B, I, or U wraps it in `@bold`, `@italic`, or `@underline`.
+- The `@question` type picker lists all 55 supported insertions by name, with no descriptions. It includes every exact SuiteScript type label in the editor registry, three additional random-pick activities, and both Survey variants. Selecting a type inserts the corresponding production-parseable command template.
 - **Find and replace** opens by button or Ctrl/Cmd+F; Ctrl/Cmd+H focuses Replace. The spelling panel underlines prose mistakes and offers replacements. Errors show an exclamation beside the source line number and details in the bottom status tooltip.
 - Media templates use `@image("reference", alt: "description")`, `@audio("reference")`, and `@video("reference")`. Their first placeholder offers **Browse My Files**, **Browse Organisation Files**, or **Type a reference**. Browsing is designed to use the existing `AddWindow` and `FileBrowser` pattern; choosing a file inserts its permanent reference, then selects the next placeholder.
 
