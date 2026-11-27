@@ -7,7 +7,7 @@ export const SUITE_SCRIPT_MAX_CHARS = 200_000;
 const MAX_BLOCKS = 2_000;
 const MAX_COMMAND_CHARS = 20_000;
 const MAX_NESTING = 32;
-const KNOWN = new Set(['bold', 'italic', 'underline', 'strike', 'marked', 'break', 'stress', 'element', 'heading', 'numbered', 'bullet', 'question', 'audio', 'video', 'image', 'pdf', 'collab', 'activity', 'endactivity', 'task', 'instructions', 'content', 'teacherNotes', 'paperInstructions', 'endtask']);
+const KNOWN = new Set(['bold', 'italic', 'underline', 'strike', 'marked', 'break', 'stress', 'element', 'heading', 'numbered', 'bullet', 'question', 'audio', 'video', 'image', 'pdf', 'collab', 'timeline', 'activity', 'endactivity', 'task', 'instructions', 'content', 'teacherNotes', 'paperInstructions', 'endtask']);
 export type SuiteScriptTypes = Record<string, string>;
 export type SuiteScriptParse = { content: JSONContent[]; errors: string[] };
 const questionLabel = (node: JSONContent, labels: SuiteScriptTypes) =>
@@ -55,6 +55,18 @@ function inline(nodes: JSONContent[], labels: SuiteScriptTypes): string {
 }
 
 function block(node: JSONContent, labels: SuiteScriptTypes): string {
+  if (node.type === 'timeline') {
+    const attrs = node.attrs ?? {};
+    const marks = Array.isArray(attrs.items) ? attrs.items as Record<string, unknown>[] : [];
+    const markLines = marks.map(mark => {
+      const fields = ['kind', 'x', 'x2', 'label', 'side', 'color', 'count']
+        .filter(key => mark[key] !== undefined)
+        .map(key => `${key}: ${encoded(mark[key])}`);
+      return `    { ${fields.join(', ')} }`;
+    });
+    const marksText = markLines.length ? `[\n${markLines.join(',\n')}\n  ]` : '[]';
+    return `@timeline(\n  title: ${encoded(attrs.title ?? '')},\n  sentence: ${encoded(attrs.sentence ?? '')},\n  now: ${encoded(attrs.now ?? 600)},\n  showNow: ${encoded(attrs.showNow ?? true)},\n  ends: ${encoded(attrs.ends ?? true)},\n  marks: ${marksText}\n)`;
+  }
   if (node.type === 'paragraph') {
     const children = node.content ?? [];
     // A lone generic @element would otherwise be read as a block, losing its
@@ -158,6 +170,45 @@ function asNode(value: unknown): JSONContent {
 function asText(value: unknown): string {
   if (typeof value !== 'string') throw new Error('SuiteScript text must be quoted.');
   return value;
+}
+
+const TIMELINE_KINDS = new Set(['event', 'point', 'wave', 'period', 'repeat', 'arrow', 'question']);
+const TIMELINE_SPANS = new Set(['wave', 'period', 'repeat', 'arrow']);
+const TIMELINE_MARK_KEYS = new Set(['kind', 'x', 'x2', 'label', 'side', 'color', 'count']);
+
+function timelineNode(args: ReturnType<typeof parseArgs>): JSONContent {
+  if (args.positional.length) throw new Error('@timeline uses named fields.');
+  const allowed = new Set(['title', 'sentence', 'now', 'showNow', 'ends', 'marks']);
+  const unknown = Object.keys(args.named).find(key => !allowed.has(key));
+  if (unknown) throw new Error(`@timeline has an unknown field: ${unknown}.`);
+  const title = args.named.title ?? '';
+  const sentence = args.named.sentence ?? '';
+  const now = args.named.now ?? 600;
+  const showNow = args.named.showNow ?? true;
+  const ends = args.named.ends ?? true;
+  const marks = args.named.marks ?? [];
+  if (typeof title !== 'string' || typeof sentence !== 'string') throw new Error('@timeline title and sentence must be quoted text.');
+  if (typeof now !== 'number' || !Number.isFinite(now) || now < 30 || now > 970) throw new Error('@timeline now must be between 30 and 970.');
+  if (typeof showNow !== 'boolean' || typeof ends !== 'boolean') throw new Error('@timeline showNow and ends must be true or false.');
+  if (!Array.isArray(marks) || marks.length > 100) throw new Error('@timeline marks must be a list of at most 100 marks.');
+  const items = marks.map((value, index) => {
+    const n = index + 1;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Timeline mark ${n} must be an object.`);
+    const mark = value as Record<string, unknown>;
+    const extra = Object.keys(mark).find(key => !TIMELINE_MARK_KEYS.has(key));
+    if (extra) throw new Error(`Timeline mark ${n} has an unknown field: ${extra}.`);
+    if (typeof mark.kind !== 'string' || !TIMELINE_KINDS.has(mark.kind)) throw new Error(`Timeline mark ${n} needs a valid kind.`);
+    if (typeof mark.x !== 'number' || !Number.isFinite(mark.x) || mark.x < 30 || mark.x > 970) throw new Error(`Timeline mark ${n} x must be between 30 and 970.`);
+    if (mark.x2 !== undefined && (typeof mark.x2 !== 'number' || !Number.isFinite(mark.x2) || mark.x2 < 30 || mark.x2 > 970)) throw new Error(`Timeline mark ${n} x2 must be between 30 and 970.`);
+    if (TIMELINE_SPANS.has(mark.kind) && (mark.x2 === undefined || mark.x2 === mark.x)) throw new Error(`Timeline mark ${n} needs an x2 different from x.`);
+    if (mark.x2 !== undefined && !TIMELINE_SPANS.has(mark.kind)) throw new Error(`Timeline mark ${n} does not use x2.`);
+    if (mark.label !== undefined && typeof mark.label !== 'string') throw new Error(`Timeline mark ${n} label must be quoted text.`);
+    if (mark.side !== undefined && mark.side !== 'above' && mark.side !== 'below') throw new Error(`Timeline mark ${n} side must be "above" or "below".`);
+    if (mark.color !== undefined && (typeof mark.color !== 'string' || !(mark.color === 'accent' || /^#[0-9a-fA-F]{6}$/.test(mark.color)))) throw new Error(`Timeline mark ${n} color must be "accent" or a six-digit hex colour.`);
+    if (mark.count !== undefined && (mark.kind !== 'repeat' || !Number.isInteger(mark.count) || (mark.count as number) < 2 || (mark.count as number) > 12)) throw new Error(`Timeline mark ${n} count must be 2–12 and is only used for repeated marks.`);
+    return { id: 'suiteScript', ...mark };
+  });
+  return { type: 'timeline', attrs: { id: 'suiteScript', title, sentence, now, showNow, ends, items } };
 }
 
 function valueOf(cmd: ReturnType<typeof readCommand> & object, labels: SuiteScriptTypes): JSONContent[] {
@@ -276,6 +327,7 @@ export function parseSuiteScript(text: string, labels: SuiteScriptTypes = {}): S
           return;
         }
         if (start.name === 'element') { content.push(asNode(start.args.named.data ?? start.args.positional[0])); return; }
+        if (start.name === 'timeline') { content.push(timelineNode(start.args)); return; }
         if (start.name === 'question') {
           const nodes = valueOf(start, labels);
           const prompt = start.args.named.prompt;
@@ -295,6 +347,10 @@ export function parseSuiteScript(text: string, labels: SuiteScriptTypes = {}): S
   let nextId = 0;
   const assignDraftIds = (node: JSONContent): void => {
     if (node.attrs?.id === 'suiteScript') node.attrs.id = `suiteScript-${++nextId}`;
+    if (node.type === 'timeline' && Array.isArray(node.attrs?.items)) {
+      node.attrs.items = (node.attrs.items as Record<string, unknown>[]).map(item =>
+        item.id === 'suiteScript' ? { ...item, id: `suiteScript-${++nextId}` } : item);
+    }
     node.content?.forEach(assignDraftIds);
   };
   content.forEach(assignDraftIds);

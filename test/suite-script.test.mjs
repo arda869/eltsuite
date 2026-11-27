@@ -83,6 +83,58 @@ test('plain-text intermediary round-trips rich marks, answers and Unicode; ordin
   assert.deepEqual(parsed.content, original);
 });
 
+test('multiline timeline creates stable internal IDs and round-trips every mark kind without exposing IDs', () => {
+  const source = `SuiteScript v1
+@timeline(
+  title: "A timeline",
+  sentence: "We lived there for years.",
+  now: 625,
+  showNow: false,
+  ends: false,
+  marks: [
+    {kind: "event", x: 120, label: "arrived"},
+    {kind: "point", x: 170, side: "below", color: "#3d6fb6"},
+    {kind: "wave", x: 200, x2: 350, label: "living"},
+    {kind: "period", x: 360, x2: 480, side: "below"},
+    {kind: "repeat", x: 490, x2: 570, count: 7, label: "often"},
+    {kind: "arrow", x: 650, x2: 750, color: "accent"},
+    {kind: "question", x: 820, label: "maybe"}
+  ]
+)`;
+  const first = parseSuiteScript(source, labels);
+  assert.deepEqual(first.errors, []);
+  assert.equal(first.content[0].type, 'timeline');
+  assert.deepEqual(first.content[0].attrs.items.map(item => item.kind), ['event', 'point', 'wave', 'period', 'repeat', 'arrow', 'question']);
+  assert.equal(first.content[0].attrs.items[4].count, 7);
+  const internalIds = [first.content[0].attrs.id, ...first.content[0].attrs.items.map(item => item.id)];
+  assert.equal(new Set(internalIds).size, 8);
+  assert.ok(internalIds.every(id => /^suiteScript-\d+$/.test(id)));
+  assert.deepEqual(first.content, parseSuiteScript(source, labels).content, 'generated IDs must be deterministic');
+  const copied = toSuiteScript(first.content, labels);
+  assert.match(copied, /@timeline\(\n  title:/);
+  assert.doesNotMatch(copied, /\bid\s*:/);
+  assert.doesNotMatch(copied, /suiteScript-\d+/);
+  assert.deepEqual(parseSuiteScript(copied, labels), first);
+});
+
+test('timeline syntax rejects invalid marks and values without partially applying a draft', () => {
+  const bad = [
+    ['kind', 'marks: [{kind: "dragon", x: 300}]', /valid kind/],
+    ['position', 'marks: [{kind: "event", x: 1001}]', /between 30 and 970/],
+    ['span', 'marks: [{kind: "period", x: 300}]', /needs an x2/],
+    ['repeat count', 'marks: [{kind: "repeat", x: 300, x2: 500, count: 13}]', /count must be 2–12/],
+    ['hidden id', 'marks: [{id: "external", kind: "point", x: 300}]', /unknown field: id/],
+    ['boolean', 'showNow: "false", marks: []', /true or false/],
+    ['now', 'now: -1, marks: []', /between 30 and 970/],
+  ];
+  for (const [name, args, expected] of bad) {
+    const parsed = parseSuiteScript(`SuiteScript v1\nA valid opening line.\n@timeline(${args})`, labels);
+    assert.deepEqual(parsed.content, [], name);
+    assert.match(parsed.errors[0], /Line 3:/, name);
+    assert.match(parsed.errors[0], expected, name);
+  }
+});
+
 test('malformed commands and invalid stress leave no partial parsed content', () => {
   const wrong = parseSuiteScript('SuiteScript v1\nFine text.\n@stress("for", "ty", stressed: 3)', labels);
   assert.equal(wrong.content.length, 0);
