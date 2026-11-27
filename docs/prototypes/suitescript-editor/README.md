@@ -1,6 +1,6 @@
 # SuiteScript editor interaction concept
 
-Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locally in a browser. The adjacent `suitescript-spell.js` and `suitescript-question-catalog.js` files are required. The screenshots show the Classes lesson editor in rich text, the right-click menu, and the in-place SuiteScript view.
+Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locally in a browser. The adjacent `suitescript-spell.js`, `suitescript-question-catalog.js`, and `suitescript-add-catalog.js` files are required. The screenshots show the Classes lesson editor in rich text, the right-click menu, and the in-place SuiteScript view.
 
 ## Approved interaction
 
@@ -9,6 +9,8 @@ Open [suitescript-editor-concept.html](./suitescript-editor-concept.html) locall
 - The source toolbar groups **Undo**, **Paste**, and **Copy all**. Spelling and Find are compact icon controls; Find is last before the close button. The close button returns to rich text.
 - Typing `@` offers a compact, two-column command menu with short rows. Choosing a command inserts its full template. **Tab** advances through placeholders; **Shift+Tab** goes back. With selected source text, Ctrl/Cmd+B, I, or U wraps it in `@bold`, `@italic`, or `@underline`.
 - The `@question` type picker lists all 55 supported insertions by name, with no descriptions. It includes every exact SuiteScript type label in the editor registry, three additional random-pick activities, and both Survey variants. Selecting a type inserts the corresponding production-parseable command template.
+- Typing `@timeline` offers Timeline. Selecting it inserts the complete, production-parseable `@element(data: …)` form and displays a timeline in the prototype preview. `@all` opens a searchable catalogue matching all 113 entries in the Classes **Add to task** gallery. Its 109 direct native insertions use templates generated from the editor's actual insert commands. Image and PDF use reference placeholders and the file chooser; organisation forms and the question bank show example selection flows. The production versions must use the signed-in teacher's actual forms and saved questions.
+- Command, file, and question suggestions use the same compact row height.
 - **Find and replace** opens by button or Ctrl/Cmd+F; Ctrl/Cmd+H focuses Replace. The spelling panel underlines prose mistakes and offers replacements. Errors show an exclamation beside the source line number and details in the bottom status tooltip.
 - Media templates use `@image("reference", alt: "description")`, `@audio("reference")`, and `@video("reference")`. Their first placeholder offers **Browse My Files**, **Browse Organisation Files**, or **Type a reference**. Browsing is designed to use the existing `AddWindow` and `FileBrowser` pattern; choosing a file inserts its permanent reference, then selects the next placeholder.
 - The prototype checks each typed media reference's four-digit check value and marks an invalid command beside its line number, with details in the error status tooltip. It does not guess a corrected ID. A correctly formed ID still needs permission and existence checks in the production resolver.
