@@ -255,6 +255,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const applyRef = useRef(applyContent);
   const valueRef = useRef(value);
   const revision = useRef(0);
+  const applyQueue = useRef<Promise<void>>(Promise.resolve());
   const applied = useRef('');
   const history = useRef<string[]>([]);
   const historyIndex = useRef(-1);
@@ -299,13 +300,21 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
       void (async () => {
         try {
           const prepared = await prepareRef.current(remapIds(parsed.content, originalIds.current, generatedIds.current));
-          if (generation !== revision.current) return;
+          if (generation !== revision.current || value !== valueRef.current) return;
           editor.schema.nodeFromJSON({ type: 'doc', content: prepared.content.length ? prepared.content : [{ type: 'paragraph' }] }).check();
-          await applyRef.current(prepared.content);
-          if (generation !== revision.current) return;
+          // Apply calls may be asynchronous in a host editor. Keep their order
+          // so an older save cannot finish after a newer valid edit or Undo.
+          const applyCurrent = async () => {
+            if (generation !== revision.current || value !== valueRef.current) return;
+            await applyRef.current(prepared.content);
+          };
+          const queued = applyQueue.current.then(applyCurrent, applyCurrent);
+          applyQueue.current = queued.then(() => {}, () => {});
+          await queued;
+          if (generation !== revision.current || value !== valueRef.current) return;
           applied.current = value; setWarnings(prepared.warnings ?? []); setStatusError(''); setBusy(false);
         } catch (error) {
-          if (generation !== revision.current) return;
+          if (generation !== revision.current || value !== valueRef.current) return;
           setStatusError(error instanceof Error ? error.message : String(error)); setBusy(false);
         }
       })();
@@ -315,6 +324,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
 
   function remember(next: string) {
     if (history.current[historyIndex.current] !== next) {
+      revision.current++;
       history.current = [...history.current.slice(0, historyIndex.current + 1), next].slice(-MAX_HISTORY);
       historyIndex.current = history.current.length - 1;
     }
@@ -331,8 +341,8 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     replaceRange(node.selectionStart, node.selectionEnd, stripHeaders(text));
     setSuggestions(null);
   }
-  function undo() { if (historyIndex.current <= 0) return; historyIndex.current--; valueRef.current = history.current[historyIndex.current]; setValue(valueRef.current); select(Math.min(textarea.current?.selectionStart ?? HEADER_START, valueRef.current.length)); }
-  function redo() { if (historyIndex.current >= history.current.length - 1) return; historyIndex.current++; valueRef.current = history.current[historyIndex.current]; setValue(valueRef.current); select(Math.min(textarea.current?.selectionStart ?? HEADER_START, valueRef.current.length)); }
+  function undo() { if (historyIndex.current <= 0) return; revision.current++; historyIndex.current--; valueRef.current = history.current[historyIndex.current]; setValue(valueRef.current); select(Math.min(textarea.current?.selectionStart ?? HEADER_START, valueRef.current.length)); }
+  function redo() { if (historyIndex.current >= history.current.length - 1) return; revision.current++; historyIndex.current++; valueRef.current = history.current[historyIndex.current]; setValue(valueRef.current); select(Math.min(textarea.current?.selectionStart ?? HEADER_START, valueRef.current.length)); }
   function movePlaceholder(reverse = false) {
     const node = textarea.current; if (!node) return false;
     const places = [...valueRef.current.matchAll(/‹[^›]+›/g)].map(match => ({ start: match.index, end: match.index + match[0].length }));

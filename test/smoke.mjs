@@ -289,12 +289,24 @@ const J = {
     await source.fill('SuiteScript v1\nOriginal @bold("revised") sentence.');
     await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
     if (process.env.SUITESCRIPT_EDITOR_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_EDITOR_SCREENSHOT });
+    await source.fill('SuiteScript v1\nFirst valid sentence.');
+    await source.fill('SuiteScript v1\nSecond valid sentence.');
+    await source.fill('SuiteScript v1\nThird valid sentence.');
+    await s.p.locator('.ss-source__preview').getByText('Third valid sentence.').waitFor();
+    const stored = async () => s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Third valid sentence.'), demo);
+    if ((await stored()).includes('First valid sentence.') || (await stored()).includes('Second valid sentence.')) throw Error('An older edit overwrote the newest SuiteScript content.');
+    await source.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z');
+    await s.p.locator('.ss-source__preview').getByText('Second valid sentence.').waitFor();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Second valid sentence.'), demo);
     await source.fill('SuiteScript v1\n@timeline(now: -1)');
     await s.p.locator('.ss-source__gutter-error').first().waitFor();
-    await s.p.locator('.ss-source__preview').getByText('Original revised sentence.').waitFor();
+    await s.p.locator('.ss-source__preview').getByText('Second valid sentence.').waitFor();
+    await s.p.waitForTimeout(450);
+    if (!(await stored()).includes('Second valid sentence.')) throw Error('Invalid SuiteScript persisted over the last valid edit.');
     await s.p.getByRole('button', { name: 'Return to rich text editor' }).click();
     await s.p.getByRole('button', { name: 'Discard unfinished code' }).click();
-    await field.locator('strong').filter({ hasText: 'revised' }).waitFor();
+    await field.getByText('Second valid sentence.').waitFor();
     return s;
   },
   'SuiteScript PDF picker uses an authorised Organisation File': async b => {
