@@ -25,7 +25,8 @@ import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
 import { theme } from '../lib/themes';
 import { useNavigate } from 'react-router-dom';
-import { lessonLiveApi } from '../resourceHub/lessonLiveApi';
+import { lessonLiveApi, type LessonTeacherState } from '../resourceHub/lessonLiveApi';
+import { StandaloneLessonInvite } from '../resourceHub/StandaloneLessonInvite';
 import { openMenuAt } from '../components/ContextMenu';
 import { FileLessonAi } from './FileLessonAi';
 import { IdentityDialog, IdentityMark, RefsContext } from '../components/Identity';
@@ -164,13 +165,34 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
   const rows = useRows(d.id);
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState('');
+  const [liveInvite, setLiveInvite] = useState<{ runId: string; code: string } | null>(null);
+  const [liveInviteOpen, setLiveInviteOpen] = useState(false);
+  useEffect(() => { setLiveInvite(null); setLiveInviteOpen(false); }, [d.id]);
   const [idOpen, setIdOpen] = useState(false);
   const fileOrigin = d as SharedDoc & { originClassId?: string; sourceClassId?: string; classId?: string };
   const standaloneLive = canEdit && d.standaloneLesson === true && !fileOrigin.originClassId && !fileOrigin.sourceClassId && !fileOrigin.classId;
   const startLive = async () => {
+    if (liveBusy) return;
     setLiveBusy(true); setLiveError('');
-    try { const result = await lessonLiveApi<{ runId: string; code: string }>('start', { fileId: d.id }); navigate(`/resource-hub/lesson/live/${encodeURIComponent(result.runId)}`); }
+    try {
+      if (liveInvite) {
+        const current = await lessonLiveApi<LessonTeacherState>('teacherState', { runId: liveInvite.runId });
+        if (!current.run.expired && current.run.status === 'running') {
+          navigate(`/resource-hub/lesson/live/${encodeURIComponent(liveInvite.runId)}`);
+          return;
+        }
+        if (!current.run.expired && current.run.status === 'lobby' && current.code) {
+          setLiveInvite({ runId: liveInvite.runId, code: current.code });
+          setLiveInviteOpen(true);
+          return;
+        }
+      }
+      const result = await lessonLiveApi<{ runId: string; code: string }>('start', { fileId: d.id });
+      setLiveInvite(result);
+      setLiveInviteOpen(true);
+    }
     catch (cause) { setLiveError((cause as Error).message); setLiveBusy(false); }
+    finally { setLiveBusy(false); }
   };
   const [sel, setSel] = useState('');
   // Worksheet view: the lesson as A4 pages, as in a class lesson. Remembered on this device.
@@ -445,6 +467,7 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
       )}
       {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
       {idOpen && cur && <IdentityDialog value={cur.identity} used={lessonIdentities(rows)} onSave={(v, scope) => { const was = cur.identity; for (const r of rows) if (r.id === cur.id || (scope === 'all' && was && v && r.identity?.id === was.id)) patch(r.id, { identity: v }, 0); setIdOpen(false); }} onClose={() => setIdOpen(false)} />}
+      {liveInviteOpen && liveInvite && <StandaloneLessonInvite code={liveInvite.code} runId={liveInvite.runId} onClose={() => setLiveInviteOpen(false)} onViewRoom={() => navigate(`/resource-hub/lesson/live/${encodeURIComponent(liveInvite.runId)}`)} />}
     </div>
     </RefsContext.Provider>
     </>

@@ -130,6 +130,33 @@ try {
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
   await teacher.getByRole('menuitem', { name: /Invite learners/ }).click();
+  const invite = teacher.getByRole('dialog', { name: 'Invite learners live' });
+  await invite.getByText('482193', { exact: true }).waitFor();
+  assert.match(teacher.url(), /\/doc\/standalone-file/, 'invitation opens over the real file editor');
+  await invite.getByRole('img', { name: /QR code to join lesson/ }).waitFor();
+  const encodedLink = `${base}/lesson-join/482193`;
+  assert.equal(await invite.locator('.rll-invite-link span').innerText(), encodedLink, 'invitation displays the actual join route');
+  assert.match(await invite.getByRole('img', { name: /QR code to join lesson/ }).getAttribute('src') || '', /^data:image\/png;base64,/, 'invitation generates a QR image');
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-standalone-lesson-invite.png` });
+  await teacher.setViewportSize({ width: 390, height: 844 });
+  const mobileInvite = await invite.boundingBox();
+  assert.ok(mobileInvite && mobileInvite.x >= 0 && mobileInvite.x + mobileInvite.width <= 390, `invitation fits on a phone: ${JSON.stringify(mobileInvite)}`);
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-standalone-lesson-invite-mobile.png` });
+  await teacher.setViewportSize({ width: 1280, height: 850 });
+  // The production auth SDK persists sign-in across tabs. The local mock defaults
+  // to sessionStorage to isolate teacher/learner tabs, so opt this teacher into
+  // its cross-tab localStorage fallback before opening the projector tab.
+  await teacher.evaluate(() => localStorage.setItem('mockuid', 'teacher1'));
+  const projectorPage = context.waitForEvent('page');
+  await invite.getByRole('link', { name: 'Show on classroom screen' }).click();
+  const projector = await projectorPage;
+  await projector.getByRole('heading', { name: 'Join the lesson.' }).waitFor();
+  await projector.getByText('482193', { exact: true }).waitFor();
+  await projector.getByRole('img', { name: /QR code to join lesson/ }).waitFor();
+  assert.match(await projector.getByRole('img', { name: /QR code to join lesson/ }).getAttribute('src') || '', /^data:image\/png;base64,/, 'projector generates a QR image');
+  if (screenshots) await projector.screenshot({ path: `${screenshots}/live-standalone-lesson-projector.png` });
+  await projector.close();
+  await invite.getByRole('button', { name: 'View room' }).click();
   await teacher.getByText('482193').waitFor();
   assert.match(teacher.url(), /\/resource-hub\/lesson\/live\/file-run/);
   await teacher.goto(`${base}/doc/class-origin-file`);

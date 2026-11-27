@@ -9,9 +9,9 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { LocalActivityMode } from '../communicative/LocalActivity';
 import { isQuestion, splitKey } from '../lib/questions';
 import { lessonLiveApi, type LessonLiveAnswer, type LessonLiveParticipant, type LessonLiveRun, type LessonResult, type LessonTeacherState } from './lessonLiveApi';
+import { lessonJoinLink } from './StandaloneLessonInvite';
 import './resourceLessonLive.css';
 
-const joinLink = (code: string) => `${location.origin}/lesson-join/${encodeURIComponent(code)}`;
 const sourceLink = (run: LessonLiveRun) => run.sourceKind === 'file' && run.fileId ? `/doc/${encodeURIComponent(run.fileId)}` : `/resource-hub?activity=lesson-${encodeURIComponent(run.resourceId || '')}`;
 const historyLink = (run: LessonLiveRun) => run.sourceKind === 'file' && run.fileId ? `/lesson-file/${encodeURIComponent(run.fileId)}/history` : `/resource-hub/lesson/${encodeURIComponent(run.resourceId || '')}/history`;
 const dateLabel = (at?: number | null) => at ? new Date(at).toLocaleString() : 'In progress';
@@ -43,6 +43,8 @@ function AnswerRows({ answers, participants }: { answers: LessonLiveAnswer[]; pa
 
 export function ResourceLessonLiveTeacher() {
   const { runId = '' } = useParams();
+  const [params] = useSearchParams();
+  const project = params.get('project') === '1';
   const [state, setState] = useState<LessonTeacherState | null>(null);
   const [qr, setQr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,7 +56,10 @@ export function ResourceLessonLiveTeacher() {
   }, [runId]);
   useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 3000); return () => window.clearInterval(timer); }, [refresh]);
   const code = state?.code || '';
-  useEffect(() => { if (!code) return; void QRCode.toDataURL(joinLink(code), { width: 300, margin: 1, color: { dark: '#283b32', light: '#ffffff' } }).then(setQr); }, [code]);
+  useEffect(() => {
+    if (!code) { setQr(''); return; }
+    void QRCode.toDataURL(lessonJoinLink(code), { width: 600, margin: 1, color: { dark: '#243c34', light: '#ffffff' } }).then(setQr).catch(() => setQr(''));
+  }, [code]);
   const change = async (action: 'advance' | 'end', taskId?: string) => {
     if (busy) return;
     setBusy(true); setError('');
@@ -68,14 +73,20 @@ export function ResourceLessonLiveTeacher() {
   const current = run?.currentTaskId ? run.taskIds.indexOf(run.currentTaskId) : -1;
   const nextId = run?.taskIds[current + 1];
   const activityLink = run ? sourceLink(run) : '/resource-hub';
+  if (project && (!run || run.sourceKind === 'file')) return <div className="rll-projector">
+    <header className="rll-projector-head"><div className="rll-projector-brand"><span className="rll-projector-brand-mark" aria-hidden="true">E</span>ELT Suite</div><div className="rll-projector-meta"><span>{run?.title || 'Live lesson'} · {run?.sourceKind === 'file' ? 'Standalone lesson' : 'Live lesson'}</span></div></header>
+    <main className="rll-projector-body"><div><span className="rll-projector-kicker">LET’S BEGIN</span><h1>{code ? 'Join the lesson.' : !run && !error ? 'Preparing your lesson…' : finished ? 'The lesson has ended.' : 'Join code unavailable.'}</h1><p>{code ? 'Scan the code with your phone, then enter your name.' : !run && !error ? 'Your join code is on its way.' : finished ? 'Your teacher has finished this live lesson.' : 'Ask your teacher for a new lesson code.'}</p>{code && <><span className="rll-projector-code-label">OR TYPE THE LESSON CODE</span><strong className="rll-projector-code">{code}</strong><span className="rll-projector-url">{location.host}/lesson-join</span></>}</div>
+      <div className="rll-projector-qr">{code && qr ? <img src={qr} alt={`QR code to join lesson ${code}`} /> : <span role="status">{!run && !error || code ? 'Preparing QR code…' : 'No active code'}</span>}</div></main>
+    <footer className="rll-projector-foot"><span>Scan → Name → You’re in</span><span>Lesson code is filled in when you scan</span><button type="button" onClick={() => { window.close(); window.setTimeout(() => { if (!window.closed) window.location.assign(`/resource-hub/lesson/live/${encodeURIComponent(runId)}`); }, 120); }}>Close ×</button></footer>
+  </div>;
   return <div className="shell rll-shell"><TopBar /><main className="rll-wrap"><div className="rll-topline"><Link to={activityLink}>← Back to lesson</Link>{run && <Link to={historyLink(run)}>Teaching history</Link>}</div>
     <header className="rll-head"><div><span className="rll-kicker">RESOURCE HUB · LIVE LESSON</span><h1>{run?.title || 'Live lesson'}</h1><p>{finished ? run?.expired ? 'This live lesson has expired. Results are saved in teaching history.' : 'This lesson has ended. Results are saved in teaching history.' : run?.status === 'running' ? `Task ${current + 1} of ${run.taskIds.length} · ${run.taskTitles[run.currentTaskId || ''] || 'Live now'}` : code ? 'Invite learners with the code or QR. Start when they are ready.' : 'The join code has expired. Start a new live lesson to invite learners.'}</p></div><span className={`rll-phase ${finished ? 'ended' : run?.status || 'loading'}`}>{finished ? run?.expired ? 'Expired' : 'Ended' : run?.status === 'running' ? 'Teaching live' : 'Lobby'}</span></header>
     {error && <p role="alert" className="rll-error">{error}</p>}
     {!run ? <div role="status" className="rll-card">Loading live lesson…</div> : <div className="rll-teacher-grid"><section className="rll-card rll-teacher-main">
-      {!finished && run.status === 'lobby' && <><div className="rll-card-heading"><div><span className="rll-kicker">LET THEM IN</span><h2>Join this lesson</h2></div><span className="rll-count">{state?.participants.length || 0} joined</span></div>{code ? <div className="rll-lobby"><div className="rll-code"><small>Lesson code</small><strong>{code}</strong><button type="button" className="rll-secondary" onClick={() => void navigator.clipboard.writeText(joinLink(code))}>Copy join link</button></div>{qr && <img src={qr} alt={`QR code to join lesson ${code}`} />}</div> : <p className="rll-error">This join code has expired. Start a new live lesson from the resource page.</p>}<div className="rll-actions"><button type="button" className="rll-primary" disabled={busy || !run.taskIds.length || !code} onClick={() => void change('advance', run.taskIds[0])}>Start first task →</button>{!run.taskIds.length && <p className="rll-hint">Publish a learner task before starting.</p>}</div></>}
+      {!finished && run.status === 'lobby' && <><div className="rll-card-heading"><div><span className="rll-kicker">LET THEM IN</span><h2>Join this lesson</h2></div><span className="rll-count">{state?.participants.length || 0} joined</span></div>{code ? <div className="rll-lobby"><div className="rll-code"><small>Lesson code</small><strong>{code}</strong><button type="button" className="rll-secondary" onClick={() => void navigator.clipboard.writeText(lessonJoinLink(code))}>Copy join link</button></div>{qr && <img src={qr} alt={`QR code to join lesson ${code}`} />}</div> : <p className="rll-error">This join code has expired. Start a new live lesson from the resource page.</p>}<div className="rll-actions"><button type="button" className="rll-primary" disabled={busy || !run.taskIds.length || !code} onClick={() => void change('advance', run.taskIds[0])}>Start first task →</button>{!run.taskIds.length && <p className="rll-hint">Publish a learner task before starting.</p>}</div></>}
       {!finished && run.status === 'running' && <><div className="rll-card-heading"><div><span className="rll-kicker">TASK {current + 1} OF {run.taskIds.length}</span>{task?.identity && <div className="aid-row"><IdentityMark identity={task.identity} /></div>}<h2>{task?.title || run.taskTitles[run.currentTaskId || '']}</h2></div><span className="rll-count">{state?.answers.length || 0} submitted</span></div>{task && <div className="rll-task-display"><InstrView doc={task.instrDoc} text={task.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(task.content, true).content} responses={{}} disabled /></LocalActivityMode.Provider></div>}<div className="rll-actions">{nextId && <button type="button" className="rll-primary" disabled={busy} onClick={() => void change('advance', nextId)}>Next task →</button>}<button type="button" className="rll-secondary" disabled={busy} onClick={() => setConfirmEnd(true)}>End lesson</button></div></>}
       {finished && <div className="rll-ended"><span aria-hidden="true">✓</span><h2>{run.expired ? 'Session expired' : 'Lesson finished'}</h2><p>Joined learners and their submitted answers are saved.</p><Link className="rll-primary" to={`${historyLink(run)}?run=${encodeURIComponent(run.runId)}`}>View results</Link></div>}
-    </section><aside className="rll-card rll-people"><div className="rll-card-heading"><div><span className="rll-kicker">IN THE ROOM</span><h2>Learners & answers</h2></div><span className="rll-count">{state?.participants.length || 0}</span></div><AnswerRows participants={state?.participants || []} answers={state?.answers || []} />{!finished && run.status === 'running' && code && <div className="rll-share-compact"><strong>Join code {code}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(joinLink(code))}>Copy link</button></div>}</aside></div>}
+    </section><aside className="rll-card rll-people"><div className="rll-card-heading"><div><span className="rll-kicker">IN THE ROOM</span><h2>Learners & answers</h2></div><span className="rll-count">{state?.participants.length || 0}</span></div><AnswerRows participants={state?.participants || []} answers={state?.answers || []} />{!finished && run.status === 'running' && code && <div className="rll-share-compact"><strong>Join code {code}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(lessonJoinLink(code))}>Copy link</button></div>}</aside></div>}
     {confirmEnd && <div className="rll-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setConfirmEnd(false); }}><section role="dialog" aria-modal="true" aria-labelledby="rll-end-title" className="rll-dialog"><span className="rll-kicker">END LIVE LESSON</span><h2 id="rll-end-title">Finish this session?</h2><p>Learners will leave the live task. Their names and submitted answers will stay in Teaching history.</p><div className="rll-actions"><button type="button" className="rll-secondary" onClick={() => setConfirmEnd(false)}>Keep teaching</button><button type="button" className="rll-primary" disabled={busy} onClick={() => { setConfirmEnd(false); void change('end'); }}>End and save results</button></div></section></div>}
   </main></div>;
 }

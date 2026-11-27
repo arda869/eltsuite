@@ -1,0 +1,57 @@
+.rll-invite-scrim{position:fixed;z-index:1600;inset:0;display:grid;place-items:center;padding:24px;background:rgba(37,34,31,.29);backdrop-filter:blur(1.5px)}
+.rll-invite-dialog{display:flex;flex-direction:column;width:min(548px,100%);max-height:min(92dvh,900px);overflow:auto;transform:translateX(min(10vw,140px));border:1px solid #e8e0d5;border-radius:23px;background:#fffefd;color:#34332f;box-shadow:0 28px 90px rgba(37,30,24,.23)}
+.rll-invite-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:29px 31px 20px;border-bottom:1px solid #ebe4db}
+.rll-invite-kicker{display:block;margin-bottom:8px;color:#a46545;font:700 10px/1.4 var(--sans,Arial,sans-serif);letter-spacing:.15em}
+.rll-invite-head h2{margin:0;color:#2f2d29;font:600 clamp(27px,4vw,32px)/1.12 var(--serif,Georgia,serif);letter-spacing:-.03em}
+.rll-invite-close{flex:none;display:grid;place-items:center;width:40px;height:40px;margin:-2px -2px 0 0;border:1px solid #e2dacf;border-radius:12px;background:#fff;color:#625c54;font:24px/1 var(--sans,Arial,sans-serif);cursor:pointer}
+.rll-invite-close:hover,.rll-invite-close:focus-visible{background:#f8f3ec;border-color:#cba78e}
+.rll-invite-body{padding:23px 31px 24px}
+.rll-invite-body>p:first-child{margin:0 0 20px;color:#5f5b54;font:14px/1.55 var(--sans,Arial,sans-serif)}
+.rll-invite-code-card{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:155px;padding:19px;border:1px solid #d9e2d9;border-radius:17px;background:linear-gradient(135deg,#f1f6f1,#eaf2e9)}
+.rll-invite-code-card>div:first-child{min-width:0}
+.rll-invite-code-card span{display:block;color:#597268;font:700 10px/1.4 var(--sans,Arial,sans-serif);letter-spacing:.15em}
+.rll-invite-code-card strong{display:block;margin:5px 0;color:#244136;font:600 clamp(32px,6vw,40px)/1.1 var(--sans,Arial,sans-serif);letter-spacing:.12em;white-space:nowrap}
+.rll-invite-code-card small{color:#66776a;font:11px/1.35 var(--sans,Arial,sans-serif)}
+.rll-invite-code-card img,.rll-invite-qr-loading{flex:none;width:116px;height:116px;padding:8px;border-radius:12px;background:#fff;object-fit:contain}
+.rll-invite-qr-loading{display:grid;place-items:center;color:#657369;text-align:center;font:11px/1.3 var(--sans,Arial,sans-serif)}
+.rll-invite-link{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:47px;margin:19px 0 16px;padding:7px 13px;border:1px solid #e8e0d7;border-radius:11px;background:#fcfaf7;color:#5c5751;font:12px var(--sans,Arial,sans-serif)}
+.rll-invite-link span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rll-invite-link button{flex:none;border:0;background:transparent;color:#a46645;font:700 12px var(--sans,Arial,sans-serif);cursor:pointer}
+.rll-invite-copy-error{margin:-9px 0 12px!important;color:#a34239!important;font-size:12px!important}
+.rll-invite-actions{display:flex;gap:10px;align-items:center}
+.rll-invite-actions :is(button,a){display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:9px 15px;border-radius:11px;font:700 12px var(--sans,Arial,sans-serif);text-decoration:none;cursor:pointer}
+.rll-invite-primary{flex:1;border:1px solid #a46645;background:#a46645;color:#fff;box-shadow:0 4px 12px rgba(164,102,69,.13)}
+.rll-invite-primary:hover,.rll-invite-primary:focus-visible{background:#8f5638}
+.rll-invite-primary span{margin-right:8px}
+.rll-invite-secondary{border:1px solid #dfd7cc;background:white;color:#4d4a44}
+.rll-invite-secondary:hover,.rll-invite-secondary:focus-visible{background:#faf5ee}
+.rll-invite-steps{margin-top:20px;padding:18px;border:1px solid #e8e1d8;border-radius:13px;background:#fff}
+.rll-invite-steps h3{margin:0 0 11px;color:#403a34;font:600 20px/1.15 var(--serif,Georgia,serif)}
+.rll-invite-steps p{display:flex;align-items:center;gap:10px;margin:8px 0;color:#5f5a54;font:12px/1.45 var(--sans,Arial,sans-serif)}
+.rll-invite-steps b{flex:none;display:grid;place-items:center;width:21px;height:21px;border-radius:7px;background:#f3e9dd;color:#9c6748;font-size:10px}
+.rll-invite-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 31px;border-top:1px solid #eee7df;color:#687263;font:11px var(--sans,Arial,sans-serif)}
+.rll-invite-foot span{display:flex;align-items:center;gap:6px}
+.rll-invite-foot i{width:6px;height:6px;border-radius:50%;background:#477c53}
+.rll-invite-foot small{color:#857c70;font-size:10px}
+.rll-invite-dialog :focus-visible,.rll-projector :focus-visible{outline:2px solid #c48d6d;outline-offset:2px}
+.rll-projector{position:fixed;z-index:2000;inset:0;display:flex;flex-direction:column;overflow:auto;background:radial-gradient(circle at 92% -10%,#f4e9dd 0 22%,transparent 22.1%),radial-gradient(circle at -7% 108%,#edf0e9 0 22%,transparent 22.1%),#f7f5ee;color:#2f2d29}
+.rll-projector-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:30px clamp(24px,3vw,54px);font:13px var(--sans,Arial,sans-serif)}
+.rll-projector-brand{display:flex;align-items:center;gap:13px;font:600 24px var(--serif,Georgia,serif)}
+.rll-projector-brand-mark{display:grid;place-items:center;width:37px;height:37px;border-radius:10px;background:#a46645;color:#fff;font:600 25px var(--serif,Georgia,serif)}
+.rll-projector-meta{display:flex;align-items:center;gap:12px;color:#5e5a55}
+.rll-projector-meta small{padding:6px 10px;border:1px solid #e8cdbd;border-radius:99px;background:#fffaf5;color:#9d6546;font:700 10px var(--sans,Arial,sans-serif)}
+.rll-projector-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,560px);align-items:center;gap:clamp(30px,5vw,95px);width:min(1530px,calc(100% - 90px));flex:1;margin:auto;padding:20px 0 80px}
+.rll-projector-kicker{color:#a46645;font:700 12px var(--sans,Arial,sans-serif);letter-spacing:.18em}
+.rll-projector-body h1{max-width:830px;margin:22px 0;color:#2d2a26;font:600 clamp(54px,6vw,104px)/1.04 var(--serif,Georgia,serif);letter-spacing:-.055em}
+.rll-projector-body p{max-width:530px;margin:0;color:#645f59;font:clamp(22px,2vw,30px)/1.4 var(--sans,Arial,sans-serif)}
+.rll-projector-code-label{display:block;margin-top:38px;color:#8a8279;font:700 11px var(--sans,Arial,sans-serif);letter-spacing:.18em}
+.rll-projector-code{display:block;margin:14px 0 22px;color:#244136;font:600 clamp(58px,6vw,108px)/1 var(--sans,Arial,sans-serif);letter-spacing:.13em;white-space:nowrap}
+.rll-projector-url{color:#a46645;font:700 20px var(--sans,Arial,sans-serif);text-decoration:underline;text-underline-offset:7px}
+.rll-projector-qr{display:grid;place-items:center;aspect-ratio:1;padding:7%;border-radius:28px;background:#fff;box-shadow:0 22px 55px #26251f22}
+.rll-projector-qr img{width:100%;height:100%;object-fit:contain}
+.rll-projector-qr .rll-invite-qr-loading{width:100%;height:100%;font-size:18px}
+.rll-projector-foot{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:64px;margin:0 clamp(24px,3vw,54px);border-top:1px solid #ddd9cf;color:#6e675e;font:13px var(--sans,Arial,sans-serif)}
+.rll-projector-foot span{color:#857d73}
+.rll-projector-foot button{border:0;background:transparent;color:#9c6244;font:700 13px var(--sans,Arial,sans-serif);cursor:pointer}
+@media(max-width:760px){.rll-invite-dialog{max-height:calc(100dvh - 24px);transform:none}.rll-invite-scrim{padding:12px}.rll-invite-head,.rll-invite-body{padding-left:22px;padding-right:22px}.rll-invite-foot{padding-left:22px;padding-right:22px}.rll-invite-foot small{display:none}.rll-projector-head{padding:20px}.rll-projector-body{grid-template-columns:1fr;width:min(100% - 40px,600px);gap:28px;padding:35px 0}.rll-projector-body h1{font-size:clamp(42px,9vw,70px)}.rll-projector-code{font-size:clamp(55px,12vw,85px)}.rll-projector-qr{width:min(75vw,340px);justify-self:center}.rll-projector-foot{margin:0 20px}}
+@media(max-width:460px){.rll-invite-code-card{min-height:135px;padding:14px}.rll-invite-code-card img,.rll-invite-qr-loading{width:95px;height:95px}.rll-invite-code-card strong{font-size:28px}.rll-invite-actions{align-items:stretch;flex-direction:column}.rll-invite-actions :is(button,a){width:100%}.rll-invite-body>p:first-child{font-size:13px}}
