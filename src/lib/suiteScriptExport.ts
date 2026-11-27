@@ -1,7 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
-import { bodyRef } from './groups';
+import { bodyRef } from './privateBodyRef';
 import { mergeKey, type AnswerKey } from './questions';
 import { suiteScriptCopyNodes } from './suiteScriptCopy';
 import type { SuiteScriptActivityDraft, SuiteScriptTaskDraft } from './suiteScriptBundle';

@@ -86,7 +86,7 @@ function sharedFileFits(doc: SharedDoc, kind: FileChoice['kind'], classId: strin
   if (doc.kind === 'file' && doc.uploadStatus !== 'ready') return false;
   const sharedWithClass = !!doc.classes?.[classId]?.role;
   if (kind === 'pdf') return sharedWithClass && (doc.kind === 'pdf' || doc.kind === 'file' && doc.file?.type === 'application/pdf');
-  if (kind === 'image') return sharedWithClass && doc.kind === 'file' && !!doc.file?.type.startsWith('image/');
+  if (kind === 'image') return doc.kind === 'file' && ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(doc.file?.type ?? '');
   if (kind === 'audio') return doc.kind === 'file' && ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-wav', 'audio/ogg'].includes(doc.file?.type ?? '');
   if (kind === 'video') return doc.kind === 'file' && ['video/mp4', 'video/webm'].includes(doc.file?.type ?? '');
   return false;
@@ -111,7 +111,7 @@ function MySharedFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind
 
 function OrgFolderFiles({ folder, uid, kind, classId, busy, onPick }: { folder: DriveFolder; uid: string; kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
   const files = useFolderDocs(folder as unknown as SharedFolder, uid);
-  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'image' || kind === 'pdf' ? `No ${kind === 'pdf' ? 'PDFs' : 'pictures'} shared with this Class in this folder.` : `No ${kind === 'audio' ? 'recordings' : 'videos'} in this folder.`} />;
+  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'pdf' ? 'No PDFs shared with this Class in this folder.' : `No ${kind === 'image' ? 'pictures' : kind === 'audio' ? 'recordings' : 'videos'} in this folder.`} />;
 }
 
 function OrganisationFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
@@ -560,7 +560,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
       onClose={() => setFileChoice(null)}
       status={referenceDestination.mode !== 'class'
         ? 'SuiteScript file references are available in Classes. This destination cannot provide learner access to those files yet.'
-        : fileError || (fileBusy ? 'Preparing this file…' : fileChoice.kind === 'pdf' || fileSource === 'org' && fileChoice.kind === 'image' ? 'Choose a file already shared with this Class.' : 'Choose an item to copy into this Class.')}
+        : fileError || (fileBusy ? 'Preparing this file…' : fileChoice.kind === 'pdf' ? 'Choose a PDF already shared with this Class.' : 'Choose an item to copy into this Class.')}
       wide
     >
       {referenceDestination.mode !== 'class'

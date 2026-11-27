@@ -3,7 +3,7 @@ import { carryMedia } from './fullcopy';
 import { loadAnyFile } from './fileStore';
 import { saveSound } from './archive';
 import { saveImage } from './media';
-import { preparePicture } from '../editor/PackNode';
+import { preparePicture } from './picturePrepare';
 import { resolveSuiteScriptReference, type SuiteScriptDestination } from './suiteScriptReferences';
 import { suiteScriptRawAssetPath } from './suiteScriptAssetScan';
 import { suiteScriptSafeMeta } from './suiteScriptMeta';

@@ -8,7 +8,7 @@ import { writeFile, unlink } from 'node:fs/promises';
 const boundary = {
   name: 'suite-script-reference-boundary',
   setup(builder) {
-    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media)$|^\.\.\/editor\/PackNode$/ }, args =>
+    builder.onResolve({ filter: /^\.\/(fullcopy|suiteScriptReferences|archive|fileStore|media|picturePrepare)$/ }, args =>
       args.importer.endsWith('suiteScriptResolve.ts') ? { path: args.path, namespace: 'reference-boundary' } : undefined);
     builder.onLoad({ filter: /.*/, namespace: 'reference-boundary' }, args => ({
       contents: args.path === './fullcopy'
@@ -19,7 +19,7 @@ const boundary = {
             ? 'export async function saveSound(_space, _file, meta) { return {mediaId: meta.video ? "copied-video" : "copied-audio"}; }'
             : args.path === './media'
               ? 'export async function saveImage(space, blob) { if (space !== "class-1" || blob.type !== "image/jpeg") throw Error("Invalid image copy"); return "copied-image"; }'
-              : args.path === '../editor/PackNode'
+              : args.path === './picturePrepare'
                 ? 'export async function preparePicture(blob) { if (blob.type !== "image/png") throw Error("Invalid source image"); return new Blob(["compressed"], {type:"image/jpeg"}); }'
                 : 'export async function resolveSuiteScriptReference(id) { return id === "audio-ref" || id === "video-ref" ? { kind: "sharedDoc", itemType: "file", sourceId: id === "video-ref" ? "video-file" : "audio-file", mime: id === "video-ref" ? "video/mp4" : "audio/mpeg" } : { kind: "sharedDoc", itemType: "file", sourceId: "safe-image", mime: "image/png" }; }',
       loader: 'js',

@@ -1,7 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { doc, runTransaction, serverTimestamp, writeBatch, type DocumentData } from 'firebase/firestore';
 import { rehomeActivityPictures } from '../communicative/privatePictures';
-import { bodyRef } from './groups';
+import { bodyRef } from './privateBodyRef';
 import { db } from './firebase';
 import { freshIds } from './clip';
 import { splitKey } from './questions';

@@ -3,6 +3,8 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderB
 import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
 import { activityContentRef, keyRef, notesRef, splitKey, taskRef, tasksCol, type Task } from './tasks';
+import { bodyRef } from './privateBodyRef';
+export { bodyRef } from './privateBodyRef';
 
 // Groups, task versions and "Who sees this".
 //
@@ -24,8 +26,6 @@ export const LEVELS = ['Easier', 'Standard', 'Challenge'];
 export const ROLE_NAMES = ['A', 'B', 'C', 'D'];
 
 const setsCol = (classId: string) => collection(db, 'classes', classId, 'groupSets');
-export const bodyRef = (classId: string, itemId: string, taskId: string) => doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'private', 'body');
-
 export function useGroupSets(classId: string) {
   const [list, setList] = useState<GroupSet[]>([]);
   useEffect(() => {
