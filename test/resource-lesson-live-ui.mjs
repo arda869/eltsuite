@@ -20,7 +20,12 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 850 } });
   const teacher = await context.newPage();
   await teacher.goto(`${base}/dev.html?seed&as=teacher`);
-  await teacher.waitForFunction(() => !!localStorage.getItem('mockdemo'));
+  await teacher.waitForFunction(async () => {
+    if (!window.__mockReady) return false;
+    await window.__mockReady;
+    return !!localStorage.getItem('mockdemo');
+  }, null, { timeout: 180000 });
+  await teacher.waitForLoadState('networkidle');
   await teacher.evaluate(() => localStorage.setItem('rll.fixture', JSON.stringify({ code: '482193', run: { runId: 'fixture-run', resourceId: 'fixture-resource', title: 'Standalone conversation lesson', edition: 1, status: 'lobby', currentTaskId: null, taskIds: ['task-1'], taskTitles: { 'task-1': 'First task' }, startedAt: Date.now(), endedAt: null, participantCount: 0, joinOpen: true, expired: false }, participants: [], answers: [] })));
   await teacher.goto(`${base}/resource-hub/lesson/live/fixture-run`);
   await teacher.getByText('482193').waitFor();
@@ -127,9 +132,54 @@ try {
   await teacher.locator('.lf-learner-preview').waitFor();
   await teacher.getByRole('radio', { name: 'Digital' }).click();
   await teacher.locator('.lf-task').waitFor();
+  const editorLayout = await teacher.evaluate(() => {
+    const task = document.querySelector('.lf-main > .lf-task')?.getBoundingClientRect();
+    const notes = document.querySelector('.lf-notes .pn')?.getBoundingClientRect();
+    const sidebar = document.querySelector('.lf-side')?.getBoundingClientRect();
+    return { task: task && { left: task.left, right: task.right, bottom: task.bottom }, notes: notes && { left: notes.left, right: notes.right, top: notes.top }, sidebar: sidebar && { bottom: sidebar.bottom }, toolbarVisible: !!document.querySelector('.lf-notes .notes-tools'), viewport: innerWidth };
+  });
+  assert.ok(editorLayout.task && editorLayout.notes && Math.abs(editorLayout.task.left - editorLayout.notes.left) <= 1 && Math.abs(editorLayout.task.right - editorLayout.notes.right) <= 1, `task and notes share the same edges: ${JSON.stringify(editorLayout)}`);
+  assert.ok(editorLayout.notes.top - editorLayout.task.bottom >= 8 && editorLayout.notes.top - editorLayout.task.bottom <= 12, `notes sit directly below the task: ${JSON.stringify(editorLayout)}`);
+  assert.ok(editorLayout.toolbarVisible, 'the teacher notes toolbar is ready without an extra click');
+  assert.equal(await teacher.locator('.lf-side-title').innerText(), 'My standalone lesson');
+  const notesEditor = teacher.locator('.lf-notes .ProseMirror');
+  await notesEditor.fill('Private teaching reminder');
+  await teacher.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/standalone-file/taskNotes/task-1']?.text === 'Private teaching reminder');
+  await teacher.reload();
+  await teacher.locator('.lf-notes .ProseMirror').getByText('Private teaching reminder').waitFor();
+  await teacher.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'standalone editor fits a phone without horizontal overflow');
+  await teacher.setViewportSize({ width: 1280, height: 850 });
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-lesson-file-entry.png` });
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
   await teacher.getByRole('menuitem', { name: /Invite learners/ }).click();
+  const invite = teacher.getByRole('dialog', { name: 'Invite learners live' });
+  await invite.getByText('482193', { exact: true }).waitFor();
+  assert.match(teacher.url(), /\/doc\/standalone-file/, 'invitation opens over the real file editor');
+  await invite.getByRole('img', { name: /QR code to join lesson/ }).waitFor();
+  const encodedLink = `${base}/lesson-join/482193`;
+  assert.equal(await invite.locator('.rll-invite-link span').innerText(), encodedLink, 'invitation displays the actual join route');
+  assert.match(await invite.getByRole('img', { name: /QR code to join lesson/ }).getAttribute('src') || '', /^data:image\/png;base64,/, 'invitation generates a QR image');
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-standalone-lesson-invite.png` });
+  await teacher.setViewportSize({ width: 390, height: 844 });
+  const mobileInvite = await invite.boundingBox();
+  assert.ok(mobileInvite && mobileInvite.x >= 0 && mobileInvite.x + mobileInvite.width <= 390, `invitation fits on a phone: ${JSON.stringify(mobileInvite)}`);
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/live-standalone-lesson-invite-mobile.png` });
+  await teacher.setViewportSize({ width: 1280, height: 850 });
+  // The production auth SDK persists sign-in across tabs. The local mock defaults
+  // to sessionStorage to isolate teacher/learner tabs, so opt this teacher into
+  // its cross-tab localStorage fallback before opening the projector tab.
+  await teacher.evaluate(() => localStorage.setItem('mockuid', 'teacher1'));
+  const projectorPage = context.waitForEvent('page');
+  await invite.getByRole('link', { name: 'Show on classroom screen' }).click();
+  const projector = await projectorPage;
+  await projector.getByRole('heading', { name: 'Join the lesson.' }).waitFor();
+  await projector.getByText('482193', { exact: true }).waitFor();
+  await projector.getByRole('img', { name: /QR code to join lesson/ }).waitFor();
+  assert.match(await projector.getByRole('img', { name: /QR code to join lesson/ }).getAttribute('src') || '', /^data:image\/png;base64,/, 'projector generates a QR image');
+  if (screenshots) await projector.screenshot({ path: `${screenshots}/live-standalone-lesson-projector.png` });
+  await projector.close();
+  await invite.getByRole('button', { name: 'View room' }).click();
   await teacher.getByText('482193').waitFor();
   assert.match(teacher.url(), /\/resource-hub\/lesson\/live\/file-run/);
   await teacher.goto(`${base}/doc/class-origin-file`);
