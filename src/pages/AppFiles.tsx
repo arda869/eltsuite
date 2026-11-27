@@ -22,12 +22,11 @@ import { useLibrary, type LibDoc } from './ArchiveLibrary';
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
 // kind, the ones shared with them, the ones in their organisation's library, and the starred ones.
 
-export type AppKey = 'games' | 'collab' | 'reading' | 'pdf' | 'recordings' | 'design';
+export type AppKey = 'collab' | 'reading' | 'pdf' | 'recordings' | 'design';
 type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
-  games: { name: 'Games', kinds: ['game'], color: '#1f6b62', empty: 'Make a game, then play it live, share it with a code, or put it in a lesson.' },
   collab: { name: 'Collab', kinds: ['doc'], color: '#2f6f9f', empty: 'Documents you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   design: { name: 'Designer', kinds: ['design'], color: '#6d5bd0', empty: 'Posters, flashcards, labelled pictures and worksheets you design.' },
@@ -136,7 +135,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     }
   };
   const news: { label: string; run: () => void }[] =
-    app === 'games' ? [{ label: 'New game', run: () => void make('game') }] : app === 'collab'
+    app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
         ]
@@ -242,7 +241,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             <span className="af-empty-ico">
               <FileIcon kind={app === 'recordings' ? 'audio' : (a.kinds[0] as FileKind)} size={44} label={false} />
             </span>
-            <strong>{s ? 'Nothing matches' : tab === 'starred' ? 'Nothing starred yet' : tab === 'shared' ? 'Nothing shared with you yet' : tab === 'library' ? 'Nothing in the library yet' : app === 'games' ? 'No games yet' : `No ${a.name} files yet`}</strong>
+            <strong>{s ? 'Nothing matches' : tab === 'starred' ? 'Nothing starred yet' : tab === 'shared' ? 'Nothing shared with you yet' : tab === 'library' ? 'Nothing in the library yet' : `No ${a.name} files yet`}</strong>
             <span className="hint">{s ? 'Try other words.' : tab === 'starred' ? 'Star a file to find it here quickly.' : tab === 'library' && app === 'recordings' ? 'Recordings aren’t kept in the library yet.' : a.empty}</span>
           </div>
         )}

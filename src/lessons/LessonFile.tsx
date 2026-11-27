@@ -324,11 +324,11 @@ export function LessonFile({ d, canEdit, headerSlot }: { d: SharedDoc; canEdit: 
                     </span>
                   )}
                 </div>
-                {cur.kind === 'task' && (canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} />)}
+                {cur.kind === 'task' && (canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} suiteScriptEnabled onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} />)}
                 {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
               </div>
               {cur.kind === 'task' && <div className="frame-body lf-body">
-                {canEdit ? <TaskEditor compact content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} taskContext={cur.instructions} taskTitle={cur.title} /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
+                {canEdit ? <TaskEditor compact content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} taskContext={cur.instructions} taskTitle={cur.title} suiteScriptEnabled /> : <TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={{}} disabled classId={'user:' + d.owner} />}
               </div>}
             </div>
           </div>

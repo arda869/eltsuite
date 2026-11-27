@@ -54,7 +54,6 @@ const MAKE: { label: string; colour: string; glyph: string; make?: DocKind; to?:
   { label: 'Reading Journal', colour: '#3c7c8c', glyph: APP_MARKS.reading, make: 'pd' },
   { label: 'Recording', colour: '#a8473a', glyph: APP_MARKS.recordings, to: '/studio/sound/new' },
   { label: 'Design', colour: '#6d5bd0', glyph: APP_MARKS.design, to: '/design' },
-  { label: 'Game', colour: '#996525', glyph: APP_MARKS.games, to: '/games' },
   { label: 'PDF', colour: '#a6463a', glyph: APP_MARKS.pdf, to: '/pdf' },
 ];
 

@@ -193,9 +193,11 @@ service cloud.firestore {
         allow read: if isSelf(uid) && !learnerAccount();
         allow update: if isSelf(uid) && !learnerAccount() && !('purgeRequestedAt' in resource.data) && !('purgingAt' in resource.data)
           && !('purgingAt' in request.resource.data)
+          && request.resource.data.get('suiteScriptRef', null) == resource.data.get('suiteScriptRef', null)
           && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0);
         allow delete: if isSelf(uid) && !learnerAccount();
-        allow create: if isSelf(uid) && !learnerAccount() && active() && hasRoom(uid);
+        allow create: if isSelf(uid) && !learnerAccount() && active() && hasRoom(uid)
+          && !('suiteScriptRef' in request.resource.data);
       }
       match /archiveFolders/{folderId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
@@ -1016,12 +1018,13 @@ service cloud.firestore {
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       // In a shared folder, files belong to the folder's owner, whoever makes them.
-      allow create: if isTeacher() && hasRoom(request.resource.data.owner) && (request.resource.data.owner == request.auth.uid
+      allow create: if isTeacher() && hasRoom(request.resource.data.owner) && !('suiteScriptRef' in request.resource.data) && (request.resource.data.owner == request.auth.uid
         || (request.resource.data.folder is string && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.owner == request.resource.data.owner
           && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.members[request.auth.uid].role == 'edit'
           && request.resource.data.createdBy == request.auth.uid));
       allow update: if signedIn() && !('purgeRequestedAt' in resource.data) && !('purgingAt' in resource.data)
         && !('purgingAt' in request.resource.data)
+        && request.resource.data.get('suiteScriptRef', null) == resource.data.get('suiteScriptRef', null)
         && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0)
         && (resource.data.owner == request.auth.uid
         || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType', 'coachIndex', 'searchAt'])

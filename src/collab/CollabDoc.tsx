@@ -17,10 +17,12 @@ import { AnswerKey } from './AnswerKey';
 import { CommentThread, MarginComment, type Thread } from './Comments';
 import { PersonFace } from '../components/avatars';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
+import { Fragment } from '@tiptap/pm/model';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEditorKeys } from '../editor/editorKeys';
 import { cleanPastedHTML } from '../editor/pasteClean';
 import { keyLabel } from '../lib/keys';
+import { keyFor } from '../lib/shortcuts';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
@@ -28,7 +30,11 @@ import { onValue, push, set, update } from 'firebase/database';
 import { HighlightTool } from '../editor/Highlight';
 import { docCommands, DOC_GROUPS, docSections, DOC_NODES, PRON_KEYS, PIC_EVENT, addPictures, pickPictures } from './docKit';
 import { PictureDialog } from '../editor/Picture';
-import { SlashMenu, useSlash } from '../editor/TaskEditor';
+import { SlashMenu, useSlash, SUITE_TYPES } from '../editor/TaskEditor';
+import { isSuiteScript, parseSuiteScript, suiteScriptMessageSafe, toSuiteScript } from '../lib/suiteScript';
+import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
+import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
+import { SuiteScriptSourceEditor } from '../editor/SuiteScriptSourceEditor';
 import { InsertGallery } from '../editor/InsertGallery';
 import { LineAdder } from '../editor/LineAdder';
 import { BlockHandles } from '../editor/BlockMenu';
@@ -93,6 +99,25 @@ function withoutSuggestions(n: JSONContent): JSONContent {
   const marks = n.marks?.filter((m) => m.type !== 'suggestDel' && m.type !== 'comment');
   const content = n.content?.filter((c) => !c.marks?.some((m) => m.type === 'suggestIns')).map(withoutSuggestions);
   return { ...n, ...(n.marks ? { marks } : {}), ...(n.content ? { content } : {}) };
+}
+
+// Collab content is shared with learners. Source editing must not introduce a
+// private answer or teacher note into the shared document JSON.
+function assertSharedSuiteScriptSafe(nodes: JSONContent[]) {
+  const privateField = /^(correct|answer|answers|teacherOnly|answerKey|solution|private)$/i;
+  const populated = (value: unknown): boolean => value !== undefined && value !== null && value !== '' && value !== false && value !== -1 && (!Array.isArray(value) || value.length > 0) && (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 0);
+  const scan = (value: unknown): void => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) return value.forEach(scan);
+    for (const [key, child] of Object.entries(value)) {
+      if (privateField.test(key) && populated(child)) throw new Error('Private answers and teacher notes cannot be added to a shared document.');
+      scan(child);
+    }
+  };
+  for (const node of nodes) {
+    if (['teacherNote', 'answerKey'].includes(node.type ?? '')) throw new Error('Teacher-only content cannot be added to a shared document.');
+    scan(node);
+  }
 }
 type Heading = { level: number; text: string; pos: number };
 const headingsOf = (d: { forEach: (f: (n: { type: { name: string }; attrs: Record<string, unknown>; textContent: string; nodeSize: number }, off: number) => void) => void }) => {
@@ -163,6 +188,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   useEffect(() => watchFlags(docKey, setFlags, classId), [docKey, classId]);
   const locked = !!flags.lock && !teacher;
   const eff: CollabMode = locked ? 'view' : mode;
+  const suitePasteRef = useRef({ teacher, eff });
+  suitePasteRef.current = { teacher, eff };
   const live = useRef({ mode: eff, author });
   live.current = { mode: eff, author };
   const [synced, setSynced] = useState(false);
@@ -173,6 +200,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   });
   const choosePaper = (value: 'auto' | 'white' | 'black') => { setPaperAppearance(value); try { localStorage.setItem('ll.paperAppearance', value); } catch { /* optional preference */ } };
   const [gallery, setGallery] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const sourceScope = useRef<{ from: number; to: number; baseline: string } | null>(null);
   const [citationRequest, setCitationRequest] = useState(0);
   const [pageSetupRequest, setPageSetupRequest] = useState(0);
   const [wcOpen, setWcOpen] = useState(false);
@@ -243,6 +272,20 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         // Word and Outlook: real lists and paragraphs, without Office markup or empty lines.
         transformPastedHTML: cleanPastedHTML,
         handlePaste: (_v, e) => {
+          const plain = e.clipboardData?.getData('text/plain') ?? '';
+          if (suitePasteRef.current.teacher && ['edit', 'suggest'].includes(suitePasteRef.current.eff) && isSuiteScript(plain)) {
+            e.preventDefault();
+            const result = parseSuiteScript(plain, SUITE_TYPES);
+            if (result.errors.length) { void tell(result.errors.join('\n')); return true; }
+            // A Collab document can be shared with learners. Keep private
+            // answers and version-specific content out of its shared body.
+            try {
+              const safe = suiteScriptMessageSafe(result.content);
+              safe.forEach(node => edRef.current?.schema.nodeFromJSON(node).check());
+              edRef.current?.chain().focus().insertContent(safe).run();
+            } catch (error) { void tell(`SuiteScript could not be pasted here: ${error instanceof Error ? error.message : String(error)}`); }
+            return true;
+          }
           const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
           if (!files.length || !edRef.current) return false;
           void addPictures(edRef.current, files);
@@ -293,7 +336,30 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     window.setTimeout(() => document.getElementById('bm-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
   }, [synced, editor]);
   const edRef = useRef(editor);
+  // A CollabDoc component can be reused while navigating between documents.
+  // Never carry a source draft or its position into a different document.
+  useEffect(() => { sourceScope.current = null; setSourceOpen(false); }, [docKey, tabId]);
+  useEffect(() => { if (!teacher || eff !== 'edit') { sourceScope.current = null; setSourceOpen(false); } }, [teacher, eff]);
+  useEffect(() => {
+    if (!editor) return;
+    const copy = () => {
+      if (!teacher || !editor.isFocused || !['edit', 'suggest'].includes(eff)) return;
+      const nodes = editor.state.selection.empty ? editor.getJSON().content ?? [] : editor.state.selection.content().content.toJSON() as JSONContent[];
+      void suiteScriptCopyNodes(nodes, me.uid, mediaSpace || classId).then(ready => navigator.clipboard.writeText(toSuiteScript(ready, SUITE_TYPES))).then(() => void tell('SuiteScript copied as plain text.'), error => void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript.'));
+    };
+    window.addEventListener('ll:copy-suitescript', copy);
+    return () => window.removeEventListener('ll:copy-suitescript', copy);
+  }, [editor, teacher, eff]);
   edRef.current = editor;
+  const editBlockAsSuiteScript = () => {
+    if (!teacher || eff !== 'edit' || !editor || !synced) return;
+    const { $from, $to } = editor.state.selection;
+    const from = $from.depth ? $from.before(1) : editor.state.selection.from;
+    const to = $to.depth ? $to.after(1) : editor.state.selection.to;
+    if (to <= from) return void tell('Select a document block to edit as SuiteScript.');
+    sourceScope.current = { from, to, baseline: JSON.stringify(editor.getJSON()) };
+    setSourceOpen(true);
+  };
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
   // The tab stops set on the ruler, for Tab and for the tabs in the text.
   const tabKey = (layout.tabs ?? []).join(',');
@@ -867,12 +933,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
           <EditorClassContext.Provider value={{ classId: mediaSpace || classId, classmates: [] }}>
             {(() => {
               const hostEl = (
-                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing} data-doc-styles={docKey.replace(/[^\w-]/g, '')}>
+                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing || sourceOpen} data-doc-styles={docKey.replace(/[^\w-]/g, '')}>
                   <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
-                  {writing && <LineAdder editor={editor} host={host} />}
-                  {writing && <BlockHandles editor={editor} host={host} space={classId} />}
-                  {writing && <TableHandles editor={editor} host={host} />}
-                  {writing && <TableInsert editor={editor} host={host} />}
+                  {writing && !sourceOpen && <LineAdder editor={editor} host={host} />}
+                  {writing && !sourceOpen && <BlockHandles editor={editor} host={host} space={classId} />}
+                  {writing && !sourceOpen && <TableHandles editor={editor} host={host} />}
+                  {writing && !sourceOpen && <TableInsert editor={editor} host={host} />}
                 </div>
               );
               const contents = <>
@@ -880,6 +946,38 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                   <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
                 </div>}
                 {hostEl}
+                {sourceOpen && <SuiteScriptSourceEditor
+                  editor={editor}
+                  labels={SUITE_TYPES}
+                  commands={[]}
+                  textOnly
+                  title="Document block"
+                  referenceDestination={classId ? { mode: 'class', classId } : { mode: 'private' }}
+                  loadSource={async () => {
+                    const scope = sourceScope.current;
+                    if (!scope || scope.baseline !== JSON.stringify(editor.getJSON())) throw new Error('The document changed. Reopen this block to see the latest text.');
+                    const nodes = editor.state.doc.content.cut(scope.from, scope.to).toJSON() as JSONContent[];
+                    const ready = await suiteScriptCopyNodes(nodes, me.uid, mediaSpace || classId);
+                    if (scope.baseline !== JSON.stringify(editor.getJSON())) throw new Error('The document changed while SuiteScript was opening. Reopen this block.');
+                    return toSuiteScript(ready, SUITE_TYPES);
+                  }}
+                  prepareContent={async parsed => {
+                    assertSharedSuiteScriptSafe(parsed);
+                    const resolved = await resolveSuiteScriptContent(parsed, classId ? { mode: 'class', classId } : { mode: 'private' });
+                    assertSharedSuiteScriptSafe(resolved.content);
+                    return { content: resolved.content.length ? resolved.content : [{ type: 'paragraph' }], warnings: resolved.warnings };
+                  }}
+                  applyContent={content => {
+                    const scope = sourceScope.current;
+                    if (!scope || scope.baseline !== JSON.stringify(editor.getJSON())) throw new Error('Someone changed this document while you were editing. Copy your SuiteScript, reopen the block and try again.');
+                    const fragment = Fragment.fromArray(content.map(node => editor.schema.nodeFromJSON(node)));
+                    const transaction = editor.state.tr.replaceWith(scope.from, scope.to, fragment);
+                    transaction.doc.check();
+                    editor.view.dispatch(transaction);
+                    sourceScope.current = { from: scope.from, to: scope.from + fragment.size, baseline: JSON.stringify(editor.getJSON()) };
+                  }}
+                  onClose={() => { sourceScope.current = null; setSourceOpen(false); window.requestAnimationFrame(() => editor.commands.focus()); }}
+                />}
               </>;
               return (
                 <Paper editor={editor} title={title} layout={layout} appearance={paperAppearance} paged={paged} ruler={showRuler} onMargins={eff === 'edit' && !locked ? (m) => setLayout({ margin: m }) : undefined} onTabs={eff === 'edit' && !locked ? (t) => setLayout({ tabs: t }) : undefined} onRunning={eff === 'edit' && !locked ? setLayout : undefined}>
@@ -1021,7 +1119,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
       </EditorClassContext.Provider>
       <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={[]} />
-      {page && writing && (
+      {(page || teacher) && writing && !sourceOpen && (
         <EditorContextMenu
           editor={editor}
           host={host}
@@ -1033,6 +1131,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
             ipa: () => editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa('RP')]).run(),
           }}
           extra={[
+            ...(teacher && eff === 'edit' ? [{ label: 'Edit block as SuiteScript', run: editBlockAsSuiteScript }] : []),
+            ...(teacher ? [{ label: 'Copy as SuiteScript', hint: keyLabel(keyFor('copy-suite-script')), run: () => {
+              const nodes = editor.state.selection.empty ? editor.getJSON().content ?? [] : editor.state.selection.content().content.toJSON() as JSONContent[];
+              void suiteScriptCopyNodes(nodes, me.uid, mediaSpace || classId).then(ready => navigator.clipboard.writeText(toSuiteScript(ready, SUITE_TYPES))).then(() => void tell('SuiteScript copied as plain text.'), error => void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript.'));
+            } }] : []),
             { label: 'Comment', hint: 'on the selection', run: startComment, show: !!quote && canComment },
             { label: 'Turn into Heading 1', run: () => editor.chain().focus().setHeading({ level: 1 }).run(), show: !editor.isActive('heading', { level: 1 }) },
             { label: 'Turn into Heading 2', run: () => editor.chain().focus().setHeading({ level: 2 }).run(), show: !editor.isActive('heading', { level: 2 }) },

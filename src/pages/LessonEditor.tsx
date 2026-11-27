@@ -28,8 +28,9 @@ import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes'
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { doc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { updateItem, type ClassDoc, type Item } from '../lib/classes';
@@ -84,6 +85,12 @@ import { useAuth } from '../lib/auth';
 import { isOnline, usePresence } from '../lib/presence';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
+import { SuiteScriptStructureEditor } from '../editor/SuiteScriptStructureEditor';
+import { SUITE_TYPES } from '../editor/TaskEditor';
+import { toSuiteScriptBundle, type SuiteScriptBundle } from '../lib/suiteScriptBundle';
+import { exportSuiteScriptClassLesson, exportSuiteScriptClassTask } from '../lib/suiteScriptExport';
+import { prepareSuiteScriptBundleForClass, replaceSelectedSuiteScriptActivityTasks, replaceSelectedSuiteScriptTask } from '../lib/suiteScriptApply';
+import { notesRef, taskRef } from '../lib/tasks';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { IdentityDialog, IdentityMark, RefsContext, VersionSign } from '../components/Identity';
@@ -92,6 +99,8 @@ import { PaperBar, SheetView, type Zoom } from '../lessons/SheetView';
 import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
+import { useLivePopout } from '../components/LivePopout';
+import { JoinProjector } from '../components/JoinProjector';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
 import { applyAccess, familyOf, isVariant, makeVariant, roleOf, ROLE_NAMES, unlinkVariant, useClassLevels, useGroupSets, useTaskBodies } from '../lib/groups';
@@ -164,6 +173,11 @@ export function LessonEditor() {
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user, profile } = useAuth();
   const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
+  const [suiteStructure, setSuiteStructure] = useState<'task' | 'activity' | null>(null);
+  const [suiteStructureError, setSuiteStructureError] = useState('');
+  const suiteStamps = useRef(new Map<string, { task: number; notes: number }>());
+  const suiteItemStamp = useRef(0);
+  const suiteValidate = useRef<((doc: JSONContent) => void) | null>(null);
   const phone = usePhone(); // on a phone, lessons are taught and looked at, not built
   useEffect(() => {
     if (viewer) setPreview(true);
@@ -229,6 +243,48 @@ export function LessonEditor() {
   const groupSets = useGroupSets(classId);
   const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);
+  const suiteRows = tasks.map(t => ({ id: t.id, title: t.title || 'Untitled task', group: t.family || (t.variants?.length ? t.id : undefined), version: t.variant ? `Learner ${t.variant}` : t.variants?.length ? 'Learner A' : undefined }));
+  const openSuiteStructure = (kind: 'task' | 'activity') => {
+    setExportOpen(false);
+    setSuiteStructureError('');
+    if (!user || viewer || phone || teachingHere || mode !== 'edit') { setSuiteStructureError('Open the editable lesson to use SuiteScript.'); return; }
+    if (kind === 'task' && !task) { setSuiteStructureError('Select a task before opening SuiteScript.'); return; }
+    setSuiteStructure(kind);
+  };
+  const loadSuiteStructure = async (kind: 'task' | 'activity', ids: string[]): Promise<string> => {
+    if (!user || !(await flush())) throw new Error('Save this lesson before opening SuiteScript.');
+    if (kind === 'activity') {
+      const lesson = await getDoc(doc(db, 'classes', classId, 'items', itemId));
+      if (!lesson.exists() || lesson.get('type') !== 'lesson') throw new Error('This lesson is no longer available.');
+      suiteItemStamp.current = lesson.get('updatedAt')?.toMillis?.() ?? 0;
+    }
+    const stamps = await Promise.all(ids.map(async id => {
+      const [taskSnap, noteSnap] = await Promise.all([getDoc(taskRef(classId, itemId, id)), getDoc(notesRef(classId, itemId, id))]);
+      if (!taskSnap.exists()) throw new Error('A destination task was removed. Reopen the lesson.');
+      return [id, { task: taskSnap.get('updatedAt')?.toMillis?.() ?? 0, notes: noteSnap.exists() ? noteSnap.get('updatedAt')?.toMillis?.() ?? 0 : 0 }] as const;
+    }));
+    suiteStamps.current = new Map(stamps);
+    const bundle: SuiteScriptBundle = kind === 'task'
+      ? { kind: 'task', task: await exportSuiteScriptClassTask(classId, itemId, ids[0], user.uid) }
+      : { kind: 'activity', activity: await exportSuiteScriptClassLesson(classId, itemId, user.uid, ids) };
+    return toSuiteScriptBundle(bundle, SUITE_TYPES);
+  };
+  const applySuiteStructure = async (bundle: SuiteScriptBundle, ids: string[]): Promise<void> => {
+    if (!user || viewer || teachingHere || mode !== 'edit') throw new Error('You no longer have permission to edit this lesson.');
+    const validate = suiteValidate.current;
+    if (!validate) throw new Error('The task editor is not ready to check this script. Reopen the task.');
+    const prepared = await prepareSuiteScriptBundleForClass(bundle, classId, validate);
+    if (prepared.length !== ids.length) throw new Error('Every SuiteScript task needs one selected destination task.');
+    const targets = ids.map((id, index) => {
+      const stamp = suiteStamps.current.get(id);
+      if (!stamp) throw new Error('The destination changed. Reopen SuiteScript before applying.');
+      return { taskId: id, expectedTaskUpdatedAt: stamp.task, expectedNotesUpdatedAt: stamp.notes, prepared: prepared[index] };
+    });
+    if (bundle.kind === 'task' && targets.length === 1) await replaceSelectedSuiteScriptTask(classId, itemId, targets[0].taskId, targets[0].expectedTaskUpdatedAt, targets[0].expectedNotesUpdatedAt, targets[0].prepared);
+    else if (bundle.kind === 'activity') await replaceSelectedSuiteScriptActivityTasks(classId, itemId, targets, { expectedItemUpdatedAt: suiteItemStamp.current, draft: bundle.activity });
+    else throw new Error('This SuiteScript has the wrong scope.');
+    setTaskTry(n => n + 1);
+  };
   // Live grid with versions: only the learners on this version, each with their room, role or level.
   const fam = familyOf(tasks, task);
   const famMain = fam[0];
@@ -539,6 +595,9 @@ export function LessonEditor() {
   const panels = usePanels('ll.teacherPanels', 1100);
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
+  const [projectQr, setProjectQr] = useState(false);
+  const { popout, popOut, dock, blocked: popoutBlocked } = useLivePopout(`${classId}-${itemId}`);
+  useEffect(() => { if (!teachingHere) dock(); }, [teachingHere, dock]);
   const [fullscreen, setFullscreen] = useState(false);
   const presentRef = useRef(present);
   presentRef.current = present;
@@ -552,8 +611,8 @@ export function LessonEditor() {
     return () => document.removeEventListener('fullscreenchange', on);
   }, []);
   useEffect(() => {
-    if (!present && document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  }, [present]);
+    if (!present && !projectQr && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, [present, projectQr]);
   const [activityOpen, setActivityOpen] = useState(false);
   const activityRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -977,16 +1036,19 @@ export function LessonEditor() {
                   {lessonStyleOf(c) === 'young' ? (
                     <div className="yl-instr-edit">
                       <YoungIconPicker value={task.ylIcon} content={draft.content} instructions={draft.instructions} onChange={(ylIcon) => void setTaskFlags(classId, itemId, task.id, { ylIcon })} />
-                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                      <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                     </div>
                   ) : (
-                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                    <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} suiteScriptEnabled suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                   )}
                 </div>
                 <div className="frame-body">
                   <TaskEditor
                     key={editorKey}
                     compact
+                    suiteScriptEnabled
+                    suiteScriptLearnerSeat={Math.max(0, fam.findIndex(version => version.id === task.id))}
+                    onSchemaReady={validate => { suiteValidate.current = validate; }}
                     content={draft.content}
                     onChange={(content) => change({ content })}
                     classmates={classmates}
@@ -1005,6 +1067,53 @@ export function LessonEditor() {
                 </div>
               </div>
   ) : null;
+  const livePanel = task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid || !!popout) ? (
+            <LivePanel
+              classId={classId}
+              taskId={task.id}
+              content={previewKey.content}
+              answerKey={previewKey.key}
+              presence={inLesson}
+              seeLearners={seeLearners}
+              revealedIds={singles}
+              onRevealQuestion={toggleSingle}
+              signals={signals}
+              codes={c?.codes ?? DEFAULT_CODES}
+              annotations={teacherAnns}
+              onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
+              people={
+                <div className="lp-people">
+                  <span className="session-count">
+                    <span className="live-dot" aria-hidden="true" />
+                    {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
+                  </span>
+                  <span className="session-people">
+                    {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
+                    {online.map((p) => (
+                      <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere') + (signals[p.id]?.hand ? ' hand' : '') + (signals[p.id]?.stuck ? ' stuck' : '')} data-tip={p.itemId === itemId ? (!seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}`) + (signals[p.id]?.hand ? ' · hand up' : '') + (signals[p.id]?.stuck ? ' · stuck' : '') : `${p.name} · online, not in this lesson`}>
+                        <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
+                        <span className="pname">{p.name.split(' ')[0]}</span>
+                        {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
+                      </span>
+                    ))}
+                  </span>
+                  {hands.length > 0 && (
+                    <span className="hint">
+                      <Icon name="wave" size="14" /> {hands.map((h) => h.name.split(' ')[0]).join(', ')} {hands.length === 1 ? 'has a hand up' : 'have hands up'} ·{' '}
+                      <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
+                        Lower all
+                      </button>
+                    </span>
+                  )}
+                </div>
+              }
+              rooms={activeSet?.groups}
+              only={gridOnly}
+              tagOf={tagOf}
+              onPopOut={popout ? undefined : popOut}
+              popoutBlocked={popoutBlocked}
+            />
+          ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
     <RefsContext.Provider value={refsValue}>
@@ -1031,6 +1140,10 @@ export function LessonEditor() {
                   Groups and breakout rooms
                 </button>
               )}
+              {!viewer && !phone && mode === 'edit' && !teachingHere && item?.type === 'lesson' && <>
+                <button role="menuitem" onClick={() => openSuiteStructure('task')}>Edit selected task as SuiteScript…</button>
+                <button role="menuitem" onClick={() => openSuiteStructure('activity')}>Edit lesson as SuiteScript…</button>
+              </>}
               <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), openShortcuts(teachingHere ? 'teaching' : 'writing'))}>
                 Keyboard shortcuts
               </button>
@@ -1101,6 +1214,13 @@ export function LessonEditor() {
           <TextSizeControl />
         </span>
       </TopBar>
+
+      {projectQr && c && item && <JoinProjector className={c.name} classCode={c.classCode} classId={classId} lesson={{ id: itemId, title: item.title }} onClose={() => setProjectQr(false)} />}
+      {popout && livePanel && createPortal(
+        <div className="shell wide classes-shell live-popout-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+          <header className="live-popout-head"><span><strong>{item?.title ?? 'Live lesson'}</strong><small>Teacher controls · {task?.title ?? ''}</small></span><button type="button" className="btn small-btn" onClick={dock}>Dock back</button></header>
+          {livePanel}
+        </div>, popout.target)}
 
       {quizOpen && <GameDialog classId={classId} itemId={itemId} tasks={tasks} currentTaskId={selected ?? undefined} onClose={() => setQuizOpen(false)} onSelect={(id) => void select(id)} />}
       {NOTEBOOK && user && (
@@ -1293,6 +1413,8 @@ export function LessonEditor() {
               </span>
               {/* Full screen: the side panels hide and the task fills the screen, for sharing it with the class. */}
               <span className="tb-group hide-phone">
+                {c && <button type="button" className="btn small-btn" onClick={() => setProjectQr(true)}>Project QR</button>}
+                {popout && <button type="button" className="btn small-btn" onClick={dock}>Dock controls</button>}
                 {present && <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />}
                 <IconBtn icon={present ? 'fullscreenOff' : 'fullscreen'} label={present ? 'Leave full screen (Esc)' : 'Full screen (F)'} active={present} onClick={() => changeMode(present ? 'teach' : 'present')} />
               </span>
@@ -1547,51 +1669,7 @@ export function LessonEditor() {
           </div>
 
           {panels.right && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
-          {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid) && (
-            <LivePanel
-              classId={classId}
-              taskId={task.id}
-              content={previewKey.content}
-              answerKey={previewKey.key}
-              presence={inLesson}
-              seeLearners={seeLearners}
-              revealedIds={singles}
-              onRevealQuestion={toggleSingle}
-              signals={signals}
-              codes={c?.codes ?? DEFAULT_CODES}
-              annotations={teacherAnns}
-              onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
-              people={
-                <div className="lp-people">
-                  <span className="session-count">
-                    <span className="live-dot" aria-hidden="true" />
-                    {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
-                  </span>
-                  <span className="session-people">
-                    {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
-                    {online.map((p) => (
-                      <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere') + (signals[p.id]?.hand ? ' hand' : '') + (signals[p.id]?.stuck ? ' stuck' : '')} data-tip={p.itemId === itemId ? (!seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}`) + (signals[p.id]?.hand ? ' · hand up' : '') + (signals[p.id]?.stuck ? ' · stuck' : '') : `${p.name} · online, not in this lesson`}>
-                        <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
-                        <span className="pname">{p.name.split(' ')[0]}</span>
-                        {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
-                      </span>
-                    ))}
-                  </span>
-                  {hands.length > 0 && (
-                    <span className="hint">
-                      <Icon name="wave" size="14" /> {hands.map((h) => h.name.split(' ')[0]).join(', ')} {hands.length === 1 ? 'has a hand up' : 'have hands up'} ·{' '}
-                      <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
-                        Lower all
-                      </button>
-                    </span>
-                  )}
-                </div>
-              }
-              rooms={activeSet?.groups}
-              only={gridOnly}
-              tagOf={tagOf}
-            />
-          )}
+          {livePanel && (popout ? <aside className="task-side live-panel live-popout-placeholder"><span>Live controls are in a separate window.</span><button type="button" className="btn small-btn" onClick={dock}>Dock back</button></aside> : livePanel)}
           {task && draft && viewer && (
             <aside className="task-side" aria-label="Viewing">
               <span className="eyebrow">Viewing</span>
@@ -1722,6 +1800,8 @@ export function LessonEditor() {
           }}
         />
       )}
+      {suiteStructureError && <div className="toasts" role="alert"><div className="toast">{suiteStructureError}<button type="button" className="btn small-btn" onClick={() => setSuiteStructureError('')}>Close</button></div></div>}
+      {suiteStructure && <SuiteScriptStructureEditor kind={suiteStructure} title={suiteStructure === 'task' ? task?.title || 'Selected task' : item?.title || 'Lesson'} rows={suiteStructure === 'task' ? suiteRows.filter(row => row.id === selected) : suiteRows} classId={classId} loadSource={ids => loadSuiteStructure(suiteStructure, ids)} applyBundle={applySuiteStructure} onClose={() => setSuiteStructure(null)} />}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
       {fromLib && user && (
         <LibraryPicker

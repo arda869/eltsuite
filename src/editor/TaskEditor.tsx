@@ -9,12 +9,20 @@ import { InvestigationNode, newInvestigationBlock } from '../linguistics/Investi
 import { FAMILIES } from '../linguistics/model';
 import { SpeakingBlock, newSpeaking } from './SpeakingNode';
 import { auth } from '../lib/firebase';
+import { useAuth } from '../lib/auth';
+import { isSuiteScript, parseSuiteScript, suiteScriptMessageSafe, toSuiteScript, type SuiteScriptTypes } from '../lib/suiteScript';
+import { suiteScriptGuide } from '../lib/suiteScriptGuide';
+import { SuiteScriptSourceEditor } from './SuiteScriptSourceEditor';
 import { imageToData } from '../lib/flash';
 import { Extension } from '@tiptap/core';
 import {QUESTION_TYPES} from '../lib/questions';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
+import { resolveSuiteScriptContent } from '../lib/suiteScriptResolve';
+import { suiteScriptCopyNodes } from '../lib/suiteScriptCopy';
+import { keyLabel } from '../lib/keys';
+import { keyFor } from '../lib/shortcuts';
 import { newTimeline, TimelineNode } from './Timeline';
 import { DG, DG_KINDS, DiagramCell, DiagramNode, newDiagram } from './Diagram';
 import { TableHandles } from './TableHandles';
@@ -260,6 +268,18 @@ export const COMMANDS: Cmd[] = [
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
   ...BLOCK_CMDS,
 ];
+// The names come from the same registry as the teacher's insertion menu.
+const suiteCommandLabel = (key: string) => COMMANDS.find(command => command.key === key)?.label;
+export const SUITE_TYPES: SuiteScriptTypes = Object.fromEntries([
+  ['gap', 'gap'], ['gap:letters', 'lettergap'], ['gap:stem', 'wordform'],
+  ['choice:radio', 'radio'], ['choice:dropdown', 'dropdown'], ['choice:truefalse', 'truefalse'], ['choice:notgiven', 'notgiven'],
+  ['match', 'match'], ['dropgap', 'drop'], ['wordbank', 'bank'], ['order', 'order'],
+  ['writing', 'writing'], ['collab', 'collab'], ['upload', 'upload'], ['survey', 'survey'],
+  ['reflect:self', 'reflect'], ['reflect:peer', 'peer'], ['board:board', 'board'], ['board:postits', 'postits'],
+  ...COMMUNICATIVE_INSERTS.map(command => [`communicativeActivity:${command.key.slice('activity-'.length)}`, command.key]),
+  ...FAMILIES.map(family => [`investigation:${family.id}`, family.id]),
+  ...COMMANDS.filter(command => command.key.startsWith('pq-')).map(command => [`pq:${command.key.slice(3)}`, command.key]),
+].map(([nodeType, commandKey]) => [nodeType, suiteCommandLabel(commandKey)]).filter((entry): entry is [string, string] => !!entry[1]));
 // The questions that can sit on a PDF page, in a box of their own.
 export const PDF_Q_KEYS = ['gap', 'lettergap', 'wordform', 'radio', 'dropdown', 'truefalse', 'notgiven', 'match', 'drop', 'order', 'writing'];
 setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter((c): c is Cmd => !!c));
@@ -530,7 +550,10 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task', initialDesignId = '', designerReturnTo = '', onDesignHandoffDone, suiteScriptEnabled = false, suiteScriptAudience = 'private', suiteScriptLearnerSeat = 0, suiteScriptPreviewAudience = 'learner', onSchemaReady }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void; initialDesignId?: string; designerReturnTo?: string; onDesignHandoffDone?: () => void; suiteScriptEnabled?: boolean; suiteScriptAudience?: 'private' | 'resourceHub'; suiteScriptLearnerSeat?: number; suiteScriptPreviewAudience?: 'learner' | 'teacher'; onSchemaReady?: (validate: (doc: JSONContent) => void) => void }) {
+  const [sourceMode, setSourceMode] = useState(false);
+  const teacherRef = useRef(false);
+  teacherRef.current = useAuth().profile?.role === 'teacher';
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -629,6 +652,24 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       transformPastedHTML: cleanPastedHTML,
       // Paste or drop pictures straight into the task: they are uploaded to the class.
       handlePaste: (view, e) => {
+        const plain = e.clipboardData?.getData('text/plain') ?? '';
+        if (teacherRef.current && isSuiteScript(plain)) {
+          e.preventDefault();
+          const result = parseSuiteScript(plain, SUITE_TYPES);
+          if (result.errors.length) { void tell(result.errors.join('\n')); return true; }
+          void (async () => {
+            try {
+              const place = classRef.current;
+              const resolved = place.startsWith('chat:')
+                ? { content: suiteScriptMessageSafe(result.content), warnings: [] }
+                : await resolveSuiteScriptContent(result.content, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+              if (resolved.warnings.length) { void tell(resolved.warnings.join('\n')); return; }
+              resolved.content.forEach(item => view.state.schema.nodeFromJSON(item).check());
+              await pasteClip({ v: 1, space: '', content: resolved.content });
+            } catch (error) { void tell(`SuiteScript could not be pasted here: ${error instanceof Error ? error.message : String(error)}`); }
+          })();
+          return true;
+        }
         // Elements copied from a message or another task: with answers, pictures and sounds.
         const clip = readClip(e.clipboardData?.getData('text/html'));
         if (clip) {
@@ -659,6 +700,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   classRef.current = classId;
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
+  useEffect(() => {
+    if (editor && onSchemaReady) onSchemaReady(doc => editor.schema.nodeFromJSON(doc).check());
+  }, [editor, onSchemaReady]);
   // Copy: the usual, plus the elements as JSON with where their media live.
   function copyOut(view: EditorView, e: ClipboardEvent, cut: boolean) {
     const sel = view.state.selection;
@@ -710,6 +754,23 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       void tell('We couldn’t upload the picture. Try a smaller one.');
     }
   }
+  async function copySuiteScript(guide = false) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const slice = ed.state.selection.empty ? (ed.getJSON().content ?? []) : (ed.state.selection.content().content.toJSON() as JSONContent[]);
+    try {
+      const nodes = guide || !auth.currentUser ? slice : await suiteScriptCopyNodes(slice, auth.currentUser.uid, classRef.current);
+      const value = guide ? suiteScriptGuide(COMMANDS) : toSuiteScript(nodes, SUITE_TYPES);
+      await navigator.clipboard.writeText(value);
+      void tell(guide ? 'AI instructions copied.' : 'SuiteScript copied as plain text.');
+    } catch (error) { void tell(error instanceof Error ? error.message : 'Your browser could not copy SuiteScript. Try again or allow clipboard access.'); }
+  }
+  useEffect(() => {
+    if (!editor) return;
+    const copy = () => { if (teacherRef.current && editor.isFocused) void copySuiteScript(); };
+    window.addEventListener('ll:copy-suitescript', copy);
+    return () => window.removeEventListener('ll:copy-suitescript', copy);
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
   const [picOpen, setPicOpen] = useState(false);
   useEffect(() => { if (initialDesignId) setPicOpen(true); }, [initialDesignId]);
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -810,7 +871,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   return (
     <EditorClassContext.Provider value={classCtx}>
     <div className={'task-editor' + (handles ? ' with-handles' : '')}>
-      <div ref={tbRef} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting" aria-orientation="horizontal" onKeyDown={(e) => toolbarKeys(e, editor)} onClickCapture={(e) => toolbarClick(e)} onFocus={(e) => toolbarFocus(e)}>
+      <div ref={tbRef} style={sourceMode ? { display: 'none' } : undefined} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting" aria-orientation="horizontal" onKeyDown={(e) => toolbarKeys(e, editor)} onClickCapture={(e) => toolbarClick(e)} onFocus={(e) => toolbarFocus(e)}>
         {(() => {
           const tools: [string, React.ReactNode][] = [
             ['bold', BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)],
@@ -914,9 +975,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           </button>
         )}
       </div>
-      {picOpen && editor && <PictureDialog editor={editor} classId={classId} initialDesignId={initialDesignId} returnTo={designerReturnTo} onClose={() => { setPicOpen(false); if (initialDesignId) onDesignHandoffDone?.(); }} />}
-      {pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
-      {questionAnchor && <QuestionDropdown
+      {!sourceMode && picOpen && editor && <PictureDialog editor={editor} classId={classId} initialDesignId={initialDesignId} returnTo={designerReturnTo} onClose={() => { setPicOpen(false); if (initialDesignId) onDesignHandoffDone?.(); }} />}
+      {!sourceMode && pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
+      {!sourceMode && questionAnchor && <QuestionDropdown
         anchor={questionAnchor}
         commands={COMMANDS.filter(c => QUESTION_SECTIONS.some(s => s.keys.includes(c.key)))}
         onClose={() => setQuestionAnchor(null)}
@@ -926,7 +987,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           if (c) window.setTimeout(() => { placeForBlock(editor, c); c.run(editor); }, 0);
         }}
       />}
-      {gallery && (
+      {!sourceMode && gallery && (
         <InsertGallery
           commands={[...COMMANDS, ...bankCmds].filter(c=>!classId.startsWith('chat:')||!c.key.startsWith('activity-')).filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
           onClose={() => setGallery(false)}
@@ -942,7 +1003,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           }}
         />
       )}
-      {editor.isActive('orderedList') && (
+      {!sourceMode && editor.isActive('orderedList') && (
         <div className="table-bar" role="toolbar" aria-label="Numbered list">
           <span className="tb-group">
             <span className="tb-label">Numbering</span>
@@ -962,7 +1023,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           </span>
         </div>
       )}
-      {editor.isActive('table') && (
+      {!sourceMode && editor.isActive('table') && (
         <div className="table-bar" role="toolbar" aria-label="Table">
           <span className="tb-group">
             <span className="tb-label">Row</span>
@@ -1009,20 +1070,25 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           </span>
         </div>
       )}
-      <div className="editor-host" ref={setHost}>
+      <div className="editor-host" ref={setHost} style={sourceMode ? { display: 'none' } : undefined}>
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
         {handles && <LineAdder editor={editor} host={host} />}
         {handles && <BlockHandles editor={editor} host={host} space={classId} />}
         {handles && <TableHandles editor={editor} host={host} />}
-        <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
-        <MentionMenu menu={mention} />
-        <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />
-        <EditorContextMenu
+        {!sourceMode && <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />}
+        {!sourceMode && <MentionMenu menu={mention} />}
+        {!sourceMode && <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />}
+        {!sourceMode && <EditorContextMenu
           editor={editor}
           host={host}
           onDefinition={() => setDefOpen(true)}
           onLink={() => setLinkOpen(true)}
+          extra={teacherRef.current ? [
+            ...(suiteScriptEnabled && !classId.startsWith('chat:') ? [{ label: 'Edit as SuiteScript', run: () => { setDefOpen(false); setLinkOpen(false); setSourceMode(true); } }] : []),
+            { label: 'Copy as SuiteScript', hint: keyLabel(keyFor('copy-suite-script')), run: () => void copySuiteScript() },
+            { label: 'Copy SuiteScript AI instructions', run: () => void copySuiteScript(true) },
+          ] : []}
           actions={{
             gap: (t) => editor.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, answers: [t] } }).run(),
             drop: (t) => {
@@ -1049,9 +1115,35 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             notebook: onNotebook,
             bank: onBank ? () => onBank(((editor.state.selection.content().toJSON() as { content?: JSONContent[] } | null)?.content ?? []) as JSONContent[]) : undefined,
           }}
-        />
-        {!editor.view.dom.closest('.text-only') && <SlashMenu editor={editor} slash={slash} />}
+        />}
+        {!sourceMode && !editor.view.dom.closest('.text-only') && <SlashMenu editor={editor} slash={slash} />}
       </div>
+      {sourceMode && <SuiteScriptSourceEditor
+        editor={editor}
+        previewLearnerSeat={suiteScriptLearnerSeat}
+        previewAudience={suiteScriptPreviewAudience}
+        labels={SUITE_TYPES}
+        commands={COMMANDS}
+        textOnly={textOnly}
+        title={label}
+        previewClassId={suiteScriptAudience === 'resourceHub' ? '' : classRef.current}
+        referenceDestination={suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : classRef.current && !classRef.current.startsWith('user:') && !classRef.current.startsWith('chat:') ? { mode: 'class', classId: classRef.current } : { mode: 'private' }}
+        loadSource={async () => {
+          const uid = auth.currentUser?.uid;
+          if (!uid) throw new Error('Sign in before editing this task as SuiteScript.');
+          const ready = await suiteScriptCopyNodes(editor.getJSON().content ?? [], uid, classRef.current);
+          return toSuiteScript(ready, SUITE_TYPES);
+        }}
+        prepareContent={async (parsed) => {
+          const place = classRef.current;
+          const resolved = place.startsWith('chat:')
+            ? { content: suiteScriptMessageSafe(parsed), warnings: [] }
+            : await resolveSuiteScriptContent(parsed, suiteScriptAudience === 'resourceHub' ? { mode: 'resourceHub' } : place && !place.startsWith('user:') ? { mode: 'class', classId: place } : { mode: 'private' });
+          return { content: resolved.content.length ? resolved.content : [{ type: 'paragraph' }], warnings: resolved.warnings };
+        }}
+        applyContent={(prepared) => { editor.commands.setContent({ type: 'doc', content: prepared }, true); }}
+        onClose={() => { setSourceMode(false); window.requestAnimationFrame(() => editor.commands.focus()); }}
+      />}
     </div>
     </EditorClassContext.Provider>
   );

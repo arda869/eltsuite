@@ -7,9 +7,10 @@ import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 /** Draft and public editions live in different collections. Public reads never expose draft text. */
 export type HubEditorState = 'draft' | 'in-review';
 export type HubResourceType = 'activity' | 'lesson';
-export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; content: JSONContent };
+export type HubEditorSection = { id: string; title: string; audience: 'learner' | 'teacher'; kind: 'task' | 'notes' | 'answer-key'; instructions: string; instrDoc?: JSONContent | null; printInstructions?: string; printInstrDoc?: JSONContent | null; versionGroup?: string; versionLabel?: string; identity?: import('../lib/identity').ActivityIdentity | null; suiteScriptTaskMeta?: Pick<import('../lib/suiteScriptBundle').SuiteScriptTaskDraft, 'layout' | 'afterCheck' | 'showScore' | 'hidden' | 'locked' | 'colScroll' | 'paper' | 'anchor'>; content: JSONContent };
 export type HubResourceDraft = {
   id: string; resourceType?: HubResourceType; collectionId: HubCollectionId; number: string; title: string; summary: string; focus: string;
+  aim?: string;
   level: string; minutes: number; interaction: string; prep: 'No prep' | 'Print' | 'Print and cut';
   mode: 'Face-to-face and online' | 'Face-to-face only' | 'Online only'; energy: 1 | 2 | 3;
   state: HubEditorState; revision: number; publishedRevision: number | null; publishedAt: number | null;
@@ -149,7 +150,7 @@ export async function publishResource(id: string, expectedRevision: number, uid:
       if (prior.exists() && (prior.data().collectionId !== draft.collectionId || (prior.data().resourceType ?? 'activity') !== (draft.resourceType ?? 'activity') || (draft.resourceType !== 'lesson' && String(prior.data().number).padStart(3, '0') !== draft.number.padStart(3, '0')))) throw new Error('A published resource’s type, collection and number cannot change. Create a new resource instead.');
     }
     const publishedAt = Date.now();
-    const edition: HubResourceEdition = { id: draft.id, resourceType: draft.resourceType ?? 'activity', collectionId: draft.collectionId, number: draft.number, title: draft.title, summary: draft.summary, focus: draft.focus, level: draft.level, minutes: draft.minutes, interaction: draft.interaction, prep: draft.prep, mode: draft.mode, energy: draft.energy, sections: withGeneratedAnswerKey(draft.sections), revision: draft.revision, edition: draft.revision, publishedAt, publishedBy: uid };
+    const edition: HubResourceEdition = { id: draft.id, resourceType: draft.resourceType ?? 'activity', collectionId: draft.collectionId, number: draft.number, title: draft.title, summary: draft.summary, focus: draft.focus, ...(draft.aim ? { aim: draft.aim } : {}), level: draft.level, minutes: draft.minutes, interaction: draft.interaction, prep: draft.prep, mode: draft.mode, energy: draft.energy, sections: withGeneratedAnswerKey(draft.sections), revision: draft.revision, edition: draft.revision, publishedAt, publishedBy: uid };
     tx.set(publicRef(id), edition);
     if (claimRef) tx.set(claimRef, { resourceId: draft.id, collectionId: draft.collectionId, number: draft.number });
     tx.set(doc(publicRef(id), 'editions', String(draft.revision)), edition);

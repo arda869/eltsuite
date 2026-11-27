@@ -17,7 +17,7 @@ export function HostPage() {
   const { runId = '' } = useParams();
   const live = useLive(runId);
   if (live === null) return <Backdrop className="qz-host"><p className="qz-loading" role="status">One moment…</p></Backdrop>;
-  if (live === false) return <Backdrop className="qz-host"><div className="qz-center"><h1 className="qz-big">This game isn’t here any more.</h1><a className="qz-btn" href="/games">Go to your gamezes</a></div></Backdrop>;
+  if (live === false) return <Backdrop className="qz-host"><div className="qz-center"><h1 className="qz-big">This game isn’t here any more.</h1><a className="qz-btn" href="/classes">Open Classes</a></div></Backdrop>;
   return <Host runId={runId} live={live} />;
 }
 

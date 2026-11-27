@@ -12,7 +12,7 @@ import { isMac, keyLabel } from './keys';
 // them and it works in full screen only. Keys the computer itself keeps (quit, F11…) can't be used.
 
 export type CmdId = 'go-home' | 'go-classes' | 'go-files' | 'go-messages' | 'go-timetable' | 'go-hub' | 'go-collab' | 'go-design' | 'go-recordings' | 'go-settings'
-  | 'new-doc' | 'new-lesson' | 'new-recording' | 'new-design' | 'search';
+  | 'new-doc' | 'new-lesson' | 'new-recording' | 'new-design' | 'search' | 'copy-suite-script';
 export type Cmd = { id: CmdId; group: 'Go to' | 'Make' | 'Everywhere'; label: string; def: string; to?: string; make?: 'doc' | 'lesson' };
 
 export const COMMANDS: Cmd[] = [
@@ -31,6 +31,7 @@ export const COMMANDS: Cmd[] = [
   { id: 'new-recording', group: 'Make', label: 'A new recording', def: 'N R', to: '/studio/sound/new' },
   { id: 'new-design', group: 'Make', label: 'A new design', def: 'N P', to: '/design' },
   { id: 'search', group: 'Everywhere', label: 'Search everything', def: 'Mod+K' },
+  { id: 'copy-suite-script', group: 'Everywhere', label: 'Copy as SuiteScript', def: isMac ? 'Ctrl+Shift+C' : 'Mod+Shift+C' },
 ];
 
 // Keys a browser keeps for itself: a page never sees them, or can't stop what they do.
@@ -67,7 +68,7 @@ export function comboOf(e: KeyboardEvent): string {
   const k = code || (single ? e.key.toUpperCase() : e.key === ' ' ? 'Space' : e.key.replace(/^Arrow/, ''));
   const shift = e.shiftKey && (!single || !!code);
   const mod = isMac ? e.metaKey : e.ctrlKey;
-  return [mod && 'Mod', e.altKey && 'Alt', shift && 'Shift', k].filter(Boolean).join('+');
+  return [mod && 'Mod', isMac && e.ctrlKey && 'Ctrl', e.altKey && 'Alt', shift && 'Shift', k].filter(Boolean).join('+');
 }
 export const label = (combo: string) => combo.split(' ').map(keyLabel).join(' then ');
 export function problemWith(combo: string, id: CmdId, keys: Record<string, string>): string {
@@ -76,7 +77,7 @@ export function problemWith(combo: string, id: CmdId, keys: Record<string, strin
   if (NEVER.has(first)) return `${keyLabel(first)} belongs to your computer, so ELT Suite can’t use it. Try another key, or two keys one after the other, such as G then a letter.`;
   if (RESERVED.has(first) && !canLock) return `${keyLabel(first)} belongs to your browser, and this browser keeps it even in full screen. Try another key, or two keys one after the other, such as G then a letter.`;
   if (TAKEN[combo]) return `${keyLabel(combo)} is already used for ${TAKEN[combo]}.`;
-  if (combo.split(' ').length === 1 && !combo.includes('Mod') && !combo.includes('Alt') && /^[A-Z0-9?]$|^Shift\+[A-Z]$/.test(combo)) return 'A single letter would get in the way of typing. Add Ctrl (⌘) or use two keys one after the other.';
+  if (combo.split(' ').length === 1 && !combo.includes('Mod') && !combo.includes('Ctrl') && !combo.includes('Alt') && /^[A-Z0-9?]$|^Shift\+[A-Z]$/.test(combo)) return 'A single letter would get in the way of typing. Add Ctrl (⌘) or use two keys one after the other.';
   const other = COMMANDS.find((c) => c.id !== id && (keys[c.id] ?? c.def) === combo);
   if (other) return `${label(combo)} is already used for ${other.group === 'Go to' ? 'going to ' + other.label : other.label.toLowerCase()}.`;
   const prefix = COMMANDS.find((c) => c.id !== id && (keys[c.id] ?? c.def).split(' ')[0] === combo);

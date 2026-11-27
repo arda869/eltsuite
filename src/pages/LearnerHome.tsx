@@ -73,7 +73,16 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const unreadMsgs = useUnread(profile?.role === 'learner' ? profile.learnerId : undefined);
   const [secretOpen, setSecretOpen] = useState(false);
   // First visit: invite the learner to choose a picture.
-  const [askPicture, setAskPicture] = useState(() => !isProxyTab()) // a teacher viewing as the learner is not asked to choose their picture;
+  const [askPicture, setAskPicture] = useState(() => {
+    if (isProxyTab()) return false; // a teacher viewing as the learner is not asked to choose their picture
+    try { return sessionStorage.getItem(`ll.pictureLater:${user?.uid ?? ''}`) !== '1'; }
+    catch { return true; }
+  });
+  const closePicture = () => {
+    try { sessionStorage.setItem(`ll.pictureLater:${user?.uid ?? ''}`, '1'); } catch { /* keep the choice for this screen */ }
+    setPicking(false);
+    setAskPicture(false);
+  };
   const [live, setLiveState] = useState<LiveState | null>(null);
 
   useEffect(() => {
@@ -185,7 +194,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       </header>
       {secretOpen && c && profile?.role === 'learner' && <MySecretDialog classId={classId} classCode={c.classCode} learnerId={profile.learnerId} onClose={() => setSecretOpen(false)} />}
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
-      {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={() => (setPicking(false), setAskPicture(false))} />}
+      {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={closePicture} />}
 
       {c === null || c?.status === 'deleted' ? (
         <p className="placeholder">{tr('You’re no longer in this class. Ask your teacher if this is a mistake.')}</p>

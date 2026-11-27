@@ -41,6 +41,8 @@ type Props = {
   rooms?: { id: string; name: string; members: string[] }[]; // breakout rooms in use
   only?: string[] | null; // learners who have this version (null = everyone)
   tagOf?: (learnerId: string) => string; // their role, level or version
+  onPopOut?: () => void;
+  popoutBlocked?: boolean;
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -86,7 +88,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, people, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, people, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf, onPopOut, popoutBlocked = false }: Props) {
   const [room, setRoom] = useState<string>('all');
   const [detail, setDetail] = useState<Learner | null>(null);
   const [allRoster, setRoster] = useState<Learner[]>([]);
@@ -136,6 +138,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
 
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
+      {onPopOut && <div className="lp-popout-control"><button type="button" className="btn small-btn" onClick={onPopOut}>Pop out controls</button>{popoutBlocked && <span className="hint" role="alert">Your browser blocked the separate window. Allow pop-ups for ELT Suite, then try again. Your controls are still here.</span>}</div>}
       {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} codes={codes} annotations={annotations} />}
       {people}
       {notesEditor !== undefined && (

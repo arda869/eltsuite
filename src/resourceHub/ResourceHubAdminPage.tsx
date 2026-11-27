@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { TopBar } from '../components/TopBar';
@@ -16,6 +16,10 @@ import { createCollectionDraft, createResourceDraft, getCollectionDraft, getReso
 import { generatedAnswerLines, withGeneratedAnswerKey } from './hubAnswerKey';
 import { ResourceLivePreview } from './ResourceLivePreview';
 import { HubLessonEditor } from './HubLessonEditor';
+import { SuiteScriptStructureEditor } from '../editor/SuiteScriptStructureEditor';
+import { SUITE_TYPES } from '../editor/TaskEditor';
+import { toSuiteScriptBundle, type SuiteScriptBundle } from '../lib/suiteScriptBundle';
+import { exportSuiteScriptHubDraft, saveSuiteScriptBundleToHubDraft } from './suiteScriptHubApply';
 import { ResourceActivityDirectory } from './ResourceActivityDirectory';
 import { ResourceActivityMetrics } from './ResourceActivityMetrics';
 import { prepareStaticPage, saveStaticKitOverride, subscribeStaticKitOverride, type HubStaticOverride } from './hubStaticOverride';
@@ -75,7 +79,10 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
   const [tab, setTab] = useState<'content' | 'details' | 'history'>('content');
   const [editions, setEditions] = useState<{ edition: number; publishedAt: number }[]>([]);
   const [printPreview, setPrintPreview] = useState<Uint8Array | null>(null);
-  const [keyReviewed, setKeyReviewed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [suiteStructure, setSuiteStructure] = useState<'task' | 'activity' | null>(null);
+  const suiteSharedDetails = useRef('');
   // As in a lesson: the digital view, or the printed page beside the task.
   const [paper, setPaperState] = useState(() => { try { return localStorage.getItem('rhe-paper') === '1'; } catch { return false; } });
   const setPaper = (v: boolean) => { setPaperState(v); try { localStorage.setItem('rhe-paper', v ? '1' : ''); } catch { /* fine */ } };
@@ -126,31 +133,39 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
   }, [dirty]);
   const validation = useMemo(() => draft ? validateResource(draft) : [], [draft]);
   const editable = draft?.state === 'draft';
-  const patch = (value: Partial<HubResourceDraft>) => { setKeyReviewed(false); setDraft(current => current ? { ...current, ...value } : current); };
-  const patchSection = (sectionId: string, value: Partial<HubEditorSection>) => { setKeyReviewed(false); setDraft(current => current ? { ...current, sections: current.sections.map(section => section.id === sectionId ? { ...section, ...value } : section) } : current); };
+  const patch = (value: Partial<HubResourceDraft>) => setDraft(current => current ? { ...current, ...value } : current);
+  const patchSection = (sectionId: string, value: Partial<HubEditorSection>) => setDraft(current => current ? { ...current, sections: current.sections.map(section => section.id === sectionId ? { ...section, ...value } : section) } : current);
   const save = async () => {
     if (!draft || !saved || busy || !dirty) return;
-    setBusy(true); setError('');
-    try { const next = await saveResourceDraft(draft, saved.revision); setDraft(next); setSaved(next); }
-    catch (cause) { setError(`Couldn’t save the draft. ${friendlyError(cause)}`); }
-    finally { setBusy(false); }
+    const submitted = draft;
+    setBusy(true); setSaving(true); setSaveFailed(false); setError('');
+    try {
+      const next = await saveResourceDraft(submitted, saved.revision);
+      setSaved(next);
+      // Changes made while the request was in flight remain in the editor.
+      setDraft(current => current && JSON.stringify(current) !== JSON.stringify(submitted)
+        ? { ...current, revision: next.revision, updatedAt: next.updatedAt }
+        : next);
+    }
+    catch (cause) { setSaveFailed(true); setError(`Couldn’t save the draft. ${friendlyError(cause)}`); }
+    finally { setBusy(false); setSaving(false); }
   };
   const review = async () => {
     if (!draft || busy || dirty) return;
     setBusy(true); setError('');
-    try { await sendResourceForReview(draft.id, draft.revision); const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); setKeyReviewed(false); }
+    try { await sendResourceForReview(draft.id, draft.revision); const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); }
     catch (cause) { setError(`Couldn’t send for review. ${friendlyError(cause)}`); }
     finally { setBusy(false); }
   };
   const returnToDraft = async () => {
     if (!draft || busy) return;
     setBusy(true); setError('');
-    try { await returnResourceToDraft(draft.id, draft.revision); const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); setKeyReviewed(false); }
+    try { await returnResourceToDraft(draft.id, draft.revision); const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); }
     catch (cause) { setError(`Couldn’t reopen the draft. ${friendlyError(cause)}`); }
     finally { setBusy(false); }
   };
   const publish = async () => {
-    if (!draft || busy || dirty || !keyReviewed) return;
+    if (!draft || busy || dirty || validation.length) return;
     setBusy(true); setError('');
     try {
       const activity = publishedResourceToActivity({ ...draft, sections: withGeneratedAnswerKey(draft.sections), edition: draft.revision, publishedAt: Date.now(), publishedBy: uid } as HubResourceEdition);
@@ -163,7 +178,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
       const pdf = await makeResourceLessonPdf({ activity, collection, learnerIds, teacherIds, copies: 1, paper: 'a4', colour: 'colour' });
       if (pdf.length < 100 || new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') throw new Error('The printable edition could not be rendered.');
       const edition = await publishResource(draft.id, draft.revision, uid);
-      const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); setKeyReviewed(false); setEditions(current => [{ edition: edition.edition, publishedAt: edition.publishedAt }, ...current]);
+      const next = await getResourceDraft(draft.id); setSaved(next); setDraft(next); setEditions(current => [{ edition: edition.edition, publishedAt: edition.publishedAt }, ...current]);
     }
     catch (cause) { setError(`Couldn’t publish. ${friendlyError(cause)}`); }
     finally { setBusy(false); }
@@ -196,32 +211,54 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
   };
   const publishedActivityId = isLesson ? `lesson-${draft.id}` : `${draft.collectionId}-${draft.number.padStart(3, '0')}`;
   const collectionLook = { ...HUB_COLLECTIONS.find(item => item.id === draft.collectionId)!, ...publishedCollections.items?.find(item => item.id === draft.collectionId) };
+  const suiteRows = draft.sections.filter(item => item.audience === 'learner' && item.kind === 'task').map(item => ({ id: item.id, title: item.title || 'Untitled task', group: item.versionGroup, version: item.versionLabel }));
+  const hasVersionScope = suiteRows.some(row => row.group);
+  const openSuiteStructure = (kind: 'task' | 'activity') => {
+    setError('');
+    if (!editable) { setError('Return this resource to draft before editing it as SuiteScript.'); return; }
+    if (dirty || busy) { setError('Save this draft before opening SuiteScript.'); return; }
+    if (kind === 'task' && (!section || section.audience !== 'learner' || section.kind !== 'task')) { setError('Select a learner task to edit it as SuiteScript.'); return; }
+    setSuiteStructure(kind);
+  };
+  const loadSuiteStructure = async (kind: 'task' | 'activity', ids: string[]): Promise<string> => {
+    if (!saved || dirty || busy) throw new Error('Save this draft before opening SuiteScript.');
+    const bundle = await exportSuiteScriptHubDraft(id, uid, kind === 'task' ? ids[0] : undefined, kind === 'activity' ? ids : undefined);
+    if (bundle.kind === 'activity' && hasVersionScope) suiteSharedDetails.current = JSON.stringify((({ title, level, aim, minutes, summary, focus }) => ({ title, level, aim, minutes, summary, focus }))(bundle.activity));
+    return toSuiteScriptBundle(bundle, SUITE_TYPES);
+  };
+  const applySuiteStructure = async (bundle: SuiteScriptBundle, ids: string[]) => {
+    if (!saved || dirty || !editable) throw new Error('Save this draft before applying SuiteScript.');
+    if (bundle.kind === 'activity' && hasVersionScope && JSON.stringify((({ title, level, aim, minutes, summary, focus }) => ({ title, level, aim, minutes, summary, focus }))(bundle.activity)) !== suiteSharedDetails.current) throw new Error('Shared resource title and details cannot change in a version-scoped SuiteScript edit. Edit them in Details.');
+    const next = await saveSuiteScriptBundleToHubDraft(saved, saved.revision, bundle, bundle.kind === 'task' ? ids[0] : undefined, bundle.kind === 'activity' ? ids : undefined);
+    setSaved(next); setDraft(next); setSaveFailed(false); setError('');
+  };
   const publishing = <div className="rhl-publish">
-    <ul className="rhl-checks">{validation.length ? validation.map(message => <li key={message} className="needs">{message}</li>) : <li className="okay">The details and learner tasks are all there.</li>}<li>Check the answer key and that it suits a classroom.</li><li>Look at the print preview and a Class copy before teachers can use this edition.</li>{hasDigitalOnly && <li className="needs">Some parts work only on screen. The PDF shows a short note in their place; the Class copy has the full task.</li>}</ul>
+    <ul className="rhl-checks">{validation.length ? validation.map(message => <li key={message} className="needs">{message}</li>) : <li className="okay">Ready for review or publication.</li>}{hasDigitalOnly && <li>Some parts work only on screen. The PDF shows a short note in their place; the Class copy has the full task.</li>}</ul>
     {draft.sourceReview && <details className="rhe-source-review"><summary>Imported source and checks</summary><p>{draft.sourceReview.fileName}</p>{draft.sourceReview.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</details>}
     <button type="button" className="btn small-btn" disabled={busy || dirty || validation.length > 0} onClick={() => void previewPrint()}>Preview the print PDF</button>
-    {!editable && <label className="rhe-confirm"><input type="checkbox" checked={keyReviewed} onChange={event => setKeyReviewed(event.target.checked)} /> I checked the learner tasks, the answer key and the print preview.</label>}
     {dirty && <p className="hint">Save your changes before sending for review.</p>}
   </div>;
   const actions = editable
-    ? <><button type="button" className="btn small-btn" disabled={busy || dirty || validation.length > 0} onClick={() => void review()} data-tip={validation.length ? 'Fix the points in Before publishing first' : dirty ? 'Save first' : 'Send for review'}>Send for review</button><button type="button" className="btn small-btn primary" disabled={busy || !dirty} onClick={() => void save()}>{busy ? 'Saving…' : 'Save draft'}</button></>
-    : <><button type="button" className="btn small-btn" disabled={busy} onClick={() => void returnToDraft()}>Return to draft</button><button type="button" className="btn small-btn primary" disabled={busy || validation.length > 0 || !keyReviewed} onClick={() => void publish()} data-tip={keyReviewed ? 'Publish this edition' : 'Tick the check in Before publishing first'}>{busy ? 'Publishing…' : 'Publish edition'}</button></>;
+    ? <><button type="button" className="btn small-btn" disabled={busy || dirty || validation.length > 0} onClick={() => void review()}>Send for review</button><button type="button" className="btn small-btn primary" disabled={busy || !dirty} onClick={() => void save()}>{saving ? 'Saving…' : saveFailed ? 'Retry save' : 'Save draft'}</button></>
+    : <><button type="button" className="btn small-btn" disabled={busy} onClick={() => void returnToDraft()}>Return to draft</button><button type="button" className="btn small-btn primary" disabled={busy || dirty || validation.length > 0} onClick={() => void publish()}>{busy ? 'Publishing…' : 'Publish edition'}</button></>;
   return <RefsContext.Provider value={refsValue}><div className="rhe-editor rhl-editor">
     <header className="rhl-head">
       <div className="rhl-head-l">
         <Link to="/resource-hub/admin" className="rhl-back" aria-label="All drafts" data-tip="All drafts">←</Link>
         <span className="rh-kicker">{isLesson ? 'LESSON' : `${draft.collectionId.toUpperCase()} · ${draft.number || 'NEW'}`}</span>
         <span className={'rhl-state' + (draft.state === 'in-review' ? ' review' : '')}>{STATUS[draft.state]}</span>
-        <span className="rhl-saved" role="status">{dirty ? 'Unsaved changes' : 'Saved'}</span>
+        <span className="rhl-saved" role="status">{saving ? 'Saving…' : saveFailed ? 'Save failed · retry' : dirty ? 'Unsaved changes' : 'Saved'}</span>
         <span className="rhl-pub" title={draft.publishedAt ? `Teachers see the edition published on ${new Date(draft.publishedAt).toLocaleDateString()} until you publish this draft.` : 'Private until its first edition is published.'}>{draft.publishedAt ? <Link to={`/resource-hub?activity=${publishedActivityId}`} target="_blank" rel="noopener noreferrer">Published {new Date(draft.publishedAt).toLocaleDateString('en-GB')} ↗</Link> : 'Not published yet'}</span>
       </div>
       <div className="rhl-head-r">
+        {tab === 'content' && <><button type="button" className="btn small-btn" onClick={() => openSuiteStructure('task')}>SuiteScript task</button><button type="button" className="btn small-btn" onClick={() => openSuiteStructure('activity')}>SuiteScript activity</button></>}
         <span className="seg rhl-view" role="radiogroup" aria-label="View">
           <button type="button" role="radio" aria-checked={tab === 'content' && !paper} className={tab === 'content' && !paper ? 'on' : ''} onClick={() => { setTab('content'); setPaper(false); }}>Digital</button>
           <button type="button" role="radio" aria-checked={tab === 'content' && paper} className={tab === 'content' && paper ? 'on' : ''} onClick={() => { setTab('content'); setPaper(true); }}>Paper</button>
           <button type="button" role="radio" aria-checked={tab === 'details'} className={tab === 'details' ? 'on' : ''} onClick={() => setTab('details')}>Details</button>
           <button type="button" role="radio" aria-checked={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>History</button>
         </span>
+        {validation.length > 0 && <span className="rhl-action-issue" role="status">{validation[0]}{validation.length > 1 ? ` +${validation.length - 1} more` : ''}</span>}
         {actions}
       </div>
     </header>
@@ -233,6 +270,7 @@ function ResourceEditor({ id, uid }: { id: string; uid: string }) {
     </div>}
     {printPreview && <PdfPreview bytes={printPreview} name={`${draft.title || "Resource Hub"} preview`} onClose={() => setPrintPreview(null)} />}
     {idOpen && section && <IdentityDialog value={section.identity} used={lessonIdentities(draft.sections)} onSave={saveIdentity} onClose={() => setIdOpen(false)} />}
+    {suiteStructure && <SuiteScriptStructureEditor kind={suiteStructure} title={suiteStructure === 'task' ? section?.title || 'Selected task' : draft.title || 'Activity'} rows={suiteStructure === 'task' ? suiteRows.filter(row => row.id === section?.id) : suiteRows} sharedMetadata={suiteStructure === 'activity' && hasVersionScope} loadSource={ids => loadSuiteStructure(suiteStructure, ids)} applyBundle={applySuiteStructure} onClose={() => setSuiteStructure(null)} />}
   </div></RefsContext.Provider>;
 }
 
