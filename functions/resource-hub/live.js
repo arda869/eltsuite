@@ -61,8 +61,20 @@ function cleanIdentity(value) {
   return { id: String(value.id ?? '').slice(0, 40), name, colour: /^#[0-9a-f]{6}$/i.test(String(value.colour)) ? String(value.colour) : '#1f6aa5', icon: /^[a-z0-9]{1,24}$/.test(String(value.icon ?? '')) ? String(value.icon) : '' };
 }
 
+function containsCommunicativeActivity(node) {
+  return !!node && typeof node === 'object' && (node.type === 'communicativeActivity' || (Array.isArray(node.content) && node.content.some(containsCommunicativeActivity)));
+}
+
+// Older runs may contain an authored activity node without an id, which splitKey
+// cannot seal. Never return its cards, pictures or settings to a guest.
+function sealCommunicativeActivities(node) {
+  if (!node || typeof node !== 'object') return node;
+  if (node.type === 'communicativeActivity') return { type: 'communicativeActivity', attrs: { sealed: true }, content: [] };
+  return Array.isArray(node.content) ? { ...node, content: node.content.map(sealCommunicativeActivities) } : node;
+}
+
 function publicTask(task) {
-  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ?? null, content: task.content, layout: task.layout ?? 'single', colScroll: task.colScroll ?? 'separate', versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null, identity: task.identity ?? null };
+  return { id: task.id, title: task.title, instructions: task.instructions, instrDoc: task.instrDoc ? sealCommunicativeActivities(task.instrDoc) : null, content: sealCommunicativeActivities(task.content), layout: task.layout ?? 'single', colScroll: task.colScroll ?? 'separate', versionGroup: task.versionGroup ?? null, versionLabel: task.versionLabel ?? null, identity: task.identity ?? null };
 }
 
 function marksFor(content, key, responses) {
@@ -125,6 +137,7 @@ export async function resourceLessonLiveService(db, auth, data, now = Date.now()
     const source = await loadSource(db, uid, selected);
     const sections = (source.sections ?? []).filter(s => s?.audience === 'learner' && s.kind === 'task');
     if (!sections.length || sections.length > 40 || sections.some(s => !ID.test(s.id) || s.content?.type !== 'doc')) fail('failed-precondition', 'This lesson needs learner tasks before it can go live.');
+    if (sections.some(s => containsCommunicativeActivity(s.content) || containsCommunicativeActivity(s.instrDoc))) fail('failed-precondition', 'Communicative activities can be taught live from a Class lesson. Remove them before starting this standalone lesson live.');
     const tasks = sections.map(s => {
       const { content, key } = splitKey(s.content);
       const instrDoc = s.instrDoc ? splitKey(s.instrDoc).content : null;

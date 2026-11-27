@@ -207,3 +207,29 @@ test('Class lessons, drafts, suspended/proxy users and invalid seat tokens canno
   const expired = await service(db, null, req('learnerState', { ...seat, token: joined.token }), 1000 + 8 * 60 * 60 * 1000);
   assert.equal(expired.run.expired, true);
 });
+
+test('communicative cards never enter a standalone learner response', async () => {
+  const activity = id => ({ type: 'communicativeActivity', attrs: { ...(id ? { id } : {}), kind: 'cue', settings: { mode: 'class', privateNote: 'SECRET_SETTING' } }, content: [
+    { type: 'activityItem', attrs: { activityItemId: 'card-a', title: 'SECRET_CARD', picture: { src: 'private-activity:user~teacher-1:secret-picture', alt: 'SECRET_PICTURE' } }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'SECRET_CARD_TEXT' }] }] },
+  ] });
+  for (const id of ['activity-1', undefined]) {
+    const db = fixture();
+    const source = db.rows.get('resourceHubPublished/published-1/editions/7');
+    source.sections[1].content = { type: 'doc', content: [activity(id)] };
+    await assert.rejects(service(db, teacher, req('start', { resourceId: 'published-1' }), 1000), { code: 'failed-precondition' });
+    assert.equal([...db.rows.keys()].some(path => path.startsWith('resourceLessonRuns/')), false, 'a blocked activity must not create a live run');
+  }
+
+  const db = fixture();
+  const start = await service(db, teacher, req('start', { resourceId: 'published-1' }), 1000);
+  const joined = await service(db, null, req('join', { code: start.code, name: 'Mina' }), 1001);
+  await service(db, teacher, req('advance', { runId: start.runId, taskId: 'task-1' }), 1002);
+  const privateTask = db.rows.get(`resourceLessonRuns/${start.runId}/privateTasks/task-1`);
+  privateTask.content = { type: 'doc', content: [activity(undefined)] }; // Legacy task without an id bypassed splitKey's activity seal.
+  privateTask.instrDoc = { type: 'doc', content: [activity('instruction-activity')] };
+  const learner = await service(db, null, req('learnerState', { runId: start.runId, pid: joined.pid, token: joined.token }), 1003);
+  assert.equal(learner.currentTask.content.content[0].attrs.sealed, true);
+  assert.deepEqual(learner.currentTask.content.content[0].content, []);
+  assert.equal(learner.currentTask.instrDoc.content[0].attrs.sealed, true);
+  assert.equal(JSON.stringify(learner).includes('SECRET_'), false, 'no private card, setting or picture may cross the callable boundary');
+});

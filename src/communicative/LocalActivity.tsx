@@ -7,7 +7,12 @@ declare const __BUILD__: string;
 export const LocalActivityMode=createContext(false);
 /** An editor learner preview can project one seat without exposing teacher controls. */
 export const LocalLearnerPreviewMode=createContext<number|null>(null);
-export function LocalActivity({node,renderItem,classId=''}:{node:JSONContent;classId?:string;renderItem?:(item:ActivityItem)=>React.ReactNode}) {
+type LocalActivityProps={node:JSONContent;classId?:string;renderItem?:(item:ActivityItem)=>React.ReactNode};
+export function LocalActivity(props:LocalActivityProps){
+ if(props.node.attrs?.sealed)return <p className="hint" role="note">This activity is not available in this live lesson. Your teacher can use it from a Class lesson.</p>;
+ return <PlayableLocalActivity {...props}/>;
+}
+function PlayableLocalActivity({node,renderItem,classId=''}:LocalActivityProps) {
  const config=configFromNode(node),learnerSeat=useContext(LocalLearnerPreviewMode);
  const initialNames=Array.from({length:Math.max(2,(learnerSeat??0)+1)},(_,i)=>`Learner ${String.fromCharCode(65+i)}`).join('\n');
  const [names,setNames]=useState(initialNames),[role,setRole]=useState(learnerSeat===null?'teacher':`offline-${learnerSeat}`),[covered,setCovered]=useState(false),[error,setError]=useState('');

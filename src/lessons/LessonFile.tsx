@@ -16,7 +16,7 @@ import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { TaskRenderer } from '../components/TaskRenderer';
-import { LocalActivityMode } from '../communicative/LocalActivity';
+import { LocalActivityMode, LocalLearnerPreviewMode } from '../communicative/LocalActivity';
 import { splitKey } from '../lib/questions';
 import type { Responses } from '../lib/questions';
 import { PaperBar, SheetView, type Paper, type Zoom } from './SheetView';
@@ -49,6 +49,7 @@ export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; t
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
 const notesCol = (id: string) => collection(db, 'sharedDocs', id, 'taskNotes');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+const hasCommunicativeActivity = (node?: JSONContent | null): boolean => !!node && (node.type === 'communicativeActivity' || !!node.content?.some(hasCommunicativeActivity));
 
 export function useRows(id?: string) {
   const [rows, setRows] = useState<LessonRow[] | null>(null);
@@ -164,6 +165,7 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
 export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc; canEdit: boolean; headerSlot?: HTMLElement | null; viewSlot?: HTMLElement | null }) {
   const navigate = useNavigate();
   const rows = useRows(d.id);
+  const liveHasCommunicativeActivity = rows?.some(row => hasCommunicativeActivity(row.content) || hasCommunicativeActivity(row.instrDoc)) ?? false;
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState('');
   const [liveInvite, setLiveInvite] = useState<{ runId: string; code: string } | null>(null);
@@ -190,6 +192,10 @@ export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc;
           setLiveInviteOpen(true);
           return;
         }
+      }
+      if (liveHasCommunicativeActivity) {
+        setLiveError('Communicative activities can be taught live from a Class lesson. Remove them before starting this standalone lesson live.');
+        return;
       }
       const result = await lessonLiveApi<{ runId: string; code: string }>('start', { fileId: d.id });
       setLiveInvite(result);
@@ -346,7 +352,7 @@ export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc;
       {canEdit && <FileLessonAi fileId={d.id} selectedTaskId={cur?.kind === 'task' ? cur.id : undefined} beforeOpen={flushPending} onApplied={id => { if (id && id !== 'lesson') setSel(id); }} />}
       {/* Everything about the lesson as a whole: what it becomes in a class, adding it to one, teaching it live and its history. */}
       <button type="button" className="btn small-btn lf-lesson-menu" aria-haspopup="menu" onClick={event => openMenuAt(event.currentTarget, [
-        ...(standaloneLive ? [{ label: liveBusy ? 'Starting…' : 'Invite learners', icon: 'groups', hint: 'live, with a code or QR code', disabled: liveBusy || !rows.some(row => row.kind === 'task'), onClick: () => void startLive() }, { label: 'Teaching history', icon: 'history', onClick: () => navigate(`/lesson-file/${encodeURIComponent(d.id)}/history`) }, 'sep' as const] : []),
+        ...(standaloneLive ? [{ label: liveBusy ? 'Starting…' : 'Invite learners', icon: 'groups', hint: liveHasCommunicativeActivity && !liveInvite ? 'Teach communicative activities live from a Class lesson' : 'live, with a code or QR code', disabled: liveBusy || !rows.some(row => row.kind === 'task') || (liveHasCommunicativeActivity && !liveInvite), onClick: () => void startLive() }, { label: 'Teaching history', icon: 'history', onClick: () => navigate(`/lesson-file/${encodeURIComponent(d.id)}/history`) }, 'sep' as const] : []),
         { label: 'Add to a class…', icon: 'classes', disabled: !rows.length, onClick: () => setAdding(true) },
         'sep' as const,
         ...LESSON_TYPES.map(t => ({ label: `${(d.ltype ?? 'lesson') === t.v ? '✓ ' : ''}In a class, it becomes ${t.label.toLowerCase()}`, icon: 'task', disabled: !canEdit, onClick: () => void updateDoc(doc(db, 'sharedDocs', d.id), { ltype: t.v }) })),
@@ -388,7 +394,7 @@ export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc;
       <main className="lf-main">
         {!sheet && !learnerPreview && (panels.compact ? <div className="lf-compact-actions"><button type="button" className="btn small-btn" onClick={panels.toggleLeft}>Tasks</button>{showSettings && <button type="button" className="btn small-btn" onClick={panels.toggleRight}>Task settings</button>}</div> : <div className="panel-toggles lf-panel-toggles"><PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />{showSettings && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label="the task settings" />}</div>)}
         {liveError && <p role="alert" className="rll-error">{liveError}</p>}
-        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}>{cur.identity && <div className="aid-row"><IdentityMark identity={cur.identity} /></div>}<h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} layout={cur.layout ?? 'single'} colScroll={cur.colScroll ?? 'separate'} classId={'user:' + d.owner} /></LocalActivityMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
+        {learnerPreview ? <div className="lf-learner-preview"><header><span>LEARNER PREVIEW</span><h2>{d.title}</h2></header>{cur?.kind === 'task' ? <section key={cur.id}>{cur.identity && <div className="aid-row"><IdentityMark identity={cur.identity} /></div>}<h3>{cur.title}</h3><InstrView classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} /><LocalLearnerPreviewMode.Provider value={0}><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey(cur.content ?? EMPTY, true).content} responses={previewResponses} onChange={(id, value) => setPreviewResponses(current => ({ ...current, [id]: value }))} hideAnswers layout={cur.layout ?? 'single'} colScroll={cur.colScroll ?? 'separate'} classId={'user:' + d.owner} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></section> : cur ? <section><h3>{cur.title}</h3></section> : <p>Add a task to preview the lesson.</p>}</div> : <>
         {sheet && rows.length && sheetData ? (
           <div className="sh-split lf-split">
             <section className="sh-left" aria-label="The worksheet">

@@ -232,6 +232,29 @@ try {
   await teacher.locator('.lf-side').waitFor();
   await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
   assert.equal(await teacher.getByRole('menuitem', { name: /Invite learners/ }).count(), 0);
+  await teacher.keyboard.press('Escape');
+  await teacher.evaluate(async () => {
+    const { db } = await import('/src/lib/firebase.ts');
+    const { doc, updateDoc } = await import('/test/mock/firestore.ts');
+    await updateDoc(doc(db, 'sharedDocs', 'standalone-file', 'tasks', 'task-1'), { content: { type: 'doc', content: [{ type: 'communicativeActivity', attrs: { id: 'cue-preview', kind: 'cue', instruction: 'Keep your card private.', settings: { mode: 'class' } }, content: [
+      { type: 'activityItem', attrs: { activityItemId: 'card-a', title: 'PRIVATE_CARD_A' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Only A knows this.' }] }] },
+      { type: 'activityItem', attrs: { activityItemId: 'card-b', title: 'PRIVATE_CARD_B' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Only B knows this.' }] }] },
+    ] }] } });
+  });
+  await teacher.goto(`${base}/doc/standalone-file`);
+  await teacher.locator('.lf-task').waitFor();
+  await teacher.getByRole('button', { name: 'Lesson', exact: true }).click();
+  const blockedInvite = teacher.getByRole('menuitem', { name: /Invite learners/ });
+  assert.equal(await blockedInvite.isDisabled(), true, 'a standalone lesson with communicative cards cannot start an unusable live session');
+  await teacher.getByText('Teach communicative activities live from a Class lesson').waitFor();
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/standalone-communicative-invite-blocked.png` });
+  await teacher.keyboard.press('Escape');
+  await teacher.getByRole('radio', { name: /Learner preview/ }).click();
+  await teacher.locator('.lf-learner-preview .ca-cue').waitFor();
+  assert.equal(await teacher.locator('.lf-learner-preview .ca-cue').count(), 1, 'learner preview shows only one assigned cue card');
+  assert.equal(await teacher.locator('.lf-learner-preview .ca-deal').count(), 0, 'learner preview has no teacher card-dealing controls');
+  assert.equal(await teacher.getByRole('radiogroup', { name: 'Whose screen to show' }).count(), 0, 'learner preview has no switch into the teacher or another learner view');
+  if (screenshots) await teacher.screenshot({ path: `${screenshots}/standalone-cue-learner-preview.png` });
   console.log('PASS Resource Hub and personal Lesson file live entry, guest join, task, submit, end, history, and Class-origin gate (mock callable).');
 } finally {
   await browser.close();
