@@ -357,6 +357,7 @@ export function LessonFile({ d, canEdit, headerSlot, viewSlot }: { d: SharedDoc;
         'sep' as const,
         ...LESSON_TYPES.map(t => ({ label: `${(d.ltype ?? 'lesson') === t.v ? '✓ ' : ''}In a class, it becomes ${t.label.toLowerCase()}`, icon: 'task', disabled: !canEdit, onClick: () => void updateDoc(doc(db, 'sharedDocs', d.id), { ltype: t.v }) })),
       ])}>Lesson <span aria-hidden="true">▾</span></button>
+      {standaloneLive && liveHasCommunicativeActivity && !liveInvite && <span className="lf-live-limit" role="note">Live games: teach from a Class lesson</span>}
     </div>, headerSlot)}
     {viewSlot && createPortal(
       <span className="lf-header-view" role="radiogroup" aria-label="Lesson view">

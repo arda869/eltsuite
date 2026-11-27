@@ -36,6 +36,7 @@
 .dp.k-lesson input.lf-crumb-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .dp.k-lesson .dp-lesson-slot { flex: 1 1 auto; min-width: 0; }
 .dp.k-lesson .lf-header-controls { width: 100%; }
+.dp.k-lesson .lf-live-limit { order: 3; flex: 0 1 250px; min-width: 0; color: var(--accent-text); font: 600 11px/1.25 var(--sans); white-space: normal; }
 .dp.k-lesson .lf-topbar-actions { display: inline-flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
 .dp.k-lesson .lf-view-slot { display: inline-flex; align-items: center; flex: none; }
 .dp.k-lesson .lf-view-slot .lf-header-view { flex: none; margin-left: 0; }
@@ -56,4 +57,5 @@
   .dp.k-lesson .lf-crumb-title { max-width: none; }
   .dp.k-lesson .dp-lesson-slot { order: 4; flex: 1 1 100%; }
   .dp.k-lesson .lf-topbar-actions .dp-share { padding: 0 9px; }
+  .dp.k-lesson .lf-live-limit { flex-basis: 100%; }
 }

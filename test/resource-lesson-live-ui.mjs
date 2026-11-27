@@ -247,7 +247,11 @@ try {
   const blockedInvite = teacher.getByRole('menuitem', { name: /Invite learners/ });
   assert.equal(await blockedInvite.isDisabled(), true, 'a standalone lesson with communicative cards cannot start an unusable live session');
   await teacher.getByText('Teach communicative activities live from a Class lesson').waitFor();
+  const blockedReason = teacher.locator('.lf-live-limit');
+  assert.equal(await blockedReason.textContent(), 'Live games: teach from a Class lesson');
   if (screenshots) await teacher.screenshot({ path: `${screenshots}/standalone-communicative-invite-blocked.png` });
+  assert.equal(await blockedReason.isVisible(), true, 'the full live limitation is visible beside the Lesson control');
+  assert.equal(await blockedReason.evaluate(el => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight), true, 'the live limitation is not clipped');
   await teacher.keyboard.press('Escape');
   await teacher.getByRole('radio', { name: /Learner preview/ }).click();
   await teacher.locator('.lf-learner-preview .ca-cue').waitFor();
