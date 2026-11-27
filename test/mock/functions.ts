@@ -26,8 +26,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
       const [path, file] = entry as [string, any];
       const classId = d.destination?.classId;
       const room = classId ? (await getDoc(doc(db, 'classes', classId))).data() : null;
-      if (d.destination?.mode !== 'class' || room?.teacherId !== uid || !file.classes?.[classId]?.role || file.owner !== uid && !file.memberIds?.includes(uid)) throw Error('This item is unavailable here.');
-      return { data: { id: d.id, kind: 'sharedDoc', sourceId: path.slice('sharedDocs/'.length), owner: file.owner, itemType: file.kind, mime: file.file?.type ?? '', classRole: file.classes[classId].role } };
+      const copyable = d.destination?.mediaCopy === true && file.kind === 'file' && file.uploadStatus === 'ready'
+        && /^(image\/(png|jpeg|webp|gif)|audio\/(mpeg|mp4|wav|x-wav|ogg)|video\/(mp4|webm)|application\/pdf)$/.test(file.file?.type ?? '');
+      if (d.destination?.mode !== 'class' || room?.teacherId !== uid || (!file.classes?.[classId]?.role && !copyable) || (file.owner !== uid && !file.memberIds?.includes(uid))) throw Error('This item is unavailable here.');
+      return { data: { id: d.id, kind: 'sharedDoc', sourceId: path.slice('sharedDocs/'.length), owner: file.owner, itemType: file.kind, mime: file.file?.type ?? '', classRole: file.classes?.[classId]?.role ?? null } };
     }
     throw Error('Choose a reference action.');
   }

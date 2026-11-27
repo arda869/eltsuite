@@ -365,9 +365,13 @@ const J = {
   },
   'SuiteScript PDF picker uses an authorised Organisation File': async b => {
     const s = await session(b);
-    const { PDFDocument } = await import('pdf-lib');
+    const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
     const pdf = await PDFDocument.create();
-    pdf.addPage([612, 792]);
+    const page = pdf.addPage([612, 792]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    page.drawText('Class worksheet', { x: 52, y: 710, size: 30, font, color: rgb(0.2, 0.3, 0.4) });
+    page.drawText('This PDF remains visible to the learner after reload.', { x: 52, y: 665, size: 14, font });
+    page.drawRectangle({ x: 52, y: 620, width: 280, height: 20, color: rgb(0.78, 0.36, 0.19) });
     const pdfBytes = await pdf.save();
     const demo = await s.p.evaluate(async ({ base64, bytesLength }) => {
       const d = JSON.parse(localStorage.mockdemo);
@@ -377,9 +381,8 @@ const J = {
       fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
       fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
       fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Worksheets', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
-      fs['sharedDocs/suite-pdf'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Class worksheet.pdf', kind: 'pdf', docKey: 'pdf-key', memberIds: [], members: {}, folder: 'suite-folder', classes: { [d.classId]: { role: 'view', name: 'Demo class' } } };
-      fs['sharedDocs/suite-pdf/pdf/info'] = { parts: 1, bytes: bytesLength, pages: [{ w: 612, h: 792 }] };
-      fs['sharedDocs/suite-pdf/pdf/p0'] = { part: 0, data: base64 };
+      fs['sharedDocs/suite-pdf'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Class worksheet.pdf', kind: 'file', uploadStatus: 'ready', file: { name: 'Class worksheet.pdf', type: 'application/pdf', bytes: bytesLength, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-pdf/blob/p0'] = { part: 0, data: base64 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
       return d;
     }, { base64: Buffer.from(pdfBytes).toString('base64'), bytesLength: pdfBytes.length });
@@ -394,6 +397,7 @@ const J = {
     await s.p.getByRole('option', { name: 'Browse files' }).click();
     const window = s.p.getByRole('dialog', { name: 'Choose a PDF' });
     await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    if (process.env.SUITESCRIPT_PDF_PICKER_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_PDF_PICKER_SCREENSHOT });
     await window.getByRole('button', { name: 'Class worksheet.pdf' }).click();
     await s.p.waitForFunction(() => document.querySelector('textarea[aria-label="SuiteScript source"]')?.value.includes('ELTSUITE-0001-0002-0003-0786'));
     await s.p.locator('.ss-source__preview .pdf-block').waitFor();
@@ -406,6 +410,153 @@ const J = {
     await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('pdfBlock'), demo);
     if (!(await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media:'), demo))) throw Error('PDF task did not persist its Class media copy.');
     if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised PDF reference produced a source error.');
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    await s.p.waitForFunction(() => {
+      const canvas = document.querySelector('.frame-body .pdf-pagewrap canvas');
+      return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0;
+    });
+    if (await s.p.locator('.frame-body .pdf-err').count()) throw Error('Learner could not open the copied PDF after reload.');
+    if (process.env.SUITESCRIPT_LEARNER_PDF_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_LEARNER_PDF_SCREENSHOT });
+    return s;
+  },
+  'SuiteScript image picker copies an Organisation File into the learner task': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 195, 'task', { title: 'Image picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 48;
+      const paint = canvas.getContext('2d'); paint.fillStyle = '#c65a34'; paint.fillRect(0, 0, 64, 48);
+      const base64 = canvas.toDataURL('image/png').split(',')[1];
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Pictures', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-image'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Front desk.png', kind: 'file', uploadStatus: 'ready', file: { name: 'Front desk.png', type: 'image/png', bytes: atob(base64).length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-image/blob/p0'] = { part: 0, data: base64 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Image picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@image("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose an image' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    if (process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_IMAGE_PICKER_SCREENSHOT });
+    await window.getByRole('button', { name: 'Front desk.png' }).click();
+    await s.p.waitForFunction(() => {
+      const image = document.querySelector('.ss-source__preview .pic-rendered img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media:'), demo);
+    if (await s.p.locator('.ss-source__gutter-error').count()) throw Error('The authorised picture reference produced a source error.');
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    await s.p.waitForFunction(() => {
+      const image = document.querySelector('.frame-body .pic-rendered img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
+    if (process.env.SUITESCRIPT_LEARNER_IMAGE_SCREENSHOT) await s.p.screenshot({ path: process.env.SUITESCRIPT_LEARNER_IMAGE_SCREENSHOT });
+    return s;
+  },
+  'SuiteScript audio picker makes an Organisation recording playable in Class': async b => {
+    const s = await session(b);
+    const demo = await s.p.evaluate(async () => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 196, 'task', { title: 'Audio picker check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const rate = 8000, samples = rate * 3;
+      const bytes = new Uint8Array(44 + samples * 2), view = new DataView(bytes.buffer);
+      const word = (offset, value) => { for (let i = 0; i < value.length; i++) bytes[offset + i] = value.charCodeAt(i); };
+      word(0, 'RIFF'); view.setUint32(4, bytes.length - 8, true); word(8, 'WAVE'); word(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+      view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true); word(36, 'data'); view.setUint32(40, samples * 2, true);
+      for (let i = 0; i < samples; i++) view.setInt16(44 + i * 2, Math.round(Math.sin(i * 2 * Math.PI * 440 / rate) * 9000), true);
+      let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/suite-org'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'suite-org' };
+      fs['sharedFolders/suite-folder'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Recordings', org: 'suite-org', memberIds: [], members: {}, access: { all: 'view', people: {} } };
+      fs['sharedDocs/suite-audio'] = { owner: 'teacher1', ownerName: 'Arda', title: 'Greeting.wav', kind: 'file', uploadStatus: 'ready', file: { name: 'Greeting.wav', type: 'audio/wav', bytes: bytes.length, parts: 1 }, memberIds: [], members: {}, folder: 'suite-folder' };
+      fs['sharedDocs/suite-audio/blob/p0'] = { part: 0, data: btoa(binary) };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    });
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Audio picker check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill('SuiteScript v1\n@audio("');
+    await s.p.getByRole('option', { name: 'Browse files' }).click();
+    const window = s.p.getByRole('dialog', { name: 'Choose a recording' });
+    await window.getByRole('tab', { name: 'Organisation Files' }).click();
+    await window.getByRole('button', { name: 'Greeting.wav' }).click();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('media'), demo);
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async () => !!window.__mockReady && (await window.__mockReady, sessionStorage.getItem('mockuid') !== 'teacher1'));
+    await s.p.goto(`${BASE}/learn/${demo.itemId}`);
+    await s.p.locator('.task-row').last().locator('button').first().click();
+    const play = s.p.locator('.frame-body .mp-play').first();
+    await play.waitFor();
+    await s.p.waitForFunction(() => {
+      const control = document.querySelector('.frame-body .mp-play');
+      return control instanceof HTMLButtonElement && !control.disabled;
+    });
+    await play.click();
+    await s.p.locator('.frame-body .mp-play[aria-label="Pause"]').waitFor();
+    await s.p.waitForFunction(() => {
+      const label = document.querySelector('.frame-body .mp-time')?.textContent ?? '';
+      return /0:0[1-3]/.test(label);
+    });
+    return s;
+  },
+  'SuiteScript inaccessible media never reaches a learner task': async b => {
+    const s = await session(b);
+    const { suiteScriptId } = await import('../functions/suitescript/id.js');
+    const hiddenId = suiteScriptId();
+    const demo = await s.p.evaluate(async id => {
+      const d = JSON.parse(localStorage.mockdemo);
+      const { addTask } = await import('/src/lib/tasks.ts');
+      d.taskId = await addTask(d.classId, d.itemId, 197, 'task', { title: 'Inaccessible reference check', content: { type: 'doc', content: [{ type: 'paragraph' }] } });
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['sharedDocs/private-audio'] = { owner: 'teacher2', ownerName: 'Other teacher', title: 'Private recording', kind: 'file', uploadStatus: 'ready', suiteScriptRef: id, file: { name: 'Private.wav', type: 'audio/wav', bytes: 8000, parts: 1 }, memberIds: [], members: {} };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      return d;
+    }, hiddenId);
+    await s.p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?as=teacher`);
+    await s.p.getByRole('button', { name: 'Inaccessible reference check', exact: false }).first().click();
+    const field = s.p.locator('.task-editor .ProseMirror').first();
+    await field.waitFor();
+    await field.click({ button: 'right' });
+    await s.p.getByText('Edit as SuiteScript', { exact: true }).last().click();
+    const source = s.p.getByRole('textbox', { name: 'SuiteScript source' });
+    await source.fill(`SuiteScript v1\n@audio("${hiddenId}")`);
+    await s.p.locator('.ss-source__preview').getByText('[Audio unavailable — choose a file]').waitFor();
+    await s.p.locator('.ss-source__status > span').first().hover();
+    await s.p.locator('.ss-source__status').getByText(/Audio unavailable here/).waitFor();
+    await s.p.waitForFunction(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}).includes('Audio unavailable'), demo);
+    const saved = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (saved.includes(hiddenId) || saved.includes('private-audio')) throw Error('An inaccessible file identifier entered the learner task.');
+    await source.fill(`SuiteScript v1\n@audio("${hiddenId.slice(0, -1)}${hiddenId.at(-1) === '0' ? '1' : '0'}")`);
+    await s.p.locator('.ss-source__gutter-error').waitFor();
+    await s.p.waitForTimeout(350);
+    const afterInvalid = await s.p.evaluate(({ classId, itemId, taskId }) => JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content ?? {}), demo);
+    if (afterInvalid !== saved) throw Error('An invalid checksum replaced the last valid learner task.');
     return s;
   },
   'Copy as SuiteScript physical shortcut works in Collab': async b => {

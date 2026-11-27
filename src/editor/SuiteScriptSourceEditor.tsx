@@ -85,7 +85,7 @@ type FileChoice = { kind: 'audio' | 'video' | 'image' | 'pdf'; start: number; en
 function sharedFileFits(doc: SharedDoc, kind: FileChoice['kind'], classId: string): boolean {
   if (doc.kind === 'file' && doc.uploadStatus !== 'ready') return false;
   const sharedWithClass = !!doc.classes?.[classId]?.role;
-  if (kind === 'pdf') return sharedWithClass && (doc.kind === 'pdf' || doc.kind === 'file' && doc.file?.type === 'application/pdf');
+  if (kind === 'pdf') return (sharedWithClass && doc.kind === 'pdf') || (doc.kind === 'file' && doc.file?.type === 'application/pdf');
   if (kind === 'image') return doc.kind === 'file' && ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(doc.file?.type ?? '');
   if (kind === 'audio') return doc.kind === 'file' && ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-wav', 'audio/ogg'].includes(doc.file?.type ?? '');
   if (kind === 'video') return doc.kind === 'file' && ['video/mp4', 'video/webm'].includes(doc.file?.type ?? '');
@@ -106,12 +106,12 @@ function SharedFileList({ kind, classId, files, busy, onPick, empty }: { kind: F
 function MySharedFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
   const { mine, withMe } = useMyDocs(auth.currentUser?.uid);
   const files = mine === null || withMe === null ? null : [...new Map([...mine, ...withMe].map(doc => [doc.id, doc])).values()];
-  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty="No PDFs shared with this Class yet." />;
+  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'pdf' ? "No available PDFs here." : "No available files here."} />;
 }
 
 function OrgFolderFiles({ folder, uid, kind, classId, busy, onPick }: { folder: DriveFolder; uid: string; kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
   const files = useFolderDocs(folder as unknown as SharedFolder, uid);
-  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'pdf' ? 'No PDFs shared with this Class in this folder.' : `No ${kind === 'image' ? 'pictures' : kind === 'audio' ? 'recordings' : 'videos'} in this folder.`} />;
+  return <SharedFileList kind={kind} classId={classId} files={files} busy={busy} onPick={onPick} empty={kind === 'pdf' ? 'No available PDFs in this folder.' : `No ${kind === 'image' ? 'pictures' : kind === 'audio' ? 'recordings' : 'videos'} in this folder.`} />;
 }
 
 function OrganisationFiles({ kind, classId, busy, onPick }: { kind: FileChoice['kind']; classId: string; busy: boolean; onPick: (doc: SharedDoc) => void }) {
@@ -514,7 +514,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   }
   const currentLine = lineAt(value, caret);
   const errorByLine = new Map(issues.map(issue => [issue.line, issue.text]));
-  const status = loading ? 'Opening SuiteScript…' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : 'No problems';
+  const status = loading ? 'Opening SuiteScript…' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}` : 'No problems';
   const allProblems = [...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(statusError ? [statusError] : []), ...warnings];
   const body: ReactNode = loading ? <div className="ss-source__loading" role="status">Preparing your editable SuiteScript…</div> : (
     <div className="ss-source__codebox">
@@ -550,7 +550,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
         <div className="ss-source__preview-body"><LocalLearnerPreviewMode.Provider value={previewLearnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={previewAudience === 'teacher' ? previewDoc : splitKey(previewDoc, true).content} responses={{}} disabled hideAnswers={previewAudience !== 'teacher'} classId={previewClassId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div>
       </aside>}
     </div>
-    <footer className="ss-source__status"><span className={issues.length || statusError ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
+    <footer className="ss-source__status"><span className={issues.length || statusError || warnings.length ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
     {confirmClose && <div className="ss-source__confirm" role="dialog" aria-modal="true" aria-label="Discard unfinished SuiteScript"><div><h3>Return to rich text?</h3><p>The last valid change is already in the task. The unfinished code will be discarded.</p><button type="button" onClick={() => setConfirmClose(false)}>Keep editing</button><button type="button" onClick={() => { setConfirmClose(false); onClose(); }}>Discard unfinished code</button></div></div>}
     {fileChoice && <AddWindow<'my' | 'org'>
       title={`Choose ${fileChoice.kind === 'audio' ? 'a recording' : fileChoice.kind === 'image' ? 'an image' : fileChoice.kind === 'pdf' ? 'a PDF' : 'a video'}`}
@@ -560,7 +560,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
       onClose={() => setFileChoice(null)}
       status={referenceDestination.mode !== 'class'
         ? 'SuiteScript file references are available in Classes. This destination cannot provide learner access to those files yet.'
-        : fileError || (fileBusy ? 'Preparing this file…' : fileChoice.kind === 'pdf' ? 'Choose a PDF already shared with this Class.' : 'Choose an item to copy into this Class.')}
+        : fileError || (fileBusy ? 'Preparing this file…' : fileChoice.kind === 'pdf' ? 'Choose a PDF to copy into this Class. A Collab PDF must already be shared with this Class.' : 'Choose an item to copy into this Class.')}
       wide
     >
       {referenceDestination.mode !== 'class'
