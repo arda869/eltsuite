@@ -96,10 +96,7 @@ try {
   await bField.click({ button: 'right' });
   await page.getByText('Edit as SuiteScript', { exact: true }).last().click();
   await page.getByRole('textbox', { name: 'SuiteScript source' }).waitFor();
-  const bFieldPreview = await page.locator('.ss-source__preview').innerText();
-  assert.match(bFieldPreview, /With Learner A/, 'Learner B field editor must preview B’s assigned seat');
-  assert.doesNotMatch(bFieldPreview, /full set of cards|Teacher view|With Learner B/);
-  assert.equal((bFieldPreview.match(/Your private budget is \d+ tokens/g) ?? []).length, 1, 'Learner B preview must show one card');
+  assert.equal(await page.locator('.ss-source__preview').count(), 0, 'The field editor uses the whole code area; the lesson preview belongs outside it.');
   await page.getByRole('button', { name: 'Return to rich text editor' }).click();
   await page.evaluate(async scene => {
     const { addTask } = await import('/src/lib/tasks.ts');
