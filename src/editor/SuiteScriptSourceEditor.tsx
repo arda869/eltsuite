@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { Editor, JSONContent } from '@tiptap/react';
 import { AddWindow } from '../components/AddWindow';
 import { FileBrowser } from '../components/FileBrowser';
 import { FileIcon } from '../components/FileIcon';
-import { TaskRenderer } from '../components/TaskRenderer';
-import { LocalActivityMode, LocalLearnerPreviewMode } from '../communicative/LocalActivity';
 import { auth } from '../lib/firebase';
 import { libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { useFolderDocs, useMyDocs, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
@@ -12,7 +10,6 @@ import { parseSuiteScript, SUITE_SCRIPT_HEADER, type SuiteScriptTypes } from '..
 import { suiteScriptGuide, type SuiteScriptCatalogEntry } from '../lib/suiteScriptGuide';
 import { ensureSuiteScriptReference, validSuiteScriptReference, type SuiteScriptDestination } from '../lib/suiteScriptReferences';
 import type { ArchiveItem } from '../lib/archive';
-import { splitKey } from '../lib/questions';
 import starterCatalogJson from './suiteScriptStarterCatalog.json';
 import questionCatalogJson from './suiteScriptQuestionCatalog.json';
 import './suite-script-source.css';
@@ -36,6 +33,23 @@ const TIMELINE_STARTER = `@timeline(
     {kind: "event", x: 760, label: "Project complete", side: "above"}
   ]
 )`;
+function foldEnd(lines: string[], start: number): number {
+  if (!/^\s*@[\w-]+\(/.test(lines[start] ?? '')) return start;
+  let depth = 0;
+  let quoted = false;
+  let escape = false;
+  for (let row = start; row < lines.length; row++) {
+    for (const char of lines[row]) {
+      if (escape) { escape = false; continue; }
+      if (quoted && char === '\\') { escape = true; continue; }
+      if (char === '"') { quoted = !quoted; continue; }
+      if (!quoted && char === '(') depth++;
+      if (!quoted && char === ')') depth--;
+    }
+    if (depth <= 0) return row > start ? row : start;
+  }
+  return start;
+}
 
 const basic = [
   { key: 'heading', label: '@heading', body: '@heading("‹Heading›")' },
@@ -200,13 +214,13 @@ function starterFor(item: Starter): string | undefined {
   return item.body ? formatNativeStarter(freshen(item.body)) : undefined;
 }
 function formatNativeStarter(body: string): string {
-  if (body.length < 190) return body;
+  if (body.length < 90) return body;
   const match = body.match(/^(.*?\bdata:\s*)(\{[\s\S]*\})(\s*\))$/);
   if (!match) return body;
   try {
     const data = JSON.parse(match[2]) as Record<string, unknown>;
     const lines = Object.entries(data).map(([key, value]) => {
-      if (Array.isArray(value) && value.length > 1) return `  ${JSON.stringify(key)}: [\n${value.map(entry => `    ${JSON.stringify(entry)}`).join(',\n')}\n  ]`;
+      if (Array.isArray(value) && value.length > 0) return `  ${JSON.stringify(key)}: [\n${value.map(entry => `    ${JSON.stringify(entry)}`).join(',\n')}\n  ]`;
       return `  ${JSON.stringify(key)}: ${JSON.stringify(value)}`;
     });
     return `${match[1]}{\n${lines.join(',\n')}\n}${match[3]}`;
@@ -232,7 +246,7 @@ function highlighted(text: string): string {
   }).join('\n') + '\n';
 }
 
-export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, previewClassId = '', previewLearnerSeat = 0, previewAudience = 'learner', referenceDestination, chooseDynamic }: SuiteScriptSourceEditorProps) {
+export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, prepareContent, applyContent, onClose, className = '', title = 'SuiteScript', textOnly = false, referenceDestination, chooseDynamic }: SuiteScriptSourceEditorProps) {
   const [value, setValue] = useState(`${SUITE_SCRIPT_HEADER}\n`);
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -240,6 +254,9 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const [busy, setBusy] = useState(false);
   const [caret, setCaret] = useState(HEADER_START);
   const [scrollTop, setScrollTop] = useState(0);
+  const [codeWidth, setCodeWidth] = useState(0);
+  const [currentTop, setCurrentTop] = useState(14);
+  const [foldedStart, setFoldedStart] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestionState | null>(null);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [findOpen, setFindOpen] = useState(false);
@@ -254,10 +271,10 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const [fileError, setFileError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [statusError, setStatusError] = useState('');
-  const [previewDoc, setPreviewDoc] = useState<JSONContent>(() => editor.getJSON());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const mirror = useRef<HTMLPreElement>(null);
   const gutter = useRef<HTMLDivElement>(null);
+  const codePane = useRef<HTMLDivElement>(null);
   const loadRef = useRef(loadSource);
   const prepareRef = useRef(prepareContent);
   const applyRef = useRef(applyContent);
@@ -269,7 +286,23 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const historyIndex = useRef(-1);
   const originalIds = useRef(collectInternalIds(editor.getJSON().content ?? []));
   const generatedIds = useRef(new Map<string, string>());
-  const lineCount = value.split('\n').length;
+  const sourceLines = value.split('\n');
+  const foldedEnd = foldedStart === null ? -1 : foldEnd(sourceLines, foldedStart);
+  const visibleLines = foldedEnd > foldedStart! ? [...sourceLines.slice(0, foldedStart! + 1), `  … ${foldedEnd - foldedStart!} lines folded`, ...sourceLines.slice(foldedEnd + 1)] : sourceLines;
+  const visibleValue = visibleLines.join('\n');
+  const currentLine = lineAt(value, caret);
+  useLayoutEffect(() => {
+    const pane = codePane.current;
+    if (!pane) return;
+    const observer = new ResizeObserver(() => setCodeWidth(pane.clientWidth));
+    observer.observe(pane);
+    setCodeWidth(pane.clientWidth);
+    return () => observer.disconnect();
+  }, [loading]);
+  useLayoutEffect(() => {
+    const row = gutter.current?.children[currentLine - 1] as HTMLElement | undefined;
+    setCurrentTop(row ? row.offsetTop : 14 + (currentLine - 1) * 24);
+  }, [currentLine, visibleValue, codeWidth]);
   prepareRef.current = prepareContent;
   applyRef.current = applyContent;
 
@@ -291,11 +324,6 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     });
     return () => { active = false; revision.current++; };
   }, []);
-  useEffect(() => {
-    const update = () => setPreviewDoc(editor.getJSON());
-    editor.on('update', update);
-    return () => { editor.off('update', update); };
-  }, [editor]);
 
   const available = useMemo(() => {
     const keys = new Set(commands.map(command => command.key));
@@ -531,17 +559,16 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     } catch (error) { setFileError(error instanceof Error ? error.message : String(error)); }
     finally { setFileBusy(false); }
   }
-  const currentLine = lineAt(value, caret);
   const errorByLine = new Map(issues.map(issue => [issue.line, issue.text]));
   const status = loading ? 'Opening SuiteScript…' : loadError ? 'Use rich text here' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}` : 'No problems';
   const allProblems = [...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(loadError ? [loadError] : []), ...(statusError ? [statusError] : []), ...warnings];
   const body: ReactNode = loading ? <div className="ss-source__loading" role="status">Preparing your editable SuiteScript…</div> : loadError ? <div className="ss-source__loading ss-source__unavailable" role="alert"><p>{loadError}</p><button type="button" onClick={onClose}>Return to rich text editor</button></div> : (
     <div className="ss-source__codebox">
-      <div className="ss-source__current" style={{ top: `${14 + (currentLine - 1) * 24 - scrollTop}px` }} aria-hidden="true" />
-      <div className="ss-source__gutter" ref={gutter} aria-hidden="true">{Array.from({ length: lineCount }, (_, index) => <div key={index} className={errorByLine.has(index + 1) ? 'ss-source__gutter-error' : ''} title={errorByLine.get(index + 1)}>{index + 1}</div>)}</div>
-      <div className="ss-source__codepane">
-        <pre ref={mirror} className="ss-source__highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlighted(value) }} />
-        <textarea ref={textarea} className="ss-source__textarea" aria-label="SuiteScript source" aria-multiline="true" aria-autocomplete="list" aria-expanded={!!suggestions} value={value} wrap="off" spellCheck={spellcheck} onChange={event => changeSource(event.target.value, event.target.selectionStart)} onPaste={event => { event.preventDefault(); insert(event.clipboardData.getData('text/plain')); }} onClick={syncCaret} onKeyUp={syncCaret} onSelect={syncCaret} onScroll={syncScroll} onKeyDown={onKeyDown} />
+      <div className="ss-source__current" style={{ top: `${currentTop - scrollTop}px` }} aria-hidden="true" />
+      <div className="ss-source__gutter" ref={gutter}>{visibleLines.map((line, index) => { const sourceLine = foldedEnd > foldedStart! && index > foldedStart! ? index + foldedEnd - foldedStart! : index; const canFold = foldEnd(sourceLines, sourceLine) > sourceLine; return <div key={index} className={errorByLine.has(sourceLine + 1) ? 'ss-source__gutter-error' : ''} title={errorByLine.get(sourceLine + 1)}>{canFold && <button type="button" className="ss-source__fold" aria-label={`${foldedStart === sourceLine ? 'Expand' : 'Collapse'} line ${sourceLine + 1}`} onClick={() => setFoldedStart(foldedStart === sourceLine ? null : sourceLine)}>{foldedStart === sourceLine ? '▸' : '▾'}</button>}<span className="ss-source__line-number">{sourceLine + 1}</span><span className="ss-source__line-measure" style={{ width: Math.max(80, codeWidth - 32) }}>{line || '\u00a0'}</span></div>; })}</div>
+      <div className="ss-source__codepane" ref={codePane}>
+        <pre ref={mirror} className="ss-source__highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlighted(visibleValue) }} />
+        <textarea ref={textarea} className="ss-source__textarea" aria-label="SuiteScript source" aria-multiline="true" aria-autocomplete="list" aria-expanded={!!suggestions} value={visibleValue} readOnly={foldedStart !== null} wrap="soft" spellCheck={spellcheck} onChange={event => changeSource(event.target.value, event.target.selectionStart)} onPaste={event => { if (foldedStart !== null) return; event.preventDefault(); insert(event.clipboardData.getData('text/plain')); }} onClick={syncCaret} onKeyUp={syncCaret} onSelect={syncCaret} onScroll={syncScroll} onKeyDown={onKeyDown} />
       </div>
       {suggestions && <div className="ss-source__suggestions" role="listbox" aria-label={suggestions.mode === 'question' ? 'Question types' : suggestions.mode === 'file' ? 'File source' : 'SuiteScript commands'} style={{ top: suggestions.top, left: suggestions.left }}>
         <div className="ss-source__suggest-head">{suggestions.mode === 'question' ? 'QUESTION TYPE' : suggestions.mode === 'file' ? 'ADD FILE' : 'SUGGESTED COMMANDS'} <span>↑ ↓ &nbsp; Enter</span></div>
@@ -553,8 +580,8 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     <header className="ss-source__toolbar" role="toolbar" aria-label="SuiteScript tools">
       <span className="ss-source__identity">@_ <strong>{title}</strong></span>
       <button type="button" onClick={undo} disabled={historyIndex.current <= 0} aria-label="Undo" title="Undo (Ctrl or Command Z)">↶ <span>Undo</span></button>
-      <button type="button" onClick={() => void paste()} disabled={loading || !!loadError} aria-label="Paste plain text" title="Paste plain text">▤ <span>Paste</span></button>
-      <button type="button" onClick={() => void copy(value)} disabled={loading || !!loadError} aria-label="Copy all SuiteScript" title="Copy all SuiteScript">▣ <span>Copy all</span></button>
+      <button type="button" onClick={() => void paste()} disabled={loading || !!loadError} aria-label="Paste plain text" title="Paste plain text">⎘ <span>Paste</span></button>
+      <button type="button" onClick={() => void copy(value)} disabled={loading || !!loadError} aria-label="Copy all SuiteScript" title="Copy all SuiteScript">▧ <span>Copy all</span></button>
       <button type="button" onClick={() => setSpellcheck(on => !on)} aria-pressed={spellcheck} aria-label="Spelling" title="Spelling">A<span className="ss-source__spell-mark">✓</span></button>
       <button type="button" onClick={() => setHelpOpen(open => !open)} aria-expanded={helpOpen} aria-label="SuiteScript help" title="SuiteScript help">?</button>
       <button type="button" onClick={() => setFindOpen(open => !open)} aria-expanded={findOpen} aria-label="Find and replace" title="Find and replace (Ctrl or Command F)">⌕</button>
@@ -564,10 +591,6 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     {helpOpen && <div className="ss-source__help"><strong>Write naturally. Add power with @.</strong><p>Type @ to add a command. Use Tab and Shift+Tab between placeholders. A valid edit updates the real lesson preview. Keep answers teacher-only.</p><button type="button" onClick={() => void copy(aiInstructions(commands, textOnly))}>{textOnly ? 'Copy AI instructions for this field' : `Copy AI instructions for all ${starterCatalog.length} Add items`}</button></div>}
     <div className={`ss-source__workspace${loadError ? ' is-unavailable' : ''}`}>
       {body}
-      {!loading && !loadError && <aside className="ss-source__preview" aria-label={previewAudience === 'teacher' ? 'Private teacher preview' : 'Live learner preview'}>
-        <div className="ss-source__preview-head"><span>{previewAudience === 'teacher' ? 'PRIVATE TEACHER PREVIEW' : 'LEARNER PREVIEW'}</span><span>{busy ? 'Updating…' : issues.length || statusError || warnings.length ? 'Last valid version' : 'Live'}</span></div>
-        <div className="ss-source__preview-body"><LocalLearnerPreviewMode.Provider value={previewLearnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={previewAudience === 'teacher' ? previewDoc : splitKey(previewDoc, true).content} responses={{}} disabled hideAnswers={previewAudience !== 'teacher'} classId={previewClassId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div>
-      </aside>}
     </div>
     <footer className="ss-source__status"><span className={loadError || issues.length || statusError || warnings.length ? 'is-error' : busy ? 'is-busy' : 'is-ready'} tabIndex={0} aria-label={[status, ...allProblems].join('. ')} title={allProblems.join('\n') || status}>● {status}{!!allProblems.length && <span className="ss-source__tooltip">{allProblems.slice(0, 6).map((problem, index) => <span key={index}>{problem}</span>)}</span>}</span><span>Ln {currentLine}, Col {(value.slice(0, caret).split('\n').at(-1) ?? '').length + 1}</span><span className="ss-source__version">SuiteScript v1</span></footer>
     {confirmClose && <div className="ss-source__confirm" role="dialog" aria-modal="true" aria-label="Discard unfinished SuiteScript"><div><h3>Return to rich text?</h3><p>The last valid change is already in the task. The unfinished code will be discarded.</p><button type="button" onClick={() => setConfirmClose(false)}>Keep editing</button><button type="button" onClick={() => { setConfirmClose(false); onClose(); }}>Discard unfinished code</button></div></div>}

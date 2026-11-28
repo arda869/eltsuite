@@ -67,7 +67,7 @@ try {
   await source.press('Control+z');
   assert.equal(await source.inputValue(), initial, 'Ctrl+Z restores the previous source');
   assert.equal(await dialog.getByText('Updating as you type').count(), 0);
-  await dialog.getByText('Live', { exact: true }).waitFor();
+  assert.equal(await dialog.locator('.ss-source__preview').count(), 0, 'The workbench uses the whole width for source.');
   await page.screenshot({ path: 'outputs/suite-script/structure-editor-activity.png' });
   await source.fill(initial.replace('Learner B original.', 'Learner B revised.'));
   await dialog.getByRole('button', { name: 'Apply to activity' }).click();
@@ -85,6 +85,37 @@ try {
   assert.match(JSON.stringify(persisted.plain.task), /Lead in original\./);
   assert.match(JSON.stringify(persisted.a.notes), /Private A note/);
   assert.match(JSON.stringify(persisted.b.notes), /Private B note/);
+  await page.getByRole('radio', { name: 'Worksheet: the lesson as printed pages' }).click();
+  await page.getByRole('button', { name: 'Lead in', exact: false }).first().click();
+  await page.getByRole('button', { name: 'More: groups, export, shortcuts' }).click();
+  await page.getByRole('menuitem', { name: 'Edit selected task as SuiteScript…' }).click();
+  const inlineTask = page.getByRole('region', { name: 'Edit task as SuiteScript' });
+  const inlineSource = inlineTask.getByRole('textbox', { name: 'SuiteScript source' });
+  await inlineSource.waitFor();
+  assert.match(await inlineSource.inputValue(), /@task\(\n  title:/, 'Task settings open as readable multiline SuiteScript.');
+  await inlineTask.getByRole('button', { name: 'Collapse line 2' }).click();
+  assert.match(await inlineSource.inputValue(), /lines folded/);
+  await inlineTask.getByRole('button', { name: 'Expand line 2' }).click();
+  assert.equal(await page.locator('.sh-right .frame-head').count(), 0, 'Whole-task code replaces title, instructions and rich-text controls.');
+  assert.equal(await inlineTask.locator('.ss-source__preview').count(), 0);
+  await inlineSource.fill((await inlineSource.inputValue()).replace('Lead in original.', 'Worksheet updates live.'));
+  await page.waitForFunction(id => [...document.querySelectorAll(`.sh-block[data-b="${id}"] .sh-hit > div`)].some(el => el.shadowRoot?.textContent?.includes('Worksheet updates live.')), scene.plain);
+  await page.screenshot({ path: 'outputs/suite-script/whole-task-paper-inline.png' });
+  page.once('dialog', confirm => confirm.accept());
+  await inlineTask.getByRole('button', { name: 'Close SuiteScript' }).click();
+  const unchanged = await page.evaluate(async scene => { const { getDoc } = await import('/test/mock/firestore.ts'); const { taskRef } = await import('/src/lib/tasks.ts'); return (await getDoc(taskRef(scene.classId, scene.lessonId, scene.plain))).data(); }, scene);
+  assert.doesNotMatch(JSON.stringify(unchanged), /Worksheet updates live/, 'A live preview does not save before Apply.');
+  await page.getByRole('button', { name: 'More: groups, export, shortcuts' }).click();
+  await page.getByRole('menuitem', { name: 'Edit selected task as SuiteScript…' }).click();
+  const audienceEditor = page.getByRole('region', { name: 'Edit task as SuiteScript' });
+  const audienceSource = audienceEditor.getByRole('textbox', { name: 'SuiteScript source' });
+  await audienceSource.waitFor();
+  assert.match(await audienceSource.inputValue(), /audience: \{"mode":"all"\}/);
+  await audienceSource.fill((await audienceSource.inputValue()).replace('audience: {"mode":"all"}', 'audience: {"mode":"learners","learnerIds":[]}'));
+  await audienceEditor.getByRole('button', { name: 'Apply to task' }).click();
+  await audienceEditor.waitFor({ state: 'hidden' });
+  const savedAudience = await page.evaluate(async scene => { const { getDoc } = await import('/test/mock/firestore.ts'); const { taskRef } = await import('/src/lib/tasks.ts'); return (await getDoc(taskRef(scene.classId, scene.lessonId, scene.plain))).get('audience'); }, scene);
+  assert.deepEqual(savedAudience, { mode: 'learners', learnerIds: [] }, 'Whole-task SuiteScript saves who sees this on the main task.');
   await page.evaluate(async scene => {
     const { saveTask } = await import('/src/lib/tasks.ts');
     const { communicativeFixture } = await import('/test/communicative-fixtures.ts');
@@ -96,10 +127,7 @@ try {
   await bField.click({ button: 'right' });
   await page.getByText('Edit as SuiteScript', { exact: true }).last().click();
   await page.getByRole('textbox', { name: 'SuiteScript source' }).waitFor();
-  const bFieldPreview = await page.locator('.ss-source__preview').innerText();
-  assert.match(bFieldPreview, /With Learner A/, 'Learner B field editor must preview B’s assigned seat');
-  assert.doesNotMatch(bFieldPreview, /full set of cards|Teacher view|With Learner B/);
-  assert.equal((bFieldPreview.match(/Your private budget is \d+ tokens/g) ?? []).length, 1, 'Learner B preview must show one card');
+  assert.equal(await page.locator('.ss-source__preview').count(), 0, 'The field editor uses the whole code area; the lesson preview belongs outside it.');
   await page.getByRole('button', { name: 'Return to rich text editor' }).click();
   await page.evaluate(async scene => {
     const { addTask } = await import('/src/lib/tasks.ts');
@@ -110,16 +138,14 @@ try {
   await page.getByRole('button', { name: 'Private cue cards', exact: false }).first().click();
   await page.getByRole('button', { name: 'More: groups, export, shortcuts' }).click();
   await page.getByRole('menuitem', { name: 'Edit selected task as SuiteScript…' }).click();
-  const cueDialog = page.getByRole('dialog', { name: 'Edit task as SuiteScript' });
+  const cueDialog = page.getByRole('region', { name: 'Edit task as SuiteScript' });
   await cueDialog.getByRole('textbox', { name: 'SuiteScript source' }).waitFor();
-  const learnerPreview = await cueDialog.locator('.ss-source__preview').innerText();
-  assert.doesNotMatch(learnerPreview, /full set of cards|Teacher view/);
-  assert.equal((learnerPreview.match(/Your private budget is \d+ tokens/g) ?? []).length, 1, 'learner preview must show one assigned card, not the teacher set');
+  assert.equal(await cueDialog.locator('.ss-source__preview').count(), 0, 'Whole-task source has no duplicate internal preview.');
   await cueDialog.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Lead in', exact: false }).first().click();
   await page.getByRole('button', { name: 'More: groups, export, shortcuts' }).click();
   await page.getByRole('menuitem', { name: 'Edit selected task as SuiteScript…' }).click();
-  const staleDialog = page.getByRole('dialog', { name: 'Edit task as SuiteScript' });
+  const staleDialog = page.getByRole('region', { name: 'Edit task as SuiteScript' });
   const staleSource = staleDialog.getByRole('textbox', { name: 'SuiteScript source' });
   await staleSource.waitFor();
   await staleSource.fill((await staleSource.inputValue()).replace('Lead in original.', 'Should not overwrite.'));
@@ -170,6 +196,15 @@ try {
   assert.match(JSON.stringify(hubSaved.sections.find(section => section.id === hub.a)), /Hub A original\./);
   assert.match(JSON.stringify(hubSaved.sections.find(section => section.id === `${hub.a}-notes`)), /Hub private A\./);
   assert.match(JSON.stringify(hubSaved.sections.find(section => section.id === `${hub.b}-notes`)), /Hub private B\./);
+  await page.goto(`${base}/resource-hub`);
+  const hubHeader = await page.locator('.rh-app-shell > .suite-topbar').evaluate(element => {
+    const header = element.getBoundingClientRect();
+    const avatar = element.querySelector('.avatar')?.getBoundingClientRect();
+    return { headerLeft: header.left, headerRight: header.right, avatarRight: avatar?.right ?? 0, viewport: innerWidth };
+  });
+  assert.ok(hubHeader.headerLeft >= -1 && hubHeader.headerRight <= hubHeader.viewport + 1, 'Resource Hub header fits the viewport');
+  assert.ok(hubHeader.avatarRight > 0 && hubHeader.avatarRight <= hubHeader.viewport - 4, `Resource Hub profile picture is not clipped: ${JSON.stringify(hubHeader)}`);
+  await page.screenshot({ path: 'outputs/suite-script/resource-hub-header.png' });
   assert.deepEqual(errors, []);
   console.log('PASS Class and Resource Hub whole-activity SuiteScript selected Learner B, changed only B, retained A and private notes; screenshots captured. Browser with mocked Firebase.');
 } catch (error) {

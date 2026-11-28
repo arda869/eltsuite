@@ -1,4 +1,5 @@
 .rh-app-shell { --app:#74762f; --app-ink:#5d6127; --app-tint:#eff1e1; --rh-olive:#74762f; --rh-ink:#302e28; --rh-muted:#706f68; --rh-border:#e5e1d8; --rh-paper:#fffefa; --rh-warm:#f7f5ee; min-height:100dvh; background:var(--rh-warm); color:var(--rh-ink); user-select:text; }
+.rh-app-shell > .topbar.suite-topbar { translate: calc(-1 * var(--suite-gutter)) 0; }
 .rh-app-shell * { box-sizing:border-box; }
 .rh-app-shell button { cursor:pointer; }
 .rh-app-shell button:disabled { cursor:not-allowed; opacity:.43; }
