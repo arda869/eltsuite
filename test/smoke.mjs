@@ -2989,6 +2989,9 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     const editor = s.p.locator('.task-editor .ProseMirror').first();
     await see(s.p, '.task-editor .ProseMirror', 'the lesson editor');
+    // A save veil briefly dims the toolbar; sample contrast only once the
+    // ordinary editable screen is visible to the teacher.
+    await s.p.locator('.frame-veil').waitFor({ state: 'hidden' });
     await axe(s.p, 'Lesson editor', A11Y_FOUND);
     await s.p.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
     await axe(s.p, 'Lesson editor dark', A11Y_FOUND);
