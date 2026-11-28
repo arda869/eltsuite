@@ -27,6 +27,7 @@ export type PreparedSuiteScriptTask = {
   paper?: SuiteScriptTaskDraft['paper'];
   anchor?: string;
   identity?: SuiteScriptTaskDraft['identity'];
+  audience?: SuiteScriptTaskDraft['audience'];
   instructions: JSONContent;
   content: JSONContent;
   notes: JSONContent;
@@ -48,7 +49,7 @@ export async function prepareSuiteScriptBundleForClass(bundle: SuiteScriptBundle
       validate(normalized);
       return normalized;
     }));
-    prepared.push({ title: task.title, kind: task.kind, layout: task.layout, afterCheck: task.afterCheck, showScore: task.showScore, hidden: task.hidden, locked: task.locked, colScroll: task.colScroll, paper: task.paper, anchor: task.anchor, identity: task.identity, instructions: sections[0], content: sections[1], notes: sections[2], paperInstructions: sections[3] });
+    prepared.push({ title: task.title, kind: task.kind, layout: task.layout, afterCheck: task.afterCheck, showScore: task.showScore, hidden: task.hidden, locked: task.locked, colScroll: task.colScroll, paper: task.paper, anchor: task.anchor, identity: task.identity, audience: task.audience, instructions: sections[0], content: sections[1], notes: sections[2], paperInstructions: sections[3] });
   }
   return prepared;
 }
@@ -72,6 +73,7 @@ export async function projectSuiteScriptClassTask(task: PreparedSuiteScriptTask,
       ...(task.colScroll === undefined ? {} : { colScroll: task.colScroll }),
       ...(task.anchor === undefined ? {} : { anchor: task.anchor }),
       ...(task.identity === undefined ? {} : { identity: task.identity }),
+      ...(task.audience === undefined ? {} : { audience: task.audience }),
       print: { ...task.paper, instr: textOf(paper.content ?? []), instrDoc: paper },
     },
     key: split.key,
@@ -81,13 +83,19 @@ export async function projectSuiteScriptClassTask(task: PreparedSuiteScriptTask,
 }
 
 // A selected-version edit may change its text and task display settings, but
-// the lesson's version routing and identity stay attached to the original row.
+// Version routing stays attached to the original row. A version's audience is
+// controlled by its main task, so editing Learner B cannot silently change it.
 export function selectedSuiteScriptTaskPatch(current: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
   const patch = { ...incoming };
-  for (const key of ['family', 'variant', 'variants', 'audience', 'dist', 'allowed', 'identity']) {
+  for (const key of ['family', 'variant', 'variants', 'dist', 'allowed']) {
     delete patch[key];
   }
-  if (current.identity !== undefined) patch.identity = current.identity;
+  const versioned = Boolean(current.family) || (Array.isArray(current.variants) && current.variants.length > 0);
+  if (versioned && incoming.identity !== undefined && JSON.stringify(incoming.identity) !== JSON.stringify(current.identity)) throw new Error('Change the shared activity type from the activity type control, then reopen SuiteScript. Your script is still here.');
+  if (versioned) {
+    delete patch.identity;
+    if (current.family) delete patch.audience;
+  }
   return { ...patch, updatedAt: serverTimestamp() };
 }
 

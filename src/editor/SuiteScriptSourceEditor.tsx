@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { Editor, JSONContent } from '@tiptap/react';
 import { AddWindow } from '../components/AddWindow';
 import { FileBrowser } from '../components/FileBrowser';
@@ -46,7 +46,7 @@ function foldEnd(lines: string[], start: number): number {
       if (!quoted && char === '(') depth++;
       if (!quoted && char === ')') depth--;
     }
-    if (row > start && depth <= 0) return row;
+    if (depth <= 0) return row > start ? row : start;
   }
   return start;
 }
@@ -254,6 +254,8 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const [busy, setBusy] = useState(false);
   const [caret, setCaret] = useState(HEADER_START);
   const [scrollTop, setScrollTop] = useState(0);
+  const [codeWidth, setCodeWidth] = useState(0);
+  const [currentTop, setCurrentTop] = useState(14);
   const [foldedStart, setFoldedStart] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestionState | null>(null);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
@@ -272,6 +274,7 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const textarea = useRef<HTMLTextAreaElement>(null);
   const mirror = useRef<HTMLPreElement>(null);
   const gutter = useRef<HTMLDivElement>(null);
+  const codePane = useRef<HTMLDivElement>(null);
   const loadRef = useRef(loadSource);
   const prepareRef = useRef(prepareContent);
   const applyRef = useRef(applyContent);
@@ -287,6 +290,19 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
   const foldedEnd = foldedStart === null ? -1 : foldEnd(sourceLines, foldedStart);
   const visibleLines = foldedEnd > foldedStart! ? [...sourceLines.slice(0, foldedStart! + 1), `  … ${foldedEnd - foldedStart!} lines folded`, ...sourceLines.slice(foldedEnd + 1)] : sourceLines;
   const visibleValue = visibleLines.join('\n');
+  const currentLine = lineAt(value, caret);
+  useLayoutEffect(() => {
+    const pane = codePane.current;
+    if (!pane) return;
+    const observer = new ResizeObserver(() => setCodeWidth(pane.clientWidth));
+    observer.observe(pane);
+    setCodeWidth(pane.clientWidth);
+    return () => observer.disconnect();
+  }, [loading]);
+  useLayoutEffect(() => {
+    const row = gutter.current?.children[currentLine - 1] as HTMLElement | undefined;
+    setCurrentTop(row ? row.offsetTop : 14 + (currentLine - 1) * 24);
+  }, [currentLine, visibleValue, codeWidth]);
   prepareRef.current = prepareContent;
   applyRef.current = applyContent;
 
@@ -543,15 +559,14 @@ export function SuiteScriptSourceEditor({ editor, labels, commands, loadSource, 
     } catch (error) { setFileError(error instanceof Error ? error.message : String(error)); }
     finally { setFileBusy(false); }
   }
-  const currentLine = lineAt(value, caret);
   const errorByLine = new Map(issues.map(issue => [issue.line, issue.text]));
   const status = loading ? 'Opening SuiteScript…' : loadError ? 'Use rich text here' : statusError ? 'Could not update' : issues.length ? `${issues.length} ${issues.length === 1 ? 'error' : 'errors'}` : busy ? 'Updating…' : warnings.length ? `${warnings.length} ${warnings.length === 1 ? 'warning' : 'warnings'}` : 'No problems';
   const allProblems = [...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(loadError ? [loadError] : []), ...(statusError ? [statusError] : []), ...warnings];
   const body: ReactNode = loading ? <div className="ss-source__loading" role="status">Preparing your editable SuiteScript…</div> : loadError ? <div className="ss-source__loading ss-source__unavailable" role="alert"><p>{loadError}</p><button type="button" onClick={onClose}>Return to rich text editor</button></div> : (
     <div className="ss-source__codebox">
-      <div className="ss-source__current" style={{ top: `${14 + (currentLine - 1) * 24 - scrollTop}px` }} aria-hidden="true" />
-      <div className="ss-source__gutter" ref={gutter}>{visibleLines.map((_, index) => { const sourceLine = foldedEnd > foldedStart! && index > foldedStart! ? index + foldedEnd - foldedStart! : index; const canFold = foldEnd(sourceLines, sourceLine) > sourceLine; return <div key={index} className={errorByLine.has(sourceLine + 1) ? 'ss-source__gutter-error' : ''} title={errorByLine.get(sourceLine + 1)}>{canFold && <button type="button" className="ss-source__fold" aria-label={`${foldedStart === sourceLine ? 'Expand' : 'Collapse'} line ${sourceLine + 1}`} onClick={() => setFoldedStart(foldedStart === sourceLine ? null : sourceLine)}>{foldedStart === sourceLine ? '▸' : '▾'}</button>}{sourceLine + 1}</div>; })}</div>
-      <div className="ss-source__codepane">
+      <div className="ss-source__current" style={{ top: `${currentTop - scrollTop}px` }} aria-hidden="true" />
+      <div className="ss-source__gutter" ref={gutter}>{visibleLines.map((line, index) => { const sourceLine = foldedEnd > foldedStart! && index > foldedStart! ? index + foldedEnd - foldedStart! : index; const canFold = foldEnd(sourceLines, sourceLine) > sourceLine; return <div key={index} className={errorByLine.has(sourceLine + 1) ? 'ss-source__gutter-error' : ''} title={errorByLine.get(sourceLine + 1)}>{canFold && <button type="button" className="ss-source__fold" aria-label={`${foldedStart === sourceLine ? 'Expand' : 'Collapse'} line ${sourceLine + 1}`} onClick={() => setFoldedStart(foldedStart === sourceLine ? null : sourceLine)}>{foldedStart === sourceLine ? '▸' : '▾'}</button>}<span className="ss-source__line-number">{sourceLine + 1}</span><span className="ss-source__line-measure" style={{ width: Math.max(80, codeWidth - 32) }}>{line || '\u00a0'}</span></div>; })}</div>
+      <div className="ss-source__codepane" ref={codePane}>
         <pre ref={mirror} className="ss-source__highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlighted(visibleValue) }} />
         <textarea ref={textarea} className="ss-source__textarea" aria-label="SuiteScript source" aria-multiline="true" aria-autocomplete="list" aria-expanded={!!suggestions} value={visibleValue} readOnly={foldedStart !== null} wrap="soft" spellCheck={spellcheck} onChange={event => changeSource(event.target.value, event.target.selectionStart)} onPaste={event => { if (foldedStart !== null) return; event.preventDefault(); insert(event.clipboardData.getData('text/plain')); }} onClick={syncCaret} onKeyUp={syncCaret} onSelect={syncCaret} onScroll={syncScroll} onKeyDown={onKeyDown} />
       </div>

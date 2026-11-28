@@ -174,6 +174,7 @@ export function LessonEditor() {
   const { user, profile } = useAuth();
   const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
   const [suiteStructure, setSuiteStructure] = useState<'task' | 'activity' | null>(null);
+  const [suiteTaskPreview, setSuiteTaskPreview] = useState<SuiteScriptBundle | null>(null);
   const [suiteStructureError, setSuiteStructureError] = useState('');
   const suiteStamps = useRef(new Map<string, { task: number; notes: number }>());
   const suiteItemStamp = useRef(0);
@@ -243,12 +244,15 @@ export function LessonEditor() {
   const groupSets = useGroupSets(classId);
   const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);
+  useEffect(() => setSuiteTaskPreview(null), [task?.id]);
   const suiteRows = tasks.map(t => ({ id: t.id, title: t.title || 'Untitled task', group: t.family || (t.variants?.length ? t.id : undefined), version: t.variant ? `Learner ${t.variant}` : t.variants?.length ? 'Learner A' : undefined }));
   const openSuiteStructure = (kind: 'task' | 'activity') => {
     setExportOpen(false);
     setSuiteStructureError('');
     if (!user || viewer || phone || teachingHere || mode !== 'edit') { setSuiteStructureError('Open the editable lesson to use SuiteScript.'); return; }
     if (kind === 'task' && !task) { setSuiteStructureError('Select a task before opening SuiteScript.'); return; }
+    setSuiteTaskPreview(null);
+    if (kind === 'task') setSheetEdit(true);
     setSuiteStructure(kind);
   };
   const loadSuiteStructure = async (kind: 'task' | 'activity', ids: string[]): Promise<string> => {
@@ -1005,17 +1009,29 @@ export function LessonEditor() {
   // by clicking a task (here or in the list).
   const [sheetEdit, setSheetEdit] = useState(true);
   useEffect(() => setSheetEdit(true), [task?.id]);
+  const suitePreviewTask = suiteStructure === 'task' && suiteTaskPreview?.kind === 'task' ? suiteTaskPreview.task : null;
   const sheetTasks = useMemo(
     () =>
       tasks
         .filter((t) => !isVariant(t))
-        .map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t.content && sheetKeys[t.id] ? { ...t, content: mergeKey(t.content, sheetKeys[t.id]) } : t)),
-    [tasks, liveId, liveDraft, sheetKeys], // eslint-disable-line react-hooks/exhaustive-deps
+        .map((t) => {
+          if (suitePreviewTask && (t.id === task?.id || t.id === task?.family)) {
+            const instructionText = (nodes: typeof suitePreviewTask.instructions): string => nodes.map(node => {
+              const read = (item: typeof node): string => [item.text ?? '', ...(item.content ?? []).map(read)].join('');
+              return read(node);
+            }).join('\n');
+            return { ...t, title: suitePreviewTask.title, instructions: instructionText(suitePreviewTask.instructions), instrDoc: { type: 'doc', content: suitePreviewTask.instructions }, content: { type: 'doc', content: suitePreviewTask.content }, print: { ...t.print, ...suitePreviewTask.paper }, hidden: suitePreviewTask.hidden ?? t.hidden };
+          }
+          return t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t.content && sheetKeys[t.id] ? { ...t, content: mergeKey(t.content, sheetKeys[t.id]) } : t;
+        }),
+    [tasks, liveId, liveDraft, sheetKeys, suitePreviewTask, task?.id, task?.family], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, itemId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover, lessonStyle: lessonStyleOf(c) }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
-  const editFrame = task && draft && editorKey.startsWith(task.id + ':') ? (
+  const editFrame = task && draft && editorKey.startsWith(task.id + ':') ? suiteStructure === 'task' ? (
+    <SuiteScriptStructureEditor key={task.id} kind="task" title={task.title || 'Selected task'} rows={suiteRows.filter(row => row.id === selected)} classId={classId} inline loadSource={ids => loadSuiteStructure('task', ids)} applyBundle={applySuiteStructure} onPreview={bundle => setSuiteTaskPreview(bundle)} onClose={() => { setSuiteStructure(null); setSuiteTaskPreview(null); }} />
+  ) : (
               <div className="frame-inner" data-spelling-editor="true">
                 <div className="frame-head">
                   {teachingHere && (
@@ -1242,7 +1258,7 @@ export function LessonEditor() {
       {item === null && <p className="placeholder">We couldn’t find this lesson.</p>}
 
       {item && (
-        <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls} style={panes.style}>
+        <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls + (suiteStructure === 'task' ? ' suite-task-mode no-right' : '')} style={panes.style}>
           <nav className="task-list" aria-label="Tasks">
             {panels.compact && <button className="btn small-btn compact-panel-close" onClick={panels.toggleLeft}>Close task list</button>}
             <textarea
@@ -1358,7 +1374,7 @@ export function LessonEditor() {
           <div className="center-col">
           <div className="panel-toggles">
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
-            {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
+            {!preview && suiteStructure !== 'task' && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
@@ -1630,7 +1646,7 @@ export function LessonEditor() {
                   onKeyDown={(e) => (e.key === 'ArrowLeft' ? setSheetW(Math.max(25, sheetW - 5)) : e.key === 'ArrowRight' ? setSheetW(Math.min(70, sheetW + 5)) : null)}
                 />
                 <section className="sh-right" aria-label="Edit the task">
-                  {task.kind !== 'section' && (
+                  {suiteStructure !== 'task' && task.kind !== 'section' && (
                     <PaperBar
                       key={task.id}
                       look={task.print ?? {}}
@@ -1668,7 +1684,7 @@ export function LessonEditor() {
           )}
           </div>
 
-          {panels.right && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
+          {panels.right && suiteStructure !== 'task' && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
           {livePanel && (popout ? <aside className="task-side live-panel live-popout-placeholder"><span>Live controls are in a separate window.</span><button type="button" className="btn small-btn" onClick={dock}>Dock back</button></aside> : livePanel)}
           {task && draft && viewer && (
             <aside className="task-side" aria-label="Viewing">
@@ -1676,7 +1692,7 @@ export function LessonEditor() {
               <span className="hint">{tr('You have view-only access to this class, so you see the lesson as learners do. Nothing here is saved.')}</span>
             </aside>
           )}
-          {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
+          {task && draft && suiteStructure !== 'task' && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side folds" aria-label="Task settings">
               {panels.compact && <button className="btn small-btn compact-panel-close" onClick={panels.toggleRight}>Close task settings</button>}
               {questionIds(draft.content).some(q=>questionAcceptsTypedAnswer(q.type))&&<Fold id="spelling" title="Question spelling" open={fold} setOpen={setFold}>
@@ -1801,7 +1817,7 @@ export function LessonEditor() {
         />
       )}
       {suiteStructureError && <div className="toasts" role="alert"><div className="toast">{suiteStructureError}<button type="button" className="btn small-btn" onClick={() => setSuiteStructureError('')}>Close</button></div></div>}
-      {suiteStructure && <SuiteScriptStructureEditor kind={suiteStructure} title={suiteStructure === 'task' ? task?.title || 'Selected task' : item?.title || 'Lesson'} rows={suiteStructure === 'task' ? suiteRows.filter(row => row.id === selected) : suiteRows} classId={classId} loadSource={ids => loadSuiteStructure(suiteStructure, ids)} applyBundle={applySuiteStructure} onClose={() => setSuiteStructure(null)} />}
+      {suiteStructure === 'activity' && <SuiteScriptStructureEditor kind="activity" title={item?.title || 'Lesson'} rows={suiteRows} classId={classId} loadSource={ids => loadSuiteStructure('activity', ids)} applyBundle={applySuiteStructure} onClose={() => { setSuiteStructure(null); setSuiteTaskPreview(null); }} />}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
       {fromLib && user && (
         <LibraryPicker

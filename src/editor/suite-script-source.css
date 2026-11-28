@@ -57,7 +57,9 @@
 .ss-source__preview-body .task-renderer { max-width: 100%; }
 .ss-source__current { position: absolute; z-index: 0; left: 0; right: 0; height: 24px; border-left: 2px solid #d68f63; background: #26333e; pointer-events: none; }
 .ss-source__gutter { position: relative; z-index: 1; flex: 0 0 47px; padding: 14px 0; overflow: hidden; border-right: 1px solid #2e3943; color: #73899b; text-align: right; font: 12px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: none; }
-.ss-source__gutter > div { position: relative; height: 24px; padding-right: 11px; }
+.ss-source__gutter > div { position: relative; min-height: 24px; padding-right: 11px; }
+.ss-source__line-number { position: absolute; top: 0; right: 11px; }
+.ss-source__line-measure { display: block; min-height: 24px; visibility: hidden; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .ss-source__fold { position: absolute; left: 2px; top: 2px; width: 18px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #b5c9d4; font: 12px/20px ui-monospace, monospace; cursor: pointer; }
 .ss-source__fold:hover, .ss-source__fold:focus-visible { background: #3c4d5d; color: white; }
 .ss-source__gutter-error { color: #f4b0a8; }

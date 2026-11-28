@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { TaskRenderer } from '../components/TaskRenderer';
-import { LocalActivityMode, LocalLearnerPreviewMode } from '../communicative/LocalActivity';
-import { splitKey } from '../lib/questions';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { parseSuiteScriptBundle, type SuiteScriptBundle } from '../lib/suiteScriptBundle';
 import { suiteScriptScopeGroups, suiteScriptScopeIds, type SuiteScriptScopeRow } from '../lib/suiteScriptStructureScope';
+import { UiIcon } from '../components/UiIcon';
 import { SUITE_TYPES } from './TaskEditor';
 import './suite-script-source.css';
 import './suite-script-structure.css';
@@ -16,6 +14,8 @@ type Props = {
   sharedMetadata?: boolean;
   loadSource: (ids: string[]) => Promise<string>;
   applyBundle: (bundle: SuiteScriptBundle, ids: string[]) => Promise<void>;
+  inline?: boolean;
+  onPreview?: (bundle: SuiteScriptBundle | null) => void;
   onClose: () => void;
 };
 type LineIssue = { line: number; text: string };
@@ -40,9 +40,24 @@ function highlight(value: string): string {
   }).join('\n') + '\n';
 }
 const normalize = (value: string): string => value.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+function foldEnd(lines: string[], start: number): number {
+  if (!/^\s*@[\w-]+\(/.test(lines[start] ?? '')) return start;
+  let depth = 0, quoted = false, escaped = false;
+  for (let row = start; row < lines.length; row++) {
+    for (const char of lines[row]) {
+      if (escaped) { escaped = false; continue; }
+      if (quoted && char === '\\') { escaped = true; continue; }
+      if (char === '"') { quoted = !quoted; continue; }
+      if (!quoted && char === '(') depth++;
+      if (!quoted && char === ')') depth--;
+    }
+    if (depth <= 0) return row > start ? row : start;
+  }
+  return start;
+}
 
 /** Explicit structural workflow. Field-level paste never reaches this component. */
-export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sharedMetadata = false, loadSource, applyBundle, onClose }: Props) {
+export function SuiteScriptStructureEditor({ kind, title, rows, sharedMetadata = false, loadSource, applyBundle, inline = false, onPreview, onClose }: Props) {
   const groups = useMemo(() => suiteScriptScopeGroups(rows), [rows]);
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [ids, setIds] = useState<string[]>([]);
@@ -52,10 +67,11 @@ export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sh
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [lastValid, setLastValid] = useState<SuiteScriptBundle | null>(null);
-  const [previewTask, setPreviewTask] = useState(0);
   const [caret, setCaret] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
+  const [codeWidth, setCodeWidth] = useState(0);
+  const [currentTop, setCurrentTop] = useState(14);
+  const [foldedStart, setFoldedStart] = useState<number | null>(null);
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
@@ -66,20 +82,33 @@ export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sh
   const textarea = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
   const gutter = useRef<HTMLDivElement>(null);
+  const codePane = useRef<HTMLDivElement>(null);
   const opened = useRef(false);
+  const previewCallback = useRef(onPreview);
+  previewCallback.current = onPreview;
   const parsed = useMemo(() => parseSuiteScriptBundle(source, SUITE_TYPES), [source]);
   const issues = useMemo(() => parsed.errors.map(issueOf), [parsed.errors]);
+  const sourceLines = source.split('\n');
+  const foldedEnd = foldedStart === null ? -1 : foldEnd(sourceLines, foldedStart);
+  const visibleLines = foldedEnd > foldedStart! ? [...sourceLines.slice(0, foldedStart! + 1), `  … ${foldedEnd - foldedStart!} lines folded`, ...sourceLines.slice(foldedEnd + 1)] : sourceLines;
+  const visibleValue = visibleLines.join('\n');
   const valid = parsed.bundle?.kind === kind && !issues.length && (parsed.bundle.kind !== 'activity' || parsed.bundle.activity.tasks.length === ids.length);
   const actionError = loadError || saveError || (stage === 'editor' && issues.length ? issues[0].text : stage === 'editor' && parsed.bundle?.kind !== kind ? `This view needs @${kind}(…), not a ${parsed.bundle?.kind ?? 'field'} script.` : stage === 'editor' && kind === 'activity' && parsed.bundle?.kind === 'activity' && parsed.bundle.activity.tasks.length !== ids.length ? `This script has ${parsed.bundle.activity.tasks.length} tasks; the chosen version scope has ${ids.length}.` : '');
-  const shown = valid ? parsed.bundle : lastValid;
-  const tasks = shown ? shown.kind === 'task' ? [shown.task] : shown.activity.tasks : [];
-  const active = tasks[Math.min(previewTask, tasks.length - 1)];
-  const previewRow = rows.find(row => row.id === ids[previewTask]);
-  const previewGroup = groups.find(group => group.id === previewRow?.group);
-  const learnerSeat = previewGroup ? Math.max(0, previewGroup.options.findIndex(option => option.id === previewRow?.id)) : 0;
   const currentLine = source.slice(0, caret).split('\n').length;
+  useLayoutEffect(() => {
+    const pane = codePane.current;
+    if (!pane) return;
+    const observer = new ResizeObserver(() => setCodeWidth(pane.clientWidth));
+    observer.observe(pane);
+    setCodeWidth(pane.clientWidth);
+    return () => observer.disconnect();
+  }, [stage]);
+  useLayoutEffect(() => {
+    const row = gutter.current?.children[currentLine - 1] as HTMLElement | undefined;
+    setCurrentTop(row ? row.offsetTop : 14 + (currentLine - 1) * 24);
+  }, [currentLine, source, codeWidth, stage]);
 
-  useEffect(() => { if (valid && parsed.bundle) setLastValid(parsed.bundle); }, [valid, parsed.bundle]);
+  useEffect(() => { if (stage === 'editor' && valid && parsed.bundle) previewCallback.current?.(parsed.bundle); }, [stage, valid, parsed.bundle]);
   useEffect(() => {
     if (opened.current || stage !== 'loading') return;
     opened.current = true;
@@ -98,7 +127,7 @@ export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sh
       const value = normalize(await loadSource(selectedIds));
       if (!value.startsWith(`${HEADER}\n`)) throw new Error('This activity could not be exported as SuiteScript. Reopen it and try again.');
       undoStack.current = []; setUndoCount(0); lastTypedAt.current = 0;
-      setSource(value); setInitial(value); setIds(selectedIds); setPreviewTask(0); setStage('editor');
+      setSource(value); setInitial(value); setIds(selectedIds); setFoldedStart(null); setStage('editor');
       requestAnimationFrame(() => textarea.current?.focus());
     } catch (error) { setLoadError(error instanceof Error ? error.message : 'This script could not be opened.'); setStage('scope'); }
   };
@@ -121,7 +150,7 @@ export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sh
       }
       lastTypedAt.current = typing ? now : 0;
     }
-    setSource(next); setSaveError('');
+    setSource(next); setFoldedStart(null); setSaveError('');
     if (selection !== undefined) requestAnimationFrame(() => { const field = textarea.current; field?.focus(); field?.setSelectionRange(selection, selection); setCaret(selection); });
   };
   const undo = () => {
@@ -183,14 +212,14 @@ export function SuiteScriptStructureEditor({ kind, title, rows, classId = '', sh
     setEditorValue(source.slice(0, from) + replaceText + source.slice(to), from + replaceText.length);
   };
   const scopeMessage = kind === 'task' ? 'Only the selected task changes. Other tasks and learner versions stay as they are.' : sharedMetadata ? 'Choose one A/B destination. Other learner versions and shared resource details stay as they are.' : 'Choose one destination from every A/B set. Other learner versions stay as they are.';
-  return <div className="sss-overlay" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
-    <section className="sss-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${kind} as SuiteScript`}>
-      <header className="sss-head"><div><span className="sss-kicker">ELT SUITE · SUITESCRIPT</span><h2>Edit {kind === 'task' ? 'whole task' : 'whole activity'}</h2><p>{title}</p></div>{stage !== 'editor' && <button type="button" className="sss-close" aria-label="Close SuiteScript" onClick={close}>×</button>}</header>
+  return <div className={inline ? 'sss-inline' : 'sss-overlay'} onMouseDown={event => { if (!inline && event.target === event.currentTarget) close(); }}>
+    <section className="sss-dialog" role={inline ? 'region' : 'dialog'} aria-modal={inline ? undefined : 'true'} aria-label={`Edit ${kind} as SuiteScript`}>
+      {!inline && <header className="sss-head"><div><span className="sss-kicker">ELT SUITE · SUITESCRIPT</span><h2>Edit {kind === 'task' ? 'whole task' : 'whole activity'}</h2><p>{title}</p></div>{stage !== 'editor' && <button type="button" className="sss-close" aria-label="Close SuiteScript" onClick={close}>×</button>}</header>}
       {stage === 'scope' ? <div className="sss-scope"><span className="sss-kicker">DESTINATION SCOPE</span><h3>Which learner version should this script edit?</h3><p>{scopeMessage}</p>{groups.length ? groups.map(group => <label key={group.id} className="sss-scope-row"><span>{group.title}</span><select value={choices[group.id] ?? ''} onChange={event => { setChoices(current => ({ ...current, [group.id]: event.target.value })); setLoadError(''); }}><option value="">Choose a version</option>{group.options.map(option => <option key={option.id} value={option.id}>{option.version || option.title}</option>)}</select></label>) : <p>All tasks in this activity have one version.</p>}{loadError && <p className="sss-error" role="alert">{loadError}</p>}<div className="sss-scope-actions"><button type="button" className="btn" onClick={close}>Cancel</button><button type="button" className="btn primary" onClick={() => void openScript(choices)}>Open script</button></div></div> : stage === 'loading' ? <div className="sss-loading">Opening the selected {kind}…</div> : <>
         <div className="ss-source sss-workbench">
-          <div className="ss-source__toolbar"><span className="sss-tab">@_ {kind === 'task' ? 'Task' : 'Activity'}</span><button type="button" onClick={undo} disabled={!undoCount} aria-label="Undo" title="Undo (Ctrl or Command Z)">↶ <span>Undo</span></button><button type="button" onClick={() => void navigator.clipboard.readText().then(pasteText, () => setSaveError('Clipboard access is unavailable. Use Ctrl+V or Cmd+V.'))} title="Paste plain text">▤ <span>Paste</span></button><button type="button" onClick={() => void navigator.clipboard.writeText(source).catch(() => setSaveError('Clipboard access is unavailable. Select the script and copy it.'))} title="Copy all SuiteScript">▣ <span>Copy all</span></button><button type="button" onClick={() => setSpellcheck(current => !current)} aria-pressed={spellcheck} aria-label="Spelling" title="Spelling">A<span className="ss-source__spell-mark">✓</span></button><button type="button" aria-label="Find and replace" aria-expanded={findOpen} onClick={() => setFindOpen(current => !current)}>⌕</button>{kind === 'activity' && groups.length > 0 && <button type="button" className="sss-scope-switch" onClick={changeScope}>Versions</button>}<button type="button" className="ss-source__close" aria-label="Close SuiteScript" onClick={close}>×</button></div>
+          <div className="ss-source__toolbar"><span className="sss-tab"><UiIcon name="script" size={15} /> {kind === 'task' ? rows[0]?.version ? `Task · ${rows[0].version}` : 'Task' : 'Activity'}</span><button type="button" onClick={undo} disabled={!undoCount} aria-label="Undo" title="Undo (Ctrl or Command Z)"><UiIcon name="videoUndo" size={15} /><span>Undo</span></button><button type="button" onClick={() => void navigator.clipboard.readText().then(pasteText, () => setSaveError('Clipboard access is unavailable. Use Ctrl+V or Cmd+V.'))} title="Paste plain text"><UiIcon name="paste" size={15} /><span>Paste</span></button><button type="button" onClick={() => void navigator.clipboard.writeText(source).catch(() => setSaveError('Clipboard access is unavailable. Select the script and copy it.'))} title="Copy all SuiteScript"><UiIcon name="copyall" size={15} /><span>Copy all</span></button><button type="button" onClick={() => setSpellcheck(current => !current)} aria-pressed={spellcheck} aria-label="Spelling" title="Spelling">A<span className="ss-source__spell-mark">✓</span></button><button type="button" aria-label="Find and replace" aria-expanded={findOpen} onClick={() => setFindOpen(current => !current)}><UiIcon name="search" size={16} /></button>{kind === 'activity' && groups.length > 0 && <button type="button" className="sss-scope-switch" onClick={changeScope}>Versions</button>}<button type="button" className="ss-source__close" aria-label="Close SuiteScript" onClick={close}><UiIcon name="videoClose" size={16} /></button></div>
           {findOpen && <div className="ss-source__find"><input aria-label="Find" value={findText} onChange={event => setFindText(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); findNext(); } }} placeholder="Find" /><input aria-label="Replace with" value={replaceText} onChange={event => setReplaceText(event.target.value)} placeholder="Replace with" /><button type="button" onClick={findNext}>Next</button><button type="button" onClick={replaceOne}>Replace</button><button type="button" onClick={() => { if (findText) setEditorValue(source.split(findText).join(replaceText)); }}>All</button></div>}
-          <div className="ss-source__workspace"><div className="ss-source__codebox"><div className="ss-source__current" style={{ top: 14 + (currentLine - 1) * 24 - scrollTop }} /><div ref={gutter} className="ss-source__gutter">{source.split('\n').map((_, index) => <div key={index} className={issues.some(issue => issue.line === index + 1) ? 'ss-source__gutter-error' : ''} title={issues.filter(issue => issue.line === index + 1).map(issue => issue.text).join('\n')}>{index + 1}</div>)}</div><div className="ss-source__codepane"><pre ref={highlightRef} className="ss-source__highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlight(source) }} /><textarea ref={textarea} className="ss-source__textarea" aria-label="SuiteScript source" value={source} spellCheck={spellcheck} onChange={event => setEditorValue(event.target.value, undefined, true)} onClick={event => setCaret(event.currentTarget.selectionStart)} onKeyUp={event => setCaret(event.currentTarget.selectionStart)} onScroll={event => { setScrollTop(event.currentTarget.scrollTop); if (highlightRef.current) { highlightRef.current.scrollTop = event.currentTarget.scrollTop; highlightRef.current.scrollLeft = event.currentTarget.scrollLeft; } if (gutter.current) gutter.current.scrollTop = event.currentTarget.scrollTop; }} onPaste={event => { const text = event.clipboardData.getData('text/plain'); if (text === HEADER || text.startsWith(`${HEADER}\n`)) { event.preventDefault(); pasteText(text); } }} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey && undoStack.current.length) { event.preventDefault(); undo(); } else if ((event.ctrlKey || event.metaKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase())) { event.preventDefault(); wrapSelection(({ b: 'bold', i: 'italic', u: 'underline' } as Record<string, string>)[event.key.toLowerCase()]); } else if (event.key === 'Tab') { if (nextPlaceholder(event.shiftKey)) event.preventDefault(); else if (!event.shiftKey) { event.preventDefault(); pasteText('  '); } } }} /></div></div><aside className="ss-source__preview"><div className="ss-source__preview-head"><span>LEARNER PREVIEW</span><span>{valid ? 'Live' : 'Last valid preview'}</span></div><div className="ss-source__preview-body">{tasks.length > 1 && <div className="sss-task-tabs" role="tablist" aria-label="Preview task">{tasks.map((task, index) => <button key={index} type="button" role="tab" aria-selected={previewTask === index} onClick={() => setPreviewTask(index)}>{index + 1}. {task.title}</button>)}</div>}{active ? <div className="sss-preview-task"><h3>{active.title}</h3>{active.instructions.length > 0 && <p>{active.instructions.map(node => (node.content ?? []).map(child => child.text ?? '').join('')).join(' ')}</p>}<LocalLearnerPreviewMode.Provider value={learnerSeat}><LocalActivityMode.Provider value={true}><TaskRenderer content={splitKey({ type: 'doc', content: active.content.length ? active.content : [{ type: 'paragraph' }] }, true).content} responses={{}} hideAnswers disabled classId={classId} /></LocalActivityMode.Provider></LocalLearnerPreviewMode.Provider></div> : <p className="sss-preview-empty">Write a valid SuiteScript task to see its learner view here.</p>}</div></aside></div>
+          <div className="ss-source__workspace"><div className="ss-source__codebox"><div className="ss-source__current" style={{ top: currentTop - scrollTop }} /><div ref={gutter} className="ss-source__gutter">{visibleLines.map((line, index) => { const sourceLine = foldedEnd > foldedStart! && index > foldedStart! ? index + foldedEnd - foldedStart! : index; const canFold = foldEnd(sourceLines, sourceLine) > sourceLine; return <div key={index} className={issues.some(issue => issue.line === sourceLine + 1) ? 'ss-source__gutter-error' : ''} title={issues.filter(issue => issue.line === sourceLine + 1).map(issue => issue.text).join('\n')}>{canFold && <button type="button" className="ss-source__fold" aria-label={`${foldedStart === sourceLine ? 'Expand' : 'Collapse'} line ${sourceLine + 1}`} onClick={() => { setFoldedStart(foldedStart === sourceLine ? null : sourceLine); setCaret(0); }}>{foldedStart === sourceLine ? '▸' : '▾'}</button>}<span className="ss-source__line-number">{sourceLine + 1}</span><span className="sss-line-measure" style={{ width: Math.max(80, codeWidth - 32) }}>{line || '\u00a0'}</span></div>; })}</div><div ref={codePane} className="ss-source__codepane"><pre ref={highlightRef} className="ss-source__highlight" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlight(visibleValue) }} /><textarea ref={textarea} className="ss-source__textarea" wrap="soft" aria-label="SuiteScript source" value={visibleValue} readOnly={foldedStart !== null} spellCheck={spellcheck} onChange={event => setEditorValue(event.target.value, undefined, true)} onClick={event => setCaret(event.currentTarget.selectionStart)} onKeyUp={event => setCaret(event.currentTarget.selectionStart)} onScroll={event => { setScrollTop(event.currentTarget.scrollTop); if (highlightRef.current) { highlightRef.current.scrollTop = event.currentTarget.scrollTop; highlightRef.current.scrollLeft = event.currentTarget.scrollLeft; } if (gutter.current) gutter.current.scrollTop = event.currentTarget.scrollTop; }} onPaste={event => { const text = event.clipboardData.getData('text/plain'); if (text === HEADER || text.startsWith(`${HEADER}\n`)) { event.preventDefault(); pasteText(text); } }} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey && undoStack.current.length) { event.preventDefault(); undo(); } else if ((event.ctrlKey || event.metaKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase())) { event.preventDefault(); wrapSelection(({ b: 'bold', i: 'italic', u: 'underline' } as Record<string, string>)[event.key.toLowerCase()]); } else if (event.key === 'Tab') { if (nextPlaceholder(event.shiftKey)) event.preventDefault(); else if (!event.shiftKey) { event.preventDefault(); pasteText('  '); } } }} /></div></div></div>
           <div className="ss-source__status"><span tabIndex={0} className={actionError ? 'is-error' : 'is-ready'}>{actionError ? `${issues.length || 1} issue${issues.length === 1 ? '' : 's'}` : 'No problems'}{actionError && <span className="ss-source__tooltip">{[...issues.map(issue => `Line ${issue.line}: ${issue.text}`), ...(saveError || loadError ? [saveError || loadError] : [])].map((message, index) => <span key={index}>{message}</span>)}</span>}</span><span>Ln {currentLine}</span><span className="ss-source__version">SuiteScript v1</span></div>
         </div><footer className="sss-actions"><p>{scopeMessage}{source !== initial ? ' · Unsaved script changes' : ''}</p><div>{actionError && <span className="sss-action-error" role="alert">{actionError}</span>}<button type="button" className="btn" onClick={close}>Cancel</button><button type="button" className="btn primary" disabled={!valid || saving} onClick={() => void apply()}>{saving ? 'Applying…' : `Apply to ${kind}`}</button></div></footer>
       </>}

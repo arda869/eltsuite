@@ -10,8 +10,8 @@ import { loadKey, loadNoteDoc, taskRef, type Task } from './tasks';
 const para = (text: string): JSONContent[] => text ? [{ type: 'paragraph', content: [{ type: 'text', text }] }] : [];
 const body = (doc: JSONContent | null | undefined, fallback = ''): JSONContent[] => doc?.type === 'doc' ? doc.content ?? [] : para(fallback);
 
-// The caller names one exact task/version. Routing fields deliberately stay in
-// the destination selection, never in editable SuiteScript text.
+// The caller names one exact task/version. Version routing stays in the
+// destination selection; the main task can still edit who sees the activity.
 export function classTaskToSuiteScriptDraft(task: Task, key: AnswerKey, noteDoc: JSONContent | null, noteText = ''): SuiteScriptTaskDraft {
   if (!task.content) throw new Error('The selected task has no readable content.');
   return {
@@ -24,6 +24,7 @@ export function classTaskToSuiteScriptDraft(task: Task, key: AnswerKey, noteDoc:
     ...(task.print ? { paper: Object.fromEntries((['gap', 'lines', 'show', 'icon'] as const).filter(key => task.print?.[key] !== undefined).map(key => [key, task.print?.[key]])) as SuiteScriptTaskDraft['paper'] } : {}),
     ...(task.anchor ? { anchor: task.anchor } : {}),
     ...(task.identity ? { identity: task.identity } : {}),
+    ...(!task.family ? { audience: task.audience ?? { mode: 'all' } } : {}),
     instructions: body(task.instrDoc, task.instructions),
     content: body(mergeKey(task.content, key)),
     teacherNotes: body(noteDoc, noteText),

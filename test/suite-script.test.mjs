@@ -309,6 +309,7 @@ test('explicit whole-task and whole-activity drafts preserve instructions, priva
     paper: { gap: 'medium', lines: 3, show: 'both', icon: 'none' },
     anchor: 'welcome',
     identity: { id: 'opening', name: 'Activation', colour: '#a74d37', icon: 'spark' },
+    audience: { mode: 'all' },
     instructions: [{ type: 'paragraph', content: [{ type: 'text', text: 'Ask your partner.' }] }],
     content: parseSuiteScript(fixture, labels).content,
     teacherNotes: [{ type: 'paragraph', content: [{ type: 'text', text: 'Lead in with real names.' }] }],
@@ -322,6 +323,7 @@ test('explicit whole-task and whole-activity drafts preserve instructions, priva
   assert.deepEqual(parsed.errors, []);
   assert.deepEqual(parsed.bundle, { kind: 'activity', activity });
   assert.equal(parseSuiteScriptBundle('SuiteScript v1\n@task("A", learnerVersion: "B")\n@endtask()', labels).bundle, null);
+  assert.match(parseSuiteScriptBundle('SuiteScript v1\n@task(title: "A", audience: {mode: "groups"})\n@endtask()', labels).errors[0], /Choose a group set/);
   assert.match(parseSuiteScriptBundle('SuiteScript v1\n@task("A")\n@content()\nHello', labels).errors[0], /Missing @endtask/);
 });
 

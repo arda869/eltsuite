@@ -63,6 +63,7 @@ const P: Record<string, ReactNode> = {
   hideAnswers: <><path d="M4 4l16 16" /><path d="M9.9 6.3A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.8 3.4M6.6 7.6A15.6 15.6 0 0 0 2.5 12s3.5 6 9.5 6a9 9 0 0 0 4.2-1" strokeLinejoin="round" /></>,
   import: <><path d="M12 15V4" /><path d="M7.5 10.5 12 15l4.5-4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
   copyall: <><rect x="8" y="8" width="12" height="12" rx="1.5" /><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" /><path d="M14 11v6M11 14h6" /></>,
+  paste: <><rect x="5" y="5" width="14" height="16" rx="2" /><path d="M9 5V3.5h6V5M8.5 11h7M8.5 15h5" /></>,
   call: <><rect x="3.5" y="6.5" width="12" height="11" rx="2" /><path d="M15.5 10.5l5-3v9l-5-3z" strokeLinejoin="round" /></>,
   discuss: <><path d="M4 5.5h11a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 15 14.5H9l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V7A1.5 1.5 0 0 1 4 5.5z" strokeLinejoin="round" /><path d="M19 9h1a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 20 18h-1v2.5L16 18h-4.5" strokeLinejoin="round" /></>,
   message: <><path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 17h-7l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 5 5z" strokeLinejoin="round" /><path d="M8 10h8M8 13h5" /></>,
